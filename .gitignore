@@ -1,0 +1,60 @@
+# Build directories
+build/
+build_*/
+out/
+cmake-build-*/
+
+# Build artifacts
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.suo
+*.user
+*.log
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+x64/
+Debug/
+Release/
+
+# IDE/Editor files
+*.swp
+*.swo
+*~
+.idea/
+*.code-workspace
+
+# Temporary/helper scripts (created during migration)
+apply_juce8_fixes.ps1
+fix_brancheslaf.ps1
+build_output.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# JUCE specific
+Builds/
+JuceLibraryCode/
+*.jucer.bak
