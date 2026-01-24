@@ -123,17 +123,19 @@ void App::showTrayIcon(bool val)
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
-    : DocumentWindow("Pedalboard 3", Colours::black, DocumentWindow::allButtons)
+    : DocumentWindow("Pedalboard 3", Colour(0xff333333), DocumentWindow::allButtons)
 {
     // Make sure we've loaded all the available plugin formats before we create
     // the main panel.
     {
         InternalPluginFormat* internalFormat = new InternalPluginFormat;
+        VST3PluginFormat* vst3Format = new VST3PluginFormat;
         // LADSPAPluginFormat *ladspaFormat = new LADSPAPluginFormat;
         // VSTPluginFormat *vstFormat = new VSTPluginFormat;
         // NiallsAudioPluginFormat *napFormat = new NiallsAudioPluginFormat;
 
         AudioPluginFormatManagerSingleton::getInstance().addFormat(internalFormat);
+        AudioPluginFormatManagerSingleton::getInstance().addFormat(vst3Format);
         // AudioPluginFormatManager::getInstance()->addFormat(napFormat);
         // AudioPluginFormatManager::getInstance()->addFormat(vstFormat);
         // AudioPluginFormatManager::getInstance()->addFormat(ladspaFormat);
