@@ -26,6 +26,7 @@ cmake_install.cmake
 Makefile
 *.cmake
 !CMakeLists.txt
+!cmake/
 
 # Visual Studio
 .vs/

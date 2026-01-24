@@ -40,9 +40,9 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 
 ---
 
-## Phase 1: JUCE 8 Migration ← **CURRENT**
+## Phase 1: JUCE 8 Migration ✅ COMPLETE
 
-**Status:** 🔄 In Progress  
+**Status:** ✅ Complete  
 **Prerequisite:** None  
 **Goal:** Get the codebase building with JUCE 8
 
@@ -51,13 +51,13 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 |---|------|--------|------------|
 | 1.1 | Update JUCE submodule to 8.x | ✅ Done | - |
 | 1.2 | Create CMakeLists.txt | ✅ Done | 1.1 |
-| 1.3 | Fix NodeID.uid conversions | 🔄 In Progress | 1.2 |
-| 1.4 | Fix Node::Ptr.get() calls | 🔄 In Progress | 1.2 |
-| 1.5 | Fix unique_ptr ownership | 🔄 In Progress | 1.2 |
-| 1.6 | Fix ScopedPointer removal | 🔄 In Progress | 1.2 |
-| 1.7 | Build and smoke test | ⏳ Pending | 1.3-1.6 |
-| 1.8 | Remove dead/commented code | ⏳ Pending | 1.7 |
-| 1.9 | Commit to fork | ⏳ Pending | 1.7 |
+| 1.3 | Fix NodeID.uid conversions | ✅ Done | 1.2 |
+| 1.4 | Fix Node::Ptr.get() calls | ✅ Done | 1.2 |
+| 1.5 | Fix unique_ptr ownership | ✅ Done | 1.2 |
+| 1.6 | Fix ScopedPointer removal | ✅ Done | 1.2 |
+| 1.7 | Build and smoke test | ✅ Done | 1.3-1.6 |
+| 1.8 | Remove dead/commented code | ⏳ Deferred to Phase 4 | 1.7 |
+| 1.9 | Commit to fork | ✅ Done | 1.7 |
 
 ### Documentation
 - [x] STATE_OF_PROJECT.md
@@ -66,36 +66,36 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 
 ---
 
-## Phase 2: Foundation & Tooling
+## Phase 2: Foundation & Tooling ← **CURRENT**
 
-**Status:** ⏳ Pending  
+**Status:** 🔄 In Progress  
 **Prerequisite:** Phase 1 complete  
 **Goal:** Establish modern development foundation
 
 ### 2A: Build System (do first)
-| # | Task | Library/Tool |
-|---|------|--------------|
-| 2A.1 | Add dependency manager | **CPM.cmake** |
-| 2A.2 | Add .clang-format | Consistent style |
-| 2A.3 | Add CMakePresets.json | Debug/Release/Sanitizers |
-| 2A.4 | Enable compiler warnings | `/W4` or `-Wall -Wextra` |
+| # | Task | Library/Tool | Status |
+|---|------|--------------|--------|
+| 2A.1 | Add dependency manager | **CPM.cmake** | ✅ Done |
+| 2A.2 | Add .clang-format | Consistent style | ✅ Done |
+| 2A.3 | Add CMakePresets.json | Debug/Release | ✅ Done |
+| 2A.4 | Enable compiler warnings | `/W4 /FS` | ✅ Done |
 
 ### 2B: Core Libraries (integrate early)
-| # | Library | Purpose | Replaces |
-|---|---------|---------|----------|
-| 2B.1 | **fmt** | String formatting | String::formatted() |
-| 2B.2 | **spdlog** | Async logging | LogFile |
-| 2B.3 | **nlohmann/json** | JSON handling | Custom XML |
-| 2B.4 | **toml++** | Config files | PropertiesFile (optional) |
-| 2B.5 | **CLI11** | Command-line args | Manual parsing |
+| # | Library | Purpose | Replaces | Status |
+|---|---------|---------|----------|--------|
+| 2B.1 | **fmt** | String formatting | String::formatted() | ✅ Done |
+| 2B.2 | **spdlog** | Async logging | LogFile | ✅ Done |
+| 2B.3 | **nlohmann/json** | JSON handling | Custom XML | ✅ Done |
+| 2B.4 | **toml++** | Config files | PropertiesFile | ⏳ Optional |
+| 2B.5 | **CLI11** | Command-line args | Manual parsing | ⏳ Optional |
 
 ### 2C: Testing Framework
-| # | Task | Library/Tool |
-|---|------|--------------|
-| 2C.1 | Add tests/ directory | Structure |
-| 2C.2 | Integrate Catch2 | **Catch2** |
-| 2C.3 | First smoke test | Verify build in test |
-| 2C.4 | Add mock framework | **FakeIt** (optional) |
+| # | Task | Library/Tool | Status |
+|---|------|--------------|--------|
+| 2C.1 | Add tests/ directory | Structure | ✅ Done |
+| 2C.2 | Integrate Catch2 | **Catch2** | ✅ Done |
+| 2C.3 | First smoke test | Verify build in test | ✅ Done (11 assertions) |
+| 2C.4 | Add mock framework | **FakeIt** (optional) | ⏳ Optional |
 
 ### Documentation
 - [ ] Update ARCHITECTURE.md with new libs

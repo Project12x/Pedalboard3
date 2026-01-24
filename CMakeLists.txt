@@ -11,6 +11,68 @@ project(Pedalboard2
     LANGUAGES CXX
 )
 
+# ==============================================================================
+# CPM.cmake - Dependency Manager
+# ==============================================================================
+include(cmake/CPM.cmake)
+
+# ==============================================================================
+# Modern C++ Libraries
+# ==============================================================================
+
+# fmt - Modern string formatting
+CPMAddPackage(
+    NAME fmt
+    GITHUB_REPOSITORY fmtlib/fmt
+    GIT_TAG 11.0.2
+    OPTIONS "FMT_INSTALL OFF"
+)
+
+# spdlog - Fast async logging (uses fmt)
+CPMAddPackage(
+    NAME spdlog
+    GITHUB_REPOSITORY gabime/spdlog
+    GIT_TAG v1.14.1
+    OPTIONS "SPDLOG_FMT_EXTERNAL ON"
+)
+
+# nlohmann_json - JSON parsing
+CPMAddPackage(
+    NAME nlohmann_json
+    GITHUB_REPOSITORY nlohmann/json
+    GIT_TAG v3.11.3
+    OPTIONS "JSON_BuildTests OFF"
+)
+
+# ==============================================================================
+# Testing Framework
+# ==============================================================================
+option(PEDALBOARD2_BUILD_TESTS "Build tests" ON)
+
+if(PEDALBOARD2_BUILD_TESTS)
+    CPMAddPackage(
+        NAME Catch2
+        GITHUB_REPOSITORY catchorg/Catch2
+        GIT_TAG v3.7.0
+    )
+    list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
+    enable_testing()
+endif()
+
+# ==============================================================================
+# Compiler Warnings
+# ==============================================================================
+if(MSVC)
+    add_compile_options(/W4 /WX-)  # High warnings, don't treat as errors yet
+    add_compile_options(/wd4100)   # Unreferenced formal parameter (common in JUCE)
+    add_compile_options(/wd4244)   # Conversion warnings (JUCE has many)
+    add_compile_options(/wd4267)   # Size_t conversion (JUCE has many)
+    add_compile_options(/FS)       # Force synchronous PDB writes (required for Ninja parallel builds)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wno-unused-parameter)  # Common in JUCE callbacks
+endif()
+
 # Fix for potential CMake/MSVC 2026 compatibility issues where compile rules are missing
 if(MSVC)
     if(NOT DEFINED CMAKE_C_COMPILE_OBJECT)
@@ -216,6 +278,11 @@ target_link_libraries(Pedalboard2 PRIVATE
     # Recommended flags
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags
+    
+    # Modern C++ libraries
+    fmt::fmt
+    spdlog::spdlog
+    nlohmann_json::nlohmann_json
 )
 
 # Windows-specific settings
@@ -236,3 +303,10 @@ add_custom_command(TARGET Pedalboard2 POST_BUILD
         "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
         "$<TARGET_FILE_DIR:Pedalboard2>/documentation"
 )
+
+# ==============================================================================
+# Tests
+# ==============================================================================
+if(PEDALBOARD2_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
