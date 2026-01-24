@@ -21,7 +21,7 @@
 #ifndef MIDIAPPFIFO_H_
 #define MIDIAPPFIFO_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	A lock-free FIFO used to pass messages from the audio thread to the message thread.
 class MidiAppFifo

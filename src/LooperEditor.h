@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_LOOPEREDITOR_LOOPEREDITOR_89E8DC78__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "WaveformDisplay.h"
 
 class LooperProcessor;
@@ -43,9 +43,9 @@ class LooperEditor  : public AudioProcessorEditor,
                       public FilenameComponentListener,
                       public Timer,
                       public ChangeListener,
-                      public ButtonListener,
-                      public LabelListener,
-                      public SliderListener
+                      public Button::Listener,
+                      public Label::Listener,
+                      public Slider::Listener
 {
 public:
     //==============================================================================

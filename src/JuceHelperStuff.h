@@ -20,7 +20,7 @@
 #ifndef JUCEHELPERSTUFF_H_
 #define JUCEHELPERSTUFF_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 namespace JuceHelperStuff
 {

@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_AUDIORECORDERCONTROL_AUDIORECORDERCONTROL_504296E2__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class RecorderProcessor;
 class WaveformDisplayLite;
@@ -43,7 +43,7 @@ class WaveformDisplayLite;
 class AudioRecorderControl  : public Component,
                               public FilenameComponentListener,
                               public ChangeListener,
-                              public ButtonListener
+                              public Button::Listener
 {
 public:
     //==============================================================================

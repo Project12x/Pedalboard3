@@ -36,7 +36,7 @@ oscManager(osc)
 	mappingsTree->setSize(400, 430);
 	addAndMakeVisible(mappingsTree);
 
-	resetButton = new TextButton(L"Reset to defaults");
+	resetButton = new TextButton("Reset to defaults");
 	resetButton->setBounds(298, 444, 110, 24);
 	resetButton->addListener(this);
 	addAndMakeVisible(resetButton);
@@ -54,7 +54,7 @@ ApplicationMappingsEditor::~ApplicationMappingsEditor()
 //------------------------------------------------------------------------------
 void ApplicationMappingsEditor::paint(Graphics& g)
 {
-	g.fillAll(ColourScheme::getInstance().colours[L"Window Background"]);
+	g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 }
 
 //------------------------------------------------------------------------------

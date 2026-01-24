@@ -450,13 +450,13 @@ OscInput::~OscInput()
 //------------------------------------------------------------------------------
 void OscInput::fillInPluginDescription(PluginDescription &description) const
 {
-	description.name = L"OSC Input";
-	description.descriptiveName = L"Dummy AudioProcessor so we can see at a glance which plugins have OSC mappings.";
-	description.pluginFormatName = L"Internal";
-	description.category = L"Internal";
-	description.manufacturerName = L"Niall Moody";
-	description.version = L"1.00";
-	description.uid = description.name.hashCode();
+	description.name = "OSC Input";
+	description.descriptiveName = "Dummy AudioProcessor so we can see at a glance which plugins have OSC mappings.";
+	description.pluginFormatName = "Internal";
+	description.category = "Internal";
+	description.manufacturerName = "Niall Moody";
+	description.version = "1.00";
+	description.uniqueId = description.name.hashCode();
 	description.isInstrument = false; //?
 	description.numInputChannels = 0;
 	description.numOutputChannels = 0;

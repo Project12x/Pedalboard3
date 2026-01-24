@@ -20,7 +20,7 @@
 #ifndef WAVEFORMDISPLAY_H_
 #define WAVEFORMDISPLAY_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 //------------------------------------------------------------------------------
 ///	A component that displays a waveform.

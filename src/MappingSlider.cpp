@@ -1433,7 +1433,7 @@ void MappingSliderListener::sliderDragEnded (MappingSlider*)
 class SliderLabelComp : public Label
 {
 public:
-    SliderLabelComp() : Label (String::empty, String::empty) {}
+    SliderLabelComp() : Label (String(), String()) {}
 
     void mouseWheelMove (const MouseEvent&, const MouseWheelDetails& wheel) {}
 };
@@ -1464,7 +1464,7 @@ Label* MappingSlider::createMappingSliderTextBox (MappingSlider& slider)
 
 Button* MappingSlider::createMappingSliderButton (const bool isIncrement)
 {
-    return new TextButton (isIncrement ? "+" : "-", String::empty);
+    return new TextButton (isIncrement ? "+" : "-", String());
 }
 
 void MappingSlider::drawRotaryMappingSlider (Graphics& g,

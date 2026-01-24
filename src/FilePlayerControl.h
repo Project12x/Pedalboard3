@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_FILEPLAYERCONTROL_FILEPLAYERCONTROL_54B42392__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "WaveformDisplay.h"
 
 class FilePlayerProcessor;
@@ -43,7 +43,7 @@ class FilePlayerControl  : public Component,
                            public FilenameComponentListener,
                            public Timer,
                            public ChangeListener,
-                           public ButtonListener
+                           public Button::Listener
 {
 public:
     //==========================================================================

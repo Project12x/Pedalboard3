@@ -20,7 +20,7 @@
 #ifndef COLOURSCHEME_H_
 #define COLOURSCHEME_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 #include <map>
 

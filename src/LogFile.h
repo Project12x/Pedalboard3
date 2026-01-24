@@ -20,7 +20,7 @@
 #ifndef LOGFILE_H_
 #define LOGFILE_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 #include <map>
 

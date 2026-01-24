@@ -22,7 +22,7 @@
 
 #include "MidiMappingManager.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	Overridden AlertWindow allowing us to use MIDI learn.
 class MidiCcAlertWindow : public AlertWindow,

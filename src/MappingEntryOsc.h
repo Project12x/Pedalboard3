@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_MAPPINGENTRYOSC_MAPPINGENTRYOSC_7DF52EAC__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class MappingsDialog;
 //[/Headers]
@@ -39,8 +39,8 @@ class MappingsDialog;
                                                                     //[/Comments]
 */
 class MappingEntryOsc  : public Component,
-                         public ComboBoxListener,
-                         public SliderListener
+                         public ComboBox::Listener,
+                         public Slider::Listener
 {
 public:
     //==============================================================================

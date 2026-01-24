@@ -47,7 +47,7 @@ void NiallsAudioPluginFormat::findAllTypesForFile(OwnedArray<PluginDescription>&
 
 	PluginDescription desc;
 	desc.fileOrIdentifier = fileOrIdentifier;
-	desc.uid = 0;
+	desc.uniqueId = 0;
 
 	NAPInstance* instance = dynamic_cast<NAPInstance*>(createInstanceFromDescription(desc));
 
@@ -228,11 +228,11 @@ void NAPInstance::fillInPluginDescription(PluginDescription& description) const
 	description.name = name;
 	description.pluginFormatName = T("NAP");
 	description.category = T("effect");
-	description.manufacturerName = T("Niall");
+	description.manufacturerName = T("Nial");
 	description.version = T("1.0");
 	description.fileOrIdentifier = module->file.getFullPathName();
 	description.lastFileModTime = module->file.getLastModificationTime();
-	description.uid = 0;
+	description.uniqueId = 0;
 	description.isInstrument = false;
 	if(plugin)
 	{

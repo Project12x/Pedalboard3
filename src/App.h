@@ -22,7 +22,7 @@
 
 #include "BranchesLAF.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class MainPanel;
 class TrayIcon;
@@ -43,9 +43,9 @@ class App : public JUCEApplication
 	void shutdown();
 
 	///	Returns the name of the application (duh...).
-	const String getApplicationName() {return L"Pedalboard 2";};
+	const String getApplicationName() {return "Pedalboard 2";};
 	///	Returns the current version.
-	const String getApplicationVersion() {return L"2.14";};
+	const String getApplicationVersion() {return "2.14";};
 	///	Whether or not we want to allow more than one instance to run.
 	bool moreThanOneInstanceAllowed() {return true;};
 	///	Not used right now?

@@ -21,13 +21,13 @@
 
 //[Headers] You can add your own extra header files here...
 
-#include "MainPanel.h"
 #include "ColourScheme.h"
+#include "MainPanel.h"
+
 
 //[/Headers]
 
 #include "PatchOrganiser.h"
-
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 
@@ -36,463 +36,405 @@ using namespace std;
 //[/MiscUserDefs]
 
 //==============================================================================
-PatchOrganiser::PatchOrganiser (MainPanel *panel, Array<XmlElement *>& patchArray)
-    : mainPanel(panel), patches(patchArray),
-      patchList (0),
-      addButton (0),
-      copyButton (0),
-      removeButton (0),
-      moveUpButton (0),
-      moveDownButton (0),
-      importButton (0)
-{
-    addAndMakeVisible (patchList = new ListBox (L"patchList", this));
-    patchList->setName (L"patchList");
+PatchOrganiser::PatchOrganiser(MainPanel *panel,
+                               Array<XmlElement *> &patchArray)
+    : mainPanel(panel), patches(patchArray), patchList(0), addButton(0),
+      copyButton(0), removeButton(0), moveUpButton(0), moveDownButton(0),
+      importButton(0) {
+  addAndMakeVisible(patchList = new ListBox("patchList", this));
+  patchList->setName("patchList");
 
-    addAndMakeVisible (addButton = new TextButton (L"addButton"));
-    addButton->setButtonText (L"Add");
-    addButton->addListener (this);
+  addAndMakeVisible(addButton = new TextButton("addButton"));
+  addButton->setButtonText("Add");
+  addButton->addListener(this);
 
-    addAndMakeVisible (copyButton = new TextButton (L"copyButton"));
-    copyButton->setButtonText (L"Copy");
-    copyButton->addListener (this);
+  addAndMakeVisible(copyButton = new TextButton("copyButton"));
+  copyButton->setButtonText("Copy");
+  copyButton->addListener(this);
 
-    addAndMakeVisible (removeButton = new TextButton (L"removeButton"));
-    removeButton->setButtonText (L"Remove");
-    removeButton->addListener (this);
+  addAndMakeVisible(removeButton = new TextButton("removeButton"));
+  removeButton->setButtonText("Remove");
+  removeButton->addListener(this);
 
-    addAndMakeVisible (moveUpButton = new TextButton (L"moveUpButton"));
-    moveUpButton->setButtonText (L"Move Up");
-    moveUpButton->addListener (this);
+  addAndMakeVisible(moveUpButton = new TextButton("moveUpButton"));
+  moveUpButton->setButtonText("Move Up");
+  moveUpButton->addListener(this);
 
-    addAndMakeVisible (moveDownButton = new TextButton (L"moveDownButton"));
-    moveDownButton->setButtonText (L"Move Down");
-    moveDownButton->addListener (this);
+  addAndMakeVisible(moveDownButton = new TextButton("moveDownButton"));
+  moveDownButton->setButtonText("Move Down");
+  moveDownButton->addListener(this);
 
-    addAndMakeVisible (importButton = new TextButton (L"importButton"));
-    importButton->setButtonText (L"Import...");
-    importButton->addListener (this);
+  addAndMakeVisible(importButton = new TextButton("importButton"));
+  importButton->setButtonText("Import...");
+  importButton->addListener(this);
 
+  //[UserPreSize]
 
-    //[UserPreSize]
+  addButton->setTooltip("Add a new patch");
+  copyButton->setTooltip("Duplicate selected patch");
+  removeButton->setTooltip("Delete selected patch");
+  moveUpButton->setTooltip("Move patch up");
+  moveDownButton->setTooltip("Move patch down");
+  importButton->setTooltip("Import patch from another .pdl file");
 
-	addButton->setTooltip(L"Add a new patch");
-	copyButton->setTooltip(L"Duplicate selected patch");
-	removeButton->setTooltip(L"Delete selected patch");
-	moveUpButton->setTooltip(L"Move patch up");
-	moveDownButton->setTooltip(L"Move patch down");
-	importButton->setTooltip(L"Import patch from another .pdl file");
+  patchList->setOutlineThickness(1);
+  patchList->setMultipleSelectionEnabled(true);
+  patchList->setColour(
+      ListBox::backgroundColourId,
+      ColourScheme::getInstance().colours["Dialog Inner Background"]);
 
-	patchList->setOutlineThickness(1);
-	patchList->setMultipleSelectionEnabled(true);
-	patchList->setColour(ListBox::backgroundColourId,
-						 ColourScheme::getInstance().colours[L"Dialog Inner Background"]);
+  //[/UserPreSize]
 
-    //[/UserPreSize]
+  setSize(600, 400);
 
-    setSize (600, 400);
-
-    //[Constructor] You can add your own custom stuff here..
-    //[/Constructor]
+  //[Constructor] You can add your own custom stuff here..
+  //[/Constructor]
 }
 
-PatchOrganiser::~PatchOrganiser()
-{
-    //[Destructor_pre]. You can add your own custom destruction code here..
-    //[/Destructor_pre]
+PatchOrganiser::~PatchOrganiser() {
+  //[Destructor_pre]. You can add your own custom destruction code here..
+  //[/Destructor_pre]
 
-    deleteAndZero (patchList);
-    deleteAndZero (addButton);
-    deleteAndZero (copyButton);
-    deleteAndZero (removeButton);
-    deleteAndZero (moveUpButton);
-    deleteAndZero (moveDownButton);
-    deleteAndZero (importButton);
+  deleteAndZero(patchList);
+  deleteAndZero(addButton);
+  deleteAndZero(copyButton);
+  deleteAndZero(removeButton);
+  deleteAndZero(moveUpButton);
+  deleteAndZero(moveDownButton);
+  deleteAndZero(importButton);
 
-    //[Destructor]. You can add your own custom destruction code here..
-    //[/Destructor]
+  //[Destructor]. You can add your own custom destruction code here..
+  //[/Destructor]
 }
 
 //==============================================================================
-void PatchOrganiser::paint (Graphics& g)
-{
-    //[UserPrePaint] Add your own custom painting code here..
+void PatchOrganiser::paint(Graphics &g) {
+  //[UserPrePaint] Add your own custom painting code here..
 
-	g.fillAll(ColourScheme::getInstance().colours[L"Window Background"]);
+  g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
-    //[/UserPrePaint]
+  //[/UserPrePaint]
 
-    //g.fillAll (Colour (0xffeeece1));
+  // g.fillAll (Colour (0xffeeece1));
 
-    g.setColour (Colour (0x40000000));
-    g.fillRect (getWidth() - 89, 140, 80, 1);
+  g.setColour(Colour(0x40000000));
+  g.fillRect(getWidth() - 89, 140, 80, 1);
 
-    //[UserPaint] Add your own custom painting code here..
-    //[/UserPaint]
+  //[UserPaint] Add your own custom painting code here..
+  //[/UserPaint]
 }
 
-void PatchOrganiser::resized()
-{
-    patchList->setBounds (8, 8, getWidth() - 106, getHeight() - 15);
-    addButton->setBounds (getWidth() - 90, 8, 82, 24);
-    copyButton->setBounds (getWidth() - 90, 40, 82, 24);
-    removeButton->setBounds (getWidth() - 90, 72, 82, 24);
-    moveUpButton->setBounds (getWidth() - 90, 152, 82, 24);
-    moveDownButton->setBounds (getWidth() - 90, 184, 82, 24);
-    importButton->setBounds (getWidth() - 90, 104, 82, 24);
-    //[UserResized] Add your own custom resize handling here..
-    //[/UserResized]
+void PatchOrganiser::resized() {
+  patchList->setBounds(8, 8, getWidth() - 106, getHeight() - 15);
+  addButton->setBounds(getWidth() - 90, 8, 82, 24);
+  copyButton->setBounds(getWidth() - 90, 40, 82, 24);
+  removeButton->setBounds(getWidth() - 90, 72, 82, 24);
+  moveUpButton->setBounds(getWidth() - 90, 152, 82, 24);
+  moveDownButton->setBounds(getWidth() - 90, 184, 82, 24);
+  importButton->setBounds(getWidth() - 90, 104, 82, 24);
+  //[UserResized] Add your own custom resize handling here..
+  //[/UserResized]
 }
 
-void PatchOrganiser::buttonClicked (Button* buttonThatWasClicked)
-{
-    //[UserbuttonClicked_Pre]
+void PatchOrganiser::buttonClicked(Button *buttonThatWasClicked) {
+  //[UserbuttonClicked_Pre]
 
-	int i, j;
+  int i, j;
 
-    //[/UserbuttonClicked_Pre]
+  //[/UserbuttonClicked_Pre]
 
-    if (buttonThatWasClicked == addButton)
-    {
-        //[UserButtonCode_addButton] -- add your button handler code here..
+  if (buttonThatWasClicked == addButton) {
+    //[UserButtonCode_addButton] -- add your button handler code here..
 
-		int currentId;
-		ComboBox *patchComboBox = mainPanel->getPatchComboBox();
+    int currentId;
+    ComboBox *patchComboBox = mainPanel->getPatchComboBox();
 
-		currentId = patchComboBox->getSelectedId();
+    currentId = patchComboBox->getSelectedId();
 
-		//Creates the new patch, updates the combo box, loads the new patch.
-		//(we do it this way because ComboBox uses an AsyncUpdater to alert any
-		// listeners to its state change, which means most times
-		// comboBoxChanged() will not get called before
-		// patchList->updateContent(). Which is a pain in the bum.)
-		patchComboBox->setSelectedId(patchComboBox->getNumItems(), false);
-		mainPanel->comboBoxChanged(patchComboBox);
+    // Creates the new patch, updates the combo box, loads the new patch.
+    //(we do it this way because ComboBox uses an AsyncUpdater to alert any
+    //  listeners to its state change, which means most times
+    //  comboBoxChanged() will not get called before
+    //  patchList->updateContent(). Which is a pain in the bum.)
+    patchComboBox->setSelectedId(patchComboBox->getNumItems(), false);
+    mainPanel->comboBoxChanged(patchComboBox);
 
-		patchList->updateContent();
-		repaint();
+    patchList->updateContent();
+    repaint();
 
-        //[/UserButtonCode_addButton]
+    //[/UserButtonCode_addButton]
+  } else if (buttonThatWasClicked == copyButton) {
+    //[UserButtonCode_copyButton] -- add your button handler code here..
+    for (i = 0; i < patchList->getNumSelectedRows(); ++i) {
+      mainPanel->duplicatePatch(patchList->getSelectedRow(i));
+
+      patchList->updateContent();
+      repaint();
     }
-    else if (buttonThatWasClicked == copyButton)
-    {
-        //[UserButtonCode_copyButton] -- add your button handler code here..
-		for(i=0;i<patchList->getNumSelectedRows();++i)
-		{
-			mainPanel->duplicatePatch(patchList->getSelectedRow(i));
+    //[/UserButtonCode_copyButton]
+  } else if (buttonThatWasClicked == removeButton) {
+    //[UserButtonCode_removeButton] -- add your button handler code here..
 
-			patchList->updateContent();
-			repaint();
-		}
-        //[/UserButtonCode_copyButton]
-    }
-    else if (buttonThatWasClicked == removeButton)
-    {
-        //[UserButtonCode_removeButton] -- add your button handler code here..
+    ComboBox *patchComboBox = mainPanel->getPatchComboBox();
 
-		ComboBox *patchComboBox = mainPanel->getPatchComboBox();
+    if (patches.size() > 1) {
+      // Delete the selected patches.
+      for (i = (patchList->getNumSelectedRows() - 1); i >= 0; --i) {
+        // Make sure the user can't delete the last patch.
+        if (patches.size() == 1)
+          break;
 
-		if(patches.size() > 1)
-		{
-			//Delete the selected patches.
-			for(i=(patchList->getNumSelectedRows()-1);i>=0;--i)
-			{
-				//Make sure the user can't delete the last patch.
-				if(patches.size() == 1)
-					break;
+        j = patchList->getSelectedRow(i);
 
-				j = patchList->getSelectedRow(i);
+        // Switch the active patch if we're deleting it.
+        if (patchComboBox->getSelectedItemIndex() == j) {
+          if (j > 0) {
+            patchComboBox->setSelectedItemIndex(j - 1, true);
+            mainPanel->comboBoxChanged(patchComboBox);
+          } else {
+            patchComboBox->setSelectedItemIndex(j + 1, true);
+            mainPanel->comboBoxChanged(patchComboBox);
+          }
+        }
 
-				//Switch the active patch if we're deleting it.
-				if(patchComboBox->getSelectedItemIndex() == j)
-				{
-					if(j > 0)
-					{
-						patchComboBox->setSelectedItemIndex(j-1, true);
-						mainPanel->comboBoxChanged(patchComboBox);
-					}
-					else
-					{
-						patchComboBox->setSelectedItemIndex(j+1, true);
-						mainPanel->comboBoxChanged(patchComboBox);
-					}
-				}
+        // Delete the patch.
+        delete patches[j];
+        patches.remove(j);
+      }
 
-				//Delete the patch.
-				delete patches[j];
-				patches.remove(j);
-			}
+      // Update the combobox.
+      patchComboBox->clear(true);
+      for (i = 0; i < patches.size(); ++i)
+        patchComboBox->addItem(patches[i]->getStringAttribute("name"), i + 1);
+      patchComboBox->addItem("<new patch>", patches.size() + 1);
+      patchComboBox->setSelectedId(1);
 
-			//Update the combobox.
-			patchComboBox->clear(true);
-			for(i=0;i<patches.size();++i)
-				patchComboBox->addItem(patches[i]->getStringAttribute("name"), i+1);
-			patchComboBox->addItem("<new patch>", patches.size()+1);
-			patchComboBox->setSelectedId(1);
-
-			//Update the list box accordingly.
-			patchList->updateContent();
-			repaint();
-		}
-
-        //[/UserButtonCode_removeButton]
-    }
-    else if (buttonThatWasClicked == moveUpButton)
-    {
-        //[UserButtonCode_moveUpButton] -- add your button handler code here..
-
-		ComboBox *patchComboBox = mainPanel->getPatchComboBox();
-
-		XmlElement *e1;
-		XmlElement *e2;
-		int tempint;
-
-		//for(i=0;i<patchList->getNumSelectedRows();++i)
-		{
-			tempint = patchList->getSelectedRow(0);
-
-			//Swap the two patches.
-			if(tempint > 0)
-			{
-				e1 = patches[tempint];
-				e2 = patches[tempint-1];
-
-				patches.set(tempint-1, e1);
-				patches.set(tempint, e2);
-
-				patchList->selectRow(patchList->getSelectedRow(0)-1);
-			}
-		}
-
-		//Update the combo box.
-		patchComboBox->clear(true);
-		for(i=0;i<patches.size();++i)
-			patchComboBox->addItem(patches[i]->getStringAttribute("name"), i+1);
-		patchComboBox->addItem("<new patch>", patches.size()+1);
-		mainPanel->nextSwitchDoNotSavePrev();
-		patchComboBox->setSelectedId(1);
-
-		//Update the list box.
-		patchList->updateContent();
-		repaint();
-
-        //[/UserButtonCode_moveUpButton]
-    }
-    else if (buttonThatWasClicked == moveDownButton)
-    {
-        //[UserButtonCode_moveDownButton] -- add your button handler code here..
-
-		ComboBox *patchComboBox = mainPanel->getPatchComboBox();
-
-		XmlElement *e1;
-		XmlElement *e2;
-		XmlElement *e3;
-		XmlElement *e4;
-		int tempint;
-
-		//for(i=(patchList->getNumSelectedRows()-1);i>=0;--i)
-		{
-			tempint = patchList->getSelectedRow(0);
-
-			//Swap the two patches.
-			if(tempint < (patches.size()-1))
-			{
-				e1 = patches[tempint];
-				e2 = patches[tempint+1];
-
-				patches.set(tempint+1, e1);
-				patches.set(tempint, e2);
-
-				e3 = patches[tempint];
-				e4 = patches[tempint+1];
-
-				patchList->selectRow(patchList->getSelectedRow(0)+1);
-			}
-		}
-
-		//Update the combo box.
-		patchComboBox->clear(true);
-		for(i=0;i<patches.size();++i)
-			patchComboBox->addItem(patches[i]->getStringAttribute("name"), i+1);
-		patchComboBox->addItem("<new patch>", patches.size()+1);
-		mainPanel->nextSwitchDoNotSavePrev();
-		patchComboBox->setSelectedId(1);
-
-		//Update the list box.
-		patchList->updateContent();
-		repaint();
-
-        //[/UserButtonCode_moveDownButton]
-    }
-    else if (buttonThatWasClicked == importButton)
-    {
-        //[UserButtonCode_importButton] -- add your button handler code here..
-
-		FileChooser phil(L"Select file to import patch from...",
-						 File::nonexistent,
-						 L"*.pdl");
-
-		if(phil.browseForFileToOpen())
-		{
-			File philResult = phil.getResult();
-			XmlDocument doc(philResult);
-			ScopedPointer<XmlElement> root(doc.getDocumentElement());
-
-			if(root)
-			{
-				String tempstr;
-				StringArray patchNames;
-				XmlElement *tempEl = 0;
-
-				forEachXmlChildElementWithTagName(*root, tempEl2, "Patch")
-				{
-					patchNames.add(tempEl2->getStringAttribute("name"));
-				}
-
-				tempstr << "Patches in file: " << philResult.getFileName();
-				AlertWindow win(L"Select patch...",
-								tempstr,
-								AlertWindow::NoIcon);
-
-				win.addComboBox("patchName", patchNames);
-				win.addButton(L"OK", 1, KeyPress(KeyPress::returnKey));
-				win.addButton(L"Cancel", 0, KeyPress(KeyPress::escapeKey));
-
-				if(win.runModalLoop())
-				{
-					//Get the XmlElement the user selected.
-					int index = win.getComboBoxComponent("patchName")->getSelectedItemIndex();
-					forEachXmlChildElementWithTagName(*root, tempEl2, "Patch")
-					{
-						if(tempEl2->getStringAttribute("name") == patchNames[index])
-						{
-							tempEl = tempEl2;
-							break;
-						}
-					}
-
-					//Copy it to a new XmlElement *
-					XmlElement *newPatch = new XmlElement(*tempEl);
-
-					mainPanel->addPatch(newPatch);
-
-					patchList->updateContent();
-					repaint();
-				}
-			}
-		}
-
-        //[/UserButtonCode_importButton]
+      // Update the list box accordingly.
+      patchList->updateContent();
+      repaint();
     }
 
-    //[UserbuttonClicked_Post]
-    //[/UserbuttonClicked_Post]
+    //[/UserButtonCode_removeButton]
+  } else if (buttonThatWasClicked == moveUpButton) {
+    //[UserButtonCode_moveUpButton] -- add your button handler code here..
+
+    ComboBox *patchComboBox = mainPanel->getPatchComboBox();
+
+    XmlElement *e1;
+    XmlElement *e2;
+    int tempint;
+
+    // for(i=0;i<patchList->getNumSelectedRows();++i)
+    {
+      tempint = patchList->getSelectedRow(0);
+
+      // Swap the two patches.
+      if (tempint > 0) {
+        e1 = patches[tempint];
+        e2 = patches[tempint - 1];
+
+        patches.set(tempint - 1, e1);
+        patches.set(tempint, e2);
+
+        patchList->selectRow(patchList->getSelectedRow(0) - 1);
+      }
+    }
+
+    // Update the combo box.
+    patchComboBox->clear(true);
+    for (i = 0; i < patches.size(); ++i)
+      patchComboBox->addItem(patches[i]->getStringAttribute("name"), i + 1);
+    patchComboBox->addItem("<new patch>", patches.size() + 1);
+    mainPanel->nextSwitchDoNotSavePrev();
+    patchComboBox->setSelectedId(1);
+
+    // Update the list box.
+    patchList->updateContent();
+    repaint();
+
+    //[/UserButtonCode_moveUpButton]
+  } else if (buttonThatWasClicked == moveDownButton) {
+    //[UserButtonCode_moveDownButton] -- add your button handler code here..
+
+    ComboBox *patchComboBox = mainPanel->getPatchComboBox();
+
+    XmlElement *e1;
+    XmlElement *e2;
+    XmlElement *e3;
+    XmlElement *e4;
+    int tempint;
+
+    // for(i=(patchList->getNumSelectedRows()-1);i>=0;--i)
+    {
+      tempint = patchList->getSelectedRow(0);
+
+      // Swap the two patches.
+      if (tempint < (patches.size() - 1)) {
+        e1 = patches[tempint];
+        e2 = patches[tempint + 1];
+
+        patches.set(tempint + 1, e1);
+        patches.set(tempint, e2);
+
+        e3 = patches[tempint];
+        e4 = patches[tempint + 1];
+
+        patchList->selectRow(patchList->getSelectedRow(0) + 1);
+      }
+    }
+
+    // Update the combo box.
+    patchComboBox->clear(true);
+    for (i = 0; i < patches.size(); ++i)
+      patchComboBox->addItem(patches[i]->getStringAttribute("name"), i + 1);
+    patchComboBox->addItem("<new patch>", patches.size() + 1);
+    mainPanel->nextSwitchDoNotSavePrev();
+    patchComboBox->setSelectedId(1);
+
+    // Update the list box.
+    patchList->updateContent();
+    repaint();
+
+    //[/UserButtonCode_moveDownButton]
+  } else if (buttonThatWasClicked == importButton) {
+    //[UserButtonCode_importButton] -- add your button handler code here..
+
+    FileChooser phil("Select file to import patch from...", File(), "*.pdl");
+
+    if (phil.browseForFileToOpen()) {
+      File philResult = phil.getResult();
+      XmlDocument doc(philResult);
+      std::unique_ptr<XmlElement> root(
+          doc.getDocumentElement()); // JUCE 8: unique_ptr
+
+      if (root) {
+        String tempstr;
+        StringArray patchNames;
+        XmlElement *tempEl = 0;
+
+        forEachXmlChildElementWithTagName(*root, tempEl2, "Patch") {
+          patchNames.add(tempEl2->getStringAttribute("name"));
+        }
+
+        tempstr << "Patches in file: " << philResult.getFileName();
+        AlertWindow win("Select patch...", tempstr, AlertWindow::NoIcon);
+
+        win.addComboBox("patchName", patchNames);
+        win.addButton("OK", 1, KeyPress(KeyPress::returnKey));
+        win.addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+
+        if (win.runModalLoop()) {
+          // Get the XmlElement the user selected.
+          int index =
+              win.getComboBoxComponent("patchName")->getSelectedItemIndex();
+          forEachXmlChildElementWithTagName(*root, tempEl2, "Patch") {
+            if (tempEl2->getStringAttribute("name") == patchNames[index]) {
+              tempEl = tempEl2;
+              break;
+            }
+          }
+
+          // Copy it to a new XmlElement *
+          XmlElement *newPatch = new XmlElement(*tempEl);
+
+          mainPanel->addPatch(newPatch);
+
+          patchList->updateContent();
+          repaint();
+        }
+      }
+    }
+
+    //[/UserButtonCode_importButton]
+  }
+
+  //[UserbuttonClicked_Post]
+  //[/UserbuttonClicked_Post]
 }
 
-
-
-//[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
+//[MiscUserCode] You can add your own definitions of your custom methods or any
+//other code here...
 
 //------------------------------------------------------------------------------
-int PatchOrganiser::getNumRows()
-{
-	return patches.size();
+int PatchOrganiser::getNumRows() { return patches.size(); }
+
+//------------------------------------------------------------------------------
+void PatchOrganiser::paintListBoxItem(int rowNumber, Graphics &g, int width,
+                                      int height, bool rowIsSelected) {
+  map<String, Colour> &colours = ColourScheme::getInstance().colours;
+
+  if (rowIsSelected) {
+    ColourGradient basil(colours["List Selected Colour"].brighter(0.4f), 0.0f,
+                         0.0f, colours["List Selected Colour"].darker(0.125f),
+                         0.0f, (float)height, false);
+
+    g.setGradientFill(basil);
+
+    g.fillAll();
+  } else if (rowNumber % 2)
+    g.fillAll(Colour(0x10000000));
 }
 
 //------------------------------------------------------------------------------
-void PatchOrganiser::paintListBoxItem(int rowNumber,
-									  Graphics &g,
-									  int width,
-									  int height,
-									  bool rowIsSelected)
-{
-	map<String, Colour>& colours = ColourScheme::getInstance().colours;
+Component *
+PatchOrganiser::refreshComponentForRow(int rowNumber, bool isRowSelected,
+                                       Component *existingComponentToUpdate) {
+  String tempstr;
+  Label *retval = dynamic_cast<Label *>(existingComponentToUpdate);
 
-	if(rowIsSelected)
-	{
-		ColourGradient basil(colours[L"List Selected Colour"].brighter(0.4f),
-							 0.0f,
-							 0.0f,
-							 colours[L"List Selected Colour"].darker(0.125f),
-							 0.0f,
-							 (float)height,
-							 false);
+  if (rowNumber >= patches.size()) {
+    if (existingComponentToUpdate)
+      delete existingComponentToUpdate;
+    return 0;
+  }
 
-		g.setGradientFill(basil);
+  if (!retval) {
+    retval = new Label();
+    retval->setEditable(false,
+                        true); // Double-click to edit, single-click to select.
+    retval->addListener(this);
+    retval->setInterceptsMouseClicks(false, true);
+  }
 
-		g.fillAll();
-	}
-	else if(rowNumber%2)
-		g.fillAll(Colour(0x10000000));
+  retval->setText(patches[rowNumber]->getStringAttribute("name"),
+                  dontSendNotification);
+  tempstr << rowNumber;
+  retval->setName(
+      tempstr); // So we know which patch to update in labelTextChanged().
+
+  if (isRowSelected)
+    retval->setColour(Label::textColourId, Colour(0xFFFFFFFF));
+  else
+    retval->setColour(Label::textColourId, Colour(0xFF000000));
+
+  return retval;
 }
 
 //------------------------------------------------------------------------------
-Component *PatchOrganiser::refreshComponentForRow(int rowNumber,
-												  bool isRowSelected,
-												  Component *existingComponentToUpdate)
-{
-	String tempstr;
-	Label *retval = dynamic_cast<Label *>(existingComponentToUpdate);
+void PatchOrganiser::listBoxItemClicked(int row, const MouseEvent &e) {
+  patchList->selectRow(row, false, !e.mods.isCtrlDown());
 
-	if(rowNumber >= patches.size())
-	{
-		if(existingComponentToUpdate)
-			delete existingComponentToUpdate;
-		return 0;
-	}
-
-	if(!retval)
-	{
-		retval = new Label();
-		retval->setEditable(false, true); //Double-click to edit, single-click to select.
-		retval->addListener(this);
-		retval->setInterceptsMouseClicks(false, true);
-	}
-
-	retval->setText(patches[rowNumber]->getStringAttribute("name"), dontSendNotification);
-	tempstr << rowNumber;
-	retval->setName(tempstr); //So we know which patch to update in labelTextChanged().
-
-	if(isRowSelected)
-		retval->setColour(Label::textColourId, Colour(0xFFFFFFFF));
-	else
-		retval->setColour(Label::textColourId, Colour(0xFF000000));
-
-	return retval;
+  if (e.getNumberOfClicks() == 2)
+    ((Label *)patchList->getComponentForRowNumber(row))->showEditor();
 }
 
 //------------------------------------------------------------------------------
-void PatchOrganiser::listBoxItemClicked(int row, const MouseEvent &e)
-{
-	patchList->selectRow(row, false, !e.mods.isCtrlDown());
-
-	if(e.getNumberOfClicks() == 2)
-		((Label *)patchList->getComponentForRowNumber(row))->showEditor();
-}
+void PatchOrganiser::backgroundClicked() { patchList->deselectAllRows(); }
 
 //------------------------------------------------------------------------------
-void PatchOrganiser::backgroundClicked()
-{
-	patchList->deselectAllRows();
-}
+void PatchOrganiser::labelTextChanged(Label *labelThatHasChanged) {
+  int index = labelThatHasChanged->getName().getIntValue();
+  ComboBox *patchComboBox = mainPanel->getPatchComboBox();
 
-//------------------------------------------------------------------------------
-void PatchOrganiser::labelTextChanged(Label *labelThatHasChanged)
-{
-	int index = labelThatHasChanged->getName().getIntValue();
-	ComboBox *patchComboBox = mainPanel->getPatchComboBox();
-
-	if((index > -1) && (index < patches.size()))
-	{
-		patches[index]->setAttribute("name", labelThatHasChanged->getText());
-		patchComboBox->changeItemText(index+1, labelThatHasChanged->getText());
-		if(patchComboBox->getSelectedItemIndex() == index)
-			patchComboBox->setSelectedId(index+1);
-	}
+  if ((index > -1) && (index < patches.size())) {
+    patches[index]->setAttribute("name", labelThatHasChanged->getText());
+    patchComboBox->changeItemText(index + 1, labelThatHasChanged->getText());
+    if (patchComboBox->getSelectedItemIndex() == index)
+      patchComboBox->setSelectedId(index + 1);
+  }
 }
 
 //[/MiscUserCode]
-
 
 //==============================================================================
 #if 0

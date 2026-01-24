@@ -40,166 +40,166 @@ MappingEntryMidi::MappingEntryMidi (MappingsDialog *dlg, int arrayIndex, int cc,
       rangeLabel (0),
       paramComboBox (0)
 {
-    addAndMakeVisible (ccComboBox = new ComboBox (L"ccComboBox"));
+    addAndMakeVisible (ccComboBox = new ComboBox ("ccComboBox"));
     ccComboBox->setEditableText (false);
     ccComboBox->setJustificationType (Justification::centredLeft);
-    ccComboBox->setTextWhenNothingSelected (String::empty);
-    ccComboBox->setTextWhenNoChoicesAvailable (L"(no choices)");
-    ccComboBox->addItem (L"<< MIDI Learn >>", 1);
-    ccComboBox->addItem (L"0: Bank Select", 2);
-    ccComboBox->addItem (L"1: Mod Wheel", 3);
-    ccComboBox->addItem (L"2: Breath", 4);
-    ccComboBox->addItem (L"3:", 5);
-    ccComboBox->addItem (L"4: Foot Pedal", 6);
-    ccComboBox->addItem (L"5: Portamento", 7);
-    ccComboBox->addItem (L"6: Data Entry", 8);
-    ccComboBox->addItem (L"7: Volume", 9);
-    ccComboBox->addItem (L"8: Balance", 10);
-    ccComboBox->addItem (L"9:", 11);
-    ccComboBox->addItem (L"10: Pan", 12);
-    ccComboBox->addItem (L"11: Expression", 13);
-    ccComboBox->addItem (L"12: Effect Control 1", 14);
-    ccComboBox->addItem (L"13: EffectControl 2", 15);
-    ccComboBox->addItem (L"14:", 16);
-    ccComboBox->addItem (L"15:", 17);
-    ccComboBox->addItem (L"16: General Purpose 1", 18);
-    ccComboBox->addItem (L"17: General Purpose 2", 19);
-    ccComboBox->addItem (L"18: General Purpose 3", 20);
-    ccComboBox->addItem (L"19: General Purpose 4", 21);
-    ccComboBox->addItem (L"20:", 22);
-    ccComboBox->addItem (L"21:", 23);
-    ccComboBox->addItem (L"22:", 24);
-    ccComboBox->addItem (L"23:", 25);
-    ccComboBox->addItem (L"24:", 26);
-    ccComboBox->addItem (L"25:", 27);
-    ccComboBox->addItem (L"26:", 28);
-    ccComboBox->addItem (L"27:", 29);
-    ccComboBox->addItem (L"28:", 30);
-    ccComboBox->addItem (L"29:", 31);
-    ccComboBox->addItem (L"30:", 32);
-    ccComboBox->addItem (L"31:", 33);
-    ccComboBox->addItem (L"32: Bank Select (fine)", 34);
-    ccComboBox->addItem (L"33: Mod Wheel (fine)", 35);
-    ccComboBox->addItem (L"34: Breath (fine)", 36);
-    ccComboBox->addItem (L"35:", 37);
-    ccComboBox->addItem (L"36: Foot Pedal (fine)", 38);
-    ccComboBox->addItem (L"37: Portamento (fine)", 39);
-    ccComboBox->addItem (L"38: Data Entry (fine)", 40);
-    ccComboBox->addItem (L"39: Volume (fine)", 41);
-    ccComboBox->addItem (L"40: Balance (fine)", 42);
-    ccComboBox->addItem (L"41:", 43);
-    ccComboBox->addItem (L"42: Pan (fine)", 44);
-    ccComboBox->addItem (L"43: Expression (fine)", 45);
-    ccComboBox->addItem (L"44: Effect Control 1 (fine)", 46);
-    ccComboBox->addItem (L"45: Effect Control 2 (fine)", 47);
-    ccComboBox->addItem (L"46:", 48);
-    ccComboBox->addItem (L"47:", 49);
-    ccComboBox->addItem (L"48:", 50);
-    ccComboBox->addItem (L"49:", 51);
-    ccComboBox->addItem (L"50:", 52);
-    ccComboBox->addItem (L"51:", 53);
-    ccComboBox->addItem (L"52:", 54);
-    ccComboBox->addItem (L"53:", 55);
-    ccComboBox->addItem (L"54:", 56);
-    ccComboBox->addItem (L"55:", 57);
-    ccComboBox->addItem (L"56:", 58);
-    ccComboBox->addItem (L"57:", 59);
-    ccComboBox->addItem (L"58:", 60);
-    ccComboBox->addItem (L"59:", 61);
-    ccComboBox->addItem (L"60:", 62);
-    ccComboBox->addItem (L"61:", 63);
-    ccComboBox->addItem (L"62:", 64);
-    ccComboBox->addItem (L"63:", 65);
-    ccComboBox->addItem (L"64: Hold Pedal", 66);
-    ccComboBox->addItem (L"65: Portamento (on/off)", 67);
-    ccComboBox->addItem (L"66: Sustenuto Pedal", 68);
-    ccComboBox->addItem (L"67: Soft Pedal", 69);
-    ccComboBox->addItem (L"68: Legato Pedal", 70);
-    ccComboBox->addItem (L"69: Hold 2 Pedal", 71);
-    ccComboBox->addItem (L"70: Sound Variation", 72);
-    ccComboBox->addItem (L"71: Sound Timbre", 73);
-    ccComboBox->addItem (L"72: Sound Release Time", 74);
-    ccComboBox->addItem (L"73: Sound Attack Time", 75);
-    ccComboBox->addItem (L"74: Sound Brightness", 76);
-    ccComboBox->addItem (L"75: Sound Control 6", 77);
-    ccComboBox->addItem (L"76: Sound Control 7", 78);
-    ccComboBox->addItem (L"77: Sound Control 8", 79);
-    ccComboBox->addItem (L"78: Sound Control 9", 80);
-    ccComboBox->addItem (L"79: Sound Control 10", 81);
-    ccComboBox->addItem (L"80: General Purpose Button 1", 82);
-    ccComboBox->addItem (L"81: General Purpose Button 2", 83);
-    ccComboBox->addItem (L"82: General Purpose Button 3", 84);
-    ccComboBox->addItem (L"83: General Purpose Button 4", 85);
-    ccComboBox->addItem (L"84:", 86);
-    ccComboBox->addItem (L"85:", 87);
-    ccComboBox->addItem (L"86:", 88);
-    ccComboBox->addItem (L"87:", 89);
-    ccComboBox->addItem (L"88:", 90);
-    ccComboBox->addItem (L"89:", 91);
-    ccComboBox->addItem (L"90:", 92);
-    ccComboBox->addItem (L"91: Effects Level", 93);
-    ccComboBox->addItem (L"92: Tremolo Level", 94);
-    ccComboBox->addItem (L"93: Chorus Level", 95);
-    ccComboBox->addItem (L"94: Celeste Level", 96);
-    ccComboBox->addItem (L"95: Phaser Level", 97);
-    ccComboBox->addItem (L"96: Data Button Inc", 98);
-    ccComboBox->addItem (L"97: Data Button Dec", 99);
-    ccComboBox->addItem (L"98: NRPN (fine)", 100);
-    ccComboBox->addItem (L"99: NRPN (coarse)", 101);
-    ccComboBox->addItem (L"100: RPN (fine)", 102);
-    ccComboBox->addItem (L"101: RPN (coarse)", 103);
-    ccComboBox->addItem (L"102:", 104);
-    ccComboBox->addItem (L"103:", 105);
-    ccComboBox->addItem (L"104:", 106);
-    ccComboBox->addItem (L"105:", 107);
-    ccComboBox->addItem (L"106:", 108);
-    ccComboBox->addItem (L"107:", 109);
-    ccComboBox->addItem (L"108:", 110);
-    ccComboBox->addItem (L"109:", 111);
-    ccComboBox->addItem (L"110:", 112);
-    ccComboBox->addItem (L"111:", 113);
-    ccComboBox->addItem (L"112:", 114);
-    ccComboBox->addItem (L"113:", 115);
-    ccComboBox->addItem (L"114:", 116);
-    ccComboBox->addItem (L"115:", 117);
-    ccComboBox->addItem (L"116:", 118);
-    ccComboBox->addItem (L"117:", 119);
-    ccComboBox->addItem (L"118:", 120);
-    ccComboBox->addItem (L"119:", 121);
-    ccComboBox->addItem (L"120: All Sound Off", 122);
-    ccComboBox->addItem (L"121: All Controllers Off", 123);
-    ccComboBox->addItem (L"122: Local Keyboard", 124);
-    ccComboBox->addItem (L"123: All Notes Off", 125);
-    ccComboBox->addItem (L"124: Omni Mode Off", 126);
-    ccComboBox->addItem (L"125: Omni Mode On", 127);
-    ccComboBox->addItem (L"126: Mono Operation", 128);
-    ccComboBox->addItem (L"127: Poly Operation", 129);
+    ccComboBox->setTextWhenNothingSelected (String());
+    ccComboBox->setTextWhenNoChoicesAvailable ("(no choices)");
+    ccComboBox->addItem ("<< MIDI Learn >>", 1);
+    ccComboBox->addItem ("0: Bank Select", 2);
+    ccComboBox->addItem ("1: Mod Wheel", 3);
+    ccComboBox->addItem ("2: Breath", 4);
+    ccComboBox->addItem ("3:", 5);
+    ccComboBox->addItem ("4: Foot Pedal", 6);
+    ccComboBox->addItem ("5: Portamento", 7);
+    ccComboBox->addItem ("6: Data Entry", 8);
+    ccComboBox->addItem ("7: Volume", 9);
+    ccComboBox->addItem ("8: Balance", 10);
+    ccComboBox->addItem ("9:", 11);
+    ccComboBox->addItem ("10: Pan", 12);
+    ccComboBox->addItem ("11: Expression", 13);
+    ccComboBox->addItem ("12: Effect Control 1", 14);
+    ccComboBox->addItem ("13: EffectControl 2", 15);
+    ccComboBox->addItem ("14:", 16);
+    ccComboBox->addItem ("15:", 17);
+    ccComboBox->addItem ("16: General Purpose 1", 18);
+    ccComboBox->addItem ("17: General Purpose 2", 19);
+    ccComboBox->addItem ("18: General Purpose 3", 20);
+    ccComboBox->addItem ("19: General Purpose 4", 21);
+    ccComboBox->addItem ("20:", 22);
+    ccComboBox->addItem ("21:", 23);
+    ccComboBox->addItem ("22:", 24);
+    ccComboBox->addItem ("23:", 25);
+    ccComboBox->addItem ("24:", 26);
+    ccComboBox->addItem ("25:", 27);
+    ccComboBox->addItem ("26:", 28);
+    ccComboBox->addItem ("27:", 29);
+    ccComboBox->addItem ("28:", 30);
+    ccComboBox->addItem ("29:", 31);
+    ccComboBox->addItem ("30:", 32);
+    ccComboBox->addItem ("31:", 33);
+    ccComboBox->addItem ("32: Bank Select (fine)", 34);
+    ccComboBox->addItem ("33: Mod Wheel (fine)", 35);
+    ccComboBox->addItem ("34: Breath (fine)", 36);
+    ccComboBox->addItem ("35:", 37);
+    ccComboBox->addItem ("36: Foot Pedal (fine)", 38);
+    ccComboBox->addItem ("37: Portamento (fine)", 39);
+    ccComboBox->addItem ("38: Data Entry (fine)", 40);
+    ccComboBox->addItem ("39: Volume (fine)", 41);
+    ccComboBox->addItem ("40: Balance (fine)", 42);
+    ccComboBox->addItem ("41:", 43);
+    ccComboBox->addItem ("42: Pan (fine)", 44);
+    ccComboBox->addItem ("43: Expression (fine)", 45);
+    ccComboBox->addItem ("44: Effect Control 1 (fine)", 46);
+    ccComboBox->addItem ("45: Effect Control 2 (fine)", 47);
+    ccComboBox->addItem ("46:", 48);
+    ccComboBox->addItem ("47:", 49);
+    ccComboBox->addItem ("48:", 50);
+    ccComboBox->addItem ("49:", 51);
+    ccComboBox->addItem ("50:", 52);
+    ccComboBox->addItem ("51:", 53);
+    ccComboBox->addItem ("52:", 54);
+    ccComboBox->addItem ("53:", 55);
+    ccComboBox->addItem ("54:", 56);
+    ccComboBox->addItem ("55:", 57);
+    ccComboBox->addItem ("56:", 58);
+    ccComboBox->addItem ("57:", 59);
+    ccComboBox->addItem ("58:", 60);
+    ccComboBox->addItem ("59:", 61);
+    ccComboBox->addItem ("60:", 62);
+    ccComboBox->addItem ("61:", 63);
+    ccComboBox->addItem ("62:", 64);
+    ccComboBox->addItem ("63:", 65);
+    ccComboBox->addItem ("64: Hold Pedal", 66);
+    ccComboBox->addItem ("65: Portamento (on/off)", 67);
+    ccComboBox->addItem ("66: Sustenuto Pedal", 68);
+    ccComboBox->addItem ("67: Soft Pedal", 69);
+    ccComboBox->addItem ("68: Legato Pedal", 70);
+    ccComboBox->addItem ("69: Hold 2 Pedal", 71);
+    ccComboBox->addItem ("70: Sound Variation", 72);
+    ccComboBox->addItem ("71: Sound Timbre", 73);
+    ccComboBox->addItem ("72: Sound Release Time", 74);
+    ccComboBox->addItem ("73: Sound Attack Time", 75);
+    ccComboBox->addItem ("74: Sound Brightness", 76);
+    ccComboBox->addItem ("75: Sound Control 6", 77);
+    ccComboBox->addItem ("76: Sound Control 7", 78);
+    ccComboBox->addItem ("77: Sound Control 8", 79);
+    ccComboBox->addItem ("78: Sound Control 9", 80);
+    ccComboBox->addItem ("79: Sound Control 10", 81);
+    ccComboBox->addItem ("80: General Purpose Button 1", 82);
+    ccComboBox->addItem ("81: General Purpose Button 2", 83);
+    ccComboBox->addItem ("82: General Purpose Button 3", 84);
+    ccComboBox->addItem ("83: General Purpose Button 4", 85);
+    ccComboBox->addItem ("84:", 86);
+    ccComboBox->addItem ("85:", 87);
+    ccComboBox->addItem ("86:", 88);
+    ccComboBox->addItem ("87:", 89);
+    ccComboBox->addItem ("88:", 90);
+    ccComboBox->addItem ("89:", 91);
+    ccComboBox->addItem ("90:", 92);
+    ccComboBox->addItem ("91: Effects Level", 93);
+    ccComboBox->addItem ("92: Tremolo Level", 94);
+    ccComboBox->addItem ("93: Chorus Level", 95);
+    ccComboBox->addItem ("94: Celeste Level", 96);
+    ccComboBox->addItem ("95: Phaser Level", 97);
+    ccComboBox->addItem ("96: Data Button Inc", 98);
+    ccComboBox->addItem ("97: Data Button Dec", 99);
+    ccComboBox->addItem ("98: NRPN (fine)", 100);
+    ccComboBox->addItem ("99: NRPN (coarse)", 101);
+    ccComboBox->addItem ("100: RPN (fine)", 102);
+    ccComboBox->addItem ("101: RPN (coarse)", 103);
+    ccComboBox->addItem ("102:", 104);
+    ccComboBox->addItem ("103:", 105);
+    ccComboBox->addItem ("104:", 106);
+    ccComboBox->addItem ("105:", 107);
+    ccComboBox->addItem ("106:", 108);
+    ccComboBox->addItem ("107:", 109);
+    ccComboBox->addItem ("108:", 110);
+    ccComboBox->addItem ("109:", 111);
+    ccComboBox->addItem ("110:", 112);
+    ccComboBox->addItem ("111:", 113);
+    ccComboBox->addItem ("112:", 114);
+    ccComboBox->addItem ("113:", 115);
+    ccComboBox->addItem ("114:", 116);
+    ccComboBox->addItem ("115:", 117);
+    ccComboBox->addItem ("116:", 118);
+    ccComboBox->addItem ("117:", 119);
+    ccComboBox->addItem ("118:", 120);
+    ccComboBox->addItem ("119:", 121);
+    ccComboBox->addItem ("120: All Sound Off", 122);
+    ccComboBox->addItem ("121: All Controllers Off", 123);
+    ccComboBox->addItem ("122: Local Keyboard", 124);
+    ccComboBox->addItem ("123: All Notes Off", 125);
+    ccComboBox->addItem ("124: Omni Mode Off", 126);
+    ccComboBox->addItem ("125: Omni Mode On", 127);
+    ccComboBox->addItem ("126: Mono Operation", 128);
+    ccComboBox->addItem ("127: Poly Operation", 129);
     ccComboBox->addListener (this);
 
-    addAndMakeVisible (latchButton = new ToggleButton (L"latchButton"));
-    latchButton->setButtonText (L"Latch CC Value");
+    addAndMakeVisible (latchButton = new ToggleButton ("latchButton"));
+    latchButton->setButtonText ("Latch CC Value");
     latchButton->addListener (this);
 
-    addAndMakeVisible (slider = new MappingSlider (L"new slider"));
+    addAndMakeVisible (slider = new MappingSlider ("new slider"));
     slider->setRange (0, 1, 0);
     //slider->setSliderStyle (MappingSlider::TwoValueHorizontal);
     slider->setTextBoxStyle (MappingSlider::NoTextBox, false, 80, 20);
     slider->setColour (Slider::thumbColourId, Colour (0xff9a9181));
     slider->addListener (this);
 
-    addAndMakeVisible (rangeLabel = new Label (L"rangeLabel",
-                                               L"Parameter Range:"));
+    addAndMakeVisible (rangeLabel = new Label ("rangeLabel",
+                                               "Parameter Range:"));
     rangeLabel->setFont (Font (15.0000f, Font::plain));
     rangeLabel->setJustificationType (Justification::centredLeft);
     rangeLabel->setEditable (false, false, false);
     rangeLabel->setColour (TextEditor::textColourId, Colours::black);
     rangeLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (paramComboBox = new ComboBox (L"paramComboBox"));
+    addAndMakeVisible (paramComboBox = new ComboBox ("paramComboBox"));
     paramComboBox->setEditableText (false);
     paramComboBox->setJustificationType (Justification::centredLeft);
-    paramComboBox->setTextWhenNothingSelected (String::empty);
-    paramComboBox->setTextWhenNoChoicesAvailable (L"(no choices)");
+    paramComboBox->setTextWhenNothingSelected (String());
+    paramComboBox->setTextWhenNoChoicesAvailable ("(no choices)");
     paramComboBox->addListener (this);
 
 
@@ -220,7 +220,7 @@ MappingEntryMidi::MappingEntryMidi (MappingsDialog *dlg, int arrayIndex, int cc,
 	rangeLabel->setInterceptsMouseClicks(false, true);
 
 	slider->setColour(MappingSlider::thumbColourId,
-					  ColourScheme::getInstance().colours[L"Slider Colour"]);
+					  ColourScheme::getInstance().colours["Slider Colour"]);
 
     //[/UserPreSize]
 
@@ -252,7 +252,7 @@ void MappingEntryMidi::paint (Graphics& g)
 {
     //[UserPrePaint] Add your own custom painting code here..
 
-	g.setColour(ColourScheme::getInstance().colours[L"Vector Colour"]);
+	g.setColour(ColourScheme::getInstance().colours["Vector Colour"]);
 
     //[/UserPrePaint]
 
@@ -367,7 +367,7 @@ void MappingEntryMidi::addParameter(const String& param)
 	String tempstr = param;
 
 	if(tempstr.isEmpty())
-		tempstr = L"<no name>";
+		tempstr = "<no name>";
 	paramComboBox->addItem(tempstr, paramComboBox->getNumItems()+1);
 }
 
@@ -406,9 +406,9 @@ BEGIN_JUCER_METADATA
                 connectedEdges="0" needsCallback="1" radioGroupId="0" state="0"/>
   <SLIDER name="new slider" id="b0d5b4052d95765c" memberName="slider" virtualName=""
           explicitFocusOrder="0" pos="440 8 128 24" thumbcol="ff9a9181"
-          min="0" max="1" int="0" style="TwoValueHorizontal" textBoxPos="NoTextBox"
+          min="0" max="1" int="0" style="TwoValueHorizonta" textBoxPos="NoTextBox"
           textBoxEditable="1" textBoxWidth="80" textBoxHeight="20" skewFactor="1"/>
-  <LABEL name="rangeLabel" id="8be14a24ac2042d4" memberName="rangeLabel"
+  <LABEL name="rangeLabe" id="8be14a24ac2042d4" memberName="rangeLabe"
          virtualName="" explicitFocusOrder="0" pos="320 8 128 24" edTextCol="ff000000"
          edBkgCol="0" labelText="Parameter Range:" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"

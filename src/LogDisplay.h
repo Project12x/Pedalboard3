@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_LOGDISPLAY_LOGDISPLAY_FCAF45DE__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 //[/Headers]
 
 
@@ -38,7 +38,7 @@
 */
 class LogDisplay  : public Component,
                     public ChangeListener,
-                    public ButtonListener
+                    public Button::Listener
 {
 public:
     //==============================================================================

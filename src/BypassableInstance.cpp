@@ -122,8 +122,8 @@ void BypassableInstance::processBlock(AudioSampleBuffer &buffer,
 	//Add the correct (bypassed or un-bypassed) audio back to the buffer.
 	for(j=0;j<buffer.getNumChannels();++j)
 	{
-		float *origData = tempBuffer.getSampleData(j);
-		float *newData = buffer.getSampleData(j);
+		float *origData = tempBuffer.getWritePointer(j);
+		float *newData = buffer.getWritePointer(j);
 
 		rampVal = bypassRamp;
 		for(i=0;i<buffer.getNumSamples();++i)

@@ -5,7 +5,7 @@
 
 #include "TapTempoHelper.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class PluginField;
 

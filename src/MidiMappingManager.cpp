@@ -65,7 +65,7 @@ latchToggle(false)
 	{
 		cc = e->getIntAttribute("cc");
 		latched = e->getBoolAttribute("latch");
-		channel = e->getIntAttribute("channel");
+		channel = e->getIntAttribute("channe");
 		lowerBound = (float)e->getDoubleAttribute("lowerBound");
 		upperBound = (float)e->getDoubleAttribute("upperBound");
 	}
@@ -129,13 +129,13 @@ void MidiMapping::ccReceived(int val)
 //------------------------------------------------------------------------------
 XmlElement *MidiMapping::getXml() const
 {
-	XmlElement *retval = new XmlElement(L"MidiMapping");
+	XmlElement *retval = new XmlElement("MidiMapping");
 
 	retval->setAttribute("pluginId", (int)getPluginId());
 	retval->setAttribute("parameter", getParameter());
 	retval->setAttribute("cc", cc);
 	retval->setAttribute("latch", latched);
-	retval->setAttribute("channel", channel);
+	retval->setAttribute("channe", channel);
 	retval->setAttribute("lowerBound", lowerBound);
 	retval->setAttribute("upperBound", upperBound);
 
@@ -338,7 +338,7 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message,
 	}
 	else if(message.isMidiMachineControlMessage())
 	{
-		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue(L"mmcTransport", false))
+		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("mmcTransport", false))
 		{
 			CommandID id = -1;
 			MainPanel *panel = dynamic_cast<MainPanel *>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
@@ -366,7 +366,7 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message,
 	}
 	else if(message.isProgramChange())
 	{
-		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue(L"midiProgramChange", false))
+		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("midiProgramChange", false))
 		{
 			int newPatch;
 			MainPanel *panel = dynamic_cast<MainPanel *>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
@@ -464,134 +464,134 @@ const StringArray MidiMappingManager::getCCNames()
 {
 	StringArray retval;
 
-	retval.add(L"0: Bank Select");
-    retval.add(L"1: Mod Wheel");
-    retval.add(L"2: Breath");
-    retval.add(L"3:");
-    retval.add(L"4: Foot Pedal");
-    retval.add(L"5: Portamento");
-    retval.add(L"6: Data Entry");
-    retval.add(L"7: Volume");
-    retval.add(L"8: Balance");
-    retval.add(L"9:");
-    retval.add(L"10: Pan");
-    retval.add(L"11: Expression");
-    retval.add(L"12: Effect Control 1");
-    retval.add(L"13: EffectControl 2");
-    retval.add(L"14:");
-    retval.add(L"15:");
-    retval.add(L"16: General Purpose 1");
-    retval.add(L"17: General Purpose 2");
-    retval.add(L"18: General Purpose 3");
-    retval.add(L"19: General Purpose 4");
-    retval.add(L"20:");
-    retval.add(L"21:");
-    retval.add(L"22:");
-    retval.add(L"23:");
-    retval.add(L"24:");
-    retval.add(L"25:");
-    retval.add(L"26:");
-    retval.add(L"27:");
-    retval.add(L"28:");
-    retval.add(L"29:");
-    retval.add(L"30:");
-    retval.add(L"31:");
-    retval.add(L"32: Bank Select (fine)");
-    retval.add(L"33: Mod Wheel (fine)");
-    retval.add(L"34: Breath (fine)");
-    retval.add(L"35:");
-    retval.add(L"36: Foot Pedal (fine)");
-    retval.add(L"37: Portamento (fine)");
-    retval.add(L"38: Data Entry (fine)");
-    retval.add(L"39: Volume (fine)");
-    retval.add(L"40: Balance (fine)");
-    retval.add(L"41:");
-    retval.add(L"42: Pan (fine)");
-    retval.add(L"43: Expression (fine)");
-    retval.add(L"44: Effect Control 1 (fine)");
-    retval.add(L"45: Effect Control 2 (fine)");
-    retval.add(L"46:");
-    retval.add(L"47:");
-    retval.add(L"48:");
-    retval.add(L"49:");
-    retval.add(L"50:");
-    retval.add(L"51:");
-    retval.add(L"52:");
-    retval.add(L"53:");
-    retval.add(L"54:");
-    retval.add(L"55:");
-    retval.add(L"56:");
-    retval.add(L"57:");
-    retval.add(L"58:");
-    retval.add(L"59:");
-    retval.add(L"60:");
-    retval.add(L"61:");
-    retval.add(L"62:");
-    retval.add(L"63:");
-    retval.add(L"64: Hold Pedal");
-    retval.add(L"65: Portamento (on/off)");
-    retval.add(L"66: Sustenuto Pedal");
-    retval.add(L"67: Soft Pedal");
-    retval.add(L"68: Legato Pedal");
-    retval.add(L"69: Hold 2 Pedal");
-    retval.add(L"70: Sound Variation");
-    retval.add(L"71: Sound Timbre");
-    retval.add(L"72: Sound Release Time");
-    retval.add(L"73: Sound Attack Time");
-    retval.add(L"74: Sound Brightness");
-    retval.add(L"75: Sound Control 6");
-    retval.add(L"76: Sound Control 7");
-    retval.add(L"77: Sound Control 8");
-    retval.add(L"78: Sound Control 9");
-    retval.add(L"79: Sound Control 10");
-    retval.add(L"80: General Purpose Button 1");
-    retval.add(L"81: General Purpose Button 2");
-    retval.add(L"82: General Purpose Button 3");
-    retval.add(L"83: General Purpose Button 4");
-    retval.add(L"84:");
-    retval.add(L"85:");
-    retval.add(L"86:");
-    retval.add(L"87:");
-    retval.add(L"88:");
-    retval.add(L"89:");
-    retval.add(L"90:");
-    retval.add(L"91: Effects Level");
-    retval.add(L"92: Tremolo Level");
-    retval.add(L"93: Chorus Level");
-    retval.add(L"94: Celeste Level");
-    retval.add(L"95: Phaser Level");
-    retval.add(L"96: Data Button Inc");
-    retval.add(L"97: Data Button Dec");
-    retval.add(L"98: NRPN (fine)");
-    retval.add(L"99: NRPN (coarse)");
-    retval.add(L"100: RPN (fine)");
-    retval.add(L"101: RPN (coarse)");
-    retval.add(L"102:");
-    retval.add(L"103:");
-    retval.add(L"104:");
-    retval.add(L"105:");
-    retval.add(L"106:");
-    retval.add(L"107:");
-    retval.add(L"108:");
-    retval.add(L"109:");
-    retval.add(L"110:");
-    retval.add(L"111:");
-    retval.add(L"112:");
-    retval.add(L"113:");
-    retval.add(L"114:");
-    retval.add(L"115:");
-    retval.add(L"116:");
-    retval.add(L"117:");
-    retval.add(L"118:");
-    retval.add(L"119:");
-    retval.add(L"120: All Sound Off");
-    retval.add(L"121: All Controllers Off");
-    retval.add(L"122: Local Keyboard");
-    retval.add(L"123: All Notes Off");
-    retval.add(L"124: Omni Mode Off");
-    retval.add(L"125: Omni Mode On");
-    retval.add(L"126: Mono Operation");
-    retval.add(L"127: Poly Operation");
+	retval.add("0: Bank Select");
+    retval.add("1: Mod Wheel");
+    retval.add("2: Breath");
+    retval.add("3:");
+    retval.add("4: Foot Pedal");
+    retval.add("5: Portamento");
+    retval.add("6: Data Entry");
+    retval.add("7: Volume");
+    retval.add("8: Balance");
+    retval.add("9:");
+    retval.add("10: Pan");
+    retval.add("11: Expression");
+    retval.add("12: Effect Control 1");
+    retval.add("13: EffectControl 2");
+    retval.add("14:");
+    retval.add("15:");
+    retval.add("16: General Purpose 1");
+    retval.add("17: General Purpose 2");
+    retval.add("18: General Purpose 3");
+    retval.add("19: General Purpose 4");
+    retval.add("20:");
+    retval.add("21:");
+    retval.add("22:");
+    retval.add("23:");
+    retval.add("24:");
+    retval.add("25:");
+    retval.add("26:");
+    retval.add("27:");
+    retval.add("28:");
+    retval.add("29:");
+    retval.add("30:");
+    retval.add("31:");
+    retval.add("32: Bank Select (fine)");
+    retval.add("33: Mod Wheel (fine)");
+    retval.add("34: Breath (fine)");
+    retval.add("35:");
+    retval.add("36: Foot Pedal (fine)");
+    retval.add("37: Portamento (fine)");
+    retval.add("38: Data Entry (fine)");
+    retval.add("39: Volume (fine)");
+    retval.add("40: Balance (fine)");
+    retval.add("41:");
+    retval.add("42: Pan (fine)");
+    retval.add("43: Expression (fine)");
+    retval.add("44: Effect Control 1 (fine)");
+    retval.add("45: Effect Control 2 (fine)");
+    retval.add("46:");
+    retval.add("47:");
+    retval.add("48:");
+    retval.add("49:");
+    retval.add("50:");
+    retval.add("51:");
+    retval.add("52:");
+    retval.add("53:");
+    retval.add("54:");
+    retval.add("55:");
+    retval.add("56:");
+    retval.add("57:");
+    retval.add("58:");
+    retval.add("59:");
+    retval.add("60:");
+    retval.add("61:");
+    retval.add("62:");
+    retval.add("63:");
+    retval.add("64: Hold Pedal");
+    retval.add("65: Portamento (on/off)");
+    retval.add("66: Sustenuto Pedal");
+    retval.add("67: Soft Pedal");
+    retval.add("68: Legato Pedal");
+    retval.add("69: Hold 2 Pedal");
+    retval.add("70: Sound Variation");
+    retval.add("71: Sound Timbre");
+    retval.add("72: Sound Release Time");
+    retval.add("73: Sound Attack Time");
+    retval.add("74: Sound Brightness");
+    retval.add("75: Sound Control 6");
+    retval.add("76: Sound Control 7");
+    retval.add("77: Sound Control 8");
+    retval.add("78: Sound Control 9");
+    retval.add("79: Sound Control 10");
+    retval.add("80: General Purpose Button 1");
+    retval.add("81: General Purpose Button 2");
+    retval.add("82: General Purpose Button 3");
+    retval.add("83: General Purpose Button 4");
+    retval.add("84:");
+    retval.add("85:");
+    retval.add("86:");
+    retval.add("87:");
+    retval.add("88:");
+    retval.add("89:");
+    retval.add("90:");
+    retval.add("91: Effects Level");
+    retval.add("92: Tremolo Level");
+    retval.add("93: Chorus Level");
+    retval.add("94: Celeste Level");
+    retval.add("95: Phaser Level");
+    retval.add("96: Data Button Inc");
+    retval.add("97: Data Button Dec");
+    retval.add("98: NRPN (fine)");
+    retval.add("99: NRPN (coarse)");
+    retval.add("100: RPN (fine)");
+    retval.add("101: RPN (coarse)");
+    retval.add("102:");
+    retval.add("103:");
+    retval.add("104:");
+    retval.add("105:");
+    retval.add("106:");
+    retval.add("107:");
+    retval.add("108:");
+    retval.add("109:");
+    retval.add("110:");
+    retval.add("111:");
+    retval.add("112:");
+    retval.add("113:");
+    retval.add("114:");
+    retval.add("115:");
+    retval.add("116:");
+    retval.add("117:");
+    retval.add("118:");
+    retval.add("119:");
+    retval.add("120: All Sound Off");
+    retval.add("121: All Controllers Off");
+    retval.add("122: Local Keyboard");
+    retval.add("123: All Notes Off");
+    retval.add("124: Omni Mode Off");
+    retval.add("125: Omni Mode On");
+    retval.add("126: Mono Operation");
+    retval.add("127: Poly Operation");
 
 	return retval;
 }
@@ -620,13 +620,13 @@ void MidiInterceptor::setManager(MidiMappingManager *manager)
 //------------------------------------------------------------------------------
 void MidiInterceptor::fillInPluginDescription(PluginDescription &description) const
 {
-	description.name = L"Midi Interceptor";
-	description.descriptiveName = L"Hidden Midi Interceptor plugin for mapping MIDI CCs to parameters.";
-	description.pluginFormatName = L"Internal";
-	description.category = L"Internal";
-	description.manufacturerName = L"Niall Moody";
-	description.version = L"1.00";
-	description.uid = description.name.hashCode();
+	description.name = "Midi Interceptor";
+	description.descriptiveName = "Hidden Midi Interceptor plugin for mapping MIDI CCs to parameters.";
+	description.pluginFormatName = "Internal";
+	description.category = "Internal";
+	description.manufacturerName = "Niall Moody";
+	description.version = "1.00";
+	description.uniqueId = description.name.hashCode();
 	description.isInstrument = true; //?
 	description.numInputChannels = 0;
 	description.numOutputChannels = 0;

@@ -32,7 +32,7 @@
 #ifndef LADSPAPLUGINFORMAT_H_
 #define LADSPAPLUGINFORMAT_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 //==============================================================================
 /**

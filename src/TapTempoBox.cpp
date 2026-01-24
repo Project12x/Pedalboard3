@@ -49,15 +49,15 @@ void TapTempoBox::paint(Graphics& g)
 	Font smallFont(24.0f);
 	Font bigFont(48.0f, Font::bold);
 	
-	g.setColour(ColourScheme::getInstance().colours[L"Text Colour"]);
+	g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
 
 	g.setFont(smallFont);
-	g.drawText(L"Tap to set tempo:", 0, 0, 300, 50, Justification(Justification::centred), false);
+	g.drawText("Tap to set tempo:", 0, 0, 300, 50, Justification(Justification::centred), false);
 
 	converterString.precision(2);
 	converterString.fill(L'0');
 	converterString << std::fixed << tempo;
-	tempstr << converterString.str().c_str() << L" bpm";
+	tempstr << converterString.str().c_str() << " bpm";
 	g.setFont(bigFont);
 	g.drawText(tempstr, 0, 50, 300, 50, Justification(Justification::centred), false);
 }

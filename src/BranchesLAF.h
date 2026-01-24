@@ -20,139 +20,92 @@
 #ifndef BRANCHESLAF_H_
 #define BRANCHESLAF_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	LookAndFeel class implementing some different buttons.
-class BranchesLAF : public LookAndFeel
-{
-  public:
-	///	Constructor.
-	BranchesLAF();
-	///	Destructor.
-	~BranchesLAF();
+class BranchesLAF : public LookAndFeel_V4 {
+public:
+  ///	Constructor.
+  BranchesLAF();
+  ///	Destructor.
+  ~BranchesLAF();
 
-	///	Draws the buttons.
-	void drawButtonBackground(Graphics &g,
-							  Button &button,
-							  const Colour &backgroundColour,
-							  bool isMouseOverButton,
-							  bool isButtonDown);
-	///	Draws button text.
-	void drawButtonText(Graphics &g,
-						TextButton &button,
-						bool isMouseOverButton,
-						bool isButtonDown);
+  ///	Draws the buttons.
+  void drawButtonBackground(Graphics &g, Button &button,
+                            const Colour &backgroundColour,
+                            bool isMouseOverButton, bool isButtonDown);
+  ///	Draws button text.
+  void drawButtonText(Graphics &g, TextButton &button, bool isMouseOverButton,
+                      bool isButtonDown);
 
-	///	Draws the scrollbar buttons.
-	void drawScrollbarButton(Graphics &g,
-							 ScrollBar &scrollbar,
-							 int width,
-							 int height,
-							 int buttonDirection,
-							 bool isScrollbarVertical,
-							 bool isMouseOverButton,
-							 bool isButtonDown);
-	///	Draws the scrollbar.
-	void drawScrollbar(Graphics &g,
-					   ScrollBar &scrollbar,
-					   int x,
-					   int y,
-					   int width,
-					   int height,
-					   bool isScrollbarVertical,
-					   int thumbStartPosition,
-					   int thumbSize,
-					   bool isMouseOver,
-					   bool isMouseDown);
+  ///	Draws the scrollbar buttons.
+  void drawScrollbarButton(Graphics &g, ScrollBar &scrollbar, int width,
+                           int height, int buttonDirection,
+                           bool isScrollbarVertical, bool isMouseOverButton,
+                           bool isButtonDown);
+  ///	Draws the scrollbar.
+  void drawScrollbar(Graphics &g, ScrollBar &scrollbar, int x, int y, int width,
+                     int height, bool isScrollbarVertical,
+                     int thumbStartPosition, int thumbSize, bool isMouseOver,
+                     bool isMouseDown);
 
-	///	Draws the menubar.
-	void drawMenuBarBackground(Graphics &g,
-							   int width,
-							   int height,
-							   bool isMouseOverBar,
-							   MenuBarComponent &menuBar);
-	///	Returns the menubar font.
-	Font getMenuBarFont(MenuBarComponent &menuBar,
-						int itemIndex,
-						const String &itemText);
-	///	Draws the menubar items.
-	void drawMenuBarItem(Graphics &g,
-						 int width,
-						 int height,
-						 int itemIndex,
-						 const String &itemText,
-						 bool isMouseOverItem,
-						 bool isMenuOpen,
-						 bool isMouseOverBar,
-						 MenuBarComponent &menuBar);
-	///	The width of a menubar item.
-	int getMenuBarItemWidth(MenuBarComponent &menuBar,
-							int itemIndex,
-							const String &itemText);
-	///	Returns the popup meun font.
-	Font getPopupMenuFont() {return Font(15.0f);};
-	///	Draws the popup menu background.
-	void drawPopupMenuBackground(Graphics &g, int width, int height);
-	///	Cancels menus' drop shadow.
-	int getMenuWindowFlags() {return 0;};
+  ///	Draws the menubar.
+  void drawMenuBarBackground(Graphics &g, int width, int height,
+                             bool isMouseOverBar, MenuBarComponent &menuBar);
+  ///	Returns the menubar font.
+  Font getMenuBarFont(MenuBarComponent &menuBar, int itemIndex,
+                      const String &itemText);
+  ///	Draws the menubar items.
+  void drawMenuBarItem(Graphics &g, int width, int height, int itemIndex,
+                       const String &itemText, bool isMouseOverItem,
+                       bool isMenuOpen, bool isMouseOverBar,
+                       MenuBarComponent &menuBar);
+  ///	The width of a menubar item.
+  int getMenuBarItemWidth(MenuBarComponent &menuBar, int itemIndex,
+                          const String &itemText);
+  ///	Returns the popup meun font.
+  Font getPopupMenuFont() { return Font(15.0f); };
+  ///	Draws the popup menu background.
+  void drawPopupMenuBackground(Graphics &g, int width, int height);
+  ///	Cancels menus' drop shadow.
+  int getMenuWindowFlags() { return 0; };
 
-	///	Returns the image of a folder for the file chooser.
-	const Drawable *getDefaultFolderImage();
-	///	Draws a combobox (used in the file chooser).
-	void drawComboBox(Graphics& g,
-					  int width,
-					  int height,
-                      bool isButtonDown,
-                      int buttonX,
-					  int buttonY,
-                      int buttonW,
-					  int buttonH,
-                      ComboBox& box);
+  ///	Returns the image of a folder for the file chooser.
+  const Drawable *getDefaultFolderImage();
+  ///	Draws a combobox (used in the file chooser).
+  void drawComboBox(Graphics &g, int width, int height, bool isButtonDown,
+                    int buttonX, int buttonY, int buttonW, int buttonH,
+                    ComboBox &box);
 
-	///	Draws the ProgressBar.
-	void drawProgressBar(Graphics& g,
-						 ProgressBar& progressBar,
-                         int width,
-						 int height,
-						 double progress,
-						 const String& textToShow);
+  ///	Draws the ProgressBar.
+  void drawProgressBar(Graphics &g, ProgressBar &progressBar, int width,
+                       int height, double progress, const String &textToShow);
 
-	///	Draws the KeymapChange button.
-	void drawKeymapChangeButton(Graphics &g,
-								int width,
-								int height,
-								Button &button,
-								const String &keyDescription);
+  ///	Draws the KeymapChange button.
+  void drawKeymapChangeButton(Graphics &g, int width, int height,
+                              Button &button, const String &keyDescription);
 
-	///	Draws a Label.
-	void drawLabel(Graphics& g, Label& label);
+  ///	Draws a Label.
+  void drawLabel(Graphics &g, Label &label);
 
-	///	Draws a ToggleButton.
-	void drawToggleButton(Graphics& g,
-                          ToggleButton& button,
-                          bool isMouseOverButton,
-                          bool isButtonDown);
+  ///	Draws a ToggleButton.
+  void drawToggleButton(Graphics &g, ToggleButton &button,
+                        bool isMouseOverButton, bool isButtonDown);
 
-	///	Drwas a tick box.
-	void drawTickBox(Graphics& g,
-                     Component& component,
-                     float x, float y, float w, float h,
-                     bool ticked,
-                     bool isEnabled,
-                     bool isMouseOverButton,
-                     bool isButtonDown);
+  ///	Drwas a tick box.
+  void drawTickBox(Graphics &g, Component &component, float x, float y, float w,
+                   float h, bool ticked, bool isEnabled, bool isMouseOverButton,
+                   bool isButtonDown);
 
-	///	Fills in the TextEditor background.
-	void fillTextEditorBackground(Graphics& g, int width, int height,
-                                  TextEditor& textEditor);
+  ///	Fills in the TextEditor background.
+  void fillTextEditorBackground(Graphics &g, int width, int height,
+                                TextEditor &textEditor);
 
-	///	Draws the callout box.
-	void drawCallOutBoxBackground(CallOutBox &box,
-								  Graphics &g,
-								  const Path &path,
-								  Image &cachedImage);
+  ///	Draws the callout box.
+  void drawCallOutBoxBackground(CallOutBox &box, Graphics &g, const Path &path,
+                                Image &cachedImage);
 
-	juce_UseDebuggingNewOperator
+  juce_UseDebuggingNewOperator
 };
 
 #endif

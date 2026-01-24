@@ -160,11 +160,11 @@ public:
     {
         desc.name = name;
         desc.fileOrIdentifier = module->file.getFullPathName();
-        desc.uid = getUID();
+        desc.uniqueId = getUID();
         desc.lastFileModTime = module->file.getLastModificationTime();
         desc.pluginFormatName = "LADSPA";
         desc.category = getCategory();
-        desc.manufacturerName = ptrPlug ? String (ptrPlug->Maker) : String::empty;
+        desc.manufacturerName = ptrPlug ? String (ptrPlug->Maker) : String();
         desc.version = getVersion();
         desc.numInputChannels = getNumInputChannels();
         desc.numOutputChannels = getNumOutputChannels();
@@ -610,7 +610,7 @@ const String LADSPAPluginInstance::getParameterName (int index)
         return String (ptrPlug->PortNames [parameters [index]]).trim();
     }
 
-    return String::empty;
+    return String();
 }
 
 const String LADSPAPluginInstance::getParameterText (int index)
@@ -627,7 +627,7 @@ const String LADSPAPluginInstance::getParameterText (int index)
             return String (normalParameters [index], 4);
     }
 
-    return String::empty;
+    return String();
 }
 
 bool LADSPAPluginInstance::isParameterAutomatable (int index) const
@@ -749,7 +749,7 @@ const String LADSPAPluginInstance::getProgramName (int index)
     return programNames [index];
 #endif
 
-    return String::empty;
+    return String();
 }
 
 void LADSPAPluginInstance::changeProgramName (int index, const String& newName)
@@ -775,7 +775,7 @@ const String LADSPAPluginInstance::getInputChannelName (const int index) const
         return String (ptrPlug->PortNames [inputs [index]]).trim();
     }
 
-    return String::empty;
+    return String();
 }
 
 bool LADSPAPluginInstance::isInputChannelStereoPair (int index) const
@@ -793,7 +793,7 @@ const String LADSPAPluginInstance::getOutputChannelName (const int index) const
         return String (ptrPlug->PortNames [outputs [index]]).trim();
     }
 
-    return String::empty;
+    return String();
 }
 
 bool LADSPAPluginInstance::isOutputChannelStereoPair (int index) const
@@ -857,7 +857,7 @@ void LADSPAPluginFormat::findAllTypesForFile (OwnedArray <PluginDescription>& re
 
     PluginDescription desc;
     desc.fileOrIdentifier = fileOrIdentifier;
-    desc.uid = 0;
+    desc.uniqueId = 0;
 
     LADSPAPluginInstance* instance = dynamic_cast <LADSPAPluginInstance*> (createInstanceFromDescription (desc));
 
@@ -879,7 +879,7 @@ void LADSPAPluginFormat::findAllTypesForFile (OwnedArray <PluginDescription>& re
                 const LADSPA_Descriptor* plugin = instance->module->moduleMain (uid);
                 if (plugin)
                 {
-                    desc.uid = uid;
+                    desc.uniqueId = uid;
                     desc.name = plugin->Name ? plugin->Name : "Unknown";
 
                     bool alreadyThere = false;
@@ -927,7 +927,7 @@ AudioPluginInstance* LADSPAPluginFormat::createInstanceFromDescription (const Pl
 
         if (module != 0)
         {
-            shellLADSPAUIDToCreate = desc.uid;
+            shellLADSPAUIDToCreate = desc.uniqueId;
 
             result = new LADSPAPluginInstance (module);
 
@@ -953,7 +953,7 @@ bool LADSPAPluginFormat::fileMightContainThisPluginType (const String& fileOrIde
 
 #if JUCE_WIN32
     return f.existsAsFile()
-            && f.hasFileExtension (T(".dll"));
+            && f.hasFileExtension (T(".dl"));
 #elif JUCE_MAC
     return f.existsAsFile()
             && f.hasFileExtension (T(".so"));

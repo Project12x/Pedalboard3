@@ -21,7 +21,7 @@
 #ifndef AUDIOSINGLETONS_H_
 #define AUDIOSINGLETONS_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 //------------------------------------------------------------------------------
 ///	Singleton wrapper for AudioFormatManager.

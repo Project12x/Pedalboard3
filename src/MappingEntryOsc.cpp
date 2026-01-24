@@ -40,37 +40,37 @@ MappingEntryOsc::MappingEntryOsc (MappingsDialog *dlg, int arrayIndex, const Str
       oscParamLabel (0),
       oscParamSlider (0)
 {
-    addAndMakeVisible (paramComboBox = new ComboBox (L"paramComboBox"));
+    addAndMakeVisible (paramComboBox = new ComboBox ("paramComboBox"));
     paramComboBox->setEditableText (false);
     paramComboBox->setJustificationType (Justification::centredLeft);
-    paramComboBox->setTextWhenNothingSelected (String::empty);
-    paramComboBox->setTextWhenNoChoicesAvailable (L"(no choices)");
+    paramComboBox->setTextWhenNothingSelected (String());
+    paramComboBox->setTextWhenNoChoicesAvailable ("(no choices)");
     paramComboBox->addListener (this);
 
-    addAndMakeVisible (addressLabel = new Label (L"addressLabel",
-                                                 L"OSC Address:"));
+    addAndMakeVisible (addressLabel = new Label ("addressLabel",
+                                                 "OSC Address:"));
     addressLabel->setFont (Font (15.0000f, Font::plain));
     addressLabel->setJustificationType (Justification::centredLeft);
     addressLabel->setEditable (false, false, false);
     addressLabel->setColour (TextEditor::textColourId, Colours::black);
     addressLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (addressEditor = new ComboBox (L"addressEditor"));
+    addAndMakeVisible (addressEditor = new ComboBox ("addressEditor"));
     addressEditor->setEditableText (true);
     addressEditor->setJustificationType (Justification::centredLeft);
-    addressEditor->setTextWhenNothingSelected (String::empty);
-    addressEditor->setTextWhenNoChoicesAvailable (L"(no choices)");
+    addressEditor->setTextWhenNothingSelected (String());
+    addressEditor->setTextWhenNoChoicesAvailable ("(no choices)");
     addressEditor->addListener (this);
 
-    addAndMakeVisible (oscParamLabel = new Label (L"oscParamLabel",
-                                                  L"Parameter:"));
+    addAndMakeVisible (oscParamLabel = new Label ("oscParamLabel",
+                                                  "Parameter:"));
     oscParamLabel->setFont (Font (15.0000f, Font::plain));
     oscParamLabel->setJustificationType (Justification::centredLeft);
     oscParamLabel->setEditable (false, false, false);
     oscParamLabel->setColour (TextEditor::textColourId, Colours::black);
     oscParamLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (oscParamSlider = new Slider (L"oscParamSlider"));
+    addAndMakeVisible (oscParamSlider = new Slider ("oscParamSlider"));
     oscParamSlider->setRange (0, 100, 1);
     oscParamSlider->setSliderStyle (Slider::IncDecButtons);
     oscParamSlider->setTextBoxStyle (Slider::TextBoxLeft, false, 30, 20);
@@ -151,7 +151,7 @@ void MappingEntryOsc::paint (Graphics& g)
 {
     //[UserPrePaint] Add your own custom painting code here..
 
-	g.setColour(ColourScheme::getInstance().colours[L"Vector Colour"]);
+	g.setColour(ColourScheme::getInstance().colours["Vector Colour"]);
 
     //[/UserPrePaint]
 
@@ -310,7 +310,7 @@ BEGIN_JUCER_METADATA
   <COMBOBOX name="paramComboBox" id="8ff48af1860d9818" memberName="paramComboBox"
             virtualName="" explicitFocusOrder="0" pos="576 8 144 24" editable="0"
             layout="33" items="" textWhenNonSelected="" textWhenNoItems="(no choices)"/>
-  <LABEL name="addressLabel" id="22a7baa38ed4e012" memberName="addressLabel"
+  <LABEL name="addressLabe" id="22a7baa38ed4e012" memberName="addressLabe"
          virtualName="" explicitFocusOrder="0" pos="8 8 96 24" edTextCol="ff000000"
          edBkgCol="0" labelText="OSC Address:" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
@@ -318,7 +318,7 @@ BEGIN_JUCER_METADATA
   <COMBOBOX name="addressEditor" id="78d260c96bcdfcd3" memberName="addressEditor"
             virtualName="" explicitFocusOrder="0" pos="104 8 272 24" editable="1"
             layout="33" items="" textWhenNonSelected="" textWhenNoItems="(no choices)"/>
-  <LABEL name="oscParamLabel" id="d441633836d6eab8" memberName="oscParamLabel"
+  <LABEL name="oscParamLabe" id="d441633836d6eab8" memberName="oscParamLabe"
          virtualName="" explicitFocusOrder="0" pos="376 8 80 24" edTextCol="ff000000"
          edBkgCol="0" labelText="Parameter:" editableSingleClick="0" editableDoubleClick="0"
          focusDiscardsChanges="0" fontname="Default font" fontsize="15"

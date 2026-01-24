@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_LOOPERCONTROL_LOOPERCONTROL_995E972B__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "WaveformDisplay.h"
 
 class LooperProcessor;
@@ -43,7 +43,7 @@ class LooperControl  : public Component,
                        public FilenameComponentListener,
                        public Timer,
                        public ChangeListener,
-                       public ButtonListener
+                       public Button::Listener
 {
 public:
     //==============================================================================

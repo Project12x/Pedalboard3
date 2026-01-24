@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_MAPPINGENTRYMIDI_MAPPINGENTRYMIDI_3DC59256__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 #include "MappingSlider.h"
 
 class MappingsDialog;
@@ -41,8 +41,8 @@ class MappingsDialog;
                                                                     //[/Comments]
 */
 class MappingEntryMidi  : public Component,
-                          public ComboBoxListener,
-                          public ButtonListener,
+                          public ComboBox::Listener,
+                          public Button::Listener,
                           public MappingSliderListener
 {
 public:

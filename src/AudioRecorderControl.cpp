@@ -45,17 +45,17 @@ AudioRecorderControl::AudioRecorderControl (RecorderProcessor *proc, AudioThumbn
       recordButton (0)
 {
     addAndMakeVisible (fileDisplay = new WaveformDisplayLite (thumbnail));
-    fileDisplay->setName (L"fileDisplay");
+    fileDisplay->setName ("fileDisplay");
 
-    addAndMakeVisible (filename = new FilenameComponent ("filename", File::nonexistent, true, false, true, "*.wav", ".wav", "<no file loaded>"));
-    filename->setName (L"filename");
+    addAndMakeVisible (filename = new FilenameComponent ("filename", File(), true, false, true, "*.wav", ".wav", "<no file loaded>"));
+    filename->setName ("filename");
 
-    addAndMakeVisible (syncButton = new ToggleButton (L"syncButton"));
-    syncButton->setButtonText (L"Sync to main transport");
+    addAndMakeVisible (syncButton = new ToggleButton ("syncButton"));
+    syncButton->setButtonText ("Sync to main transport");
     syncButton->addListener (this);
 
     addAndMakeVisible (recordButton = new DrawableButton ("recordButton", DrawableButton::ImageOnButtonBackground));
-    recordButton->setName (L"recordButton");
+    recordButton->setName ("recordButton");
 
 
     //[UserPreSize]
@@ -68,14 +68,14 @@ AudioRecorderControl::AudioRecorderControl (RecorderProcessor *proc, AudioThumbn
 												   Vectors::stopbutton_svgSize);
 	recordButton->setImages(recordImage);
 	recordButton->setColour(DrawableButton::backgroundColourId,
-						    ColourScheme::getInstance().colours[L"Button Colour"]);
+						    ColourScheme::getInstance().colours["Button Colour"]);
 	recordButton->setColour(DrawableButton::backgroundOnColourId,
-						    ColourScheme::getInstance().colours[L"Button Colour"]);
+						    ColourScheme::getInstance().colours["Button Colour"]);
 	recordButton->addListener(this);
-	recordButton->setTooltip(L"Record audio input");
+	recordButton->setTooltip("Record audio input");
 
 	const File& soundFile = processor->getFile();
-	if(soundFile != File::nonexistent)
+	if(soundFile != File())
 		filename->setCurrentFile(soundFile, true, dontSendNotification);
 	else
 		filename->setDefaultBrowseTarget(FilePlayerControl::lastDir);
@@ -219,19 +219,19 @@ void AudioRecorderControl::setWaveformBackground(const Colour& col)
 
 BEGIN_JUCER_METADATA
 
-<JUCER_COMPONENT documentType="Component" className="AudioRecorderControl" componentName=""
+<JUCER_COMPONENT documentType="Component" className="AudioRecorderContro" componentName=""
                  parentClasses="public Component, public FilenameComponentListener, public ChangeListener"
-                 constructorParams="RecorderProcessor *proc, AudioThumbnail&amp; thumbnail"
+                 constructorParams="RecorderProcessor *proc, AudioThumbnail&amp; thumbnai"
                  variableInitialisers="processor(proc)" snapPixels="8" snapActive="1"
                  snapShown="1" overlayOpacity="0.330000013" fixedSize="0" initialWidth="300"
                  initialHeight="100">
   <BACKGROUND backgroundColour="eeece1"/>
   <GENERICCOMPONENT name="fileDisplay" id="ca679484fd8a4509" memberName="fileDisplay"
                     virtualName="" explicitFocusOrder="0" pos="0 28 2M 48M" class="WaveformDisplayLite"
-                    params="thumbnail"/>
+                    params="thumbnai"/>
   <GENERICCOMPONENT name="filename" id="f1e80797e31ff742" memberName="filename" virtualName=""
                     explicitFocusOrder="0" pos="0 0 28M 24" class="FilenameComponent"
-                    params="&quot;filename&quot;, File::nonexistent, true, false, true, &quot;*.wav&quot;, &quot;.wav&quot;, &quot;&lt;no file loaded&gt;&quot;"/>
+                    params="&quot;filename&quot;, File(), true, false, true, &quot;*.wav&quot;, &quot;.wav&quot;, &quot;&lt;no file loaded&gt;&quot;"/>
   <TOGGLEBUTTON name="syncButton" id="b0788f5602fb3d7f" memberName="syncButton"
                 virtualName="" explicitFocusOrder="0" pos="0 23R 168 24" buttonText="Sync to main transport"
                 connectedEdges="0" needsCallback="1" radioGroupId="0" state="0"/>

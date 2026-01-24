@@ -57,52 +57,52 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
       inputLevelSlider (0)
 {
     addAndMakeVisible (fileDisplay = new WaveformDisplay (thumbnail, false));
-    fileDisplay->setName (L"fileDisplay");
+    fileDisplay->setName ("fileDisplay");
 
-    addAndMakeVisible (filename = new FilenameComponent ("filename", File::nonexistent, true, false, true, "*.wav;*.aif", "", "<no file loaded>"));
-    filename->setName (L"filename");
+    addAndMakeVisible (filename = new FilenameComponent ("filename", File(), true, false, true, "*.wav;*.aif", "", "<no file loaded>"));
+    filename->setName ("filename");
 
-    addAndMakeVisible (syncButton = new ToggleButton (L"syncButton"));
-    syncButton->setTooltip (L"Sync file playback to the main transport");
-    syncButton->setButtonText (L"Sync to main transport");
+    addAndMakeVisible (syncButton = new ToggleButton ("syncButton"));
+    syncButton->setTooltip ("Sync file playback to the main transport");
+    syncButton->setButtonText ("Sync to main transport");
     syncButton->addListener (this);
 
-    addAndMakeVisible (stopAfterBarButton = new ToggleButton (L"stopAfterBarButton"));
-    stopAfterBarButton->setTooltip (L"Stop recording after a bar has elapsed.");
-    stopAfterBarButton->setButtonText (L"Stop after bar");
+    addAndMakeVisible (stopAfterBarButton = new ToggleButton ("stopAfterBarButton"));
+    stopAfterBarButton->setTooltip ("Stop recording after a bar has elapsed.");
+    stopAfterBarButton->setButtonText ("Stop after bar");
     stopAfterBarButton->addListener (this);
 
     addAndMakeVisible (playPauseButton = new DrawableButton ("playPauseButton", DrawableButton::ImageOnButtonBackground));
-    playPauseButton->setName (L"playPauseButton");
+    playPauseButton->setName ("playPauseButton");
 
     addAndMakeVisible (rtzButton = new DrawableButton ("rtzButton", DrawableButton::ImageOnButtonBackground));
-    rtzButton->setName (L"rtzButton");
+    rtzButton->setName ("rtzButton");
 
     addAndMakeVisible (recordButton = new DrawableButton ("recordButton", DrawableButton::ImageOnButtonBackground));
-    recordButton->setName (L"recordButton");
+    recordButton->setName ("recordButton");
 
-    addAndMakeVisible (autoPlayButton = new ToggleButton (L"autoPlayButton"));
-    autoPlayButton->setButtonText (L"Autoplay");
+    addAndMakeVisible (autoPlayButton = new ToggleButton ("autoPlayButton"));
+    autoPlayButton->setButtonText ("Autoplay");
     autoPlayButton->addListener (this);
 
-    addAndMakeVisible (barLengthLabel = new Label (L"barLengthLabel",
-                                                   L"Bar length:"));
+    addAndMakeVisible (barLengthLabel = new Label ("barLengthLabel",
+                                                   "Bar length:"));
     barLengthLabel->setFont (Font (15.0000f, Font::plain));
     barLengthLabel->setJustificationType (Justification::centredLeft);
     barLengthLabel->setEditable (false, false, false);
     barLengthLabel->setColour (TextEditor::textColourId, Colours::black);
     barLengthLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (separatorLabel = new Label (L"separatorLabel",
-                                                   L"/"));
+    addAndMakeVisible (separatorLabel = new Label ("separatorLabel",
+                                                   "/"));
     separatorLabel->setFont (Font (105.0000f, Font::bold));
     separatorLabel->setJustificationType (Justification::centred);
     separatorLabel->setEditable (false, false, false);
     separatorLabel->setColour (TextEditor::textColourId, Colours::black);
     separatorLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (numeratorLabel = new Label (L"numeratorLabel",
-                                                   L"4"));
+    addAndMakeVisible (numeratorLabel = new Label ("numeratorLabel",
+                                                   "4"));
     numeratorLabel->setFont (Font (Font::getDefaultSerifFontName(), 105.0000f, Font::bold));
     numeratorLabel->setJustificationType (Justification::centred);
     numeratorLabel->setEditable (true, true, false);
@@ -110,8 +110,8 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
     numeratorLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
     numeratorLabel->addListener (this);
 
-    addAndMakeVisible (denominatorLabel = new Label (L"denominatorLabel",
-                                                     L"4"));
+    addAndMakeVisible (denominatorLabel = new Label ("denominatorLabel",
+                                                     "4"));
     denominatorLabel->setFont (Font (Font::getDefaultSerifFontName(), 105.0000f, Font::bold));
     denominatorLabel->setJustificationType (Justification::centred);
     denominatorLabel->setEditable (true, true, false);
@@ -119,29 +119,29 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
     denominatorLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
     denominatorLabel->addListener (this);
 
-    addAndMakeVisible (loopLevelLabel = new Label (L"loopLevelLabel",
-                                                   L"Loop level"));
+    addAndMakeVisible (loopLevelLabel = new Label ("loopLevelLabel",
+                                                   "Loop level"));
     loopLevelLabel->setFont (Font (15.0000f, Font::plain));
     loopLevelLabel->setJustificationType (Justification::centred);
     loopLevelLabel->setEditable (false, false, false);
     loopLevelLabel->setColour (TextEditor::textColourId, Colours::black);
     loopLevelLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (loopLevelSlider = new Slider (L"loopLevelSlider"));
+    addAndMakeVisible (loopLevelSlider = new Slider ("loopLevelSlider"));
     loopLevelSlider->setRange (0, 1, 0);
     loopLevelSlider->setSliderStyle (Slider::RotaryVerticalDrag);
     loopLevelSlider->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
     loopLevelSlider->addListener (this);
 
-    addAndMakeVisible (inputLevelLabel = new Label (L"inputLevelLabel",
-                                                    L"Input level"));
+    addAndMakeVisible (inputLevelLabel = new Label ("inputLevelLabel",
+                                                    "Input level"));
     inputLevelLabel->setFont (Font (15.0000f, Font::plain));
     inputLevelLabel->setJustificationType (Justification::centred);
     inputLevelLabel->setEditable (false, false, false);
     inputLevelLabel->setColour (TextEditor::textColourId, Colours::black);
     inputLevelLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (inputLevelSlider = new Slider (L"inputLevelSlider"));
+    addAndMakeVisible (inputLevelSlider = new Slider ("inputLevelSlider"));
     inputLevelSlider->setRange (0, 1, 0);
     inputLevelSlider->setSliderStyle (Slider::RotaryVerticalDrag);
     inputLevelSlider->setTextBoxStyle (Slider::NoTextBox, false, 80, 20);
@@ -162,11 +162,11 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
 												    Vectors::pausebutton_svgSize);
 	playPauseButton->setImages(playImage);
 	playPauseButton->setColour(DrawableButton::backgroundColourId,
-							   ColourScheme::getInstance().colours[L"Button Colour"]);
+							   ColourScheme::getInstance().colours["Button Colour"]);
 	playPauseButton->setColour(DrawableButton::backgroundOnColourId,
-							   ColourScheme::getInstance().colours[L"Button Colour"]);
+							   ColourScheme::getInstance().colours["Button Colour"]);
 	playPauseButton->addListener(this);
-	playPauseButton->setTooltip(L"Play/pause audio file");
+	playPauseButton->setTooltip("Play/pause audio file");
 
 	recording = false;
 
@@ -176,25 +176,25 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
 												   Vectors::stopbutton_svgSize);
 	recordButton->setImages(recordImage);
 	recordButton->setColour(DrawableButton::backgroundColourId,
-						    ColourScheme::getInstance().colours[L"Button Colour"]);
+						    ColourScheme::getInstance().colours["Button Colour"]);
 	recordButton->setColour(DrawableButton::backgroundOnColourId,
-						    ColourScheme::getInstance().colours[L"Button Colour"]);
+						    ColourScheme::getInstance().colours["Button Colour"]);
 	recordButton->addListener(this);
-	recordButton->setTooltip(L"Record/stop recording a loop");
+	recordButton->setTooltip("Record/stop recording a loop");
 
 	//Used to make sure we're playing if the processor is already playing.
 	changeListenerCallback(processor);
 
 	rtzButton->setImages(rtzImage);
 	rtzButton->setColour(DrawableButton::backgroundColourId,
-					     ColourScheme::getInstance().colours[L"Button Colour"]);
+					     ColourScheme::getInstance().colours["Button Colour"]);
 	rtzButton->setColour(DrawableButton::backgroundOnColourId,
-					     ColourScheme::getInstance().colours[L"Button Colour"]);
+					     ColourScheme::getInstance().colours["Button Colour"]);
 	rtzButton->addListener(this);
-	rtzButton->setTooltip(L"Return to the start of the audio file");
+	rtzButton->setTooltip("Return to the start of the audio file");
 
 	const File& soundFile = processor->getFile();
-	if(soundFile != File::nonexistent)
+	if(soundFile != File())
 	{
 		filename->setCurrentFile(soundFile, true, dontSendNotification);
 		fileDisplay->setReadPointer((float)processor->getReadPosition());
@@ -215,7 +215,7 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
 
 	tempstr << (int)processor->getParameter(LooperProcessor::BarNumerator);
 	numeratorLabel->setText(tempstr, dontSendNotification);
-	tempstr = L"";
+	tempstr = "";
 	tempstr << (int)processor->getParameter(LooperProcessor::BarDenominator);
 	denominatorLabel->setText(tempstr, dontSendNotification);
 
@@ -224,9 +224,9 @@ LooperEditor::LooperEditor (LooperProcessor *proc, AudioThumbnail *thumbnail)
 	processor->addChangeListener(this);
 
 	inputLevelSlider->setColour(Slider::rotarySliderFillColourId,
-							    ColourScheme::getInstance().colours[L"Level Dial Colour"]);
+							    ColourScheme::getInstance().colours["Level Dial Colour"]);
 	loopLevelSlider->setColour(Slider::rotarySliderFillColourId,
-							   ColourScheme::getInstance().colours[L"Level Dial Colour"]);
+							   ColourScheme::getInstance().colours["Level Dial Colour"]);
 
 	startTimer(60);
 
@@ -361,7 +361,7 @@ void LooperEditor::buttonClicked (Button* buttonThatWasClicked)
 
 		if(recording)
 		{
-			//fileDisplay->setFile(File::nonexistent);
+			//fileDisplay->setFile(File());
 			if(playing)
 			{
 				playPauseButton->setImages(playImage);
@@ -486,7 +486,7 @@ void LooperEditor::changeListenerCallback(ChangeBroadcaster *source)
 			playPauseButton->setEnabled(false);
 
 			if(!recording)
-				fileDisplay->setFile(File::nonexistent);
+				fileDisplay->setFile(File());
 			recordButton->setImages(stopImage);
 			recording = true;
 		}
@@ -522,7 +522,7 @@ void LooperEditor::setWaveformBackground(const Colour& col)
 //------------------------------------------------------------------------------
 void LooperEditor::clearDisplay()
 {
-	fileDisplay->setFile(File::nonexistent);
+	fileDisplay->setFile(File());
 }
 
 //[/MiscUserCode]
@@ -538,7 +538,7 @@ BEGIN_JUCER_METADATA
 
 <JUCER_COMPONENT documentType="Component" className="LooperEditor" componentName=""
                  parentClasses="public AudioProcessorEditor, public FilenameComponentListener, public Timer, public ChangeListener"
-                 constructorParams="LooperProcessor *proc, AudioThumbnail *thumbnail"
+                 constructorParams="LooperProcessor *proc, AudioThumbnail *thumbnai"
                  variableInitialisers="AudioProcessorEditor(proc),&#10;processor(proc)"
                  snapPixels="8" snapActive="1" snapShown="1" overlayOpacity="0.330000013"
                  fixedSize="0" initialWidth="500" initialHeight="300">
@@ -548,7 +548,7 @@ BEGIN_JUCER_METADATA
                     params="thumbnail, false"/>
   <GENERICCOMPONENT name="filename" id="f1e80797e31ff742" memberName="filename" virtualName=""
                     explicitFocusOrder="0" pos="0 0 84M 24" class="FilenameComponent"
-                    params="&quot;filename&quot;, File::nonexistent, true, false, true, &quot;*.wav;*.aif&quot;, &quot;&quot;, &quot;&lt;no file loaded&gt;&quot;"/>
+                    params="&quot;filename&quot;, File(), true, false, true, &quot;*.wav;*.aif&quot;, &quot;&quot;, &quot;&lt;no file loaded&gt;&quot;"/>
   <TOGGLEBUTTON name="syncButton" id="b0788f5602fb3d7f" memberName="syncButton"
                 virtualName="" explicitFocusOrder="0" pos="0 23R 168 24" tooltip="Sync file playback to the main transport"
                 buttonText="Sync to main transport" connectedEdges="0" needsCallback="1"
@@ -569,38 +569,38 @@ BEGIN_JUCER_METADATA
   <TOGGLEBUTTON name="autoPlayButton" id="6a1054f4621d1438" memberName="autoPlayButton"
                 virtualName="" explicitFocusOrder="0" pos="296 23R 80 24" buttonText="Autoplay"
                 connectedEdges="0" needsCallback="1" radioGroupId="0" state="0"/>
-  <LABEL name="barLengthLabel" id="67d32710de38db61" memberName="barLengthLabel"
+  <LABEL name="barLengthLabe" id="67d32710de38db61" memberName="barLengthLabe"
          virtualName="" explicitFocusOrder="0" pos="0 127R 80 24" edTextCol="ff000000"
          edBkgCol="0" labelText="Bar length:" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
          fontsize="15" bold="0" italic="0" justification="33"/>
-  <LABEL name="separatorLabel" id="54c9fc2c8a44b75c" memberName="separatorLabel"
+  <LABEL name="separatorLabe" id="54c9fc2c8a44b75c" memberName="separatorLabe"
          virtualName="" explicitFocusOrder="0" pos="64 111R 80 80" edTextCol="ff000000"
          edBkgCol="0" labelText="/" editableSingleClick="0" editableDoubleClick="0"
          focusDiscardsChanges="0" fontname="Default font" fontsize="105"
          bold="1" italic="0" justification="36"/>
-  <LABEL name="numeratorLabel" id="4a1e8968f4b93c68" memberName="numeratorLabel"
+  <LABEL name="numeratorLabe" id="4a1e8968f4b93c68" memberName="numeratorLabe"
          virtualName="" explicitFocusOrder="0" pos="8 103R 80 80" edTextCol="ff000000"
          edBkgCol="0" labelText="4" editableSingleClick="1" editableDoubleClick="1"
          focusDiscardsChanges="0" fontname="Default serif font" fontsize="105"
          bold="1" italic="0" justification="36"/>
-  <LABEL name="denominatorLabel" id="a40183ba13b2abd1" memberName="denominatorLabel"
+  <LABEL name="denominatorLabe" id="a40183ba13b2abd1" memberName="denominatorLabe"
          virtualName="" explicitFocusOrder="0" pos="112 103R 80 80" edTextCol="ff000000"
          edBkgCol="0" labelText="4" editableSingleClick="1" editableDoubleClick="1"
          focusDiscardsChanges="0" fontname="Default serif font" fontsize="105"
          bold="1" italic="0" justification="36"/>
-  <LABEL name="loopLevelLabel" id="dbe6aeffe7ed960a" memberName="loopLevelLabel"
+  <LABEL name="loopLevelLabe" id="dbe6aeffe7ed960a" memberName="loopLevelLabe"
          virtualName="" explicitFocusOrder="0" pos="82R 127R 78 24" edTextCol="ff000000"
-         edBkgCol="0" labelText="Loop level" editableSingleClick="0" editableDoubleClick="0"
+         edBkgCol="0" labelText="Loop leve" editableSingleClick="0" editableDoubleClick="0"
          focusDiscardsChanges="0" fontname="Default font" fontsize="15"
          bold="0" italic="0" justification="36"/>
   <SLIDER name="loopLevelSlider" id="44604dcd61115dbc" memberName="loopLevelSlider"
           virtualName="" explicitFocusOrder="0" pos="82R 103R 80 80" min="0"
           max="1" int="0" style="RotaryVerticalDrag" textBoxPos="NoTextBox"
           textBoxEditable="1" textBoxWidth="80" textBoxHeight="20" skewFactor="1"/>
-  <LABEL name="inputLevelLabel" id="1abc33e42faa5045" memberName="inputLevelLabel"
+  <LABEL name="inputLevelLabe" id="1abc33e42faa5045" memberName="inputLevelLabe"
          virtualName="" explicitFocusOrder="0" pos="170R 127R 78 24" edTextCol="ff000000"
-         edBkgCol="0" labelText="Input level" editableSingleClick="0"
+         edBkgCol="0" labelText="Input leve" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
          fontsize="15" bold="0" italic="0" justification="36"/>
   <SLIDER name="inputLevelSlider" id="415ad67729236604" memberName="inputLevelSlider"

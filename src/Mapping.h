@@ -20,7 +20,7 @@
 #ifndef MAPPING_H_
 #define MAPPING_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class FilterGraph;
 

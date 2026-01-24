@@ -1,5 +1,5 @@
-//	AudioSingletons.cpp - A couple of singleton wrappers to some of JUCE' audio
-//						  classes.
+//	AudioSingletons.cpp - A couple of singleton wrappers to some of JUCE'
+//audio 						  classes.
 //	----------------------------------------------------------------------------
 //	This file is part of Pedalboard2, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
@@ -24,42 +24,46 @@
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-AudioPluginFormatManagerSingleton AudioPluginFormatManagerSingleton::singletonInstance;
+AudioPluginFormatManagerSingleton
+    AudioPluginFormatManagerSingleton::singletonInstance;
 
 //------------------------------------------------------------------------------
-AudioPluginFormatManager& AudioPluginFormatManagerSingleton::getInstance()
-{
-	return *(singletonInstance.instance);
+AudioPluginFormatManager &AudioPluginFormatManagerSingleton::getInstance() {
+  return *(singletonInstance.instance);
 }
 
 //------------------------------------------------------------------------------
-void AudioPluginFormatManagerSingleton::killInstance()
-{
-	assert(singletonInstance.instance != 0);
+void AudioPluginFormatManagerSingleton::killInstance() {
+  assert(singletonInstance.instance != 0);
 
-	if(singletonInstance.instance)
-	{
-		delete singletonInstance.instance;
-		singletonInstance.instance = 0;
-	}
+  if (singletonInstance.instance) {
+    delete singletonInstance.instance;
+    singletonInstance.instance = 0;
+  }
 }
 
 //------------------------------------------------------------------------------
-AudioPluginFormatManagerSingleton::AudioPluginFormatManagerSingleton():
-instance(0)
-{
-	instance = new AudioPluginFormatManager();
-	instance->addDefaultFormats();
+AudioPluginFormatManagerSingleton::AudioPluginFormatManagerSingleton()
+    : instance(0) {
+  instance = new AudioPluginFormatManager();
+  // JUCE 8: addDefaultFormats() was removed, manually add formats
+#if JUCE_PLUGINHOST_VST3
+  instance->addFormat(new juce::VST3PluginFormat());
+#endif
+#if JUCE_PLUGINHOST_AU && JUCE_MAC
+  instance->addFormat(new juce::AudioUnitPluginFormat());
+#endif
+#if JUCE_PLUGINHOST_LADSPA && JUCE_LINUX
+  instance->addFormat(new juce::LADSPAPluginFormat());
+#endif
 }
 
 //------------------------------------------------------------------------------
-AudioPluginFormatManagerSingleton::~AudioPluginFormatManagerSingleton()
-{
-	if(instance)
-	{
-		assert(1);
-		delete instance;
-	}
+AudioPluginFormatManagerSingleton::~AudioPluginFormatManagerSingleton() {
+  if (instance) {
+    assert(1);
+    delete instance;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -67,39 +71,32 @@ AudioPluginFormatManagerSingleton::~AudioPluginFormatManagerSingleton()
 AudioFormatManagerSingleton AudioFormatManagerSingleton::singletonInstance;
 
 //------------------------------------------------------------------------------
-AudioFormatManager& AudioFormatManagerSingleton::getInstance()
-{
-	return *(singletonInstance.instance);
+AudioFormatManager &AudioFormatManagerSingleton::getInstance() {
+  return *(singletonInstance.instance);
 }
 
 //------------------------------------------------------------------------------
-void AudioFormatManagerSingleton::killInstance()
-{
-	assert(singletonInstance.instance != 0);
+void AudioFormatManagerSingleton::killInstance() {
+  assert(singletonInstance.instance != 0);
 
-	if(singletonInstance.instance)
-	{
-		delete singletonInstance.instance;
-		singletonInstance.instance = 0;
-	}
+  if (singletonInstance.instance) {
+    delete singletonInstance.instance;
+    singletonInstance.instance = 0;
+  }
 }
 
 //------------------------------------------------------------------------------
-AudioFormatManagerSingleton::AudioFormatManagerSingleton():
-instance(0)
-{
-	instance = new AudioFormatManager();
-	instance->registerBasicFormats();
+AudioFormatManagerSingleton::AudioFormatManagerSingleton() : instance(0) {
+  instance = new AudioFormatManager();
+  instance->registerBasicFormats();
 }
 
 //------------------------------------------------------------------------------
-AudioFormatManagerSingleton::~AudioFormatManagerSingleton()
-{
-	if(instance)
-	{
-		assert(1);
-		delete instance;
-	}
+AudioFormatManagerSingleton::~AudioFormatManagerSingleton() {
+  if (instance) {
+    assert(1);
+    delete instance;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -107,36 +104,29 @@ AudioFormatManagerSingleton::~AudioFormatManagerSingleton()
 AudioThumbnailCacheSingleton AudioThumbnailCacheSingleton::singletonInstance;
 
 //------------------------------------------------------------------------------
-AudioThumbnailCache& AudioThumbnailCacheSingleton::getInstance()
-{
-	return *(singletonInstance.instance);
+AudioThumbnailCache &AudioThumbnailCacheSingleton::getInstance() {
+  return *(singletonInstance.instance);
 }
 
 //------------------------------------------------------------------------------
-void AudioThumbnailCacheSingleton::killInstance()
-{
-	assert(singletonInstance.instance != 0);
+void AudioThumbnailCacheSingleton::killInstance() {
+  assert(singletonInstance.instance != 0);
 
-	if(singletonInstance.instance)
-	{
-		delete singletonInstance.instance;
-		singletonInstance.instance = 0;
-	}
+  if (singletonInstance.instance) {
+    delete singletonInstance.instance;
+    singletonInstance.instance = 0;
+  }
 }
 
 //------------------------------------------------------------------------------
-AudioThumbnailCacheSingleton::AudioThumbnailCacheSingleton():
-instance(0)
-{
-	instance = new AudioThumbnailCache(32);
+AudioThumbnailCacheSingleton::AudioThumbnailCacheSingleton() : instance(0) {
+  instance = new AudioThumbnailCache(32);
 }
 
 //------------------------------------------------------------------------------
-AudioThumbnailCacheSingleton::~AudioThumbnailCacheSingleton()
-{
-	if(instance)
-	{
-		assert(1);
-		delete instance;
-	}
+AudioThumbnailCacheSingleton::~AudioThumbnailCacheSingleton() {
+  if (instance) {
+    assert(1);
+    delete instance;
+  }
 }

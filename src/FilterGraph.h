@@ -34,43 +34,40 @@
 
 #include "OscMappingManager.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 using juce::uint32;
 
 class FilterInGraph;
 class FilterGraph;
 
-const char* const filenameSuffix = ".filtergraph";
-const char* const filenameWildcard = "*.filtergraph";
+const char *const filenameSuffix = ".filtergraph";
+const char *const filenameWildcard = "*.filtergraph";
 
 //==============================================================================
 /**
     Represents a connection between two pins in a FilterGraph.
 */
-class FilterConnection
-{
+class FilterConnection {
 public:
-    //==============================================================================
-    FilterConnection (FilterGraph& owner);
-    FilterConnection (const FilterConnection& other);
-    ~FilterConnection();
+  //==============================================================================
+  FilterConnection(FilterGraph &owner);
+  FilterConnection(const FilterConnection &other);
+  ~FilterConnection();
 
-    //==============================================================================
-    uint32 sourceFilterID;
-    int sourceChannel;
-    uint32 destFilterID;
-    int destChannel;
+  //==============================================================================
+  AudioProcessorGraph::NodeID sourceFilterID;
+  int sourceChannel;
+  AudioProcessorGraph::NodeID destFilterID;
+  int destChannel;
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+  //==============================================================================
+juce_UseDebuggingNewOperator
 
-private:
-    FilterGraph& owner;
+    private : FilterGraph &owner;
 
-    const FilterConnection& operator= (const FilterConnection&);
+  const FilterConnection &operator=(const FilterConnection &);
 };
-
 
 //==============================================================================
 /**
@@ -100,7 +97,8 @@ public:
                                                 const PluginDescription& desc,
                                                 String& errorMessage);
 
-    static FilterInGraph* createFromXml (FilterGraph& owner, const XmlElement& xml);
+    static FilterInGraph* createFromXml (FilterGraph& owner, const XmlElement&
+xml);
 
     //==============================================================================
     typedef ReferenceCountedObjectPtr <FilterInGraph> Ptr;
@@ -136,93 +134,94 @@ private:
 /**
     A collection of filters and some connections between them.
 */
-class FilterGraph   : public FileBasedDocument
-{
+class FilterGraph : public FileBasedDocument {
 public:
-    //==============================================================================
-    FilterGraph();
-    ~FilterGraph();
+  //==============================================================================
+  FilterGraph();
+  ~FilterGraph();
 
-    //==============================================================================
-    AudioProcessorGraph& getGraph() throw()         { return graph; }
+  //==============================================================================
+  AudioProcessorGraph &getGraph() throw() { return graph; }
 
-    int getNumFilters() const throw();
-    const AudioProcessorGraph::Node::Ptr getNode (const int index) const throw();
-    const AudioProcessorGraph::Node::Ptr getNodeForId (const uint32 uid) const throw();
+  int getNumFilters() const;
+  const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
+  const AudioProcessorGraph::Node::Ptr
+  getNodeForId(const AudioProcessorGraph::NodeID uid) const;
 
-    void addFilter (const PluginDescription* desc, double x, double y);
-	///	Alternate addFilter method.
-	void addFilter(AudioPluginInstance *plugin, double x, double y);
+  void addFilter(const PluginDescription *desc, double x, double y);
+  ///	Alternate addFilter method.
+  void addFilter(AudioPluginInstance *plugin, double x, double y);
 
-    void removeFilter (const uint32 filterUID);
-    void disconnectFilter (const uint32 filterUID);
+  void removeFilter(const AudioProcessorGraph::NodeID filterUID);
+  void disconnectFilter(const AudioProcessorGraph::NodeID filterUID);
 
-    void removeIllegalConnections();
+  void removeIllegalConnections();
 
-    void setNodePosition (const int nodeId, double x, double y);
-    void getNodePosition (const int nodeId, double& x, double& y) const;
+  void setNodePosition(const int nodeId, double x, double y);
+  void getNodePosition(const int nodeId, double &x, double &y) const;
 
-    //==============================================================================
-    int getNumConnections() const throw();
-    const AudioProcessorGraph::Connection* getConnection (const int index) const throw();
+  //==============================================================================
+  /// @brief JUCE 8: Connection API uses std::vector
+  std::vector<AudioProcessorGraph::Connection> getConnections() const;
 
-    const AudioProcessorGraph::Connection* getConnectionBetween (uint32 sourceFilterUID, int sourceFilterChannel,
-                                                                 uint32 destFilterUID, int destFilterChannel) const throw();
+  const AudioProcessorGraph::Connection *getConnectionBetween(
+      AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+      AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const;
 
-    bool canConnect (uint32 sourceFilterUID, int sourceFilterChannel,
-                     uint32 destFilterUID, int destFilterChannel) const throw();
+  bool canConnect(AudioProcessorGraph::NodeID sourceFilterUID,
+                  int sourceFilterChannel,
+                  AudioProcessorGraph::NodeID destFilterUID,
+                  int destFilterChannel) const;
 
-    bool addConnection (uint32 sourceFilterUID, int sourceFilterChannel,
-                        uint32 destFilterUID, int destFilterChannel);
+  bool addConnection(AudioProcessorGraph::NodeID sourceFilterUID,
+                     int sourceFilterChannel,
+                     AudioProcessorGraph::NodeID destFilterUID,
+                     int destFilterChannel);
 
-    void removeConnection (const int index);
+  void removeConnection(AudioProcessorGraph::NodeID sourceFilterUID,
+                        int sourceFilterChannel,
+                        AudioProcessorGraph::NodeID destFilterUID,
+                        int destFilterChannel);
 
-    void removeConnection (uint32 sourceFilterUID, int sourceFilterChannel,
-                           uint32 destFilterUID, int destFilterChannel);
+  // void clear(bool addAudioIO = true);
+  void clear(bool addAudioIn = true, bool addMidiIn = true,
+             bool addAudioOut = true);
 
-    //void clear(bool addAudioIO = true);
-	void clear(bool addAudioIn = true,
-			   bool addMidiIn = true,
-			   bool addAudioOut = true);
+  //==============================================================================
 
+  XmlElement *createXml(const OscMappingManager &oscManager) const;
+  void restoreFromXml(const XmlElement &xml, OscMappingManager &oscManager);
 
-    //==============================================================================
+  //==============================================================================
+  String getDocumentTitle();
+  Result loadDocument(const File &file);
+  Result saveDocument(const File &file);
+  File getLastDocumentOpened();
+  void setLastDocumentOpened(const File &file);
 
-    XmlElement* createXml(const OscMappingManager& oscManager) const;
-    void restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager);
+  /** The special channel index used to refer to a filter's midi channel.
+   */
+  static const int midiChannelNumber;
 
-    //==============================================================================
-    String getDocumentTitle();
-    Result loadDocument (const File& file);
-    Result saveDocument (const File& file);
-    File getLastDocumentOpened();
-    void setLastDocumentOpened (const File& file);
+  //==============================================================================
+juce_UseDebuggingNewOperator
 
-    /** The special channel index used to refer to a filter's midi channel.
-    */
-    static const int midiChannelNumber;
-
-    //==============================================================================
-    juce_UseDebuggingNewOperator
-
-private:
-    //friend class FilterGraphPlayer;
-    //ReferenceCountedArray <FilterInGraph> filters;
-    //OwnedArray <FilterConnection> connections;
+    private :
+    // friend class FilterGraphPlayer;
+    // ReferenceCountedArray <FilterInGraph> filters;
+    // OwnedArray <FilterConnection> connections;
 
     AudioProcessorGraph graph;
-    AudioProcessorPlayer player;
+  AudioProcessorPlayer player;
 
-    uint32 lastUID;
-    uint32 getNextUID() throw();
+  uint32 lastUID;
+  uint32 getNextUID() throw();
 
-    void createNodeFromXml(const XmlElement& xml,
-						   OscMappingManager& oscManager);
+  void createNodeFromXml(const XmlElement &xml, OscMappingManager &oscManager);
 
-    FilterGraph (const FilterGraph&);
-    const FilterGraph& operator= (const FilterGraph&);
+  FilterGraph(const FilterGraph &);
+  const FilterGraph &operator=(const FilterGraph &);
 };
-
 
 //==============================================================================
 /**
@@ -240,7 +239,8 @@ public:
 
     //==============================================================================
     void setAudioDeviceManager (AudioDeviceManager* dm);
-    AudioDeviceManager* getAudioDeviceManager() const throw()   { return deviceManager; }
+    AudioDeviceManager* getAudioDeviceManager() const throw()   { return
+deviceManager; }
 
     //==============================================================================
     void audioDeviceIOCallback (const float** inputChannelData,
@@ -251,12 +251,14 @@ public:
     void audioDeviceAboutToStart (double sampleRate, int numSamplesPerBlock);
     void audioDeviceStopped();
 
-    void handleIncomingMidiMessage (MidiInput* source, const MidiMessage& message);
+    void handleIncomingMidiMessage (MidiInput* source, const MidiMessage&
+message);
 
     void changeListenerCallback (void*);
 
     //==============================================================================
-    static int compareElements (FilterInGraph* const first, FilterInGraph* const second) throw();
+    static int compareElements (FilterInGraph* const first, FilterInGraph* const
+second) throw();
 
     const float** inputChannelData;
     int totalNumInputChannels;

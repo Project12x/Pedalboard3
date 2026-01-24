@@ -105,7 +105,7 @@ const String& LogFile::getLogContents(const StringArray& eventTypes,
 	std::map<int64, LogEvent>::iterator it;
 	Array<int> typesHash;
 
-	tempContents = String::empty;
+	tempContents = String();
 
 	for(i=0;i<eventTypes.size();++i)
 		typesHash.add(DefaultHashFunctions::generateHash(eventTypes[i], 4096));

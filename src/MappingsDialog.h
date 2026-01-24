@@ -26,7 +26,7 @@
 
 #include "MidiMappingManager.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class OscMappingManager;
 class PluginField;
@@ -49,8 +49,8 @@ class MappingsDialog  : public Component,
                         public TextEditor::Listener,
                         public MidiMappingManager::MidiLearnCallback,
                         public AsyncUpdater,
-                        public ButtonListener,
-                        public ComboBoxListener
+                        public Button::Listener,
+                        public ComboBox::Listener
 {
 public:
     //==============================================================================

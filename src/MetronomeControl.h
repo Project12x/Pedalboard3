@@ -24,13 +24,11 @@
 
 //[Headers]     -- You can add your own extra header files here --
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class MetronomeProcessor;
 
 //[/Headers]
-
-
 
 //==============================================================================
 /**
@@ -40,74 +38,70 @@ class MetronomeProcessor;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class MetronomeControl  : public Component,
-                          public FilenameComponentListener,
-                          public ChangeListener,
-                          public ButtonListener,
-                          public LabelListener
-{
+class MetronomeControl : public Component,
+                         public FilenameComponentListener,
+                         public ChangeListener,
+                         public Button::Listener,
+                         public Label::Listener {
 public:
-    //==========================================================================
-    MetronomeControl (MetronomeProcessor *proc, bool editors);
-    ~MetronomeControl();
+  //==========================================================================
+  MetronomeControl(MetronomeProcessor *proc, bool editors);
+  ~MetronomeControl();
 
-    //==========================================================================
-    //[UserMethods]     -- You can add your own custom methods in this section.
+  //==========================================================================
+  //[UserMethods]     -- You can add your own custom methods in this section.
 
-	///	Used to set the accent and click sounds.
-	void filenameComponentChanged(FilenameComponent *fileComponentThatHasChanged);
-	///	Used to update the play/pause button.
-	void changeListenerCallback(ChangeBroadcaster *source);
+  ///	Used to set the accent and click sounds.
+  void filenameComponentChanged(FilenameComponent *fileComponentThatHasChanged);
+  ///	Used to update the play/pause button.
+  void changeListenerCallback(ChangeBroadcaster *source);
 
-    //[/UserMethods]
+  //[/UserMethods]
 
-    void paint (Graphics& g);
-    void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
-    void labelTextChanged (Label* labelThatHasChanged);
-
-
+  void paint(Graphics &g);
+  void resized();
+  void buttonClicked(Button *buttonThatWasClicked);
+  void labelTextChanged(Label *labelThatHasChanged);
 
 private:
-	JUCE_LEAK_DETECTOR(MetronomeControl)
+  JUCE_LEAK_DETECTOR(MetronomeControl)
 
-    //[UserVariables]   -- You can add your own custom variables in this section.
+  //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	Helper method to load an SVG file from a binary chunk of data.
-	Drawable *loadSVGFromMemory(const void *dataToInitialiseFrom, size_t sizeInBytes);
+  ///	Helper method to load an SVG file from a binary chunk of data.
+  std::unique_ptr<Drawable> loadSVGFromMemory(const void *dataToInitialiseFrom,
+                                              size_t sizeInBytes); // JUCE 8
 
-	///	Our copy of the MetronomeProcessor.
-	MetronomeProcessor *processor;
+  ///	Our copy of the MetronomeProcessor.
+  MetronomeProcessor *processor;
 
-	///	The two drawables we use for the playButton.
-	ScopedPointer<Drawable> playImage;
-	ScopedPointer<Drawable> pauseImage;
+  ///	The two drawables we use for the playButton.
+  std::unique_ptr<Drawable> playImage;  // JUCE 8: unique_ptr
+  std::unique_ptr<Drawable> pauseImage; // JUCE 8: unique_ptr
 
-	///	Whether or not we're currently playing.
-	bool playing;
+  ///	Whether or not we're currently playing.
+  bool playing;
 
-	///	Whether we should display the file editors or not.
-	bool showFileEditors;
+  ///	Whether we should display the file editors or not.
+  bool showFileEditors;
 
-    //[/UserVariables]
+  //[/UserVariables]
 
-    //==========================================================================
-    ToggleButton* syncButton;
-    DrawableButton* playPauseButton;
-    FilenameComponent* accentFile;
-    Label* accentLabel;
-    FilenameComponent* clickFile;
-    Label* clickLabel;
-    Label* numeratorLabel;
-    Label* denominatorLabel;
-    Label* separatorLabel;
+  //==========================================================================
+  ToggleButton *syncButton;
+  DrawableButton *playPauseButton;
+  FilenameComponent *accentFile;
+  Label *accentLabel;
+  FilenameComponent *clickFile;
+  Label *clickLabel;
+  Label *numeratorLabel;
+  Label *denominatorLabel;
+  Label *separatorLabel;
 
-
-    //==========================================================================
-    // (prevent copy constructor and operator= being generated..)
-    MetronomeControl (const MetronomeControl&);
-    const MetronomeControl& operator= (const MetronomeControl&);
+  //==========================================================================
+  // (prevent copy constructor and operator= being generated..)
+  MetronomeControl(const MetronomeControl &);
+  const MetronomeControl &operator=(const MetronomeControl &);
 };
 
-
-#endif   // __JUCER_HEADER_METRONOMECONTROL_METRONOMECONTROL_CEEEE7BB__
+#endif // __JUCER_HEADER_METRONOMECONTROL_METRONOMECONTROL_CEEEE7BB__

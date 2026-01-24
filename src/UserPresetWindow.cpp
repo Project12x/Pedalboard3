@@ -39,31 +39,31 @@ UserPresetWindow::UserPresetWindow (KnownPluginList *knownPlugins)
       renameButton (0)
 {
     addAndMakeVisible (presetList = new TreeView());
-    presetList->setName (L"presetList");
+    presetList->setName ("presetList");
 
-    addAndMakeVisible (copyButton = new TextButton (L"copyButton"));
-    copyButton->setTooltip (L"Duplicate the selected preset");
-    copyButton->setButtonText (L"Copy");
+    addAndMakeVisible (copyButton = new TextButton ("copyButton"));
+    copyButton->setTooltip ("Duplicate the selected preset");
+    copyButton->setButtonText ("Copy");
     copyButton->addListener (this);
 
-    addAndMakeVisible (removeButton = new TextButton (L"removeButton"));
-    removeButton->setTooltip (L"Delete the selected preset");
-    removeButton->setButtonText (L"Remove");
+    addAndMakeVisible (removeButton = new TextButton ("removeButton"));
+    removeButton->setTooltip ("Delete the selected preset");
+    removeButton->setButtonText ("Remove");
     removeButton->addListener (this);
 
-    addAndMakeVisible (importButton = new TextButton (L"importButton"));
-    importButton->setTooltip (L"Import a preset from an .fxp file");
-    importButton->setButtonText (L"Import...");
+    addAndMakeVisible (importButton = new TextButton ("importButton"));
+    importButton->setTooltip ("Import a preset from an .fxp file");
+    importButton->setButtonText ("Import...");
     importButton->addListener (this);
 
-    addAndMakeVisible (exportButton = new TextButton (L"exportButton"));
-    exportButton->setTooltip (L"Export the selected preset to an .fxp file");
-    exportButton->setButtonText (L"Export...");
+    addAndMakeVisible (exportButton = new TextButton ("exportButton"));
+    exportButton->setTooltip ("Export the selected preset to an .fxp file");
+    exportButton->setButtonText ("Export...");
     exportButton->addListener (this);
 
-    addAndMakeVisible (renameButton = new TextButton (L"renameButton"));
-    renameButton->setTooltip (L"Rename the selected preset");
-    renameButton->setButtonText (L"Rename");
+    addAndMakeVisible (renameButton = new TextButton ("renameButton"));
+    renameButton->setTooltip ("Rename the selected preset");
+    renameButton->setButtonText ("Rename");
     renameButton->addListener (this);
 
 
@@ -142,22 +142,22 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 
 		if(selected)
 		{
-			AlertWindow win(L"Copy Preset",
-							L"Enter a name for the duplicate preset:",
+			AlertWindow win("Copy Preset",
+							"Enter a name for the duplicate preset:",
 							AlertWindow::NoIcon);
 
-			win.addTextEditor(L"presetName", L"");
+			win.addTextEditor("presetName", "");
 
-			win.addButton(L"Cancel", 0);
-			win.addButton(L"Ok", 1, KeyPress(KeyPress::returnKey));
+			win.addButton("Cancel", 0);
+			win.addButton("Ok", 1, KeyPress(KeyPress::returnKey));
 
 			if(win.runModalLoop())
 			{
 				String tempstr;
 				File srcPreset = selected->getFile();
 
-				tempstr = win.getTextEditorContents(L"presetName");
-				tempstr << L".fxp";
+				tempstr = win.getTextEditorContents("presetName");
+				tempstr << ".fxp";
 
 				srcPreset.copyFileTo(srcPreset.getParentDirectory().getChildFile(tempstr));
 
@@ -184,8 +184,8 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 			if(!selected->getFile().deleteFile())
 			{
 				AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
-												 L"Preset Deletion Error",
-												 L"Could not delete preset from the filesystem. Check your permissions.");
+												 "Preset Deletion Error",
+												 "Could not delete preset from the filesystem. Check your permissions.");
 			}
 			else
 			{
@@ -211,24 +211,24 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 			plugins.add(knownPluginList->getType(i)->name);
 
 		//First get the user to select which plugin the preset is for.
-		AlertWindow whichPlugin(L"Import Preset",
-								L"Select which plugin this preset is intended for:",
+		AlertWindow whichPlugin("Import Preset",
+								"Select which plugin this preset is intended for:",
 								AlertWindow::NoIcon);
 
-		whichPlugin.addComboBox(L"plugins", plugins);
-		whichPlugin.addButton(L"Cancel", 0);
-		whichPlugin.addButton(L"Ok", 1, KeyPress(KeyPress::returnKey));
+		whichPlugin.addComboBox("plugins", plugins);
+		whichPlugin.addButton("Cancel", 0);
+		whichPlugin.addButton("Ok", 1, KeyPress(KeyPress::returnKey));
 
 		if(whichPlugin.runModalLoop())
 		{
-			FileChooser phil(L"Import preset",
-							 File::nonexistent,
-							 L"*.fxp");
+			FileChooser phil("Import preset",
+							 File(),
+							 "*.fxp");
 
 			if(phil.browseForFileToOpen())
 			{
-				String pluginName = whichPlugin.getComboBoxComponent(L"plugins")->getText();
-				File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile(L"Pedalboard2").getChildFile(L"presets");
+				String pluginName = whichPlugin.getComboBoxComponent("plugins")->getText();
+				File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets");
 				File pluginDir = presetDir.getChildFile(pluginName);
 				File srcPreset = phil.getResult();
 
@@ -237,8 +237,8 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 					if(!pluginDir.createDirectory())
 					{
 						AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
-														 L"Preset Import Error",
-														 L"Could not create a directory for this plugin. Check your permissions.");
+														 "Preset Import Error",
+														 "Could not create a directory for this plugin. Check your permissions.");
 					}
 
 					phil.getResult().copyFileTo(pluginDir.getChildFile(srcPreset.getFileName()));
@@ -259,12 +259,12 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 
 		if(selected)
 		{
-			FileChooser phil(L"Export preset",
-							 File::nonexistent,
-							 L"*.fxp");
+			FileChooser phil("Export preset",
+							 File(),
+							 "*.fxp");
 
 			if(phil.browseForFileToSave(true))
-				selected->getFile().copyFileTo(phil.getResult().withFileExtension(L"fxp"));
+				selected->getFile().copyFileTo(phil.getResult().withFileExtension("fxp"));
 		}
 
         //[/UserButtonCode_exportButton]
@@ -277,20 +277,20 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 
 		if(selected)
 		{
-			AlertWindow win(L"Rename Preset",
-							L"Enter a new name for the selected preset:",
+			AlertWindow win("Rename Preset",
+							"Enter a new name for the selected preset:",
 							AlertWindow::NoIcon);
 
-			win.addTextEditor(L"presetName", L"");
+			win.addTextEditor("presetName", "");
 
-			win.addButton(L"Cancel", 0);
-			win.addButton(L"Ok", 1, KeyPress(KeyPress::returnKey));
+			win.addButton("Cancel", 0);
+			win.addButton("Ok", 1, KeyPress(KeyPress::returnKey));
 
 			if(win.runModalLoop())
 			{
 				File newFile = selected->getFile().getParentDirectory();
 
-				newFile = newFile.getChildFile(win.getTextEditorContents(L"presetName")).withFileExtension(L"fxp");
+				newFile = newFile.getChildFile(win.getTextEditorContents("presetName")).withFileExtension("fxp");
 
 				selected->getFile().moveFileTo(newFile);
 

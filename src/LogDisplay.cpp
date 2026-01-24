@@ -40,36 +40,36 @@ LogDisplay::LogDisplay ()
       pedalboardButton (0),
       filterLabel (0)
 {
-    addAndMakeVisible (logEditor = new TextEditor (L"logEditor"));
+    addAndMakeVisible (logEditor = new TextEditor ("logEditor"));
     logEditor->setMultiLine (true);
     logEditor->setReturnKeyStartsNewLine (true);
     logEditor->setReadOnly (true);
     logEditor->setScrollbarsShown (true);
     logEditor->setCaretVisible (false);
     logEditor->setPopupMenuEnabled (true);
-    logEditor->setText (String::empty);
+    logEditor->setText (String());
 
-    addAndMakeVisible (startStopButton = new TextButton (L"startStopButton"));
-    startStopButton->setButtonText (L"Start Logging");
+    addAndMakeVisible (startStopButton = new TextButton ("startStopButton"));
+    startStopButton->setButtonText ("Start Logging");
     startStopButton->addListener (this);
 
-    addAndMakeVisible (midiButton = new ToggleButton (L"midiButton"));
-    midiButton->setButtonText (L"MIDI");
+    addAndMakeVisible (midiButton = new ToggleButton ("midiButton"));
+    midiButton->setButtonText ("MIDI");
     midiButton->addListener (this);
     midiButton->setToggleState (true, false);
 
-    addAndMakeVisible (oscButton = new ToggleButton (L"oscButton"));
-    oscButton->setButtonText (L"OSC");
+    addAndMakeVisible (oscButton = new ToggleButton ("oscButton"));
+    oscButton->setButtonText ("OSC");
     oscButton->addListener (this);
     oscButton->setToggleState (true, false);
 
-    addAndMakeVisible (pedalboardButton = new ToggleButton (L"pedalboardButton"));
-    pedalboardButton->setButtonText (L"Pedalboard");
+    addAndMakeVisible (pedalboardButton = new ToggleButton ("pedalboardButton"));
+    pedalboardButton->setButtonText ("Pedalboard");
     pedalboardButton->addListener (this);
     pedalboardButton->setToggleState (true, false);
 
-    addAndMakeVisible (filterLabel = new Label (L"filterLabel",
-                                                L"Filter:"));
+    addAndMakeVisible (filterLabel = new Label ("filterLabel",
+                                                "Filter:"));
     filterLabel->setFont (Font (15.0000f, Font::plain));
     filterLabel->setJustificationType (Justification::centredLeft);
     filterLabel->setEditable (false, false, false);
@@ -274,7 +274,7 @@ BEGIN_JUCER_METADATA
   <TOGGLEBUTTON name="pedalboardButton" id="8a2bcea281961e69" memberName="pedalboardButton"
                 virtualName="" explicitFocusOrder="0" pos="320 28R 96 24" buttonText="Pedalboard"
                 connectedEdges="0" needsCallback="1" radioGroupId="0" state="1"/>
-  <LABEL name="filterLabel" id="c15fff90957c7ab0" memberName="filterLabel"
+  <LABEL name="filterLabe" id="c15fff90957c7ab0" memberName="filterLabe"
          virtualName="" explicitFocusOrder="0" pos="164 28R 48 24" edTextCol="ff000000"
          edBkgCol="0" labelText="Filter:" editableSingleClick="0" editableDoubleClick="0"
          focusDiscardsChanges="0" fontname="Default font" fontsize="15"

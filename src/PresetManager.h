@@ -20,7 +20,7 @@
 #ifndef PRESETMANAGER_H_
 #define PRESETMANAGER_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	A class used to keep track of user-saved plugin presets.
 class PresetManager

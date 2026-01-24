@@ -20,7 +20,7 @@
 #ifndef NIALLSAUDIOPLUGINFORMAT_H_
 #define NIALLSAUDIOPLUGINFORMAT_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class NiallsAudioPlugin;
 class NAPModuleHandle;
@@ -121,7 +121,7 @@ class NAPInstance : public AudioPluginInstance
 	///	Does nothing.
 	void setCurrentProgram(int index) {};
 	///	Returns nothing.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	Does nothing.
 	void changeProgramName(int index, const String &newName) {};
 

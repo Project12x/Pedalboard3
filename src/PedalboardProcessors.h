@@ -20,7 +20,7 @@
 #ifndef PEDALBOARDPROCESSORS_H_
 #define PEDALBOARDPROCESSORS_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 #include <stdint.h>
 
@@ -70,15 +70,15 @@ class LevelProcessor : public PedalboardProcessor
 	void processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiMessages);
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Level";};
+	const String getName() const {return "Level";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -98,7 +98,7 @@ class LevelProcessor : public PedalboardProcessor
 	///	We have no parameters.
 	int getNumParameters() {return 1;};
 	///	We have no parameters.
-	const String getParameterName(int parameterIndex) {return L"Level";};
+	const String getParameterName(int parameterIndex) {return "Level";};
 	///	We have no parameters.
 	float getParameter(int parameterIndex) {return level;};
 	///	We have no parameters.
@@ -112,7 +112,7 @@ class LevelProcessor : public PedalboardProcessor
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -186,15 +186,15 @@ class FilePlayerProcessor : public PedalboardProcessor,
 	};
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"File Player";};
+	const String getName() const {return "File Player";};
 	///	Passed to transportSource.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock);
 	///	Passed to transportSource.
 	void releaseResources();
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -228,7 +228,7 @@ class FilePlayerProcessor : public PedalboardProcessor,
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -282,15 +282,15 @@ class OutputToggleProcessor : public PedalboardProcessor
 	void processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiMessages);
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Output Toggle";};
+	const String getName() const {return "Output Toggle";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -310,7 +310,7 @@ class OutputToggleProcessor : public PedalboardProcessor
 	///	We have no parameters.
 	int getNumParameters() {return 1;};
 	///	We have no parameters.
-	const String getParameterName(int parameterIndex) {return L"Output";};
+	const String getParameterName(int parameterIndex) {return "Output";};
 	///	We have no parameters.
 	float getParameter(int parameterIndex) {return toggle ? 1.0f : 0.0f;};
 	///	We have no parameters.
@@ -324,7 +324,7 @@ class OutputToggleProcessor : public PedalboardProcessor
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -373,15 +373,15 @@ class VuMeterProcessor : public PedalboardProcessor
 	void processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiMessages);
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"VU Meter";};
+	const String getName() const {return "VU Meter";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -401,11 +401,11 @@ class VuMeterProcessor : public PedalboardProcessor
 	///	We have no parameters.
 	int getNumParameters() {return 0;};
 	///	We have no parameters.
-	const String getParameterName(int parameterIndex) {return L"";};
+	const String getParameterName(int parameterIndex) {return "";};
 	///	We have no parameters.
 	float getParameter(int parameterIndex) {return 0.0f;};
 	///	We have no parameters.
-	const String getParameterText(int parameterIndex) {return L"";};
+	const String getParameterText(int parameterIndex) {return "";};
 	///	We have no parameters.
 	void setParameter(int parameterIndex, float newValue) {};
 	///	We have no programs.
@@ -415,7 +415,7 @@ class VuMeterProcessor : public PedalboardProcessor
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -482,15 +482,15 @@ class RecorderProcessor : public PedalboardProcessor,
 	};
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Audio Recorder";};
+	const String getName() const {return "Audio Recorder";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock);
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -524,7 +524,7 @@ class RecorderProcessor : public PedalboardProcessor,
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -608,15 +608,15 @@ class MetronomeProcessor : public PedalboardProcessor,
 	};
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Metronome";};
+	const String getName() const {return "Metronome";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -650,7 +650,7 @@ class MetronomeProcessor : public PedalboardProcessor,
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.
@@ -802,13 +802,13 @@ class LooperProcessor : public PedalboardProcessor,
 	};
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Looper";};
+	const String getName() const {return "Looper";};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -842,7 +842,7 @@ class LooperProcessor : public PedalboardProcessor,
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	Loads the position of the slider and the size and position of the editor.

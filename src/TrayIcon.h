@@ -22,7 +22,7 @@
 
 #ifndef __APPLE__
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	System tray icon.
 class TrayIcon : public SystemTrayIconComponent

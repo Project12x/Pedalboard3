@@ -20,7 +20,7 @@
 #ifndef MAINTRANSPORT_H_
 #define MAINTRANSPORT_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	Singleton representing the app's main playback transport.
 /*!

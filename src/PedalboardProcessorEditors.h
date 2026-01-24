@@ -21,7 +21,7 @@
 #ifndef PEDALBOARDPROCESSOREDITORS_H_
 #define PEDALBOARDPROCESSOREDITORS_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 class LevelProcessor;
 class FilePlayerProcessor;
@@ -133,7 +133,7 @@ class FilePlayerEditor : public AudioProcessorEditor,
 ///	The PluginComponent control for OutputToggleProcessor.
 class OutputToggleControl : public Component,
 							public Timer,
-							public ButtonListener
+							public Button::Listener
 {
   public:
 	///	Constructor.
@@ -160,7 +160,7 @@ class OutputToggleControl : public Component,
 ///	Proper big editor for the OutputToggleProcessor.
 class OutputToggleEditor : public AudioProcessorEditor,
 						   public Timer,
-						   public ButtonListener
+						   public Button::Listener
 {
   public:
 	///	Constructor.

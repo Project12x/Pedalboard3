@@ -34,76 +34,101 @@
 
 #include "FilterGraph.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 using juce::uint32;
-
 
 //==============================================================================
 /**
     Manages the internal plugin types.
 */
-class InternalPluginFormat   : public AudioPluginFormat
-{
+class InternalPluginFormat : public AudioPluginFormat {
 public:
-    //==============================================================================
-    InternalPluginFormat();
-    ~InternalPluginFormat() {}
+  //==============================================================================
+  InternalPluginFormat();
+  ~InternalPluginFormat() {}
 
-    //==============================================================================
-    enum InternalFilterType
-    {
-        audioInputFilter = 0,
-        audioOutputFilter,
-        midiInputFilter,
+  //==============================================================================
+  enum InternalFilterType {
+    audioInputFilter = 0,
+    audioOutputFilter,
+    midiInputFilter,
 
-		midiInterceptorFilter,
-		oscInputFilter,
-		levelProcFilter,
-		filePlayerProcFilter,
-		outputToggleProcFilter,
-		vuMeterProcFilter,
-		recorderProcFilter,
-		metronomeProcFilter,
-		looperProcFilter,
+    midiInterceptorFilter,
+    oscInputFilter,
+    levelProcFilter,
+    filePlayerProcFilter,
+    outputToggleProcFilter,
+    vuMeterProcFilter,
+    recorderProcFilter,
+    metronomeProcFilter,
+    looperProcFilter,
 
-        endOfFilterTypes
-    };
+    endOfFilterTypes
+  };
 
-    const PluginDescription* getDescriptionFor (const InternalFilterType type);
+  const PluginDescription *getDescriptionFor(const InternalFilterType type);
 
-    void getAllTypes (OwnedArray <PluginDescription>& results);
+  void getAllTypes(OwnedArray<PluginDescription> &results);
 
-	bool canScanForPlugins() const {return false;};
+  bool canScanForPlugins() const { return false; };
 
-    //==============================================================================
-    String getName() const                                { return "Internal"; }
-    bool fileMightContainThisPluginType (const String&)           { return false; }
-    FileSearchPath getDefaultLocationsToSearch()          { return FileSearchPath(); }
-    void findAllTypesForFile (OwnedArray <PluginDescription>&, const String&)     {}
-    AudioPluginInstance* createInstanceFromDescription (const PluginDescription& desc);
-    String getNameOfPluginFromIdentifier(const String& fileOrIdentifier) {return "Internal";}
-    bool doesPluginStillExist (const PluginDescription& desc) {return true;}
-    StringArray searchPathsForPlugins (const FileSearchPath& directoriesToSearch,
-                                                     bool recursive) {StringArray retval; return retval;}
+  //==============================================================================
+  String getName() const { return "Interna"; }
+  bool fileMightContainThisPluginType(const String &) { return false; }
+  FileSearchPath getDefaultLocationsToSearch() { return FileSearchPath(); }
+  void findAllTypesForFile(OwnedArray<PluginDescription> &, const String &) {}
+  AudioPluginInstance *
+  createInstanceFromDescription(const PluginDescription &desc);
 
-    //==============================================================================
-    juce_UseDebuggingNewOperator
+  // JUCE 8: isTrivialToScan is now a required pure virtual
+  bool isTrivialToScan() const override { return true; }
+
+  String
+  getNameOfPluginFromIdentifier(const String &fileOrIdentifier) override {
+    return "Internal";
+  }
+  bool doesPluginStillExist(const PluginDescription &desc) override {
+    return true;
+  }
+  // JUCE 8: pluginNeedsRescanning is now pure virtual
+  bool pluginNeedsRescanning(const PluginDescription &) override {
+    return false;
+  }
+  StringArray searchPathsForPlugins(const FileSearchPath &directoriesToSearch,
+                                    bool recursive, bool) override {
+    StringArray retval;
+    return retval;
+  }
+  bool requiresUnblockedMessageThreadDuringCreation(
+      const PluginDescription &) const override {
+    return false;
+  }
+
+protected:
+  // JUCE 8: Override the protected createPluginInstance (not the public
+  // createPluginInstanceAsync)
+  void createPluginInstance(const PluginDescription &desc,
+                            double initialSampleRate, int initialBufferSize,
+                            PluginCreationCallback callback) override {
+    auto *instance = createInstanceFromDescription(desc);
+    callback(std::unique_ptr<AudioPluginInstance>(instance),
+             instance ? String() : "Could not create plugin");
+  }
 
 private:
-    PluginDescription audioInDesc;
-    PluginDescription audioOutDesc;
-    PluginDescription midiInDesc;
+  PluginDescription audioInDesc;
+  PluginDescription audioOutDesc;
+  PluginDescription midiInDesc;
 
-	PluginDescription midiInterceptorDesc;
-	PluginDescription oscInputDesc;
-	PluginDescription levelProcDesc;
-	PluginDescription filePlayerProcDesc;
-	PluginDescription outputToggleProcDesc;
-	PluginDescription vuMeterProcDesc;
-	PluginDescription recorderProcDesc;
-	PluginDescription metronomeProcDesc;
-	PluginDescription looperProcDesc;
+  PluginDescription midiInterceptorDesc;
+  PluginDescription oscInputDesc;
+  PluginDescription levelProcDesc;
+  PluginDescription filePlayerProcDesc;
+  PluginDescription outputToggleProcDesc;
+  PluginDescription vuMeterProcDesc;
+  PluginDescription recorderProcDesc;
+  PluginDescription metronomeProcDesc;
+  PluginDescription looperProcDesc;
 };
-
 
 #endif

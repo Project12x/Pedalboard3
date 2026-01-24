@@ -22,112 +22,104 @@
 
 //------------------------------------------------------------------------------
 Drawable *JuceHelperStuff::loadSVGFromMemory(const void *dataToInitialiseFrom,
-											 size_t sizeInBytes)
-{
-	Drawable *retval = 0;
+                                             size_t sizeInBytes) {
+  MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
+  XmlDocument doc(memBlock.toString());
+  auto svgData = doc.getDocumentElement();
 
-	MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-	XmlDocument doc(memBlock.toString());
-	ScopedPointer<XmlElement> svgData(doc.getDocumentElement());
+  if (svgData != nullptr)
+    return Drawable::createFromSVG(*svgData).release();
 
-	retval = Drawable::createFromSVG(*svgData);
-
-	return retval;
+  return nullptr;
 }
 
 //------------------------------------------------------------------------------
-class TempDialogWindow : public DialogWindow
-{
+class TempDialogWindow : public DialogWindow {
 public:
-    TempDialogWindow (const String& title,
-                      Component* contentComponent_,
-                      Component* componentToCentreAround,
-                      const Colour& colour,
-                      const bool escapeKeyTriggersCloseButton_,
-                      const bool shouldBeResizable,
-                      const bool useBottomRightCornerResizer,
-					  const bool deleteContent = false)
-        : DialogWindow (title, colour, escapeKeyTriggersCloseButton_, true),
-		deleteDialog(deleteContent)
-    {
-        if (! JUCEApplication::isStandaloneApp())
-            setAlwaysOnTop (true); // for a plugin, make it always-on-top because the host windows are often top-level
+  TempDialogWindow(const String &title, Component *contentComponent_,
+                   Component *componentToCentreAround, const Colour &colour,
+                   const bool escapeKeyTriggersCloseButton_,
+                   const bool shouldBeResizable,
+                   const bool useBottomRightCornerResizer,
+                   const bool deleteContent = false)
+      : DialogWindow(title, colour, escapeKeyTriggersCloseButton_, true),
+        deleteDialog(deleteContent) {
+    if (!JUCEApplication::isStandaloneApp())
+      setAlwaysOnTop(true); // for a plugin, make it always-on-top because the
+                            // host windows are often top-level
 
-		if(deleteContent)
-			setContentOwned (contentComponent_, true);
-		else
-			setContentNonOwned (contentComponent_, true);
-        centreAroundComponent (componentToCentreAround, getWidth(), getHeight());
-        setResizable (shouldBeResizable, useBottomRightCornerResizer);
-    }
+    if (deleteContent)
+      setContentOwned(contentComponent_, true);
+    else
+      setContentNonOwned(contentComponent_, true);
+    centreAroundComponent(componentToCentreAround, getWidth(), getHeight());
+    setResizable(shouldBeResizable, useBottomRightCornerResizer);
+  }
 
-    void closeButtonPressed()
-    {
-        setVisible (false);
+  void closeButtonPressed() {
+    setVisible(false);
 
-		if(deleteDialog)
-			delete this;
-    }
+    if (deleteDialog)
+      delete this;
+  }
 
 private:
-    JUCE_DECLARE_NON_COPYABLE (TempDialogWindow);
+  JUCE_DECLARE_NON_COPYABLE(TempDialogWindow);
 
-	///	To make sure it's only deleted when it should be.
-	bool deleteDialog;
+  ///	To make sure it's only deleted when it should be.
+  bool deleteDialog;
 };
 
 //------------------------------------------------------------------------------
-int JuceHelperStuff::showModalDialog(const String& dialogTitle,
-									 Component *contentComponent,
-									 Component *componentToCentreAround,
-									 const Colour& backgroundColour,
-									 bool escapeKeyTriggersCloseButton,
-									 bool shouldBeResizable,
-									 bool useBottomRightCornerResizer)
-{
-	TempDialogWindow dw (dialogTitle, contentComponent, componentToCentreAround,
-                         backgroundColour, escapeKeyTriggersCloseButton,
-                         shouldBeResizable, useBottomRightCornerResizer);
-	dw.setUsingNativeTitleBar(true);
-	dw.getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png,
-													Images::icon512_pngSize));
+int JuceHelperStuff::showModalDialog(const String &dialogTitle,
+                                     Component *contentComponent,
+                                     Component *componentToCentreAround,
+                                     const Colour &backgroundColour,
+                                     bool escapeKeyTriggersCloseButton,
+                                     bool shouldBeResizable,
+                                     bool useBottomRightCornerResizer) {
+  TempDialogWindow dw(dialogTitle, contentComponent, componentToCentreAround,
+                      backgroundColour, escapeKeyTriggersCloseButton,
+                      shouldBeResizable, useBottomRightCornerResizer);
+  dw.setUsingNativeTitleBar(true);
+  dw.getPeer()->setIcon(
+      ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 
-    return dw.runModalLoop();
+  return dw.runModalLoop();
 }
 
 //------------------------------------------------------------------------------
-void JuceHelperStuff::showNonModalDialog(const String& dialogTitle,
-										 Component *contentComponent,
-										 Component *componentToCentreAround,
-										 const Colour& backgroundColour,
-										 bool escapeKeyTriggersCloseButton,
-										 bool shouldBeResizable,
-										 bool useBottomRightCornerResizer,
-										 bool stayOnTop)
-{
-	TempDialogWindow* dw = new TempDialogWindow (dialogTitle, contentComponent, componentToCentreAround,
-                                                 backgroundColour, escapeKeyTriggersCloseButton,
-                                                 shouldBeResizable, useBottomRightCornerResizer, true);
-	dw->setUsingNativeTitleBar(true);
+void JuceHelperStuff::showNonModalDialog(
+    const String &dialogTitle, Component *contentComponent,
+    Component *componentToCentreAround, const Colour &backgroundColour,
+    bool escapeKeyTriggersCloseButton, bool shouldBeResizable,
+    bool useBottomRightCornerResizer, bool stayOnTop) {
+  TempDialogWindow *dw = new TempDialogWindow(
+      dialogTitle, contentComponent, componentToCentreAround, backgroundColour,
+      escapeKeyTriggersCloseButton, shouldBeResizable,
+      useBottomRightCornerResizer, true);
+  dw->setUsingNativeTitleBar(true);
 
-	dw->addToDesktop();
-	dw->setVisible(true);
-	dw->setAlwaysOnTop(stayOnTop);
-	dw->getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png,
-													 Images::icon512_pngSize));
+  dw->addToDesktop();
+  dw->setVisible(true);
+  dw->setAlwaysOnTop(stayOnTop);
+  dw->getPeer()->setIcon(
+      ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 }
 
 //------------------------------------------------------------------------------
-File JuceHelperStuff::getAppDataFolder()
-{
+File JuceHelperStuff::getAppDataFolder() {
 #ifdef __APPLE__
-	File retval = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Application Support").getChildFile("Pedalboard2");
+  File retval = File::getSpecialLocation(File::userApplicationDataDirectory)
+                    .getChildFile("Application Support")
+                    .getChildFile("Pedalboard2");
 
-	if(!retval.exists())
-		retval.createDirectory();
+  if (!retval.exists())
+    retval.createDirectory();
 
-	return retval;
+  return retval;
 #else
-	return File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2");
+  return File::getSpecialLocation(File::userApplicationDataDirectory)
+      .getChildFile("Pedalboard2");
 #endif
 }

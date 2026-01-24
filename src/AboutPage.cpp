@@ -44,8 +44,8 @@ AboutPage::AboutPage (const String& ip)
       juceVersionLabel (0),
       ipAddressLabel (0)
 {
-    addAndMakeVisible (titleLabel = new Label (L"titleLabel",
-                                               L"Pedalboard 2"));
+    addAndMakeVisible (titleLabel = new Label ("titleLabel",
+                                               "Pedalboard 2"));
     titleLabel->setFont (Font (32.0000f, Font::bold));
     titleLabel->setJustificationType (Justification::centredLeft);
     titleLabel->setEditable (false, false, false);
@@ -53,8 +53,8 @@ AboutPage::AboutPage (const String& ip)
     titleLabel->setColour (TextEditor::textColourId, Colours::black);
     titleLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (descriptionLabel = new Label (L"descriptionLabel",
-                                                     L"A simple plugin host intended for live use, with plugin\nparameters easily mapped to MIDI or Open Sound Control inputs."));
+    addAndMakeVisible (descriptionLabel = new Label ("descriptionLabel",
+                                                     "A simple plugin host intended for live use, with plugin\nparameters easily mapped to MIDI or Open Sound Control inputs."));
     descriptionLabel->setFont (Font (15.0000f, Font::plain));
     descriptionLabel->setJustificationType (Justification::topLeft);
     descriptionLabel->setEditable (false, false, false);
@@ -62,8 +62,8 @@ AboutPage::AboutPage (const String& ip)
     descriptionLabel->setColour (TextEditor::textColourId, Colours::black);
     descriptionLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (creditsLabel = new Label (L"creditsLabel",
-                                                 L"Written using the JUCE library, with sections taken from\nthe \'audio plugin host\' example code."));
+    addAndMakeVisible (creditsLabel = new Label ("creditsLabel",
+                                                 "Written using the JUCE library, with sections taken from\nthe \'audio plugin host\' example code."));
     creditsLabel->setFont (Font (15.0000f, Font::plain));
     creditsLabel->setJustificationType (Justification::topLeft);
     creditsLabel->setEditable (false, false, false);
@@ -71,8 +71,8 @@ AboutPage::AboutPage (const String& ip)
     creditsLabel->setColour (TextEditor::textColourId, Colours::black);
     creditsLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (authorLabel = new Label (L"authorLabel",
-                                                L"Author: Niall Moody\nLicense: GPL v3"));
+    addAndMakeVisible (authorLabel = new Label ("authorLabel",
+                                                "Author: Niall Moody\nLicense: GPL v3"));
     authorLabel->setFont (Font (15.0000f, Font::plain));
     authorLabel->setJustificationType (Justification::topLeft);
     authorLabel->setEditable (false, false, false);
@@ -80,18 +80,18 @@ AboutPage::AboutPage (const String& ip)
     authorLabel->setColour (TextEditor::textColourId, Colours::black);
     authorLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (niallmoodyLink = new HyperlinkButton (L"niallmoody.com",
-                                                             URL (L"http://www.niallmoody.com")));
-    niallmoodyLink->setTooltip (L"http://www.niallmoody.com");
-    niallmoodyLink->setButtonText (L"niallmoody.com");
+    addAndMakeVisible (niallmoodyLink = new HyperlinkButton ("niallmoody.com",
+                                                             URL ("http://www.niallmoody.com")));
+    niallmoodyLink->setTooltip ("http://www.niallmoody.com");
+    niallmoodyLink->setButtonText ("niallmoody.com");
 
-    addAndMakeVisible (juceLink = new HyperlinkButton (L"rawmaterialsoftware.com/juce",
-                                                       URL (L"http://www.rawmaterialsoftware.com/juce")));
-    juceLink->setTooltip (L"http://www.rawmaterialsoftware.com/juce");
-    juceLink->setButtonText (L"rawmaterialsoftware.com/juce");
+    addAndMakeVisible (juceLink = new HyperlinkButton ("rawmaterialsoftware.com/juce",
+                                                       URL ("http://www.rawmaterialsoftware.com/juce")));
+    juceLink->setTooltip ("http://www.rawmaterialsoftware.com/juce");
+    juceLink->setButtonText ("rawmaterialsoftware.com/juce");
 
-    addAndMakeVisible (versionLabel = new Label (L"versionLabel",
-                                                 L"Version: 2.00"));
+    addAndMakeVisible (versionLabel = new Label ("versionLabel",
+                                                 "Version: 2.00"));
     versionLabel->setFont (Font (12.0000f, Font::plain));
     versionLabel->setJustificationType (Justification::centredRight);
     versionLabel->setEditable (false, false, false);
@@ -99,8 +99,8 @@ AboutPage::AboutPage (const String& ip)
     versionLabel->setColour (TextEditor::textColourId, Colours::black);
     versionLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (juceVersionLabel = new Label (L"juceVersionLabel",
-                                                     L"JUCE Version: 1.5.36"));
+    addAndMakeVisible (juceVersionLabel = new Label ("juceVersionLabel",
+                                                     "JUCE Version: 1.5.36"));
     juceVersionLabel->setFont (Font (12.0000f, Font::plain));
     juceVersionLabel->setJustificationType (Justification::centredRight);
     juceVersionLabel->setEditable (false, false, false);
@@ -108,8 +108,8 @@ AboutPage::AboutPage (const String& ip)
     juceVersionLabel->setColour (TextEditor::textColourId, Colours::black);
     juceVersionLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
 
-    addAndMakeVisible (ipAddressLabel = new Label (L"ipAddressLabel",
-                                                   L"Current IP Address: 192.168.1.68"));
+    addAndMakeVisible (ipAddressLabel = new Label ("ipAddressLabel",
+                                                   "Current IP Address: 192.168.1.68"));
     ipAddressLabel->setFont (Font (15.0000f, Font::plain));
     ipAddressLabel->setJustificationType (Justification::centredLeft);
     ipAddressLabel->setEditable (false, false, false);
@@ -121,17 +121,17 @@ AboutPage::AboutPage (const String& ip)
     //[UserPreSize]
 
 	String tempstr;
-	Colour textCol = ColourScheme::getInstance().colours[L"Text Colour"].withAlpha(0.5f);
+	Colour textCol = ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.5f);
 
-	tempstr << L"Version: " << JUCEApplication::getInstance()->getApplicationVersion();
+	tempstr << "Version: " << JUCEApplication::getInstance()->getApplicationVersion();
 	versionLabel->setText(tempstr, dontSendNotification);
 
-	tempstr = L"";
+	tempstr = "";
 	tempstr << SystemStats::getJUCEVersion();
 	juceVersionLabel->setText(tempstr, dontSendNotification);
 
-	tempstr = L"";
-	tempstr << L"Current IP Address: " << ipAddress;
+	tempstr = "";
+	tempstr << "Current IP Address: " << ipAddress;
 	ipAddressLabel->setText(tempstr, dontSendNotification);
 
 	titleLabel->setColour(Label::textColourId, textCol);
@@ -179,7 +179,7 @@ void AboutPage::paint (Graphics& g)
 
     //[UserPaint] Add your own custom painting code here..
 
-	g.fillAll(ColourScheme::getInstance().colours[L"Window Background"]);
+	g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
     //[/UserPaint]
 }
@@ -219,22 +219,22 @@ BEGIN_JUCER_METADATA
                  snapShown="1" overlayOpacity="0.330000013" fixedSize="0" initialWidth="400"
                  initialHeight="280">
   <BACKGROUND backgroundColour="ffeeece1"/>
-  <LABEL name="titleLabel" id="dd6542ae3fcb9b5c" memberName="titleLabel"
+  <LABEL name="titleLabe" id="dd6542ae3fcb9b5c" memberName="titleLabe"
          virtualName="" explicitFocusOrder="0" pos="8 8 208 32" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="Pedalboard 2" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
          fontsize="32" bold="1" italic="0" justification="33"/>
-  <LABEL name="descriptionLabel" id="de5989d753bc0220" memberName="descriptionLabel"
+  <LABEL name="descriptionLabe" id="de5989d753bc0220" memberName="descriptionLabe"
          virtualName="" explicitFocusOrder="0" pos="16 48 16M 56" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="A simple plugin host intended for live use, with plugin&#10;parameters easily mapped to MIDI or Open Sound Control inputs."
          editableSingleClick="0" editableDoubleClick="0" focusDiscardsChanges="0"
          fontname="Default font" fontsize="15" bold="0" italic="0" justification="9"/>
-  <LABEL name="creditsLabel" id="b05a22c6f03e6de8" memberName="creditsLabel"
+  <LABEL name="creditsLabe" id="b05a22c6f03e6de8" memberName="creditsLabe"
          virtualName="" explicitFocusOrder="0" pos="16 104 16M 56" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="Written using the JUCE library, with sections taken from&#10;the 'audio plugin host' example code."
          editableSingleClick="0" editableDoubleClick="0" focusDiscardsChanges="0"
          fontname="Default font" fontsize="15" bold="0" italic="0" justification="9"/>
-  <LABEL name="authorLabel" id="2e1803d1a35e2f3" memberName="authorLabel"
+  <LABEL name="authorLabe" id="2e1803d1a35e2f3" memberName="authorLabe"
          virtualName="" explicitFocusOrder="0" pos="16 152 16M 40" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="Author: Niall Moody&#10;License: GPL v3"
          editableSingleClick="0" editableDoubleClick="0" focusDiscardsChanges="0"
@@ -247,17 +247,17 @@ BEGIN_JUCER_METADATA
                    explicitFocusOrder="0" pos="50%c 248 252 24" tooltip="http://www.rawmaterialsoftware.com/juce"
                    buttonText="rawmaterialsoftware.com/juce" connectedEdges="0"
                    needsCallback="0" radioGroupId="0" url="http://www.rawmaterialsoftware.com/juce"/>
-  <LABEL name="versionLabel" id="7874d6b2fe271548" memberName="versionLabel"
+  <LABEL name="versionLabe" id="7874d6b2fe271548" memberName="versionLabe"
          virtualName="" explicitFocusOrder="0" pos="154R 0 150 24" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="Version: 2.00" editableSingleClick="0"
          editableDoubleClick="0" focusDiscardsChanges="0" fontname="Default font"
          fontsize="12" bold="0" italic="0" justification="34"/>
-  <LABEL name="juceVersionLabel" id="4488baef6ec2c53b" memberName="juceVersionLabel"
+  <LABEL name="juceVersionLabe" id="4488baef6ec2c53b" memberName="juceVersionLabe"
          virtualName="" explicitFocusOrder="0" pos="154R 16 150 24" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="JUCE Version: 1.5.36"
          editableSingleClick="0" editableDoubleClick="0" focusDiscardsChanges="0"
          fontname="Default font" fontsize="12" bold="0" italic="0" justification="34"/>
-  <LABEL name="ipAddressLabel" id="481375ac125b41f8" memberName="ipAddressLabel"
+  <LABEL name="ipAddressLabe" id="481375ac125b41f8" memberName="ipAddressLabe"
          virtualName="" explicitFocusOrder="0" pos="16 192 16M 24" textCol="80000000"
          edTextCol="ff000000" edBkgCol="0" labelText="Current IP Address: 192.168.1.68"
          editableSingleClick="0" editableDoubleClick="0" focusDiscardsChanges="0"

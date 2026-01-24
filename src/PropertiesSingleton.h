@@ -21,7 +21,7 @@
 #ifndef PROPERTIESSINGLETON_H_
 #define PROPERTIESSINGLETON_H_
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 ///	Because Jules changed ApplicationProperties to no longer be a singleton, and that causes big problems.
 class PropertiesSingleton

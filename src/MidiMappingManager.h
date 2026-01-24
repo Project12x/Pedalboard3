@@ -247,15 +247,15 @@ class MidiInterceptor : public AudioPluginInstance
 	void processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiMessages);
 
 	///	Returns the name of the processor.
-	const String getName() const {return L"Midi Interceptor";};
+	const String getName() const {return "Midi Interceptor";};
 	///	Ignored.
 	void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
 	///	Ignored.
 	void releaseResources() {};
 	///	We have no audio inputs.
-	const String getInputChannelName(int channelIndex) const {return L"";};
+	const String getInputChannelName(int channelIndex) const {return "";};
 	///	We have no audio outputs.
-	const String getOutputChannelName(int channelIndex) const {return L"";};
+	const String getOutputChannelName(int channelIndex) const {return "";};
 	///	We have no audio inputs.
 	bool isInputChannelStereoPair(int index) const {return false;};
 	///	We have no audio outputs.
@@ -275,11 +275,11 @@ class MidiInterceptor : public AudioPluginInstance
 	///	We have no parameters.
 	int getNumParameters() {return 0;};
 	///	We have no parameters.
-	const String getParameterName(int parameterIndex) {return L"";};
+	const String getParameterName(int parameterIndex) {return "";};
 	///	We have no parameters.
 	float getParameter(int parameterIndex) {return 0.0f;};
 	///	We have no parameters.
-	const String getParameterText(int parameterIndex) {return L"";};
+	const String getParameterText(int parameterIndex) {return "";};
 	///	We have no parameters.
 	void setParameter(int parameterIndex, float newValue) {};
 	///	We have no programs.
@@ -289,7 +289,7 @@ class MidiInterceptor : public AudioPluginInstance
 	///	We have no programs.
 	void setCurrentProgram(int index) {};
 	///	We have no programs.
-	const String getProgramName(int index) {return L"";};
+	const String getProgramName(int index) {return "";};
 	///	We have no programs.
 	void changeProgramName(int index, const String &newName) {};
 	///	We have no state information.

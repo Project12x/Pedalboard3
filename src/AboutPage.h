@@ -23,7 +23,7 @@
 #define __JUCER_HEADER_ABOUTPAGE_ABOUTPAGE_B72A047D__
 
 //[Headers]     -- You can add your own extra header files here --
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 //[/Headers]
 
 

@@ -26,7 +26,7 @@
 
 #include "ColourScheme.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 //[/Headers]
 
@@ -41,7 +41,7 @@
                                                                     //[/Comments]
 */
 class UserPresetWindow  : public Component,
-                          public ButtonListener
+                          public Button::Listener
 {
 public:
     //==========================================================================
@@ -85,7 +85,7 @@ private:
 		{
 			if(isSelected())
 			{
-				Colour highlight = ColourScheme::getInstance().colours[L"List Selected Colour"];
+				Colour highlight = ColourScheme::getInstance().colours["List Selected Colour"];
 				ColourGradient basil(highlight.brighter(0.4f),
 									 0.0f,
 									 0.0f,
@@ -104,7 +104,7 @@ private:
 									   4.0f);
 			}
 
-			g.setColour(ColourScheme::getInstance().colours[L"Text Colour"]);
+			g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
 			g.setFont(16.0f);
 			g.drawText(name, 4, 0, width, height, Justification::centredLeft, false);
 		};
@@ -147,7 +147,7 @@ private:
 
 			clearSubItems();
 
-			pluginDir.findChildFiles(presets, File::findFiles, false, L"*.fxp");
+			pluginDir.findChildFiles(presets, File::findFiles, false, "*.fxp");
 			for(i=0;i<presets.size();++i)
 				addSubItem(new PresetItem(presets[i]));
 		};
@@ -155,7 +155,7 @@ private:
 		///	Draws the item.
 		void paintItem(Graphics &g, int width, int height)
 		{
-			g.setColour(ColourScheme::getInstance().colours[L"Text Colour"]);
+			g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
 			g.setFont(Font(16.0f, Font::bold));
 			g.drawText(name, 0, 0, width, height, Justification::centredLeft, false);
 		};
@@ -186,7 +186,7 @@ private:
 		void itemOpennessChanged(bool isNowOpen)
 		{
 			int i;
-			File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile(L"Pedalboard2").getChildFile(L"presets");
+			File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets");
 			Array<File> pluginDirs;
 
 			clearSubItems();

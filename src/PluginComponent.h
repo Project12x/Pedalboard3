@@ -23,7 +23,7 @@
 
 #include "c0xHeaders.h"
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
 
 #include <map>
 
@@ -35,7 +35,7 @@ class PluginPinComponent;
 ///	Component representing a plugin/filter in the PluginField.
 class PluginComponent : public Component,
 					    public ChangeBroadcaster,
-						public ButtonListener,
+						public Button::Listener,
 						public Label::Listener
 {
   public:
