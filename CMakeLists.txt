@@ -92,9 +92,9 @@ add_subdirectory(JUCE)
 
 # Define the application
 juce_add_gui_app(Pedalboard2
-    PRODUCT_NAME "Pedalboard2"
-    COMPANY_NAME "Pedalboard2 Project"
-    BUNDLE_ID "com.pedalboard2.app"
+    PRODUCT_NAME "Pedalboard3"
+    COMPANY_NAME "Pedalboard3 Project"
+    BUNDLE_ID "com.pedalboard3.app"
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-512.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-48.png"
 )

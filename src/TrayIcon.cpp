@@ -18,49 +18,57 @@
 //	----------------------------------------------------------------------------
 
 #include "TrayIcon.h"
+
 #include "Images.h"
 
+
 //------------------------------------------------------------------------------
-TrayIcon::TrayIcon(DocumentWindow *win) : window(win) {
-  auto icon =
-      ImageCache::getFromMemory(Images::icon16_png, Images::icon16_pngSize);
-  setIconImage(icon, icon); // JUCE 8: (templateImage, regularImage)
-  setIconTooltip("Pedalboard 2");
+TrayIcon::TrayIcon(DocumentWindow* win) : window(win)
+{
+    auto icon = ImageCache::getFromMemory(Images::icon16_png, Images::icon16_pngSize);
+    setIconImage(icon, icon); // JUCE 8: (templateImage, regularImage)
+    setIconTooltip("Pedalboard 3");
 }
 
 //------------------------------------------------------------------------------
 TrayIcon::~TrayIcon() {}
 
 //------------------------------------------------------------------------------
-void TrayIcon::mouseDown(const MouseEvent &e) {
-  if (e.mods.isRightButtonDown()) {
-    PopupMenu m;
+void TrayIcon::mouseDown(const MouseEvent& e)
+{
+    if (e.mods.isRightButtonDown())
+    {
+        PopupMenu m;
 
-    if (window->isVisible())
-      m.addItem(1, "Hide Pedalboard");
-    else
-      m.addItem(1, "Show Pedalboard");
-    m.addSeparator();
-    m.addItem(2, "Quit");
+        if (window->isVisible())
+            m.addItem(1, "Hide Pedalboard");
+        else
+            m.addItem(1, "Show Pedalboard");
+        m.addSeparator();
+        m.addItem(2, "Quit");
 
-    const int result = m.show();
+        const int result = m.show();
 
-    if (result == 1) {
-      if (window->isVisible())
-        window->setVisible(false);
-      else
-        window->setVisible(true);
-    } else if (result == 2)
-      window->closeButtonPressed();
-  }
+        if (result == 1)
+        {
+            if (window->isVisible())
+                window->setVisible(false);
+            else
+                window->setVisible(true);
+        }
+        else if (result == 2)
+            window->closeButtonPressed();
+    }
 }
 
 //------------------------------------------------------------------------------
-void TrayIcon::mouseDoubleClick(const MouseEvent &e) {
-  if (e.mods.isLeftButtonDown()) {
-    if (window->isVisible())
-      window->setVisible(false);
-    else
-      window->setVisible(true);
-  }
+void TrayIcon::mouseDoubleClick(const MouseEvent& e)
+{
+    if (e.mods.isLeftButtonDown())
+    {
+        if (window->isVisible())
+            window->setVisible(false);
+        else
+            window->setVisible(true);
+    }
 }
