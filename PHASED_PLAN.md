@@ -269,6 +269,23 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 | 5F.3 | Update ARCHITECTURE.md | Reflect final structure |
 | 5F.4 | Add CONTRIBUTING.md | For contributors |
 
+### 5G: Legacy UX (from Niall's ToDo.txt)
+| # | Task | Notes |
+|---|------|-------|
+| 5G.1 | Snap to grid | Grid layout for plugins |
+| 5G.2 | Zoom out mode | Reduce plugin component size |
+| 5G.3 | Plugin pins enlarge on hover | Better UX for connections |
+| 5G.4 | Audio Output anchored right | Always at right of screen |
+| 5G.5 | No-setup record button | Quick recording |
+| 5G.6 | Hotkey to bypass all filters | Global bypass |
+| 5G.7 | Tempo display improvements | Make hidable/cleaner |
+| 5G.8 | Misc Settings → PropertyPanel | Cleaner preferences |
+| 5G.9 | Better add plugin method | Improved workflow |
+| 5G.10 | Custom sliders/toggles in LAF | Polish BranchesLAF |
+| 5G.11 | System tray double-click | Hide/show all windows |
+| 5G.12 | Metronome numeric-only input | Input validation |
+| 5G.13 | Single Timer for Internal Controls | Performance |
+
 ---
 
 ## Phase 6: Distribution & Platform
