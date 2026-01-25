@@ -113,6 +113,8 @@ target_sources(Pedalboard2 PRIVATE
     # Audio Core
     src/FilterGraph.cpp
     src/FilterGraph.h
+    src/UndoActions.cpp
+    src/UndoActions.h
     src/AudioSingletons.cpp
     src/AudioSingletons.h
     src/BypassableInstance.cpp

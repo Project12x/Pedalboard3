@@ -290,6 +290,125 @@ void FilterGraph::removeConnection(AudioProcessorGraph::NodeID sourceFilterUID, 
         changed();
 }
 
+//==============================================================================
+// Raw operations - used by UndoableActions (no undo tracking)
+//==============================================================================
+
+AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* desc, double x, double y)
+{
+    if (desc == nullptr)
+        return AudioProcessorGraph::NodeID();
+
+    String errorMessage;
+    auto tempInstance =
+        AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(*desc, 44100.0, 512, errorMessage);
+
+    if (tempInstance)
+    {
+        AudioProcessor::BusesLayout stereoLayout;
+        stereoLayout.inputBuses.add(AudioChannelSet::stereo());
+        stereoLayout.outputBuses.add(AudioChannelSet::stereo());
+
+        if (tempInstance->checkBusesLayoutSupported(stereoLayout))
+            tempInstance->setBusesLayout(stereoLayout);
+    }
+
+    std::unique_ptr<AudioProcessor> instance;
+    if (tempInstance)
+    {
+        if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
+            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
+            instance = std::move(tempInstance);
+        else
+            instance = std::make_unique<BypassableInstance>(tempInstance.release());
+    }
+
+    AudioProcessorGraph::Node::Ptr node;
+    if (instance)
+        node = graph.addNode(std::move(instance));
+
+    if (node != nullptr)
+    {
+        node->properties.set("x", x);
+        node->properties.set("y", y);
+        changed();
+        return node->nodeID;
+    }
+
+    return AudioProcessorGraph::NodeID();
+}
+
+void FilterGraph::removeFilterRaw(const AudioProcessorGraph::NodeID id)
+{
+    if (graph.removeNode(id))
+        changed();
+}
+
+bool FilterGraph::addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                                   AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
+{
+    AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
+    const bool result = graph.addConnection(conn);
+    if (result)
+        changed();
+    return result;
+}
+
+void FilterGraph::removeConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                                      AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
+{
+    AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
+    if (graph.removeConnection(conn))
+        changed();
+}
+
+//==============================================================================
+// Helper functions for undo
+//==============================================================================
+
+PluginDescription FilterGraph::getPluginDescription(AudioProcessorGraph::NodeID nodeId) const
+{
+    PluginDescription desc;
+    auto node = graph.getNodeForId(nodeId);
+    if (node != nullptr && node->getProcessor() != nullptr)
+    {
+        // Try to get the inner plugin from BypassableInstance
+        auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
+        if (bypassable)
+        {
+            // BypassableInstance has fillInPluginDescription that delegates to inner plugin
+            bypassable->fillInPluginDescription(desc);
+        }
+        else
+        {
+            // For AudioPluginInstance (which has fillInPluginDescription)
+            auto* pluginInstance = dynamic_cast<AudioPluginInstance*>(node->getProcessor());
+            if (pluginInstance)
+            {
+                pluginInstance->fillInPluginDescription(desc);
+            }
+        }
+    }
+    return desc;
+}
+
+std::vector<AudioProcessorGraph::Connection>
+FilterGraph::getConnectionsForNode(AudioProcessorGraph::NodeID nodeId) const
+{
+    std::vector<AudioProcessorGraph::Connection> nodeConnections;
+    auto allConnections = getConnections();
+
+    for (const auto& conn : allConnections)
+    {
+        if (conn.source.nodeID == nodeId || conn.destination.nodeID == nodeId)
+        {
+            nodeConnections.push_back(conn);
+        }
+    }
+
+    return nodeConnections;
+}
+
 void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut)
 {
     InternalPluginFormat internalFormat;

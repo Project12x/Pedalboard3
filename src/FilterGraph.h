@@ -41,32 +41,33 @@ using juce::uint32;
 class FilterInGraph;
 class FilterGraph;
 
-const char *const filenameSuffix = ".filtergraph";
-const char *const filenameWildcard = "*.filtergraph";
+const char* const filenameSuffix = ".filtergraph";
+const char* const filenameWildcard = "*.filtergraph";
 
 //==============================================================================
 /**
     Represents a connection between two pins in a FilterGraph.
 */
-class FilterConnection {
-public:
-  //==============================================================================
-  FilterConnection(FilterGraph &owner);
-  FilterConnection(const FilterConnection &other);
-  ~FilterConnection();
+class FilterConnection
+{
+  public:
+    //==============================================================================
+    FilterConnection(FilterGraph& owner);
+    FilterConnection(const FilterConnection& other);
+    ~FilterConnection();
 
-  //==============================================================================
-  AudioProcessorGraph::NodeID sourceFilterID;
-  int sourceChannel;
-  AudioProcessorGraph::NodeID destFilterID;
-  int destChannel;
+    //==============================================================================
+    AudioProcessorGraph::NodeID sourceFilterID;
+    int sourceChannel;
+    AudioProcessorGraph::NodeID destFilterID;
+    int destChannel;
 
-  //==============================================================================
-juce_UseDebuggingNewOperator
+    //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    private : FilterGraph &owner;
+      private : FilterGraph& owner;
 
-  const FilterConnection &operator=(const FilterConnection &);
+    const FilterConnection& operator=(const FilterConnection&);
 };
 
 //==============================================================================
@@ -134,93 +135,104 @@ private:
 /**
     A collection of filters and some connections between them.
 */
-class FilterGraph : public FileBasedDocument {
-public:
-  //==============================================================================
-  FilterGraph();
-  ~FilterGraph();
+class FilterGraph : public FileBasedDocument
+{
+  public:
+    //==============================================================================
+    FilterGraph();
+    ~FilterGraph();
 
-  //==============================================================================
-  AudioProcessorGraph &getGraph() throw() { return graph; }
+    //==============================================================================
+    AudioProcessorGraph& getGraph() throw() { return graph; }
 
-  int getNumFilters() const;
-  const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
-  const AudioProcessorGraph::Node::Ptr
-  getNodeForId(const AudioProcessorGraph::NodeID uid) const;
+    /// Returns the UndoManager for undo/redo operations
+    juce::UndoManager& getUndoManager() { return undoManager; }
 
-  void addFilter(const PluginDescription *desc, double x, double y);
-  ///	Alternate addFilter method.
-  void addFilter(AudioPluginInstance *plugin, double x, double y);
+    int getNumFilters() const;
+    const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
+    const AudioProcessorGraph::Node::Ptr getNodeForId(const AudioProcessorGraph::NodeID uid) const;
 
-  void removeFilter(const AudioProcessorGraph::NodeID filterUID);
-  void disconnectFilter(const AudioProcessorGraph::NodeID filterUID);
+    //==============================================================================
+    // Undoable operations - use these from UI code
+    void addFilter(const PluginDescription* desc, double x, double y);
+    void addFilter(AudioPluginInstance* plugin, double x, double y);
+    void removeFilter(const AudioProcessorGraph::NodeID filterUID);
+    bool addConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                       AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+    void removeConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
 
-  void removeIllegalConnections();
+    //==============================================================================
+    // Raw operations - used internally by UndoableActions (no undo tracking)
+    AudioProcessorGraph::NodeID addFilterRaw(const PluginDescription* desc, double x, double y);
+    void removeFilterRaw(const AudioProcessorGraph::NodeID filterUID);
+    bool addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+    void removeConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                             AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
 
-  void setNodePosition(const int nodeId, double x, double y);
-  void getNodePosition(const int nodeId, double &x, double &y) const;
+    //==============================================================================
+    // Plugin description helper for undo
+    PluginDescription getPluginDescription(AudioProcessorGraph::NodeID nodeId) const;
+    std::vector<AudioProcessorGraph::Connection> getConnectionsForNode(AudioProcessorGraph::NodeID nodeId) const;
 
-  //==============================================================================
-  /// @brief JUCE 8: Connection API uses std::vector
-  std::vector<AudioProcessorGraph::Connection> getConnections() const;
+    //==============================================================================
+    void disconnectFilter(const AudioProcessorGraph::NodeID filterUID);
+    void removeIllegalConnections();
 
-  const AudioProcessorGraph::Connection *getConnectionBetween(
-      AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
-      AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const;
+    void setNodePosition(const int nodeId, double x, double y);
+    void getNodePosition(const int nodeId, double& x, double& y) const;
 
-  bool canConnect(AudioProcessorGraph::NodeID sourceFilterUID,
-                  int sourceFilterChannel,
-                  AudioProcessorGraph::NodeID destFilterUID,
-                  int destFilterChannel) const;
+    //==============================================================================
+    /// @brief JUCE 8: Connection API uses std::vector
+    std::vector<AudioProcessorGraph::Connection> getConnections() const;
 
-  bool addConnection(AudioProcessorGraph::NodeID sourceFilterUID,
-                     int sourceFilterChannel,
-                     AudioProcessorGraph::NodeID destFilterUID,
-                     int destFilterChannel);
+    const AudioProcessorGraph::Connection* getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID,
+                                                                int sourceFilterChannel,
+                                                                AudioProcessorGraph::NodeID destFilterUID,
+                                                                int destFilterChannel) const;
 
-  void removeConnection(AudioProcessorGraph::NodeID sourceFilterUID,
-                        int sourceFilterChannel,
-                        AudioProcessorGraph::NodeID destFilterUID,
-                        int destFilterChannel);
+    bool canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                    AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const;
 
-  // void clear(bool addAudioIO = true);
-  void clear(bool addAudioIn = true, bool addMidiIn = true,
-             bool addAudioOut = true);
+    // void clear(bool addAudioIO = true);
+    void clear(bool addAudioIn = true, bool addMidiIn = true, bool addAudioOut = true);
 
-  //==============================================================================
+    //==============================================================================
 
-  XmlElement *createXml(const OscMappingManager &oscManager) const;
-  void restoreFromXml(const XmlElement &xml, OscMappingManager &oscManager);
+    XmlElement* createXml(const OscMappingManager& oscManager) const;
+    void restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager);
 
-  //==============================================================================
-  String getDocumentTitle();
-  Result loadDocument(const File &file);
-  Result saveDocument(const File &file);
-  File getLastDocumentOpened();
-  void setLastDocumentOpened(const File &file);
+    //==============================================================================
+    String getDocumentTitle();
+    Result loadDocument(const File& file);
+    Result saveDocument(const File& file);
+    File getLastDocumentOpened();
+    void setLastDocumentOpened(const File& file);
 
-  /** The special channel index used to refer to a filter's midi channel.
-   */
-  static const int midiChannelNumber;
+    /** The special channel index used to refer to a filter's midi channel.
+     */
+    static const int midiChannelNumber;
 
-  //==============================================================================
-juce_UseDebuggingNewOperator
+    //==============================================================================
+  juce_UseDebuggingNewOperator
 
-    private :
-    // friend class FilterGraphPlayer;
-    // ReferenceCountedArray <FilterInGraph> filters;
-    // OwnedArray <FilterConnection> connections;
+      private :
+      // friend class FilterGraphPlayer;
+      // ReferenceCountedArray <FilterInGraph> filters;
+      // OwnedArray <FilterConnection> connections;
 
-    AudioProcessorGraph graph;
-  AudioProcessorPlayer player;
+      AudioProcessorGraph graph;
+    AudioProcessorPlayer player;
+    juce::UndoManager undoManager;
 
-  uint32 lastUID;
-  uint32 getNextUID() throw();
+    uint32 lastUID;
+    uint32 getNextUID() throw();
 
-  void createNodeFromXml(const XmlElement &xml, OscMappingManager &oscManager);
+    void createNodeFromXml(const XmlElement& xml, OscMappingManager& oscManager);
 
-  FilterGraph(const FilterGraph &);
-  const FilterGraph &operator=(const FilterGraph &);
+    FilterGraph(const FilterGraph&);
+    const FilterGraph& operator=(const FilterGraph&);
 };
 
 //==============================================================================
