@@ -230,6 +230,14 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 | 5E.5 | Start minimized |
 | 5E.6 | Home key mapping |
 
+### 5F: Documentation
+| # | Task | Notes |
+|---|------|-------|
+| 5F.1 | Set up Doxygen | Create Doxyfile, integrate with CMake |
+| 5F.2 | Generate API docs | HTML output in `/docs/api/` |
+| 5F.3 | Update ARCHITECTURE.md | Reflect final structure |
+| 5F.4 | Add CONTRIBUTING.md | For contributors |
+
 ---
 
 ## Phase 6: Distribution & Platform
