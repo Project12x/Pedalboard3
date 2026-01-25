@@ -105,17 +105,18 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 
 ## Phase 3: VST3 & Core Features
 
-**Status:** ⏳ Pending  
+**Status:** 🔄 In Progress  
 **Prerequisite:** Phase 2 complete  
 **Goal:** Working VST3 host with essential features
 
 ### 3A: Plugin System
-| # | Task | Notes |
-|---|------|-------|
-| 3A.1 | Enable VST3PluginFormat | Add to format manager |
-| 3A.2 | 64-bit build | Native x64 |
-| 3A.3 | Plugin scanning improvements | Background, caching |
-| 3A.4 | Plugin state persistence | Save/restore parameters |
+| # | Task | Notes | Status |
+|---|------|-------|--------|
+| 3A.1 | Enable VST3PluginFormat | Add to format manager | ✅ Done |
+| 3A.2 | 64-bit build | Native x64 | ✅ Done |
+| 3A.3 | Plugin scanning improvements | Background, caching | ✅ Working |
+| 3A.4 | Plugin state persistence | Save/restore parameters | ⏳ Pending |
+| 3A.5 | Settings migration to JSON | SettingsManager | ✅ Done |
 
 ### 3B: MIDI/OSC Modernization
 | # | Task | Library |
@@ -353,4 +354,4 @@ Apply at each phase completion:
 
 ---
 
-*Last updated: 2026-01-23*
+*Last updated: 2026-01-24*

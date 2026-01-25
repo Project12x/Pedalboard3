@@ -23,7 +23,7 @@
 
 #include "ColourScheme.h"
 #include "JuceHelperStuff.h"
-#include "PropertiesSingleton.h"
+#include "SettingsManager.h"
 #include "Vectors.h"
 
 //[/Headers]
@@ -38,325 +38,339 @@ using namespace std;
 
 //==============================================================================
 ColourSchemeEditor::ColourSchemeEditor()
-    : colourEditor(0), colourSelector(0), presetSelector(0), deleteButton(0),
-      saveButton(0), newButton(0) {
-  addAndMakeVisible(
-      colourEditor = new ColourSelector(
-          ColourSelector::showAlphaChannel | ColourSelector::showColourAtTop |
-              ColourSelector::showSliders | ColourSelector::showColourspace,
-          0));
-  colourEditor->setName("colourEditor");
+    : colourEditor(0), colourSelector(0), presetSelector(0), deleteButton(0), saveButton(0), newButton(0)
+{
+    addAndMakeVisible(colourEditor =
+                          new ColourSelector(ColourSelector::showAlphaChannel | ColourSelector::showColourAtTop |
+                                                 ColourSelector::showSliders | ColourSelector::showColourspace,
+                                             0));
+    colourEditor->setName("colourEditor");
 
-  addAndMakeVisible(colourSelector = new ListBox("colourSelector", this));
-  colourSelector->setName("colourSelector");
+    addAndMakeVisible(colourSelector = new ListBox("colourSelector", this));
+    colourSelector->setName("colourSelector");
 
-  addAndMakeVisible(presetSelector = new ComboBox("presetSelector"));
-  presetSelector->setEditableText(true);
-  presetSelector->setJustificationType(Justification::centredLeft);
-  presetSelector->setTextWhenNothingSelected(String());
-  presetSelector->setTextWhenNoChoicesAvailable("(no choices)");
-  presetSelector->addListener(this);
+    addAndMakeVisible(presetSelector = new ComboBox("presetSelector"));
+    presetSelector->setEditableText(true);
+    presetSelector->setJustificationType(Justification::centredLeft);
+    presetSelector->setTextWhenNothingSelected(String());
+    presetSelector->setTextWhenNoChoicesAvailable("(no choices)");
+    presetSelector->addListener(this);
 
-  addAndMakeVisible(
-      deleteButton = new DrawableButton(
-          "deleteButton", DrawableButton::ImageOnButtonBackground));
-  deleteButton->setName("deleteButton");
+    addAndMakeVisible(deleteButton = new DrawableButton("deleteButton", DrawableButton::ImageOnButtonBackground));
+    deleteButton->setName("deleteButton");
 
-  addAndMakeVisible(saveButton = new DrawableButton(
-                        "saveButton", DrawableButton::ImageOnButtonBackground));
-  saveButton->setName("saveButton");
+    addAndMakeVisible(saveButton = new DrawableButton("saveButton", DrawableButton::ImageOnButtonBackground));
+    saveButton->setName("saveButton");
 
-  addAndMakeVisible(newButton = new DrawableButton(
-                        "newButton", DrawableButton::ImageOnButtonBackground));
-  newButton->setName("newButton");
+    addAndMakeVisible(newButton = new DrawableButton("newButton", DrawableButton::ImageOnButtonBackground));
+    newButton->setName("newButton");
 
-  //[UserPreSize]
+    //[UserPreSize]
 
-  Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
-  auto newImage =
-      loadSVGFromMemory(Vectors::newbutton_svg, Vectors::newbutton_svgSize);
-  auto saveImage =
-      loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize);
-  auto deleteImage = loadSVGFromMemory(Vectors::deletebutton_svg,
-                                       Vectors::deletebutton_svgSize);
+    Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
+    auto newImage = loadSVGFromMemory(Vectors::newbutton_svg, Vectors::newbutton_svgSize);
+    auto saveImage = loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize);
+    auto deleteImage = loadSVGFromMemory(Vectors::deletebutton_svg, Vectors::deletebutton_svgSize);
 
-  newButton->setImages(newImage.get()); // JUCE 8: Use .get()
-  newButton->setColour(DrawableButton::backgroundColourId, tempCol);
-  newButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-  newButton->setTooltip("New colour scheme");
-  saveButton->setImages(saveImage.get()); // JUCE 8: Use .get()
-  saveButton->setColour(DrawableButton::backgroundColourId, tempCol);
-  saveButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-  saveButton->setTooltip("Save current colour scheme");
-  deleteButton->setImages(deleteImage.get()); // JUCE 8: Use .get()
-  deleteButton->setColour(DrawableButton::backgroundColourId, tempCol);
-  deleteButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-  deleteButton->setTooltip("Delete selected colour scheme");
+    newButton->setImages(newImage.get()); // JUCE 8: Use .get()
+    newButton->setColour(DrawableButton::backgroundColourId, tempCol);
+    newButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+    newButton->setTooltip("New colour scheme");
+    saveButton->setImages(saveImage.get()); // JUCE 8: Use .get()
+    saveButton->setColour(DrawableButton::backgroundColourId, tempCol);
+    saveButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+    saveButton->setTooltip("Save current colour scheme");
+    deleteButton->setImages(deleteImage.get()); // JUCE 8: Use .get()
+    deleteButton->setColour(DrawableButton::backgroundColourId, tempCol);
+    deleteButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+    deleteButton->setTooltip("Delete selected colour scheme");
 
-  colourEditor->setColour(ColourSelector::backgroundColourId, tempCol);
+    colourEditor->setColour(ColourSelector::backgroundColourId, tempCol);
 
-  colourSelector->setOutlineThickness(1);
-  colourSelector->setColour(ListBox::outlineColourId, Colour(0x60000000));
+    colourSelector->setOutlineThickness(1);
+    colourSelector->setColour(ListBox::outlineColourId, Colour(0x60000000));
 
-  colourSelector->updateContent();
-  colourSelector->selectRow(0);
-  colourEditor->setCurrentColour(
-      ColourScheme::getInstance().colours.begin()->second);
-  colourEditor->addChangeListener(this);
+    colourSelector->updateContent();
+    colourSelector->selectRow(0);
+    colourEditor->setCurrentColour(ColourScheme::getInstance().colours.begin()->second);
+    colourEditor->addChangeListener(this);
 
-  // Fill out the preset combo box.
-  int i;
-  Array<File> presets;
-  File settingsDir = JuceHelperStuff::getAppDataFolder();
+    // Fill out the preset combo box.
+    int i;
+    Array<File> presets;
+    File settingsDir = JuceHelperStuff::getAppDataFolder();
 
-  settingsDir.findChildFiles(presets, File::findFiles, false, "*.colourscheme");
-  for (i = 0; i < presets.size(); ++i) {
-    String tempstr = presets[i].getFileNameWithoutExtension();
+    settingsDir.findChildFiles(presets, File::findFiles, false, "*.colourscheme");
+    for (i = 0; i < presets.size(); ++i)
+    {
+        String tempstr = presets[i].getFileNameWithoutExtension();
 
-    presetSelector->addItem(tempstr, i + 1);
-    if (tempstr == ColourScheme::getInstance().presetName)
-      presetSelector->setSelectedId(i + 1, true);
-  }
+        presetSelector->addItem(tempstr, i + 1);
+        if (tempstr == ColourScheme::getInstance().presetName)
+            presetSelector->setSelectedId(i + 1, true);
+    }
 
-  newButton->addListener(this);
-  saveButton->addListener(this);
-  deleteButton->addListener(this);
+    newButton->addListener(this);
+    saveButton->addListener(this);
+    deleteButton->addListener(this);
 
-  //[/UserPreSize]
+    //[/UserPreSize]
 
-  setSize(550, 375);
+    setSize(550, 375);
 
-  //[Constructor] You can add your own custom stuff here..
-  //[/Constructor]
+    //[Constructor] You can add your own custom stuff here..
+    //[/Constructor]
 }
 
-ColourSchemeEditor::~ColourSchemeEditor() {
-  //[Destructor_pre]. You can add your own custom destruction code here..
+ColourSchemeEditor::~ColourSchemeEditor()
+{
+    //[Destructor_pre]. You can add your own custom destruction code here..
 
-  // Check if the selected preset has been saved.
-  if (!ColourScheme::getInstance().doesColoursMatchPreset(
-          presetSelector->getText())) {
-    if (AlertWindow::showOkCancelBox(AlertWindow::WarningIcon,
-                                     "Colour scheme not saved",
-                                     "Save current scheme?", "Yes", "No")) {
-      ColourScheme::getInstance().savePreset(presetSelector->getText());
+    // Check if the selected preset has been saved.
+    if (!ColourScheme::getInstance().doesColoursMatchPreset(presetSelector->getText()))
+    {
+        if (AlertWindow::showOkCancelBox(AlertWindow::WarningIcon, "Colour scheme not saved", "Save current scheme?",
+                                         "Yes", "No"))
+        {
+            ColourScheme::getInstance().savePreset(presetSelector->getText());
+        }
     }
-  }
 
-  // Save the selected preset to the properties file.
-  PropertiesSingleton::getInstance().getUserSettings()->setValue(
-      "colourScheme", presetSelector->getText());
+    // Save the selected preset to the properties file.
+    SettingsManager::getInstance().setValue("colourScheme", presetSelector->getText());
 
-  //[/Destructor_pre]
+    //[/Destructor_pre]
 
-  deleteAndZero(colourEditor);
-  deleteAndZero(colourSelector);
-  deleteAndZero(presetSelector);
-  deleteAndZero(deleteButton);
-  deleteAndZero(saveButton);
-  deleteAndZero(newButton);
+    deleteAndZero(colourEditor);
+    deleteAndZero(colourSelector);
+    deleteAndZero(presetSelector);
+    deleteAndZero(deleteButton);
+    deleteAndZero(saveButton);
+    deleteAndZero(newButton);
 
-  //[Destructor]. You can add your own custom destruction code here..
-  //[/Destructor]
+    //[Destructor]. You can add your own custom destruction code here..
+    //[/Destructor]
 }
 
 //==============================================================================
-void ColourSchemeEditor::paint(Graphics &g) {
-  //[UserPrePaint] Add your own custom painting code here..
-  //[/UserPrePaint]
+void ColourSchemeEditor::paint(Graphics& g)
+{
+    //[UserPrePaint] Add your own custom painting code here..
+    //[/UserPrePaint]
 
-  g.fillAll(Colour(0xffeeece1));
+    g.fillAll(Colour(0xffeeece1));
 
-  //[UserPaint] Add your own custom painting code here..
+    //[UserPaint] Add your own custom painting code here..
 
-  g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
+    g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
-  //[/UserPaint]
+    //[/UserPaint]
 }
 
-void ColourSchemeEditor::resized() {
-  colourEditor->setBounds(192, 40, getWidth() - 200, getHeight() - 48);
-  colourSelector->setBounds(8, 40, 176, getHeight() - 48);
-  presetSelector->setBounds(8, 8, getWidth() - 106, 24);
-  deleteButton->setBounds(getWidth() - 32, 8, 24, 24);
-  saveButton->setBounds(getWidth() - 62, 8, 24, 24);
-  newButton->setBounds(getWidth() - 92, 8, 24, 24);
-  //[UserResized] Add your own custom resize handling here..
-  //[/UserResized]
+void ColourSchemeEditor::resized()
+{
+    colourEditor->setBounds(192, 40, getWidth() - 200, getHeight() - 48);
+    colourSelector->setBounds(8, 40, 176, getHeight() - 48);
+    presetSelector->setBounds(8, 8, getWidth() - 106, 24);
+    deleteButton->setBounds(getWidth() - 32, 8, 24, 24);
+    saveButton->setBounds(getWidth() - 62, 8, 24, 24);
+    newButton->setBounds(getWidth() - 92, 8, 24, 24);
+    //[UserResized] Add your own custom resize handling here..
+    //[/UserResized]
 }
 
-void ColourSchemeEditor::comboBoxChanged(ComboBox *comboBoxThatHasChanged) {
-  //[UsercomboBoxChanged_Pre]
-  //[/UsercomboBoxChanged_Pre]
+void ColourSchemeEditor::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
+{
+    //[UsercomboBoxChanged_Pre]
+    //[/UsercomboBoxChanged_Pre]
 
-  if (comboBoxThatHasChanged == presetSelector) {
-    //[UserComboBoxCode_presetSelector] -- add your combo box handling code
-    // here..
-
-    ColourScheme::getInstance().loadPreset(presetSelector->getText());
-
-    // Update colourEditor.
+    if (comboBoxThatHasChanged == presetSelector)
     {
-      int i = 0;
-      map<String, Colour>::iterator it;
-      int row = colourSelector->getSelectedRow();
-      map<String, Colour> &colours = ColourScheme::getInstance().colours;
+        //[UserComboBoxCode_presetSelector] -- add your combo box handling code
+        // here..
 
-      for (it = colours.begin(); it != colours.end(); ++it, ++i) {
-        if (i == row) {
-          colourEditor->setCurrentColour(it->second);
-          break;
+        ColourScheme::getInstance().loadPreset(presetSelector->getText());
+
+        // Update colourEditor.
+        {
+            int i = 0;
+            map<String, Colour>::iterator it;
+            int row = colourSelector->getSelectedRow();
+            map<String, Colour>& colours = ColourScheme::getInstance().colours;
+
+            for (it = colours.begin(); it != colours.end(); ++it, ++i)
+            {
+                if (i == row)
+                {
+                    colourEditor->setCurrentColour(it->second);
+                    break;
+                }
+            }
         }
-      }
+
+        repaint();
+
+        //[/UserComboBoxCode_presetSelector]
     }
 
-    repaint();
-
-    //[/UserComboBoxCode_presetSelector]
-  }
-
-  //[UsercomboBoxChanged_Post]
-  //[/UsercomboBoxChanged_Post]
+    //[UsercomboBoxChanged_Post]
+    //[/UsercomboBoxChanged_Post]
 }
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any
 // other code here...
 
 //------------------------------------------------------------------------------
-int ColourSchemeEditor::getNumRows() {
-  return ColourScheme::getInstance().colours.size();
+int ColourSchemeEditor::getNumRows()
+{
+    return ColourScheme::getInstance().colours.size();
 }
 
 //------------------------------------------------------------------------------
-void ColourSchemeEditor::paintListBoxItem(int rowNumber, Graphics &g, int width,
-                                          int height, bool rowIsSelected) {
-  int i = 0;
-  map<String, Colour>::iterator it;
-  map<String, Colour> &colours = ColourScheme::getInstance().colours;
-
-  g.fillAll(colours["Dialog Inner Background"]);
-
-  for (it = colours.begin(); it != colours.end(); ++it, ++i) {
-    if (i == rowNumber) {
-      // Colour in the background.
-      if (rowIsSelected) {
-        ColourGradient basil(colours["List Selected Colour"].brighter(0.4f),
-                             0.0f, 0.0f,
-                             colours["List Selected Colour"].darker(0.125f),
-                             0.0f, (float)height, false);
-
-        g.setGradientFill(basil);
-
-        g.fillAll();
-
-        g.setColour(colours["List Selected Colour"].contrasting());
-      } else {
-        g.fillAll(it->second);
-
-        g.setColour(it->second.contrasting());
-      }
-
-      // And draw the colour's name.
-      g.drawSingleLineText(it->first, 4, 12);
-
-      break;
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void ColourSchemeEditor::listBoxItemClicked(int row, const MouseEvent &e) {
-  int i = 0;
-  map<String, Colour>::iterator it;
-  map<String, Colour> &colours = ColourScheme::getInstance().colours;
-
-  for (it = colours.begin(); it != colours.end(); ++it, ++i) {
-    if (i == row) {
-      colourEditor->setCurrentColour(it->second);
-      break;
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void ColourSchemeEditor::buttonClicked(Button *button) {
-  if (button == newButton) {
-    presetSelector->addItem("New Colour Scheme",
-                            presetSelector->getNumItems() + 1);
-    presetSelector->setSelectedId(presetSelector->getNumItems());
-  } else if (button == saveButton) {
-    ColourScheme::getInstance().savePreset(presetSelector->getText());
-  } else if (button == deleteButton) {
-    if (presetSelector->getNumItems() > 1) {
-      int i;
-      File tempFile;
-      String tempstr;
-      StringArray presetsArray;
-      String presetName = presetSelector->getText();
-      File settingsDir = JuceHelperStuff::getAppDataFolder();
-
-      tempstr << presetName << ".colourscheme";
-      tempFile = settingsDir.getChildFile(tempstr);
-      tempFile.deleteFile();
-
-      if (presetSelector->getSelectedId() > 1) {
-        for (i = 0; i < presetSelector->getNumItems(); ++i) {
-          tempstr = presetSelector->getItemText(i);
-          if (presetSelector->getText() != tempstr)
-            presetsArray.add(tempstr);
-        }
-
-        presetSelector->clear();
-        for (i = 0; i < presetsArray.size(); ++i)
-          presetSelector->addItem(presetsArray[i], i + 1);
-        presetSelector->setSelectedId(1);
-      }
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-void ColourSchemeEditor::changeListenerCallback(ChangeBroadcaster *source) {
-  if (source == colourEditor) {
+void ColourSchemeEditor::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
+{
     int i = 0;
     map<String, Colour>::iterator it;
-    int row = colourSelector->getSelectedRow();
-    map<String, Colour> &colours = ColourScheme::getInstance().colours;
+    map<String, Colour>& colours = ColourScheme::getInstance().colours;
 
-    for (it = colours.begin(); it != colours.end(); ++it, ++i) {
-      if (i == row) {
-        Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
+    g.fillAll(colours["Dialog Inner Background"]);
 
-        it->second = colourEditor->getCurrentColour();
-        colourSelector->updateContent();
-        newButton->setColour(DrawableButton::backgroundColourId, tempCol);
-        newButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-        saveButton->setColour(DrawableButton::backgroundColourId, tempCol);
-        saveButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-        deleteButton->setColour(DrawableButton::backgroundColourId, tempCol);
-        deleteButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
-        colourEditor->setColour(
-            ColourSelector::backgroundColourId,
-            ColourScheme::getInstance().colours["Window Background"]);
-        repaint();
-        sendChangeMessage();
+    for (it = colours.begin(); it != colours.end(); ++it, ++i)
+    {
+        if (i == rowNumber)
+        {
+            // Colour in the background.
+            if (rowIsSelected)
+            {
+                ColourGradient basil(colours["List Selected Colour"].brighter(0.4f), 0.0f, 0.0f,
+                                     colours["List Selected Colour"].darker(0.125f), 0.0f, (float)height, false);
 
-        break;
-      }
+                g.setGradientFill(basil);
+
+                g.fillAll();
+
+                g.setColour(colours["List Selected Colour"].contrasting());
+            }
+            else
+            {
+                g.fillAll(it->second);
+
+                g.setColour(it->second.contrasting());
+            }
+
+            // And draw the colour's name.
+            g.drawSingleLineText(it->first, 4, 12);
+
+            break;
+        }
     }
-  }
 }
 
 //------------------------------------------------------------------------------
-std::unique_ptr<Drawable>
-ColourSchemeEditor::loadSVGFromMemory(const void *dataToInitialiseFrom,
-                                      size_t sizeInBytes) {
-  MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-  XmlDocument doc(memBlock.toString());
-  std::unique_ptr<XmlElement> svgData(
-      doc.getDocumentElement()); // JUCE 8: unique_ptr
+void ColourSchemeEditor::listBoxItemClicked(int row, const MouseEvent& e)
+{
+    int i = 0;
+    map<String, Colour>::iterator it;
+    map<String, Colour>& colours = ColourScheme::getInstance().colours;
 
-  return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
+    for (it = colours.begin(); it != colours.end(); ++it, ++i)
+    {
+        if (i == row)
+        {
+            colourEditor->setCurrentColour(it->second);
+            break;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void ColourSchemeEditor::buttonClicked(Button* button)
+{
+    if (button == newButton)
+    {
+        presetSelector->addItem("New Colour Scheme", presetSelector->getNumItems() + 1);
+        presetSelector->setSelectedId(presetSelector->getNumItems());
+    }
+    else if (button == saveButton)
+    {
+        ColourScheme::getInstance().savePreset(presetSelector->getText());
+    }
+    else if (button == deleteButton)
+    {
+        if (presetSelector->getNumItems() > 1)
+        {
+            int i;
+            File tempFile;
+            String tempstr;
+            StringArray presetsArray;
+            String presetName = presetSelector->getText();
+            File settingsDir = JuceHelperStuff::getAppDataFolder();
+
+            tempstr << presetName << ".colourscheme";
+            tempFile = settingsDir.getChildFile(tempstr);
+            tempFile.deleteFile();
+
+            if (presetSelector->getSelectedId() > 1)
+            {
+                for (i = 0; i < presetSelector->getNumItems(); ++i)
+                {
+                    tempstr = presetSelector->getItemText(i);
+                    if (presetSelector->getText() != tempstr)
+                        presetsArray.add(tempstr);
+                }
+
+                presetSelector->clear();
+                for (i = 0; i < presetsArray.size(); ++i)
+                    presetSelector->addItem(presetsArray[i], i + 1);
+                presetSelector->setSelectedId(1);
+            }
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void ColourSchemeEditor::changeListenerCallback(ChangeBroadcaster* source)
+{
+    if (source == colourEditor)
+    {
+        int i = 0;
+        map<String, Colour>::iterator it;
+        int row = colourSelector->getSelectedRow();
+        map<String, Colour>& colours = ColourScheme::getInstance().colours;
+
+        for (it = colours.begin(); it != colours.end(); ++it, ++i)
+        {
+            if (i == row)
+            {
+                Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
+
+                it->second = colourEditor->getCurrentColour();
+                colourSelector->updateContent();
+                newButton->setColour(DrawableButton::backgroundColourId, tempCol);
+                newButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+                saveButton->setColour(DrawableButton::backgroundColourId, tempCol);
+                saveButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+                deleteButton->setColour(DrawableButton::backgroundColourId, tempCol);
+                deleteButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
+                colourEditor->setColour(ColourSelector::backgroundColourId,
+                                        ColourScheme::getInstance().colours["Window Background"]);
+                repaint();
+                sendChangeMessage();
+
+                break;
+            }
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+std::unique_ptr<Drawable> ColourSchemeEditor::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
+{
+    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
+    XmlDocument doc(memBlock.toString());
+    std::unique_ptr<XmlElement> svgData(doc.getDocumentElement()); // JUCE 8: unique_ptr
+
+    return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
 }
 
 //[/MiscUserCode]

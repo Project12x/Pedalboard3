@@ -36,7 +36,7 @@
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
-#include "PropertiesSingleton.h"
+#include "SettingsManager.h"
 
 #include <iostream>
 
@@ -60,8 +60,8 @@ FilterGraph::FilterGraph()
     : FileBasedDocument(filenameSuffix, filenameWildcard, "Load a filter graph", "Save a filter graph"), lastUID(0)
 {
     InternalPluginFormat internalFormat;
-    bool audioInput = PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("AudioInput", true);
-    bool midiInput = PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("MidiInput", true);
+    bool audioInput = SettingsManager::getInstance().getBool("AudioInput", true);
+    bool midiInput = SettingsManager::getInstance().getBool("MidiInput", true);
 
     if (audioInput)
     {
@@ -360,8 +360,7 @@ Result FilterGraph::saveDocument(const File& file)
 File FilterGraph::getLastDocumentOpened()
 {
     RecentlyOpenedFilesList recentFiles;
-    recentFiles.restoreFromString(
-        PropertiesSingleton::getInstance().getUserSettings()->getValue("recentFilterGraphFiles"));
+    recentFiles.restoreFromString(SettingsManager::getInstance().getString("recentFilterGraphFiles"));
 
     return recentFiles.getFile(0);
 }
@@ -369,12 +368,11 @@ File FilterGraph::getLastDocumentOpened()
 void FilterGraph::setLastDocumentOpened(const File& file)
 {
     RecentlyOpenedFilesList recentFiles;
-    recentFiles.restoreFromString(
-        PropertiesSingleton::getInstance().getUserSettings()->getValue("recentFilterGraphFiles"));
+    recentFiles.restoreFromString(SettingsManager::getInstance().getString("recentFilterGraphFiles"));
 
     recentFiles.addFile(file);
 
-    PropertiesSingleton::getInstance().getUserSettings()->setValue("recentFilterGraphFiles", recentFiles.toString());
+    SettingsManager::getInstance().setValue("recentFilterGraphFiles", recentFiles.toString());
 }
 
 //==============================================================================

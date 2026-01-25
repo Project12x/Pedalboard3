@@ -19,452 +19,423 @@
 //	----------------------------------------------------------------------------
 
 #include "MidiMappingManager.h"
-#include "PropertiesSingleton.h"
-#include "MainPanel.h"
+
 #include "LogFile.h"
+#include "MainPanel.h"
+#include "SettingsManager.h"
+
 
 using namespace std;
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiMapping::MidiMapping(MidiMappingManager *manager,
-						 FilterGraph *graph,
-						 uint32 pluginId,
-						 int param,
-						 int midiCc,
-						 bool latch,
-						 int chan,
-						 float lower,
-						 float upper):
-Mapping(graph, pluginId, param),
-mappingManager(manager),
-cc(midiCc),
-latched(latch),
-channel(chan),
-lowerBound(lower),
-upperBound(upper),
-latchVal(0.0f),
-latchToggle(false)
+MidiMapping::MidiMapping(MidiMappingManager* manager, FilterGraph* graph, uint32 pluginId, int param, int midiCc,
+                         bool latch, int chan, float lower, float upper)
+    : Mapping(graph, pluginId, param), mappingManager(manager), cc(midiCc), latched(latch), channel(chan),
+      lowerBound(lower), upperBound(upper), latchVal(0.0f), latchToggle(false)
 {
-	//mappingManager->registerMapping(midiCc, this);
+    // mappingManager->registerMapping(midiCc, this);
 }
 
 //------------------------------------------------------------------------------
-MidiMapping::MidiMapping(MidiMappingManager *manager,
-						 FilterGraph *graph,
-						 XmlElement *e):
-Mapping(graph, e),
-mappingManager(manager),
-channel(0),
-latchVal(0.0f),
-latchHi(1.0f),
-latchLo(0.0f),
-latchToggle(false)
+MidiMapping::MidiMapping(MidiMappingManager* manager, FilterGraph* graph, XmlElement* e)
+    : Mapping(graph, e), mappingManager(manager), channel(0), latchVal(0.0f), latchHi(1.0f), latchLo(0.0f),
+      latchToggle(false)
 {
-	if(e)
-	{
-		cc = e->getIntAttribute("cc");
-		latched = e->getBoolAttribute("latch");
-		channel = e->getIntAttribute("channe");
-		lowerBound = (float)e->getDoubleAttribute("lowerBound");
-		upperBound = (float)e->getDoubleAttribute("upperBound");
-	}
-	//mappingManager->registerMapping(cc, this);
+    if (e)
+    {
+        cc = e->getIntAttribute("cc");
+        latched = e->getBoolAttribute("latch");
+        channel = e->getIntAttribute("channe");
+        lowerBound = (float)e->getDoubleAttribute("lowerBound");
+        upperBound = (float)e->getDoubleAttribute("upperBound");
+    }
+    // mappingManager->registerMapping(cc, this);
 }
 
 //------------------------------------------------------------------------------
 MidiMapping::~MidiMapping()
 {
-	mappingManager->unregisterMapping(this);
+    mappingManager->unregisterMapping(this);
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::ccReceived(int val)
 {
-	float tempf;
+    float tempf;
 
-	if(latched)
-	{
-		if(val == 0)
-			return;
+    if (latched)
+    {
+        if (val == 0)
+            return;
 
-		latchToggle = !latchToggle;
+        latchToggle = !latchToggle;
 
-		/*if(latchToggle)
-		{
-			latchHi = (float)val/127.0f;
+        /*if(latchToggle)
+        {
+            latchHi = (float)val/127.0f;
 
-			if(latchVal > latchLo)
-				latchVal = latchLo;
-			else
-				latchVal = latchHi;
-		}
-		else
-			latchLo = (float)val/127.0f;
+            if(latchVal > latchLo)
+                latchVal = latchLo;
+            else
+                latchVal = latchHi;
+        }
+        else
+            latchLo = (float)val/127.0f;
 
-		tempf = latchVal;*/
-		if(latchToggle)
-			tempf = 1.0f;
-		else
-			tempf = 0.0f;
-	}
-	else
-		tempf = (float)val/127.0f;
+        tempf = latchVal;*/
+        if (latchToggle)
+            tempf = 1.0f;
+        else
+            tempf = 0.0f;
+    }
+    else
+        tempf = (float)val / 127.0f;
 
-	if(upperBound > lowerBound)
-	{
-		tempf *= upperBound-lowerBound;
-		tempf += lowerBound;
-	}
-	else
-	{
-		tempf = 1.0f - tempf;
-		tempf *= lowerBound-upperBound;
-		tempf += upperBound;
-	}
+    if (upperBound > lowerBound)
+    {
+        tempf *= upperBound - lowerBound;
+        tempf += lowerBound;
+    }
+    else
+    {
+        tempf = 1.0f - tempf;
+        tempf *= lowerBound - upperBound;
+        tempf += upperBound;
+    }
 
-	updateParameter(tempf);
+    updateParameter(tempf);
 }
 
 //------------------------------------------------------------------------------
-XmlElement *MidiMapping::getXml() const
+XmlElement* MidiMapping::getXml() const
 {
-	XmlElement *retval = new XmlElement("MidiMapping");
+    XmlElement* retval = new XmlElement("MidiMapping");
 
-	retval->setAttribute("pluginId", (int)getPluginId());
-	retval->setAttribute("parameter", getParameter());
-	retval->setAttribute("cc", cc);
-	retval->setAttribute("latch", latched);
-	retval->setAttribute("channe", channel);
-	retval->setAttribute("lowerBound", lowerBound);
-	retval->setAttribute("upperBound", upperBound);
+    retval->setAttribute("pluginId", (int)getPluginId());
+    retval->setAttribute("parameter", getParameter());
+    retval->setAttribute("cc", cc);
+    retval->setAttribute("latch", latched);
+    retval->setAttribute("channe", channel);
+    retval->setAttribute("lowerBound", lowerBound);
+    retval->setAttribute("upperBound", upperBound);
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::setCc(int val)
 {
-	cc = val;
-	mappingManager->unregisterMapping(this);
-	mappingManager->registerMapping(cc, this);
+    cc = val;
+    mappingManager->unregisterMapping(this);
+    mappingManager->registerMapping(cc, this);
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::setLatched(bool val)
 {
-	latched = val;
+    latched = val;
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::setChannel(int val)
 {
-	channel = val;
+    channel = val;
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::setLowerBound(float val)
 {
-	lowerBound = val;
+    lowerBound = val;
 }
 
 //------------------------------------------------------------------------------
 void MidiMapping::setUpperBound(float val)
 {
-	upperBound = val;
+    upperBound = val;
 }
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiAppMapping::MidiAppMapping(MidiMappingManager *manager,
-							   int midiCc,
-							   CommandID commandId):
-midiManager(manager),
-cc(midiCc),
-id(commandId)
+MidiAppMapping::MidiAppMapping(MidiMappingManager* manager, int midiCc, CommandID commandId)
+    : midiManager(manager), cc(midiCc), id(commandId)
 {
-	//midiManager->registerAppMapping(this);
+    // midiManager->registerAppMapping(this);
 }
 
 //------------------------------------------------------------------------------
-MidiAppMapping::MidiAppMapping(MidiMappingManager *manager, XmlElement *e):
-midiManager(manager)
+MidiAppMapping::MidiAppMapping(MidiMappingManager* manager, XmlElement* e) : midiManager(manager)
 {
-	if(e)
-	{
-		cc = e->getIntAttribute("cc");
-		id = e->getIntAttribute("commandId");
-	}
-	//midiManager->registerAppMapping(this);
+    if (e)
+    {
+        cc = e->getIntAttribute("cc");
+        id = e->getIntAttribute("commandId");
+    }
+    // midiManager->registerAppMapping(this);
 }
 
 //------------------------------------------------------------------------------
 MidiAppMapping::~MidiAppMapping()
 {
-	midiManager->unregisterAppMapping(this);
+    midiManager->unregisterAppMapping(this);
 }
 
 //------------------------------------------------------------------------------
-XmlElement *MidiAppMapping::getXml() const
+XmlElement* MidiAppMapping::getXml() const
 {
-	XmlElement *retval = new XmlElement("MidiAppMapping");
+    XmlElement* retval = new XmlElement("MidiAppMapping");
 
-	retval->setAttribute("cc", cc);
-	retval->setAttribute("commandId", id);
+    retval->setAttribute("cc", cc);
+    retval->setAttribute("commandId", id);
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiMappingManager::MidiMappingManager(ApplicationCommandManager *manager):
-appManager(manager),
-midiLearnCallback(0)
+MidiMappingManager::MidiMappingManager(ApplicationCommandManager* manager) : appManager(manager), midiLearnCallback(0)
 {
-
 }
 
 //------------------------------------------------------------------------------
 MidiMappingManager::~MidiMappingManager()
 {
-	unsigned int i;
-	std::vector<MidiMapping *> tempMappings;
-	std::vector<MidiAppMapping *> tempAppMappings;
-	std::multimap<int, MidiMapping *>::iterator it;
-	std::multimap<int, MidiAppMapping *>::iterator it2;
+    unsigned int i;
+    std::vector<MidiMapping*> tempMappings;
+    std::vector<MidiAppMapping*> tempAppMappings;
+    std::multimap<int, MidiMapping*>::iterator it;
+    std::multimap<int, MidiAppMapping*>::iterator it2;
 
-	for(it=mappings.begin();it!=mappings.end();++it)
-		tempMappings.push_back(it->second);
-	for(it2=appMappings.begin();it2!=appMappings.end();++it2)
-		tempAppMappings.push_back(it2->second);
+    for (it = mappings.begin(); it != mappings.end(); ++it)
+        tempMappings.push_back(it->second);
+    for (it2 = appMappings.begin(); it2 != appMappings.end(); ++it2)
+        tempAppMappings.push_back(it2->second);
 
-	for(i=0;i<tempMappings.size();++i)
-		delete tempMappings[i];
-	for(i=0;i<tempAppMappings.size();++i)
-		delete tempAppMappings[i];
+    for (i = 0; i < tempMappings.size(); ++i)
+        delete tempMappings[i];
+    for (i = 0; i < tempAppMappings.size(); ++i)
+        delete tempAppMappings[i];
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::midiCcReceived(const MidiMessage& message,
-										double secondsSinceStart)
+void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secondsSinceStart)
 {
-	if(LogFile::getInstance().getIsLogging())
-	{
-		String tempstr;
+    if (LogFile::getInstance().getIsLogging())
+    {
+        String tempstr;
 
-		if(message.isController())
-		{
-			tempstr << "MIDI CC message received: CC=" << message.getControllerNumber();
-			tempstr << " val=" << message.getControllerValue();
-			tempstr << " chan=" << message.getChannel();
-		}
-		else if(message.isNoteOn())
-		{
-			tempstr << "MIDI Note On message received: note=" << message.getNoteNumber();
-			tempstr << " vel=" << (int)message.getVelocity();
-			tempstr << " chan=" << message.getChannel();
-		}
-		else if(message.isNoteOff())
-		{
-			tempstr << "MIDI Note Off message received: note=" << message.getNoteNumber();
-			tempstr << " vel=" << (int)message.getVelocity();
-			tempstr << " chan=" << message.getChannel();
-		}
-		else if(message.isProgramChange())
-		{
-			tempstr << "MIDI Program Change message received: prog=" << message.getProgramChangeNumber();
-		}
-		else
-		{
-			int i;
+        if (message.isController())
+        {
+            tempstr << "MIDI CC message received: CC=" << message.getControllerNumber();
+            tempstr << " val=" << message.getControllerValue();
+            tempstr << " chan=" << message.getChannel();
+        }
+        else if (message.isNoteOn())
+        {
+            tempstr << "MIDI Note On message received: note=" << message.getNoteNumber();
+            tempstr << " vel=" << (int)message.getVelocity();
+            tempstr << " chan=" << message.getChannel();
+        }
+        else if (message.isNoteOff())
+        {
+            tempstr << "MIDI Note Off message received: note=" << message.getNoteNumber();
+            tempstr << " vel=" << (int)message.getVelocity();
+            tempstr << " chan=" << message.getChannel();
+        }
+        else if (message.isProgramChange())
+        {
+            tempstr << "MIDI Program Change message received: prog=" << message.getProgramChangeNumber();
+        }
+        else
+        {
+            int i;
 
-			tempstr << "MIDI message received: ";
-			for(i=0;i<message.getRawDataSize();++i)
-				tempstr << String::toHexString(message.getRawData()[i]);
-		}
+            tempstr << "MIDI message received: ";
+            for (i = 0; i < message.getRawDataSize(); ++i)
+                tempstr << String::toHexString(message.getRawData()[i]);
+        }
 
-		LogFile::getInstance().logEvent("MIDI", tempstr);
-	}
+        LogFile::getInstance().logEvent("MIDI", tempstr);
+    }
 
-	if(message.isController())
-	{
-		int mappingChan;
-		multimap<int, MidiMapping *>::iterator it;
-		multimap<int, MidiAppMapping *>::iterator it2;
-		int cc = message.getControllerNumber();
-		int value = message.getControllerValue();
-		int messageChan = message.getChannel();
+    if (message.isController())
+    {
+        int mappingChan;
+        multimap<int, MidiMapping*>::iterator it;
+        multimap<int, MidiAppMapping*>::iterator it2;
+        int cc = message.getControllerNumber();
+        int value = message.getControllerValue();
+        int messageChan = message.getChannel();
 
-		if(midiLearnCallback)
-		{
-			midiLearnCallback->midiCcReceived(cc);
-			midiLearnCallback = 0;
-		}
+        if (midiLearnCallback)
+        {
+            midiLearnCallback->midiCcReceived(cc);
+            midiLearnCallback = 0;
+        }
 
-		//Check if it matches any MidiMappings.
-		for(it=mappings.lower_bound(cc);
-			it!=mappings.upper_bound(cc);
-			++it)
-		{
-			mappingChan = it->second->getChannel();
-			if((mappingChan == 0) || (mappingChan == messageChan))
-				it->second->ccReceived(value);
-		}
+        // Check if it matches any MidiMappings.
+        for (it = mappings.lower_bound(cc); it != mappings.upper_bound(cc); ++it)
+        {
+            mappingChan = it->second->getChannel();
+            if ((mappingChan == 0) || (mappingChan == messageChan))
+                it->second->ccReceived(value);
+        }
 
-		if(value > 64)
-		{
-			//Check if it matches any MidiAppMappings.
-			for(it2=appMappings.lower_bound(cc);
-				it2!=appMappings.upper_bound(cc);
-				++it2)
-			{
-				CommandID id = it2->second->getId();
-				MainPanel *panel = dynamic_cast<MainPanel *>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
+        if (value > 64)
+        {
+            // Check if it matches any MidiAppMappings.
+            for (it2 = appMappings.lower_bound(cc); it2 != appMappings.upper_bound(cc); ++it2)
+            {
+                CommandID id = it2->second->getId();
+                MainPanel* panel =
+                    dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
-				if(panel)
-				{
-					if(id != MainPanel::TransportTapTempo)
-						panel->invokeCommandFromOtherThread(id);
-					else
-					{
-						double tempo = tapHelper.updateTempo(secondsSinceStart);
+                if (panel)
+                {
+                    if (id != MainPanel::TransportTapTempo)
+                        panel->invokeCommandFromOtherThread(id);
+                    else
+                    {
+                        double tempo = tapHelper.updateTempo(secondsSinceStart);
 
-						if(tempo > 0.0)
-							panel->updateTempoFromOtherThread(tempo);
-					}
-				}
-			}
-		}
-	}
-	else if(message.isMidiMachineControlMessage())
-	{
-		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("mmcTransport", false))
-		{
-			CommandID id = -1;
-			MainPanel *panel = dynamic_cast<MainPanel *>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
+                        if (tempo > 0.0)
+                            panel->updateTempoFromOtherThread(tempo);
+                    }
+                }
+            }
+        }
+    }
+    else if (message.isMidiMachineControlMessage())
+    {
+        if (SettingsManager::getInstance().getBool("mmcTransport", false))
+        {
+            CommandID id = -1;
+            MainPanel* panel = dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
-			switch(message.getMidiMachineControlCommand())
-			{
-				case MidiMessage::mmc_stop:
-					id = MainPanel::TransportPlay;
-					break;
-				case MidiMessage::mmc_play:
-					id = MainPanel::TransportPlay;
-					break;
-				case MidiMessage::mmc_rewind:
-					id = MainPanel::TransportRtz;
-					break;
-				case MidiMessage::mmc_pause:
-					id = MainPanel::TransportPlay;
-					break;
-				default:
-					break;
-			}
-			if((id > -1) && panel)
-				panel->invokeCommandFromOtherThread(id);
-		}
-	}
-	else if(message.isProgramChange())
-	{
-		if(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("midiProgramChange", false))
-		{
-			int newPatch;
-			MainPanel *panel = dynamic_cast<MainPanel *>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
+            switch (message.getMidiMachineControlCommand())
+            {
+            case MidiMessage::mmc_stop:
+                id = MainPanel::TransportPlay;
+                break;
+            case MidiMessage::mmc_play:
+                id = MainPanel::TransportPlay;
+                break;
+            case MidiMessage::mmc_rewind:
+                id = MainPanel::TransportRtz;
+                break;
+            case MidiMessage::mmc_pause:
+                id = MainPanel::TransportPlay;
+                break;
+            default:
+                break;
+            }
+            if ((id > -1) && panel)
+                panel->invokeCommandFromOtherThread(id);
+        }
+    }
+    else if (message.isProgramChange())
+    {
+        if (SettingsManager::getInstance().getBool("midiProgramChange", false))
+        {
+            int newPatch;
+            MainPanel* panel = dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
-			newPatch = message.getProgramChangeNumber();
+            newPatch = message.getProgramChangeNumber();
 
-			if(panel)
-				panel->switchPatchFromProgramChange(newPatch);
-		}
-	}
+            if (panel)
+                panel->switchPatchFromProgramChange(newPatch);
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::registerMapping(int midiCc, MidiMapping *mapping)
+void MidiMappingManager::registerMapping(int midiCc, MidiMapping* mapping)
 {
-	jassert(mapping);
+    jassert(mapping);
 
-	mappings.insert(make_pair(midiCc, mapping));
+    mappings.insert(make_pair(midiCc, mapping));
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::unregisterMapping(MidiMapping *mapping)
+void MidiMappingManager::unregisterMapping(MidiMapping* mapping)
 {
-	multimap<int, MidiMapping *>::iterator it;
+    multimap<int, MidiMapping*>::iterator it;
 
-	jassert(mapping);
+    jassert(mapping);
 
-	for(it=mappings.begin();it!=mappings.end();)
-	{
-		if(it->second == mapping)
-			mappings.erase(it++); //Pass the current iterator to erase, then increment it before erase() is executed, so it's not invalidated by the erase() call.
-		else
-			++it; //Pre-increment because it should be more efficient.
-	}
+    for (it = mappings.begin(); it != mappings.end();)
+    {
+        if (it->second == mapping)
+            mappings.erase(it++); // Pass the current iterator to erase, then increment it before erase() is executed,
+                                  // so it's not invalidated by the erase() call.
+        else
+            ++it; // Pre-increment because it should be more efficient.
+    }
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::registerAppMapping(MidiAppMapping *mapping)
+void MidiMappingManager::registerAppMapping(MidiAppMapping* mapping)
 {
-	jassert(mapping);
+    jassert(mapping);
 
-	appMappings.insert(make_pair(mapping->getCc(), mapping));
+    appMappings.insert(make_pair(mapping->getCc(), mapping));
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::unregisterAppMapping(MidiAppMapping *mapping)
+void MidiMappingManager::unregisterAppMapping(MidiAppMapping* mapping)
 {
-	multimap<int, MidiAppMapping *>::iterator it;
+    multimap<int, MidiAppMapping*>::iterator it;
 
-	jassert(mapping);
+    jassert(mapping);
 
-	for(it=appMappings.begin();it!=appMappings.end();)
-	{
-		if(it->second == mapping)
-			appMappings.erase(it++); //Pass the current iterator to erase, then increment it before erase() is executed, so it's not invalidated by the erase() call.
-		else
-			++it; //Pre-increment because it should be more efficient.
-	}
+    for (it = appMappings.begin(); it != appMappings.end();)
+    {
+        if (it->second == mapping)
+            appMappings.erase(it++); // Pass the current iterator to erase, then increment it before erase() is
+                                     // executed, so it's not invalidated by the erase() call.
+        else
+            ++it; // Pre-increment because it should be more efficient.
+    }
 }
 
 //------------------------------------------------------------------------------
-MidiAppMapping *MidiMappingManager::getAppMapping(int index)
+MidiAppMapping* MidiMappingManager::getAppMapping(int index)
 {
-	int i = 0;
-	MidiAppMapping *retval = 0;
-	multimap<int, MidiAppMapping *>::iterator it;
+    int i = 0;
+    MidiAppMapping* retval = 0;
+    multimap<int, MidiAppMapping*>::iterator it;
 
-	for(it=appMappings.begin();it!=appMappings.end();++it)
-	{
-		if(i == index)
-		{
-			retval = it->second;
-			break;
-		}
-		++i;
-	}
+    for (it = appMappings.begin(); it != appMappings.end(); ++it)
+    {
+        if (i == index)
+        {
+            retval = it->second;
+            break;
+        }
+        ++i;
+    }
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::registerMidiLearnCallback(MidiLearnCallback *callback)
+void MidiMappingManager::registerMidiLearnCallback(MidiLearnCallback* callback)
 {
-	midiLearnCallback = callback;
+    midiLearnCallback = callback;
 }
 
 //------------------------------------------------------------------------------
-void MidiMappingManager::unregisterMidiLearnCallback(MidiLearnCallback *callback)
+void MidiMappingManager::unregisterMidiLearnCallback(MidiLearnCallback* callback)
 {
-	midiLearnCallback = 0;
+    midiLearnCallback = 0;
 }
 
 //------------------------------------------------------------------------------
 const StringArray MidiMappingManager::getCCNames()
 {
-	StringArray retval;
+    StringArray retval;
 
-	retval.add("0: Bank Select");
+    retval.add("0: Bank Select");
     retval.add("1: Mod Wheel");
     retval.add("2: Breath");
     retval.add("3:");
@@ -593,72 +564,63 @@ const StringArray MidiMappingManager::getCCNames()
     retval.add("126: Mono Operation");
     retval.add("127: Poly Operation");
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiInterceptor::MidiInterceptor():
-midiManager(0),
-samplesSinceStart(0)
-{
+MidiInterceptor::MidiInterceptor() : midiManager(0), samplesSinceStart(0) {}
 
+//------------------------------------------------------------------------------
+MidiInterceptor::~MidiInterceptor() {}
+
+//------------------------------------------------------------------------------
+void MidiInterceptor::setManager(MidiMappingManager* manager)
+{
+    midiManager = manager;
 }
 
 //------------------------------------------------------------------------------
-MidiInterceptor::~MidiInterceptor()
+void MidiInterceptor::fillInPluginDescription(PluginDescription& description) const
 {
-
+    description.name = "Midi Interceptor";
+    description.descriptiveName = "Hidden Midi Interceptor plugin for mapping MIDI CCs to parameters.";
+    description.pluginFormatName = "Internal";
+    description.category = "Internal";
+    description.manufacturerName = "Niall Moody";
+    description.version = "1.00";
+    description.uniqueId = description.name.hashCode();
+    description.isInstrument = true; //?
+    description.numInputChannels = 0;
+    description.numOutputChannels = 0;
 }
 
 //------------------------------------------------------------------------------
-void MidiInterceptor::setManager(MidiMappingManager *manager)
+void MidiInterceptor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
-	midiManager = manager;
-}
+    int samplePos;
+    double seconds;
+    MidiMessage tempMess(0xf0);
+    MidiBuffer::Iterator it(midiMessages);
+    const double sampleRate = getSampleRate();
 
-//------------------------------------------------------------------------------
-void MidiInterceptor::fillInPluginDescription(PluginDescription &description) const
-{
-	description.name = "Midi Interceptor";
-	description.descriptiveName = "Hidden Midi Interceptor plugin for mapping MIDI CCs to parameters.";
-	description.pluginFormatName = "Internal";
-	description.category = "Internal";
-	description.manufacturerName = "Niall Moody";
-	description.version = "1.00";
-	description.uniqueId = description.name.hashCode();
-	description.isInstrument = true; //?
-	description.numInputChannels = 0;
-	description.numOutputChannels = 0;
-}
+    jassert(sampleRate > 0.0);
 
-//------------------------------------------------------------------------------
-void MidiInterceptor::processBlock(AudioSampleBuffer &buffer,
-								   MidiBuffer &midiMessages)
-{
-	int samplePos;
-	double seconds;
-	MidiMessage tempMess(0xf0);
-	MidiBuffer::Iterator it(midiMessages);
-	const double sampleRate = getSampleRate();
+    if (midiManager)
+    {
+        int numMess = midiMessages.getNumEvents();
 
-	jassert(sampleRate > 0.0);
+        if (numMess > 0)
+            numMess = numMess;
 
-	if(midiManager)
-	{
-		int numMess = midiMessages.getNumEvents();
+        while (it.getNextEvent(tempMess, samplePos))
+        {
+            seconds = (double)(samplesSinceStart + samplePos) / sampleRate;
+            midiManager->midiCcReceived(tempMess, seconds);
+        }
+    }
 
-		if(numMess > 0)
-			numMess = numMess;
+    samplesSinceStart += buffer.getNumSamples();
 
-		while(it.getNextEvent(tempMess, samplePos))
-		{
-			seconds = (double)(samplesSinceStart+samplePos)/sampleRate;
-			midiManager->midiCcReceived(tempMess, seconds);
-		}
-	}
-
-	samplesSinceStart += buffer.getNumSamples();
-
-	midiMessages.clear();
+    midiMessages.clear();
 }

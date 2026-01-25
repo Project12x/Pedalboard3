@@ -153,7 +153,8 @@ std::unique_ptr<Component> createItemComponent() override;
 |-----------|---------|
 | `MainTransport` | Global play/stop, tempo |
 | `AudioSingletons` | Device manager, format manager |
-| `PropertiesSingleton` | User settings persistence |
+| `SettingsManager` | **NEW** JSON-based settings (`settings.json`) |
+| `PropertiesSingleton` | ~~Legacy~~ (deprecated, being removed) |
 | `ColourScheme` | Current theme colors |
 
 ---
@@ -182,4 +183,4 @@ cmake --build build --config Release
 
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-24*

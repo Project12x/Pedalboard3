@@ -195,14 +195,16 @@ target_sources(Pedalboard2 PRIVATE
     src/WaveformDisplay.h
     
     # Utilities
+    src/SettingsManager.cpp
+    src/SettingsManager.h
     src/JuceHelperStuff.cpp
     src/JuceHelperStuff.h
     src/LogDisplay.cpp
     src/LogDisplay.h
     src/LogFile.cpp
     src/LogFile.h
-    src/PropertiesSingleton.cpp
-    src/PropertiesSingleton.h
+    # src/PropertiesSingleton.cpp
+    # src/PropertiesSingleton.h
     src/TapTempoBox.cpp
     src/TapTempoBox.h
     src/TapTempoHelper.cpp

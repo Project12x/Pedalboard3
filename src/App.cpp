@@ -30,34 +30,26 @@
 #include "MidiMappingManager.h"
 #include "NiallsAudioPluginFormat.h"
 #include "OscMappingManager.h"
-#include "PropertiesSingleton.h"
+// #include "PropertiesSingleton.h"
+#include "SettingsManager.h"
 #include "TrayIcon.h"
 
 //------------------------------------------------------------------------------
 void App::initialise(const String& commandLine)
 {
     bool useTrayIcon, startInTray;
-    PropertiesFile::Options opts;
-
     // Initialise our settings file.
-    opts.applicationName = "Pedalboard3";
-    opts.filenameSuffix = "Settings";
-    opts.osxLibrarySubFolder = "Application Support";
-#ifdef __APPLE__
-    opts.folderName = "Pedalboard3";
-#endif
-    opts.commonToAllUsers = false;
-    opts.ignoreCaseOfKeyNames = false;
-    opts.millisecondsBeforeSaving = 1000;
-    opts.storageFormat = PropertiesFile::storeAsXML;
-    PropertiesSingleton::getInstance().setStorageParameters(opts);
+    // PropertiesSingleton removal: SettingsManager handles this internally now.
+
+    // Initialize new SettingsManager
+    SettingsManager::getInstance().initialise();
 
 #ifndef __APPLE__
-    useTrayIcon = PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("useTrayIcon");
+    useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon");
 #else
     useTrayIcon = false;
 #endif
-    startInTray = PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("startInTray");
+    startInTray = SettingsManager::getInstance().getBool("startInTray");
 
     win = new StupidWindow(commandLine, (useTrayIcon && startInTray));
 
@@ -143,50 +135,53 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 
     // Load correct colour scheme.
     {
-        String scheme = PropertiesSingleton::getInstance().getUserSettings()->getValue("colourScheme");
+        // Load correct colour scheme.
+        {
+            String scheme = SettingsManager::getInstance().getString("colourScheme");
 
-        if (scheme != String())
-            ColourScheme::getInstance().loadPreset(scheme);
-    }
+            if (scheme != String())
+                ColourScheme::getInstance().loadPreset(scheme);
+        }
 
-    LookAndFeel::setDefaultLookAndFeel(laf = new BranchesLAF());
-    setResizable(true, false);
-    setContentOwned(mainPanel = new MainPanel(&commandManager), true);
-    // mainPanel->setCommandManager(&commandManager);
-    centreWithSize(1024, 580);
-    setUsingNativeTitleBar(true);
-    // setDropShadowEnabled(false);
-    if (!startHidden)
-        setVisible(true);
+        LookAndFeel::setDefaultLookAndFeel(laf = new BranchesLAF());
+        setResizable(true, false);
+        setContentOwned(mainPanel = new MainPanel(&commandManager), true);
+        // mainPanel->setCommandManager(&commandManager);
+        centreWithSize(1024, 580);
+        setUsingNativeTitleBar(true);
+        // setDropShadowEnabled(false);
+        if (!startHidden)
+            setVisible(true);
 #ifndef __APPLE__
-    setMenuBar(mainPanel);
+        setMenuBar(mainPanel);
 #endif
 
-    // Attempts to associate our icon with the window's titlebar.
-    getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
+        // Attempts to associate our icon with the window's titlebar.
+        getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 
-    commandManager.registerAllCommandsForTarget(mainPanel);
-    commandManager.registerAllCommandsForTarget(JUCEApplication::getInstance());
+        commandManager.registerAllCommandsForTarget(mainPanel);
+        commandManager.registerAllCommandsForTarget(JUCEApplication::getInstance());
 
-    commandManager.getKeyMappings()->resetToDefaultMappings();
+        commandManager.getKeyMappings()->resetToDefaultMappings();
 
-    loadKeyMappings();
+        loadKeyMappings();
 
-    addKeyListener(commandManager.getKeyMappings());
+        addKeyListener(commandManager.getKeyMappings());
 
-    restoreWindowStateFromString(PropertiesSingleton::getInstance().getUserSettings()->getValue("WindowState"));
+        restoreWindowStateFromString(SettingsManager::getInstance().getString("WindowState"));
 
-    // See if we can load a .pdl file from the commandline.
-    File initialFile(commandLine);
+        // See if we can load a .pdl file from the commandline.
+        File initialFile(commandLine);
 
-    if (initialFile.existsAsFile())
-    {
-        if (initialFile.getFileExtension() == ".pdl")
+        if (initialFile.existsAsFile())
         {
-            mainPanel->loadDocument(initialFile);
-            mainPanel->setLastDocumentOpened(initialFile);
-            mainPanel->setFile(initialFile);
-            mainPanel->setChangedFlag(false);
+            if (initialFile.getFileExtension() == ".pdl")
+            {
+                mainPanel->loadDocument(initialFile);
+                mainPanel->setLastDocumentOpened(initialFile);
+                mainPanel->setFile(initialFile);
+                mainPanel->setChangedFlag(false);
+            }
         }
     }
 }
@@ -195,7 +190,7 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 StupidWindow::~StupidWindow()
 {
     saveKeyMappings();
-    PropertiesSingleton::getInstance().getUserSettings()->setValue("WindowState", getWindowStateAsString());
+    SettingsManager::getInstance().setValue("WindowState", getWindowStateAsString());
 
     setMenuBar(0);
     setContentOwned(0, true);
@@ -204,13 +199,13 @@ StupidWindow::~StupidWindow()
     AudioPluginFormatManagerSingleton::killInstance();
     AudioFormatManagerSingleton::killInstance();
     AudioThumbnailCacheSingleton::killInstance();
-    PropertiesSingleton::killInstance();
+    // PropertiesSingleton::killInstance();
 }
 
 //------------------------------------------------------------------------------
 void StupidWindow::closeButtonPressed()
 {
-    if (PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("useTrayIcon"))
+    if (SettingsManager::getInstance().getBool("useTrayIcon"))
     {
         if (isVisible())
             setVisible(false);

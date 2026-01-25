@@ -21,240 +21,208 @@
 
 //[Headers] You can add your own extra header files here...
 
-#include "MainPanel.h"
-#include "PropertiesSingleton.h"
-#include "ColourScheme.h"
 #include "App.h"
+#include "ColourScheme.h"
+#include "MainPanel.h"
+#include "SettingsManager.h"
 
 //[/Headers]
 
 #include "PreferencesDialog.h"
 
-
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 //[/MiscUserDefs]
 
 //==============================================================================
-PreferencesDialog::PreferencesDialog (MainPanel *panel, const String& port, const String& multicastAddress)
-    : oscPortLabel (0),
-      oscPortEditor (0),
-      oscLabel (0),
-      oscMulticastLabel (0),
-      oscMulticastEditor (0),
-      multicastHintLabel (0),
-      ioOptionsLabel (0),
-      audioInputButton (0),
-      midiInputButton (0),
-      oscInputButton (0),
-      otherLabel (0),
-      mappingsWindowButton (0),
-      loopPatchesButton (0),
-      windowsOnTopButton (0),
-      ignorePinNamesButton (0),
-      midiLabel (0),
-      midiProgramChangeButton (0),
-      mmcTransportButton (0),
-      useTrayIconButton (0),
-      startInTrayButton (0),
-      fixedSizeButton (0),
-      pdlAudioSettingsButton (0)
+PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const String& multicastAddress)
+    : oscPortLabel(0), oscPortEditor(0), oscLabel(0), oscMulticastLabel(0), oscMulticastEditor(0),
+      multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
+      otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0), ignorePinNamesButton(0),
+      midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0),
+      fixedSizeButton(0), pdlAudioSettingsButton(0)
 {
-    addAndMakeVisible (oscPortLabel = new Label ("oscPortLabel",
-                                                 "OSC Port:"));
-    oscPortLabel->setFont (Font (15.0000f, Font::plain));
-    oscPortLabel->setJustificationType (Justification::centredLeft);
-    oscPortLabel->setEditable (false, false, false);
-    oscPortLabel->setColour (TextEditor::textColourId, Colours::black);
-    oscPortLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
+    oscPortLabel->setFont(Font(15.0000f, Font::plain));
+    oscPortLabel->setJustificationType(Justification::centredLeft);
+    oscPortLabel->setEditable(false, false, false);
+    oscPortLabel->setColour(TextEditor::textColourId, Colours::black);
+    oscPortLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (oscPortEditor = new TextEditor ("oscPortEditor"));
-    oscPortEditor->setMultiLine (false);
-    oscPortEditor->setReturnKeyStartsNewLine (false);
-    oscPortEditor->setReadOnly (false);
-    oscPortEditor->setScrollbarsShown (true);
-    oscPortEditor->setCaretVisible (true);
-    oscPortEditor->setPopupMenuEnabled (true);
-    oscPortEditor->setText ("5678");
+    addAndMakeVisible(oscPortEditor = new TextEditor("oscPortEditor"));
+    oscPortEditor->setMultiLine(false);
+    oscPortEditor->setReturnKeyStartsNewLine(false);
+    oscPortEditor->setReadOnly(false);
+    oscPortEditor->setScrollbarsShown(true);
+    oscPortEditor->setCaretVisible(true);
+    oscPortEditor->setPopupMenuEnabled(true);
+    oscPortEditor->setText("5678");
 
-    addAndMakeVisible (oscLabel = new Label ("oscLabel",
-                                             "Open Sound Control Options"));
-    oscLabel->setFont (Font (15.0000f, Font::bold));
-    oscLabel->setJustificationType (Justification::centredLeft);
-    oscLabel->setEditable (false, false, false);
-    oscLabel->setColour (TextEditor::textColourId, Colours::black);
-    oscLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(oscLabel = new Label("oscLabel", "Open Sound Control Options"));
+    oscLabel->setFont(Font(15.0000f, Font::bold));
+    oscLabel->setJustificationType(Justification::centredLeft);
+    oscLabel->setEditable(false, false, false);
+    oscLabel->setColour(TextEditor::textColourId, Colours::black);
+    oscLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (oscMulticastLabel = new Label ("oscMulticastLabel",
-                                                      "OSC Multicast Address:"));
-    oscMulticastLabel->setFont (Font (15.0000f, Font::plain));
-    oscMulticastLabel->setJustificationType (Justification::centredLeft);
-    oscMulticastLabel->setEditable (false, false, false);
-    oscMulticastLabel->setColour (TextEditor::textColourId, Colours::black);
-    oscMulticastLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(oscMulticastLabel = new Label("oscMulticastLabel", "OSC Multicast Address:"));
+    oscMulticastLabel->setFont(Font(15.0000f, Font::plain));
+    oscMulticastLabel->setJustificationType(Justification::centredLeft);
+    oscMulticastLabel->setEditable(false, false, false);
+    oscMulticastLabel->setColour(TextEditor::textColourId, Colours::black);
+    oscMulticastLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (oscMulticastEditor = new TextEditor ("oscMulticastEditor"));
-    oscMulticastEditor->setMultiLine (false);
-    oscMulticastEditor->setReturnKeyStartsNewLine (false);
-    oscMulticastEditor->setReadOnly (false);
-    oscMulticastEditor->setScrollbarsShown (true);
-    oscMulticastEditor->setCaretVisible (true);
-    oscMulticastEditor->setPopupMenuEnabled (true);
-    oscMulticastEditor->setText (String());
+    addAndMakeVisible(oscMulticastEditor = new TextEditor("oscMulticastEditor"));
+    oscMulticastEditor->setMultiLine(false);
+    oscMulticastEditor->setReturnKeyStartsNewLine(false);
+    oscMulticastEditor->setReadOnly(false);
+    oscMulticastEditor->setScrollbarsShown(true);
+    oscMulticastEditor->setCaretVisible(true);
+    oscMulticastEditor->setPopupMenuEnabled(true);
+    oscMulticastEditor->setText(String());
 
-    addAndMakeVisible (multicastHintLabel = new Label ("multicastHintLabel",
-                                                       "(leave blank for a one-to-one connection)"));
-    multicastHintLabel->setFont (Font (15.0000f, Font::plain));
-    multicastHintLabel->setJustificationType (Justification::centredLeft);
-    multicastHintLabel->setEditable (false, false, false);
-    multicastHintLabel->setColour (Label::textColourId, Colour (0x80000000));
-    multicastHintLabel->setColour (TextEditor::textColourId, Colours::black);
-    multicastHintLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(multicastHintLabel =
+                          new Label("multicastHintLabel", "(leave blank for a one-to-one connection)"));
+    multicastHintLabel->setFont(Font(15.0000f, Font::plain));
+    multicastHintLabel->setJustificationType(Justification::centredLeft);
+    multicastHintLabel->setEditable(false, false, false);
+    multicastHintLabel->setColour(Label::textColourId, Colour(0x80000000));
+    multicastHintLabel->setColour(TextEditor::textColourId, Colours::black);
+    multicastHintLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (ioOptionsLabel = new Label ("ioOptionsLabel",
-                                                   "Visible I/O Nodes"));
-    ioOptionsLabel->setFont (Font (15.0000f, Font::bold));
-    ioOptionsLabel->setJustificationType (Justification::centredLeft);
-    ioOptionsLabel->setEditable (false, false, false);
-    ioOptionsLabel->setColour (TextEditor::textColourId, Colours::black);
-    ioOptionsLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(ioOptionsLabel = new Label("ioOptionsLabel", "Visible I/O Nodes"));
+    ioOptionsLabel->setFont(Font(15.0000f, Font::bold));
+    ioOptionsLabel->setJustificationType(Justification::centredLeft);
+    ioOptionsLabel->setEditable(false, false, false);
+    ioOptionsLabel->setColour(TextEditor::textColourId, Colours::black);
+    ioOptionsLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (audioInputButton = new ToggleButton ("audioInputButton"));
-    audioInputButton->setButtonText ("Audio Input");
-    audioInputButton->addListener (this);
-    audioInputButton->setToggleState (true, false);
+    addAndMakeVisible(audioInputButton = new ToggleButton("audioInputButton"));
+    audioInputButton->setButtonText("Audio Input");
+    audioInputButton->addListener(this);
+    audioInputButton->setToggleState(true, false);
 
-    addAndMakeVisible (midiInputButton = new ToggleButton ("midiInputButton"));
-    midiInputButton->setButtonText ("Midi Input");
-    midiInputButton->addListener (this);
-    midiInputButton->setToggleState (true, false);
+    addAndMakeVisible(midiInputButton = new ToggleButton("midiInputButton"));
+    midiInputButton->setButtonText("Midi Input");
+    midiInputButton->addListener(this);
+    midiInputButton->setToggleState(true, false);
 
-    addAndMakeVisible (oscInputButton = new ToggleButton ("oscInputButton"));
-    oscInputButton->setButtonText ("OSC Input");
-    oscInputButton->addListener (this);
-    oscInputButton->setToggleState (true, false);
+    addAndMakeVisible(oscInputButton = new ToggleButton("oscInputButton"));
+    oscInputButton->setButtonText("OSC Input");
+    oscInputButton->addListener(this);
+    oscInputButton->setToggleState(true, false);
 
-    addAndMakeVisible (otherLabel = new Label ("otherLabel",
-                                               "Other Options"));
-    otherLabel->setFont (Font (15.0000f, Font::bold));
-    otherLabel->setJustificationType (Justification::centredLeft);
-    otherLabel->setEditable (false, false, false);
-    otherLabel->setColour (TextEditor::textColourId, Colours::black);
-    otherLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(otherLabel = new Label("otherLabel", "Other Options"));
+    otherLabel->setFont(Font(15.0000f, Font::bold));
+    otherLabel->setJustificationType(Justification::centredLeft);
+    otherLabel->setEditable(false, false, false);
+    otherLabel->setColour(TextEditor::textColourId, Colours::black);
+    otherLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (mappingsWindowButton = new ToggleButton ("mappingsWindowButton"));
-    mappingsWindowButton->setButtonText ("Open mappings window on successful param connection");
-    mappingsWindowButton->addListener (this);
-    mappingsWindowButton->setToggleState (true, false);
+    addAndMakeVisible(mappingsWindowButton = new ToggleButton("mappingsWindowButton"));
+    mappingsWindowButton->setButtonText("Open mappings window on successful param connection");
+    mappingsWindowButton->addListener(this);
+    mappingsWindowButton->setToggleState(true, false);
 
-    addAndMakeVisible (loopPatchesButton = new ToggleButton ("loopPatchesButton"));
-    loopPatchesButton->setButtonText ("Loop next/prev patch action");
-    loopPatchesButton->addListener (this);
-    loopPatchesButton->setToggleState (true, false);
+    addAndMakeVisible(loopPatchesButton = new ToggleButton("loopPatchesButton"));
+    loopPatchesButton->setButtonText("Loop next/prev patch action");
+    loopPatchesButton->addListener(this);
+    loopPatchesButton->setToggleState(true, false);
 
-    addAndMakeVisible (windowsOnTopButton = new ToggleButton ("windowsOnTopButton"));
-    windowsOnTopButton->setButtonText ("Set plugin windows Always On Top");
-    windowsOnTopButton->addListener (this);
+    addAndMakeVisible(windowsOnTopButton = new ToggleButton("windowsOnTopButton"));
+    windowsOnTopButton->setButtonText("Set plugin windows Always On Top");
+    windowsOnTopButton->addListener(this);
 
-    addAndMakeVisible (ignorePinNamesButton = new ToggleButton ("ignorePinNamesButton"));
-    ignorePinNamesButton->setButtonText ("Ignore plugin pin names");
-    ignorePinNamesButton->addListener (this);
+    addAndMakeVisible(ignorePinNamesButton = new ToggleButton("ignorePinNamesButton"));
+    ignorePinNamesButton->setButtonText("Ignore plugin pin names");
+    ignorePinNamesButton->addListener(this);
 
-    addAndMakeVisible (midiLabel = new Label ("midiLabel",
-                                              "Midi Options"));
-    midiLabel->setFont (Font (15.0000f, Font::bold));
-    midiLabel->setJustificationType (Justification::centredLeft);
-    midiLabel->setEditable (false, false, false);
-    midiLabel->setColour (TextEditor::textColourId, Colours::black);
-    midiLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
+    addAndMakeVisible(midiLabel = new Label("midiLabel", "Midi Options"));
+    midiLabel->setFont(Font(15.0000f, Font::bold));
+    midiLabel->setJustificationType(Justification::centredLeft);
+    midiLabel->setEditable(false, false, false);
+    midiLabel->setColour(TextEditor::textColourId, Colours::black);
+    midiLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible (midiProgramChangeButton = new ToggleButton ("midiProgramChangeButton"));
-    midiProgramChangeButton->setButtonText ("Program Change messages switch patches");
-    midiProgramChangeButton->addListener (this);
+    addAndMakeVisible(midiProgramChangeButton = new ToggleButton("midiProgramChangeButton"));
+    midiProgramChangeButton->setButtonText("Program Change messages switch patches");
+    midiProgramChangeButton->addListener(this);
 
-    addAndMakeVisible (mmcTransportButton = new ToggleButton ("mmcTransportButton"));
-    mmcTransportButton->setButtonText ("Main transport responds to MMC");
-    mmcTransportButton->addListener (this);
+    addAndMakeVisible(mmcTransportButton = new ToggleButton("mmcTransportButton"));
+    mmcTransportButton->setButtonText("Main transport responds to MMC");
+    mmcTransportButton->addListener(this);
 
-    addAndMakeVisible (useTrayIconButton = new ToggleButton ("useTrayIconButton"));
-    useTrayIconButton->setButtonText ("Display tray icon (not OSX)");
-    useTrayIconButton->addListener (this);
+    addAndMakeVisible(useTrayIconButton = new ToggleButton("useTrayIconButton"));
+    useTrayIconButton->setButtonText("Display tray icon (not OSX)");
+    useTrayIconButton->addListener(this);
 
-    addAndMakeVisible (startInTrayButton = new ToggleButton ("startInTrayButton"));
-    startInTrayButton->setButtonText ("Start in tray (not OSX)");
-    startInTrayButton->addListener (this);
+    addAndMakeVisible(startInTrayButton = new ToggleButton("startInTrayButton"));
+    startInTrayButton->setButtonText("Start in tray (not OSX)");
+    startInTrayButton->addListener(this);
 
-    addAndMakeVisible (fixedSizeButton = new ToggleButton ("fixedSizeButton"));
-    fixedSizeButton->setButtonText ("Force fixed-size plugin windows");
-    fixedSizeButton->addListener (this);
-    fixedSizeButton->setToggleState (true, false);
+    addAndMakeVisible(fixedSizeButton = new ToggleButton("fixedSizeButton"));
+    fixedSizeButton->setButtonText("Force fixed-size plugin windows");
+    fixedSizeButton->addListener(this);
+    fixedSizeButton->setToggleState(true, false);
 
-    addAndMakeVisible (pdlAudioSettingsButton = new ToggleButton ("pdlAudioSettingsButton"));
-    pdlAudioSettingsButton->setButtonText ("Save audio settings in .pdl files");
-    pdlAudioSettingsButton->addListener (this);
-
+    addAndMakeVisible(pdlAudioSettingsButton = new ToggleButton("pdlAudioSettingsButton"));
+    pdlAudioSettingsButton->setButtonText("Save audio settings in .pdl files");
+    pdlAudioSettingsButton->addListener(this);
 
     //[UserPreSize]
 
-	bool useTrayIcon;
+    bool useTrayIcon;
 
-	mainPanel = panel;
-	currentPort = port;
-	currentMulticast = multicastAddress;
+    mainPanel = panel;
+    currentPort = port;
+    currentMulticast = multicastAddress;
 
-	oscPortEditor->setText(currentPort);
-	oscMulticastEditor->setText(currentMulticast);
+    oscPortEditor->setText(currentPort);
+    oscMulticastEditor->setText(currentMulticast);
 
-	oscPortEditor->addListener(this);
-	oscMulticastEditor->addListener(this);
+    oscPortEditor->addListener(this);
+    oscMulticastEditor->addListener(this);
 
-	audioInputButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("AudioInput", true), false);
-	midiInputButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("MidiInput", true), false);
-	oscInputButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("OscInput", true), false);
+    audioInputButton->setToggleState(SettingsManager::getInstance().getBool("AudioInput", true), false);
+    midiInputButton->setToggleState(SettingsManager::getInstance().getBool("MidiInput", true), false);
+    oscInputButton->setToggleState(SettingsManager::getInstance().getBool("OscInput", true), false);
 
-	midiProgramChangeButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("midiProgramChange", false), false);
-	mmcTransportButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("mmcTransport", false), false);
+    midiProgramChangeButton->setToggleState(SettingsManager::getInstance().getBool("midiProgramChange", false), false);
+    mmcTransportButton->setToggleState(SettingsManager::getInstance().getBool("mmcTransport", false), false);
 
-	mappingsWindowButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("AutoMappingsWindow", true), false);
-	loopPatchesButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("LoopPatches", true), false);
-	windowsOnTopButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("WindowsOnTop", false), false);
-	ignorePinNamesButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("IgnorePinNames", false), false);
+    mappingsWindowButton->setToggleState(SettingsManager::getInstance().getBool("AutoMappingsWindow", true), false);
+    loopPatchesButton->setToggleState(SettingsManager::getInstance().getBool("LoopPatches", true), false);
+    windowsOnTopButton->setToggleState(SettingsManager::getInstance().getBool("WindowsOnTop", false), false);
+    ignorePinNamesButton->setToggleState(SettingsManager::getInstance().getBool("IgnorePinNames", false), false);
 
-	fixedSizeButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("fixedSizeWindows", true), false);
+    fixedSizeButton->setToggleState(SettingsManager::getInstance().getBool("fixedSizeWindows", true), false);
 
-	pdlAudioSettingsButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("pdlAudioSettings", false), false);
+    pdlAudioSettingsButton->setToggleState(SettingsManager::getInstance().getBool("pdlAudioSettings", false), false);
 
 #ifndef __APPLE__
-	useTrayIcon = PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("useTrayIcon", false);
-	useTrayIconButton->setToggleState(useTrayIcon, false);
-	if(useTrayIcon)
-		startInTrayButton->setToggleState(PropertiesSingleton::getInstance().getUserSettings()->getBoolValue("startInTray", false), false);
-	else
-	{
-		startInTrayButton->setToggleState(false, false);
-		startInTrayButton->setEnabled(false);
-	}
+    useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon", false);
+    useTrayIconButton->setToggleState(useTrayIcon, false);
+    if (useTrayIcon)
+        startInTrayButton->setToggleState(SettingsManager::getInstance().getBool("startInTray", false), false);
+    else
+    {
+        startInTrayButton->setToggleState(false, false);
+        startInTrayButton->setEnabled(false);
+    }
 #else
-	useTrayIconButton->setEnabled(false);
-	startInTrayButton->setEnabled(false);
+    useTrayIconButton->setEnabled(false);
+    startInTrayButton->setEnabled(false);
 #endif
 
-	oscPortLabel->setColour(TextEditor::textColourId,
-							ColourScheme::getInstance().colours["Text Colour"]);
-	oscLabel->setColour(TextEditor::textColourId,
-						ColourScheme::getInstance().colours["Text Colour"]);
-	oscMulticastLabel->setColour(TextEditor::textColourId,
-								 ColourScheme::getInstance().colours["Text Colour"]);
-	multicastHintLabel->setColour(TextEditor::textColourId,
-								  ColourScheme::getInstance().colours["Text Colour"]);
-	ioOptionsLabel->setColour(TextEditor::textColourId,
-							  ColourScheme::getInstance().colours["Text Colour"]);
-	otherLabel->setColour(TextEditor::textColourId,
-						  ColourScheme::getInstance().colours["Text Colour"]);
+    oscPortLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    oscLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    oscMulticastLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    multicastHintLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    ioOptionsLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    otherLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
 
     //[/UserPreSize]
 
-    setSize (560, 530);
-
+    setSize(560, 530);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -265,90 +233,89 @@ PreferencesDialog::~PreferencesDialog()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    deleteAndZero (oscPortLabel);
-    deleteAndZero (oscPortEditor);
-    deleteAndZero (oscLabel);
-    deleteAndZero (oscMulticastLabel);
-    deleteAndZero (oscMulticastEditor);
-    deleteAndZero (multicastHintLabel);
-    deleteAndZero (ioOptionsLabel);
-    deleteAndZero (audioInputButton);
-    deleteAndZero (midiInputButton);
-    deleteAndZero (oscInputButton);
-    deleteAndZero (otherLabel);
-    deleteAndZero (mappingsWindowButton);
-    deleteAndZero (loopPatchesButton);
-    deleteAndZero (windowsOnTopButton);
-    deleteAndZero (ignorePinNamesButton);
-    deleteAndZero (midiLabel);
-    deleteAndZero (midiProgramChangeButton);
-    deleteAndZero (mmcTransportButton);
-    deleteAndZero (useTrayIconButton);
-    deleteAndZero (startInTrayButton);
-    deleteAndZero (fixedSizeButton);
-    deleteAndZero (pdlAudioSettingsButton);
-
+    deleteAndZero(oscPortLabel);
+    deleteAndZero(oscPortEditor);
+    deleteAndZero(oscLabel);
+    deleteAndZero(oscMulticastLabel);
+    deleteAndZero(oscMulticastEditor);
+    deleteAndZero(multicastHintLabel);
+    deleteAndZero(ioOptionsLabel);
+    deleteAndZero(audioInputButton);
+    deleteAndZero(midiInputButton);
+    deleteAndZero(oscInputButton);
+    deleteAndZero(otherLabel);
+    deleteAndZero(mappingsWindowButton);
+    deleteAndZero(loopPatchesButton);
+    deleteAndZero(windowsOnTopButton);
+    deleteAndZero(ignorePinNamesButton);
+    deleteAndZero(midiLabel);
+    deleteAndZero(midiProgramChangeButton);
+    deleteAndZero(mmcTransportButton);
+    deleteAndZero(useTrayIconButton);
+    deleteAndZero(startInTrayButton);
+    deleteAndZero(fixedSizeButton);
+    deleteAndZero(pdlAudioSettingsButton);
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
 }
 
 //==============================================================================
-void PreferencesDialog::paint (Graphics& g)
+void PreferencesDialog::paint(Graphics& g)
 {
     //[UserPrePaint] Add your own custom painting code here..
     //[/UserPrePaint]
 
-    g.fillAll (Colour (0xffeeece1));
+    g.fillAll(Colour(0xffeeece1));
 
-    g.setColour (Colours::white);
-    g.fillRect (12, 132, getWidth() - 24, 82);
+    g.setColour(Colours::white);
+    g.fillRect(12, 132, getWidth() - 24, 82);
 
-    g.setColour (Colour (0x40000000));
-    g.drawRect (12, 132, getWidth() - 24, 82, 1);
+    g.setColour(Colour(0x40000000));
+    g.drawRect(12, 132, getWidth() - 24, 82, 1);
 
     //[UserPaint] Add your own custom painting code here..
 
-	g.fillAll (ColourScheme::getInstance().colours["Window Background"]);
+    g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
-    g.setColour (ColourScheme::getInstance().colours["Dialog Inner Background"]);
-    g.fillRect (12, 132, getWidth() - 24, 82);
+    g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
+    g.fillRect(12, 132, getWidth() - 24, 82);
 
-    g.setColour (Colour (0x40000000));
-    g.drawRect (12, 132, getWidth() - 24, 82, 1);
+    g.setColour(Colour(0x40000000));
+    g.drawRect(12, 132, getWidth() - 24, 82, 1);
 
     //[/UserPaint]
 }
 
 void PreferencesDialog::resized()
 {
-    oscPortLabel->setBounds (8, 40, 72, 24);
-    oscPortEditor->setBounds (80, 40, 64, 24);
-    oscLabel->setBounds (0, 8, 208, 24);
-    oscMulticastLabel->setBounds (8, 72, 160, 24);
-    oscMulticastEditor->setBounds (168, 72, 112, 24);
-    multicastHintLabel->setBounds (280, 72, 272, 24);
-    ioOptionsLabel->setBounds (0, 104, 136, 24);
-    audioInputButton->setBounds (16, 136, 96, 24);
-    midiInputButton->setBounds (16, 160, 88, 24);
-    oscInputButton->setBounds (16, 184, 88, 24);
-    otherLabel->setBounds (0, 304, 150, 24);
-    mappingsWindowButton->setBounds (16, 328, 376, 24);
-    loopPatchesButton->setBounds (16, 352, 208, 24);
-    windowsOnTopButton->setBounds (16, 376, 256, 24);
-    ignorePinNamesButton->setBounds (16, 400, 176, 24);
-    midiLabel->setBounds (0, 224, 104, 24);
-    midiProgramChangeButton->setBounds (16, 248, 288, 24);
-    mmcTransportButton->setBounds (16, 272, 232, 24);
-    useTrayIconButton->setBounds (16, 424, 200, 24);
-    startInTrayButton->setBounds (16, 448, 168, 24);
-    fixedSizeButton->setBounds (16, 472, 224, 24);
-    pdlAudioSettingsButton->setBounds (16, 496, 224, 24);
+    oscPortLabel->setBounds(8, 40, 72, 24);
+    oscPortEditor->setBounds(80, 40, 64, 24);
+    oscLabel->setBounds(0, 8, 208, 24);
+    oscMulticastLabel->setBounds(8, 72, 160, 24);
+    oscMulticastEditor->setBounds(168, 72, 112, 24);
+    multicastHintLabel->setBounds(280, 72, 272, 24);
+    ioOptionsLabel->setBounds(0, 104, 136, 24);
+    audioInputButton->setBounds(16, 136, 96, 24);
+    midiInputButton->setBounds(16, 160, 88, 24);
+    oscInputButton->setBounds(16, 184, 88, 24);
+    otherLabel->setBounds(0, 304, 150, 24);
+    mappingsWindowButton->setBounds(16, 328, 376, 24);
+    loopPatchesButton->setBounds(16, 352, 208, 24);
+    windowsOnTopButton->setBounds(16, 376, 256, 24);
+    ignorePinNamesButton->setBounds(16, 400, 176, 24);
+    midiLabel->setBounds(0, 224, 104, 24);
+    midiProgramChangeButton->setBounds(16, 248, 288, 24);
+    mmcTransportButton->setBounds(16, 272, 232, 24);
+    useTrayIconButton->setBounds(16, 424, 200, 24);
+    startInTrayButton->setBounds(16, 448, 168, 24);
+    fixedSizeButton->setBounds(16, 472, 224, 24);
+    pdlAudioSettingsButton->setBounds(16, 496, 224, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
 
-void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
+void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
 {
     //[UserbuttonClicked_Pre]
     //[/UserbuttonClicked_Pre]
@@ -357,7 +324,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_audioInputButton] -- add your button handler code here..
 
-		mainPanel->enableAudioInput(audioInputButton->getToggleState());
+        mainPanel->enableAudioInput(audioInputButton->getToggleState());
 
         //[/UserButtonCode_audioInputButton]
     }
@@ -365,7 +332,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_midiInputButton] -- add your button handler code here..
 
-		mainPanel->enableMidiInput(midiInputButton->getToggleState());
+        mainPanel->enableMidiInput(midiInputButton->getToggleState());
 
         //[/UserButtonCode_midiInputButton]
     }
@@ -373,7 +340,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_oscInputButton] -- add your button handler code here..
 
-		mainPanel->enableOscInput(oscInputButton->getToggleState());
+        mainPanel->enableOscInput(oscInputButton->getToggleState());
 
         //[/UserButtonCode_oscInputButton]
     }
@@ -381,7 +348,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_mappingsWindowButton] -- add your button handler code here..
 
-		mainPanel->setAutoMappingsWindow(mappingsWindowButton->getToggleState());
+        mainPanel->setAutoMappingsWindow(mappingsWindowButton->getToggleState());
 
         //[/UserButtonCode_mappingsWindowButton]
     }
@@ -389,8 +356,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_loopPatchesButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("LoopPatches",
-																	   loopPatchesButton->getToggleState());
+        SettingsManager::getInstance().setValue("LoopPatches", loopPatchesButton->getToggleState());
 
         //[/UserButtonCode_loopPatchesButton]
     }
@@ -398,8 +364,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_windowsOnTopButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("WindowsOnTop",
-																	   windowsOnTopButton->getToggleState());
+        SettingsManager::getInstance().setValue("WindowsOnTop", windowsOnTopButton->getToggleState());
 
         //[/UserButtonCode_windowsOnTopButton]
     }
@@ -407,8 +372,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_ignorePinNamesButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("IgnorePinNames",
-																	   ignorePinNamesButton->getToggleState());
+        SettingsManager::getInstance().setValue("IgnorePinNames", ignorePinNamesButton->getToggleState());
 
         //[/UserButtonCode_ignorePinNamesButton]
     }
@@ -416,8 +380,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_midiProgramChangeButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("midiProgramChange",
-																	   midiProgramChangeButton->getToggleState());
+        SettingsManager::getInstance().setValue("midiProgramChange", midiProgramChangeButton->getToggleState());
 
         //[/UserButtonCode_midiProgramChangeButton]
     }
@@ -425,8 +388,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_mmcTransportButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("mmcTransport",
-																	   mmcTransportButton->getToggleState());
+        SettingsManager::getInstance().setValue("mmcTransport", mmcTransportButton->getToggleState());
 
         //[/UserButtonCode_mmcTransportButton]
     }
@@ -434,17 +396,16 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_useTrayIconButton] -- add your button handler code here..
 
-		((App *)JUCEApplication::getInstance())->showTrayIcon(useTrayIconButton->getToggleState());
-		if(useTrayIconButton->getToggleState())
-			startInTrayButton->setEnabled(true);
-		else
-		{
-			startInTrayButton->setToggleState(false, false);
-			startInTrayButton->setEnabled(false);
-		}
+        ((App*)JUCEApplication::getInstance())->showTrayIcon(useTrayIconButton->getToggleState());
+        if (useTrayIconButton->getToggleState())
+            startInTrayButton->setEnabled(true);
+        else
+        {
+            startInTrayButton->setToggleState(false, false);
+            startInTrayButton->setEnabled(false);
+        }
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("useTrayIcon",
-																	   useTrayIconButton->getToggleState());
+        SettingsManager::getInstance().setValue("useTrayIcon", useTrayIconButton->getToggleState());
 
         //[/UserButtonCode_useTrayIconButton]
     }
@@ -452,8 +413,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_startInTrayButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("startInTray",
-																	   startInTrayButton->getToggleState());
+        SettingsManager::getInstance().setValue("startInTray", startInTrayButton->getToggleState());
 
         //[/UserButtonCode_startInTrayButton]
     }
@@ -461,8 +421,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_fixedSizeButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("fixedSizeWindows",
-																	   fixedSizeButton->getToggleState());
+        SettingsManager::getInstance().setValue("fixedSizeWindows", fixedSizeButton->getToggleState());
 
         //[/UserButtonCode_fixedSizeButton]
     }
@@ -470,8 +429,7 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_pdlAudioSettingsButton] -- add your button handler code here..
 
-		PropertiesSingleton::getInstance().getUserSettings()->setValue("pdlAudioSettings",
-																	   pdlAudioSettingsButton->getToggleState());
+        SettingsManager::getInstance().setValue("pdlAudioSettings", pdlAudioSettingsButton->getToggleState());
 
         //[/UserButtonCode_pdlAudioSettingsButton]
     }
@@ -480,51 +438,48 @@ void PreferencesDialog::buttonClicked (Button* buttonThatWasClicked)
     //[/UserbuttonClicked_Post]
 }
 
-
-
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
 
 //------------------------------------------------------------------------------
-void PreferencesDialog::textEditorReturnKeyPressed(TextEditor &editor)
+void PreferencesDialog::textEditorReturnKeyPressed(TextEditor& editor)
 {
-	if(editor.getName() == "oscPortEditor")
-	{
-		currentPort = editor.getText();
-		mainPanel->setSocketPort(currentPort);
-	}
-	else if(editor.getName() == "oscMulticastEditor")
-	{
-		currentMulticast = editor.getText();
-		mainPanel->setSocketMulticast(currentMulticast);
-	}
+    if (editor.getName() == "oscPortEditor")
+    {
+        currentPort = editor.getText();
+        mainPanel->setSocketPort(currentPort);
+    }
+    else if (editor.getName() == "oscMulticastEditor")
+    {
+        currentMulticast = editor.getText();
+        mainPanel->setSocketMulticast(currentMulticast);
+    }
 }
 
 //------------------------------------------------------------------------------
-void PreferencesDialog::textEditorEscapeKeyPressed(TextEditor &editor)
+void PreferencesDialog::textEditorEscapeKeyPressed(TextEditor& editor)
 {
-	if(editor.getName() == "oscPortEditor")
-		editor.setText(currentPort, false);
-	else if(editor.getName() == "oscMulticastEditor")
-		editor.setText(currentMulticast, false);
+    if (editor.getName() == "oscPortEditor")
+        editor.setText(currentPort, false);
+    else if (editor.getName() == "oscMulticastEditor")
+        editor.setText(currentMulticast, false);
 }
 
 //------------------------------------------------------------------------------
-void PreferencesDialog::textEditorFocusLost(TextEditor &editor)
+void PreferencesDialog::textEditorFocusLost(TextEditor& editor)
 {
-	if(editor.getName() == "oscPortEditor")
-	{
-		currentPort = editor.getText();
-		mainPanel->setSocketPort(currentPort);
-	}
-	else if(editor.getName() == "oscMulticastEditor")
-	{
-		currentMulticast = editor.getText();
-		mainPanel->setSocketMulticast(currentMulticast);
-	}
+    if (editor.getName() == "oscPortEditor")
+    {
+        currentPort = editor.getText();
+        mainPanel->setSocketPort(currentPort);
+    }
+    else if (editor.getName() == "oscMulticastEditor")
+    {
+        currentMulticast = editor.getText();
+        mainPanel->setSocketMulticast(currentMulticast);
+    }
 }
 
 //[/MiscUserCode]
-
 
 //==============================================================================
 #if 0
