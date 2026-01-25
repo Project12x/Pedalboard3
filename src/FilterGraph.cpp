@@ -37,6 +37,7 @@
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
 #include "SettingsManager.h"
+#include "UndoActions.h"
 
 #include <iostream>
 
@@ -106,51 +107,9 @@ const AudioProcessorGraph::Node::Ptr FilterGraph::getNodeForId(const AudioProces
 
 void FilterGraph::addFilter(const PluginDescription* desc, double x, double y)
 {
-    if (desc != 0)
+    if (desc != nullptr)
     {
-        String errorMessage;
-        // JUCE 8: createPluginInstance returns unique_ptr and requires
-        // sampleRate/bufferSize
-        auto tempInstance =
-            AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(*desc, 44100.0, 512, errorMessage);
-
-        if (tempInstance)
-        {
-            // Fix for VST3 I/O issues (e.g. ValhallaSuperMassive):
-            // Try to enforce a Stereo layout if supported, to avoid Surround/Aux buses causing massive pin counts.
-            AudioProcessor::BusesLayout stereoLayout;
-            stereoLayout.inputBuses.add(AudioChannelSet::stereo());
-            stereoLayout.outputBuses.add(AudioChannelSet::stereo());
-
-            if (tempInstance->checkBusesLayoutSupported(stereoLayout))
-                tempInstance->setBusesLayout(stereoLayout);
-        }
-
-        std::unique_ptr<AudioProcessor> instance;
-        if (tempInstance)
-        {
-            if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-                dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
-                instance = std::move(tempInstance);
-            else
-                instance = std::make_unique<BypassableInstance>(tempInstance.release());
-        }
-
-        AudioProcessorGraph::Node::Ptr node;
-
-        if (instance)
-            node = graph.addNode(std::move(instance));
-
-        if (node != nullptr)
-        {
-            node->properties.set("x", x);
-            node->properties.set("y", y);
-            changed();
-        }
-        else
-        {
-            AlertWindow::showMessageBox(AlertWindow::WarningIcon, TRANS("Couldn't create filter"), errorMessage);
-        }
+        undoManager.perform(new AddPluginAction(*this, *desc, x, y));
     }
 }
 
@@ -183,10 +142,16 @@ void FilterGraph::addFilter(AudioPluginInstance* plugin, double x, double y)
 
 void FilterGraph::removeFilter(const AudioProcessorGraph::NodeID id)
 {
-    // PluginWindow::closeCurrentlyOpenWindowsFor (id.uid);
-    // JUCE 8: removeNode takes NodeID
-    if (graph.removeNode(id))
-        changed();
+    // Get plugin description and connections before removing, for undo support
+    PluginDescription desc = getPluginDescription(id);
+    auto node = graph.getNodeForId(id);
+    if (node != nullptr)
+    {
+        double x = node->properties.getWithDefault("x", 0.0);
+        double y = node->properties.getWithDefault("y", 0.0);
+        auto connections = getConnectionsForNode(id);
+        undoManager.perform(new RemovePluginAction(*this, id, desc, x, y, connections));
+    }
 }
 
 void FilterGraph::disconnectFilter(const AudioProcessorGraph::NodeID id)
@@ -271,23 +236,18 @@ bool FilterGraph::canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int so
 bool FilterGraph::addConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                                 AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
 {
-    // JUCE 8: addConnection takes a Connection struct
+    undoManager.perform(
+        new AddConnectionAction(*this, sourceFilterUID, sourceFilterChannel, destFilterUID, destFilterChannel));
+    // Check if connection exists now
     AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
-    const bool result = graph.addConnection(conn);
-
-    if (result)
-        changed();
-
-    return result;
+    return graph.isConnected(conn);
 }
 
 void FilterGraph::removeConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                                    AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
 {
-    // JUCE 8: removeConnection takes a Connection struct
-    AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
-    if (graph.removeConnection(conn))
-        changed();
+    undoManager.perform(
+        new RemoveConnectionAction(*this, sourceFilterUID, sourceFilterChannel, destFilterUID, destFilterChannel));
 }
 
 //==============================================================================
