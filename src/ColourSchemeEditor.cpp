@@ -27,7 +27,6 @@
 #include "SettingsManager.h"
 #include "Vectors.h"
 
-
 //[/Headers]
 
 #include "ColourSchemeEditor.h"
@@ -123,12 +122,18 @@ ColourSchemeEditor::~ColourSchemeEditor()
     //[Destructor_pre]. You can add your own custom destruction code here..
 
     // Check if the selected preset has been saved.
-    if (!ColourScheme::getInstance().doesColoursMatchPreset(presetSelector->getText()))
+    // Skip warning for built-in themes that haven't been modified
+    String currentPreset = presetSelector->getText();
+    StringArray builtInPresets = ColourScheme::getBuiltInPresets();
+    bool isBuiltIn = builtInPresets.contains(currentPreset);
+
+    // Only prompt to save if it's not a built-in preset, or if a file version exists and differs
+    if (!isBuiltIn && !ColourScheme::getInstance().doesColoursMatchPreset(currentPreset))
     {
         if (AlertWindow::showOkCancelBox(AlertWindow::WarningIcon, "Colour scheme not saved", "Save current scheme?",
                                          "Yes", "No"))
         {
-            ColourScheme::getInstance().savePreset(presetSelector->getText());
+            ColourScheme::getInstance().savePreset(currentPreset);
         }
     }
 
