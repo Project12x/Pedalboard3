@@ -6,17 +6,30 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 ---
 
+## Business Model (Aseprite-style, GPL-compliant)
+
+| Tier | Description | Price |
+|------|-------------|-------|
+| **Community** | Phase 4 completion (modernized Pedalboard2) | Free on GitHub |
+| **Pro** | Phase 5+ features (competitive with Gig Performer) | $15-25 on Steam/itch.io |
+
+**GPL v3 allows:** Selling binaries, charging for support/updates, keeping source public.
+
+**Competitors:** Gig Performer (~$170), Cantabile (~$199), MainStage ($40), LiveProfessor ($100)
+
+---
+
 ## Status Overview
 
-| Phase | Name | Status | Goal |
-|-------|------|--------|------|
-| **1** | JUCE 8 Migration | ✅ Complete | Build with modern JUCE |
-| **2** | Foundation & Tooling | ✅ Complete | Modern dev foundation |
-| **3** | Core Features & UI | ✅ Complete | VST3, themes, JSON settings |
-| **4** | Launch & Competitive | 🎯 **NEXT** | Undo/Redo, CLAP, v3.0 launch |
-| **5** | Stability & Polish | ⏳ Future | Testing, bug fixes, UX polish |
-| **6** | Distribution | ⏳ Future | CI/CD, installers, signing |
-| **7** | Advanced Features | ⏳ Future | Networking, gamepad, etc. |
+| Phase | Name | Status | Release |
+|-------|------|--------|---------|
+| **1** | JUCE 8 Migration | ✅ Complete | — |
+| **2** | Foundation & Tooling | ✅ Complete | — |
+| **3** | Core Features & UI | ✅ Complete | — |
+| **4** | Launch & Competitive | 🎯 **NEXT** | **v3.0 Community** |
+| **5** | Pro Features | ⏳ Future | v3.1+ Pro |
+| **6** | Distribution | ⏳ Future | — |
+| **7** | Advanced Features | ⏳ Future | — |
 
 ---
 
@@ -54,8 +67,6 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 2B.1 | fmt | String formatting | ✅ Done |
 | 2B.2 | spdlog | Async logging | ✅ Done |
 | 2B.3 | nlohmann/json | JSON handling | ✅ Done |
-| 2B.4 | toml++ | Config files | ⏳ Optional |
-| 2B.5 | CLI11 | Command-line | ⏳ Optional |
 
 ### 2C: Testing Framework
 | # | Task | Status |
@@ -89,17 +100,13 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 **Themes:** Midnight (default), Daylight, Synthwave, Deep Ocean, Forest
 
-### 3C: MIDI/OSC (Deferred)
-| # | Task | Library | Status |
-|---|------|---------|--------|
-| 3C.1 | Replace MIDI handling | libremidi | ⏳ Phase 5 |
-| 3C.2 | Replace OSC handling | liblo | ⏳ Phase 5 |
-
 ---
 
 ## Phase 4: Launch & Competitive Features 🎯 NEXT
 
-**Goal:** Close gaps with competitors, prepare v3.0 launch
+**Goal:** Close gaps with competitors, prepare v3.0 Community release
+
+> **Release:** v3.0 Community Edition (FREE) — Announce on KVR, Reddit, GitHub
 
 ### 4A: Undo/Redo System (Priority)
 | # | Task | Notes |
@@ -107,7 +114,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 4A.1 | Implement UndoManager | JUCE built-in |
 | 4A.2 | Track plugin add/remove | Undoable actions |
 | 4A.3 | Track connection changes | Undoable actions |
-| 4A.4 | Track parameter changes | Optional |
+| 4A.4 | Panic button (all notes off) | Quick win, Gig Performer has this |
 
 ### 4B: CLAP Plugin Support
 | # | Task | Notes |
@@ -123,7 +130,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 4C.2 | Update README.md | Features, screenshots, badges |
 | 4C.3 | Create CHANGELOG.md | v3.0 release notes |
 | 4C.4 | Set up donations | GitHub Sponsors / Ko-fi |
-| 4C.5 | Draft announcement | KVR, Reddit, forums |
+| 4C.5 | Draft announcement | KVR, Reddit, r/synthesizers, r/guitarpedals |
 
 ### 4D: Cross-Platform (Stretch Goal)
 | # | Task | Notes |
@@ -134,44 +141,46 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 ---
 
-## Phase 5: Stability & Polish
+## Phase 5: Pro Features 💰
 
-**Goal:** Production-ready quality
+**Goal:** Compete with Gig Performer, Cantabile, LiveProfessor
 
-### 5A: Testing Expansion
-| # | Task | Notes |
-|---|------|-------|
-| 5A.1 | FilterGraph unit tests | Node creation, connections |
-| 5A.2 | MIDI mapping tests | CC assignment, ranges |
-| 5A.3 | Plugin loading tests | VST3 scan, instantiate |
-| 5A.4 | Performance benchmarks | Google Benchmark |
+> **Release:** v3.1+ Pro — Sell binaries on Steam/itch.io ($15-25)
 
-### 5B: Profiling & Analysis
-| # | Tool | Purpose |
-|---|------|---------|
-| 5B.1 | Tracy | Frame profiler |
-| 5B.2 | AddressSanitizer | Memory bugs |
-| 5B.3 | ThreadSanitizer | Race conditions |
-| 5B.4 | clang-tidy | Static analysis |
+### 5A: Setlist & Performance (from Gig Performer/Cantabile)
+| # | Feature | Competes With |
+|---|---------|---------------|
+| 5A.1 | **Setlist management** | Gig Performer, Cantabile |
+| 5A.2 | **Predictive loading** | Gig Performer (preload next song) |
+| 5A.3 | **Song states/variations** | Cantabile (verse/chorus) |
+| 5A.4 | **Stage Mode** (large UI) | Cantabile Live Mode |
+| 5A.5 | Concert/Set/Patch hierarchy | MainStage |
 
-### 5C: Code Refactoring
-| # | Task | Notes |
-|---|------|-------|
-| 5C.1 | Split PedalboardProcessors | One file per processor |
-| 5C.2 | Global loadSVGFromMemory() | Remove duplication |
-| 5C.3 | BypassableInstance → ChangeBroadcaster | Better pattern |
-| 5C.4 | Atomic cross-thread vars | Thread safety |
-| 5C.5 | Event Log → ListBox | Replace TextEditor |
+### 5B: Live Performance (from LiveProfessor/MainStage)
+| # | Feature | Competes With |
+|---|---------|---------------|
+| 5B.1 | **Cue list** (scripted shows) | LiveProfessor |
+| 5B.2 | **Backing track player** | MainStage, Gig Performer |
+| 5B.3 | Wire visualization | Gig Performer (beautiful flow diagrams) |
+| 5B.4 | Click track / metronome improvements | All |
 
-### 5D: Features
+### 5C: Plugin Management
 | # | Feature | Notes |
 |---|---------|-------|
-| 5D.1 | Plugin preset navigation | Next/prev via MIDI/OSC |
-| 5D.2 | SQLite plugin cache | Fast scanning |
-| 5D.3 | MIDI Output support | Full support |
-| 5D.4 | Router processor | 4-in/4-out toggle |
-| 5D.5 | Global plugin field | Persist across patches |
-| 5D.6 | Document in titlebar | Show .pdl filename |
+| 5C.1 | Plugin preset navigation | Next/prev via MIDI/OSC |
+| 5C.2 | SQLite plugin cache | Fast scanning |
+| 5C.3 | Plugin favorites & categories | Organization |
+| 5C.4 | MIDI Output support | Full support |
+| 5C.5 | Router processor | 4-in/4-out toggle |
+| 5C.6 | Global plugin field | Persist across patches |
+
+### 5D: Testing & Stability
+| # | Task | Notes |
+|---|------|-------|
+| 5D.1 | FilterGraph unit tests | Node creation, connections |
+| 5D.2 | MIDI mapping tests | CC assignment, ranges |
+| 5D.3 | Plugin loading tests | VST3/CLAP scan |
+| 5D.4 | Tracy profiler | Performance |
 
 ### 5E: Bug Fixes (Legacy)
 | # | Issue |
@@ -182,6 +191,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 5E.4 | MIDI/OSC reliability |
 | 5E.5 | Start minimized |
 | 5E.6 | Home key mapping |
+| 5E.7 | Document in titlebar |
 
 ### 5F: Legacy UX (from Niall's ToDo.txt)
 | # | Task | Notes |
@@ -193,9 +203,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 5F.5 | No-setup record button | Quick recording |
 | 5F.6 | Hotkey to bypass all | Global bypass |
 | 5F.7 | Tempo display improvements | Make hidable |
-| 5F.8 | Misc Settings → PropertyPanel | Cleaner prefs |
-| 5F.9 | Custom sliders/toggles in LAF | Polish |
-| 5F.10 | System tray double-click | Hide/show all |
+| 5F.8 | Custom sliders/toggles in LAF | Polish |
 
 ### 5G: Documentation
 | # | Task | Notes |
@@ -219,14 +227,15 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 6A.3 | Artifact publishing | Release binaries |
 | 6A.4 | Test automation | CI test runs |
 
-### 6B: Installers & Updates
+### 6B: Installers & Sales
 | # | Task | Tool |
 |---|------|------|
 | 6B.1 | Windows installer | NSIS or WiX |
 | 6B.2 | macOS DMG | create-dmg |
-| 6B.3 | Auto-update (Win) | WinSparkle |
-| 6B.4 | Auto-update (Mac) | Sparkle |
-| 6B.5 | Code signing | Platform certs |
+| 6B.3 | Steam integration | Steamworks |
+| 6B.4 | itch.io page | Alternative store |
+| 6B.5 | Auto-update (Win) | WinSparkle |
+| 6B.6 | Code signing | Platform certs |
 
 ### 6C: Crash Reporting
 | # | Task | Tool |
@@ -244,7 +253,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | # | Format | Library |
 |---|--------|---------|
 | 7A.1 | LV2 support | Linux focus |
-| 7A.2 | Plugin sandboxing | Out-of-process |
+| 7A.2 | Plugin sandboxing | Out-of-process (crash isolation) |
 
 ### 7B: Networking
 | # | Feature | Library |
@@ -267,7 +276,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 7D.2 | Animations | Lottie / rive-cpp |
 | 7D.3 | Additional themes | Industrial, Stage, Blueprint |
 
-### 7E: User Experience
+### 7E: Future
 | # | Feature | Notes |
 |---|---------|-------|
 | 7E.1 | Accessibility | Screen reader, keyboard nav |
@@ -275,8 +284,21 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 7E.3 | Touch interface | Large hit targets |
 | 7E.4 | OSC timeline | Generalized sequencing |
 | 7E.5 | Mobile remote app | Phone/tablet control |
-| 7E.6 | libremidi MIDI | Replace JUCE MIDI |
-| 7E.7 | liblo OSC | Replace JUCE OSC |
+| 7E.6 | Scripting language | Like GP Script |
+
+---
+
+## Competitive Comparison
+
+| Feature | Gig Performer | Cantabile | **Pedalboard3** |
+|---------|---------------|-----------|-----------------|
+| **Price** | $170+ | $199 + sub | Free / $20 |
+| VST3 + CLAP | ✅ | ✅ | ✅ Phase 4 |
+| Rapid patch queue | ❌ | Limited | ✅ **Unique** |
+| Setlist mgmt | ✅ | ✅ | ✅ Phase 5 |
+| Stage Mode | ❌ | ✅ | ✅ Phase 5 |
+| Open Source | ❌ | ❌ | ✅ GPL v3 |
+| Themes | ❌ | ❌ | ✅ 5 built-in |
 
 ---
 
@@ -286,25 +308,9 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 |-------|-----------|
 | **2** | CPM.cmake, fmt, spdlog, nlohmann/json, Catch2 |
 | **4** | clap-juce-extensions |
-| **5** | Tracy, Google Benchmark, SQLite, sqlite_orm |
-| **6** | Crashpad, Sentry, WinSparkle, Sparkle |
-| **7** | websocketpp, libcurl, SDL2, hidapi, blend2d, libremidi, liblo |
-
----
-
-## Code Hygiene Checklist
-
-Apply at each phase completion:
-
-- [ ] Doxygen comments on public APIs
-- [ ] No unused `#include` statements
-- [ ] Warning-free build (`/W4`)
-- [ ] clang-tidy clean
-- [ ] .clang-format enforced
-- [ ] No dead/commented code
-- [ ] Named constants (no magic numbers)
-- [ ] Unit tests for new code
-- [ ] ARCHITECTURE.md updated
+| **5** | Tracy, SQLite, sqlite_orm |
+| **6** | Crashpad, Sentry, WinSparkle, Sparkle, Steamworks |
+| **7** | websocketpp, libcurl, SDL2, hidapi, blend2d |
 
 ---
 
