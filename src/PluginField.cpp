@@ -1483,14 +1483,28 @@ void PluginField::syncWithGraph()
             graphNodeIds.insert(node->nodeID.uid);
     }
 
+    // Helper lambda to safely get uid from PluginComponent
+    // Uses the pins which store uid as a member (not a pointer that can dangle)
+    auto getComponentUid = [](PluginComponent* comp) -> uint32
+    {
+        if (comp->getNumInputPins() > 0)
+            return comp->getInputPin(0)->getUid();
+        if (comp->getNumOutputPins() > 0)
+            return comp->getOutputPin(0)->getUid();
+        if (comp->getNumParamPins() > 0)
+            return comp->getParamPin(0)->getUid();
+        return 0;
+    };
+
     // Find PluginComponents that no longer have a corresponding graph node
     std::vector<PluginComponent*> toRemove;
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-        if (comp != nullptr && comp->getNode() != nullptr)
+        if (comp != nullptr)
         {
-            if (graphNodeIds.find(comp->getNode()->nodeID.uid) == graphNodeIds.end())
+            uint32 uid = getComponentUid(comp);
+            if (uid != 0 && graphNodeIds.find(uid) == graphNodeIds.end())
             {
                 toRemove.push_back(comp);
             }
@@ -1510,8 +1524,12 @@ void PluginField::syncWithGraph()
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-        if (comp != nullptr && comp->getNode() != nullptr)
-            uiNodeIds.insert(comp->getNode()->nodeID.uid);
+        if (comp != nullptr)
+        {
+            uint32 uid = getComponentUid(comp);
+            if (uid != 0)
+                uiNodeIds.insert(uid);
+        }
     }
 
     for (int i = 0; i < signalPath->getNumFilters(); ++i)
