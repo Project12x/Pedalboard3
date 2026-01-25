@@ -22,17 +22,18 @@
 
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
+
 #include <JuceHeader.h>
-
-
 #include <map>
+
 
 class Mapping;
 class FilterGraph;
 class PluginConnection;
 class PluginPinComponent;
 
-namespace OSC {
+namespace OSC
+{
 class Message;
 class Bundle;
 }; // namespace OSC
@@ -48,161 +49,165 @@ class PluginField : public Component,
                     public ChangeListener,
                     public FileDragAndDropTarget,
                     public AudioPlayHead,
-                    public Timer {
-public:
-  ///	Constructor.
-  PluginField(FilterGraph *filterGraph, KnownPluginList *list,
-              ApplicationCommandManager *appManager);
-  ///	Destructor.
-  ~PluginField();
+                    public Timer
+{
+  public:
+    ///	Constructor.
+    PluginField(FilterGraph* filterGraph, KnownPluginList* list, ApplicationCommandManager* appManager);
+    ///	Destructor.
+    ~PluginField();
 
-  ///	Fills in the background.
-  void paint(Graphics &g);
+    ///	Fills in the background.
+    void paint(Graphics& g);
 
-  ///	Used to add plugins with a double-click.
-  void mouseDown(const MouseEvent &e);
+    ///	Used to add plugins with a double-click.
+    void mouseDown(const MouseEvent& e);
 
-  ///	So we're informed when PluginComponents are moved around, and can update
-  ///our bounds accordingly.
-  void changeListenerCallback(ChangeBroadcaster *source);
+    ///	So we're informed when PluginComponents are moved around, and can update
+    /// our bounds accordingly.
+    void changeListenerCallback(ChangeBroadcaster* source);
 
-  ///	Used to periodically update PluginComponents etc.
-  void timerCallback();
+    ///	Used to periodically update PluginComponents etc.
+    void timerCallback();
 
-  ///	Used to accept dragged plugin files.
-  bool isInterestedInFileDrag(const StringArray &files);
-  ///	Used to accept dragged plugin files.
-  void filesDropped(const StringArray &files, int x, int y);
+    ///	Used to accept dragged plugin files.
+    bool isInterestedInFileDrag(const StringArray& files);
+    ///	Used to accept dragged plugin files.
+    void filesDropped(const StringArray& files, int x, int y);
 
-  ///	So plugins get info about the tempo etc. (JUCE 8 API)
-  Optional<PositionInfo> getPosition() const override;
-  ///	Legacy method for compatibility
-  bool getCurrentPosition(CurrentPositionInfo &result);
+    ///	So plugins get info about the tempo etc. (JUCE 8 API)
+    Optional<PositionInfo> getPosition() const override;
+    ///	Legacy method for compatibility
+    bool getCurrentPosition(CurrentPositionInfo& result);
 
-  ///	Enables/disables the audio input.
-  void enableAudioInput(bool val);
-  ///	Enables/disables the MIDI input.
-  void enableMidiInput(bool val);
-  ///	Enables/disables the OSC input.
-  void enableOscInput(bool val);
+    ///	Enables/disables the audio input.
+    void enableAudioInput(bool val);
+    ///	Enables/disables the MIDI input.
+    void enableMidiInput(bool val);
+    ///	Enables/disables the OSC input.
+    void enableOscInput(bool val);
 
-  ///	Sets whether to automatically open the mappings window or not.
-  void setAutoMappingsWindow(bool val);
+    ///	Sets whether to automatically open the mappings window or not.
+    void setAutoMappingsWindow(bool val);
 
-  ///	Sets the current tempo.
-  void setTempo(double val);
-  ///	Returns the current tempo.
-  double getTempo() const { return tempo; };
+    ///	Sets the current tempo.
+    void setTempo(double val);
+    ///	Returns the current tempo.
+    double getTempo() const { return tempo; };
 
-  ///	Adds a filter to the field.
-  /*!
-          \param index The index of the filter in the FilterGraph.
-   */
-  void addFilter(int index, bool broadcastChangeMessage = true);
-  ///	Deletes a filter from the field.
-  void deleteFilter(AudioProcessorGraph::Node *node);
+    ///	Adds a filter to the field.
+    /*!
+            \param index The index of the filter in the FilterGraph.
+     */
+    void addFilter(int index, bool broadcastChangeMessage = true);
+    ///	Deletes a filter from the field.
+    void deleteFilter(AudioProcessorGraph::Node* node);
 
-  ///	Lets us know the user's edited a processor name.
-  void updateProcessorName(uint32 id, const String &val);
+    ///	Lets us know the user's edited a processor name.
+    void updateProcessorName(uint32 id, const String& val);
 
-  ///	Returns the FilterGraph.
-  FilterGraph *getFilterGraph() { return signalPath; };
+    ///	Returns the FilterGraph.
+    FilterGraph* getFilterGraph() { return signalPath; };
 
-  ///	Adds a connection to the field.
-  void addConnection(PluginPinComponent *source, bool connectAll);
-  ///	Drags a connection between plugins.
-  void dragConnection(int x, int y);
-  ///	Makes a connection between two plugins, or deletes it.
-  void releaseConnection(int x, int y);
-  ///	Deletes any selected connections.
-  void deleteConnection();
+    ///	Adds a connection to the field.
+    void addConnection(PluginPinComponent* source, bool connectAll);
+    ///	Drags a connection between plugins.
+    void dragConnection(int x, int y);
+    ///	Makes a connection between two plugins, or deletes it.
+    void releaseConnection(int x, int y);
+    ///	Deletes any selected connections.
+    void deleteConnection();
 
-  ///	Enables/disables the Midi Input->plugin connection for the passed-in
-  ///Node.
-  void enableMidiForNode(AudioProcessorGraph::Node *node, bool val);
-  ///	Returns true if the Node has a Midi Input->plugin connection.
-  bool getMidiEnabledForNode(AudioProcessorGraph::Node *node) const;
+    ///	Enables/disables the Midi Input->plugin connection for the passed-in
+    /// Node.
+    void enableMidiForNode(AudioProcessorGraph::Node* node, bool val);
+    ///	Returns true if the Node has a Midi Input->plugin connection.
+    bool getMidiEnabledForNode(AudioProcessorGraph::Node* node) const;
 
-  ///	Adds a Mapping.
-  void addMapping(Mapping *mapping);
-  ///	Removes a Mapping.
-  /*!
-          Also deletes mapping.
-   */
-  void removeMapping(Mapping *mapping);
-  ///	Returns an Array of all the Mappings for the passed-in plugin id.
-  Array<Mapping *> getMappingsForPlugin(uint32 id);
+    ///	Adds a Mapping.
+    void addMapping(Mapping* mapping);
+    ///	Removes a Mapping.
+    /*!
+            Also deletes mapping.
+     */
+    void removeMapping(Mapping* mapping);
+    ///	Returns an Array of all the Mappings for the passed-in plugin id.
+    Array<Mapping*> getMappingsForPlugin(uint32 id);
 
-  ///	Returns the MidiMappingManager;
-  MidiMappingManager *getMidiManager() { return &midiManager; };
-  ///	Returns the OscMappingManager;
-  OscMappingManager *getOscManager() { return &oscManager; };
+    ///	Returns the MidiMappingManager;
+    MidiMappingManager* getMidiManager() { return &midiManager; };
+    ///	Returns the OscMappingManager;
+    OscMappingManager* getOscManager() { return &oscManager; };
 
-  ///	Called when the app receives data on its OSC port.
-  void socketDataArrived(char *data, int32 dataSize);
+    ///	Called when the app receives data on its OSC port.
+    void socketDataArrived(char* data, int32 dataSize);
 
-  ///	Returns the XML for the current patch.
-  XmlElement *getXml() const;
-  ///	Loads a new patch from an XmlElement.
-  void loadFromXml(XmlElement *patch);
+    ///	Returns the XML for the current patch.
+    XmlElement* getXml() const;
+    ///	Loads a new patch from an XmlElement.
+    void loadFromXml(XmlElement* patch);
 
-  ///	Clears the field.
-  void clear();
+    ///	Clears the field.
+    void clear();
 
-  ///	Clears the 'double-click...' message.
-  void clearDoubleClickMessage();
+    ///	Clears the 'double-click...' message.
+    void clearDoubleClickMessage();
 
-juce_UseDebuggingNewOperator private :
-    ///	Helper method. Clears mappings.
-    void clearMappings();
-  ///	Helper method. Handles a single OSC bundle.
-  void handleOscBundle(OSC::Bundle *bundle);
-  ///	Helper method. Handles a single OSC message.
-  // void handleOscMessage(OSC::Message *message);
+    ///	Synchronizes UI components with the FilterGraph state.
+    ///	Used after undo/redo to add/remove PluginComponents as needed.
+    void syncWithGraph();
 
-  ///	Helper method. Makes sure PluginConnections are always behing
-  ///PluginComponents.
-  void moveConnectionsBehind();
-  ///	Used to find whether a Plugin Connection has been dragged to a
-  ///PluginPinComponent.
-  Component *getPinAt(const int x, const int y);
+  juce_UseDebuggingNewOperator private :
+      ///	Helper method. Clears mappings.
+      void clearMappings();
+    ///	Helper method. Handles a single OSC bundle.
+    void handleOscBundle(OSC::Bundle* bundle);
+    ///	Helper method. Handles a single OSC message.
+    // void handleOscMessage(OSC::Message *message);
 
-  ///	Helper method. Connects all outputs from a source to all inputs of a
-  ///destination.
-  void connectAll(PluginConnection *connection);
+    ///	Helper method. Makes sure PluginConnections are always behing
+    /// PluginComponents.
+    void moveConnectionsBehind();
+    ///	Used to find whether a Plugin Connection has been dragged to a
+    /// PluginPinComponent.
+    Component* getPinAt(const int x, const int y);
 
-  ///	The signal path itself.
-  FilterGraph *signalPath;
-  ///	The list of possible plugins.
-  KnownPluginList *pluginList;
-  ///	The mappings for this field.
-  std::multimap<uint32, Mapping *> mappings;
-  ///	The manager for any MidiMappings.
-  MidiMappingManager midiManager;
-  ///	The manager for any OscMappings.
-  OscMappingManager oscManager;
+    ///	Helper method. Connects all outputs from a source to all inputs of a
+    /// destination.
+    void connectAll(PluginConnection* connection);
 
-  ///	Any user-edited processor names.
-  std::map<uint32, String> userNames;
+    ///	The signal path itself.
+    FilterGraph* signalPath;
+    ///	The list of possible plugins.
+    KnownPluginList* pluginList;
+    ///	The mappings for this field.
+    std::multimap<uint32, Mapping*> mappings;
+    ///	The manager for any MidiMappings.
+    MidiMappingManager midiManager;
+    ///	The manager for any OscMappings.
+    OscMappingManager oscManager;
 
-  ///	Temporary PluginConnection for dragging.
-  PluginConnection *draggingConnection;
+    ///	Any user-edited processor names.
+    std::map<uint32, String> userNames;
 
-  ///	The current tempo in bpm.
-  double tempo;
+    ///	Temporary PluginConnection for dragging.
+    PluginConnection* draggingConnection;
 
-  ///	Whether to display the 'double-click...' message or not.
-  bool displayDoubleClickMessage;
+    ///	The current tempo in bpm.
+    double tempo;
 
-  ///	Whether the audio input is enabled or not.
-  bool audioInputEnabled;
-  ///	Whether the MIDI input is enabled or not.
-  bool midiInputEnabled;
-  ///	Whether the OSC input is enabled or not.
-  bool oscInputEnabled;
+    ///	Whether to display the 'double-click...' message or not.
+    bool displayDoubleClickMessage;
 
-  ///	Whether to open the mappings window when a param connection is made.
-  bool autoMappingsWindow;
+    ///	Whether the audio input is enabled or not.
+    bool audioInputEnabled;
+    ///	Whether the MIDI input is enabled or not.
+    bool midiInputEnabled;
+    ///	Whether the OSC input is enabled or not.
+    bool oscInputEnabled;
+
+    ///	Whether to open the mappings window when a param connection is made.
+    bool autoMappingsWindow;
 };
 
 #endif

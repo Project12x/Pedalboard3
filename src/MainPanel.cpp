@@ -1025,9 +1025,11 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case EditUndo:
         signalPath.getUndoManager().undo();
+        field->syncWithGraph();
         break;
     case EditRedo:
         signalPath.getUndoManager().redo();
+        field->syncWithGraph();
         break;
     case EditPanic:
     {

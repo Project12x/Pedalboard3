@@ -33,6 +33,7 @@
 #include "PluginComponent.h"
 #include "SettingsManager.h"
 
+#include <set>
 
 using namespace std;
 
@@ -1467,6 +1468,90 @@ void PluginField::clear()
 void PluginField::clearDoubleClickMessage()
 {
     displayDoubleClickMessage = false;
+    repaint();
+}
+
+//------------------------------------------------------------------------------
+void PluginField::syncWithGraph()
+{
+    // Build a set of all NodeIDs in the graph
+    std::set<uint32> graphNodeIds;
+    for (int i = 0; i < signalPath->getNumFilters(); ++i)
+    {
+        auto node = signalPath->getNode(i);
+        if (node != nullptr)
+            graphNodeIds.insert(node->nodeID.uid);
+    }
+
+    // Find PluginComponents that no longer have a corresponding graph node
+    std::vector<PluginComponent*> toRemove;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+        if (comp != nullptr && comp->getNode() != nullptr)
+        {
+            if (graphNodeIds.find(comp->getNode()->nodeID.uid) == graphNodeIds.end())
+            {
+                toRemove.push_back(comp);
+            }
+        }
+    }
+
+    // Remove orphan PluginComponents
+    for (auto* comp : toRemove)
+    {
+        comp->removeChangeListener(this);
+        removeChildComponent(comp);
+        delete comp;
+    }
+
+    // Find graph nodes that don't have a PluginComponent
+    std::set<uint32> uiNodeIds;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+        if (comp != nullptr && comp->getNode() != nullptr)
+            uiNodeIds.insert(comp->getNode()->nodeID.uid);
+    }
+
+    for (int i = 0; i < signalPath->getNumFilters(); ++i)
+    {
+        auto node = signalPath->getNode(i);
+        if (node != nullptr && uiNodeIds.find(node->nodeID.uid) == uiNodeIds.end())
+        {
+            // Add missing PluginComponent
+            addFilter(i, false);
+        }
+    }
+
+    // Also sync connections
+    // Remove orphan PluginConnections (connections to deleted nodes)
+    std::vector<PluginConnection*> connectionsToRemove;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        PluginConnection* conn = dynamic_cast<PluginConnection*>(getChildComponent(i));
+        if (conn != nullptr)
+        {
+            auto* src = conn->getSource();
+            auto* dest = conn->getDestination();
+            bool valid = true;
+
+            if (src != nullptr && graphNodeIds.find(src->getUid()) == graphNodeIds.end())
+                valid = false;
+            if (dest != nullptr && graphNodeIds.find(dest->getUid()) == graphNodeIds.end())
+                valid = false;
+
+            if (!valid)
+                connectionsToRemove.push_back(conn);
+        }
+    }
+
+    for (auto* conn : connectionsToRemove)
+    {
+        removeChildComponent(conn);
+        delete conn;
+    }
+
     repaint();
 }
 
