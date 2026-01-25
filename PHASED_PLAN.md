@@ -139,6 +139,14 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 4D.2 | Linux build attempt | CMake + GCC |
 | 4D.3 | Platform-specific fixes | As needed |
 
+### 4E: Professional Polish
+| # | Task | License | Notes |
+|---|------|---------|-------|
+| 4E.1 | Inter font (UI) | SIL OFL | Modern, clean sans-serif |
+| 4E.2 | JetBrains Mono (values) | SIL OFL | Numbers, parameter values |
+| 4E.3 | Lucide icons | ISC | Clean SVG icon set |
+| 4E.4 | Font embedding in binary | JUCE | BinaryData::fonts |
+
 ---
 
 ## Phase 5: Pro Features 💰
@@ -262,12 +270,17 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 7B.2 | Preset cloud sync | libcurl |
 | 7B.3 | Zeroconf discovery | mdns |
 
-### 7C: Input Devices
-| # | Feature | Library |
-|---|---------|---------|
-| 7C.1 | Gamepad/joystick | SDL2 |
-| 7C.2 | Custom footswitches | hidapi |
-| 7C.3 | Serial port input | Native |
+### 7C: Input Devices (Expanded)
+| # | Feature | Library | Notes |
+|---|---------|---------|-------|
+| 7C.1 | Gamepad/joystick | SDL2 (zlib) | Expression pedal via analog sticks |
+| 7C.2 | USB footswitches | hidapi (BSD) | PageFlip, AirTurn, etc. |
+| 7C.3 | Serial port | libserialport (LGPL) | Arduino, DIY controllers |
+| 7C.4 | Expression pedals | MIDI native | Already supported |
+| 7C.5 | Stream Deck | hidapi | Elgato buttons |
+| 7C.6 | OSC controllers | liblo | TouchOSC, Lemur |
+| 7C.7 | MIDI controllers | JUCE | Already supported |
+| 7C.8 | Custom HID devices | hidapi | DIY footswitches |
 
 ### 7D: UI Enhancements
 | # | Feature | Library |
@@ -307,10 +320,10 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | Phase | Libraries |
 |-------|-----------|
 | **2** | CPM.cmake, fmt, spdlog, nlohmann/json, Catch2 |
-| **4** | clap-juce-extensions |
-| **5** | Tracy, SQLite, sqlite_orm |
+| **4** | clap-juce-extensions, Inter font, JetBrains Mono, Lucide icons |
+| **5** | Tracy, SQLite, sqlite_orm, blend2d/NanoVG |
 | **6** | Crashpad, Sentry, WinSparkle, Sparkle, Steamworks |
-| **7** | websocketpp, libcurl, SDL2, hidapi, blend2d |
+| **7** | websocketpp, libcurl, SDL2, hidapi, libserialport, liblo |
 
 ---
 
