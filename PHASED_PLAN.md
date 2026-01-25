@@ -141,11 +141,42 @@ A roadmap for modernizing Pedalboard2 into a modern VST3 pedalboard host applica
 
 ---
 
-## Phase 4: Quality & Stability
+## Phase 4: Competitive Features & Launch Prep
 
-**Status:** ⏳ Future  
-**Prerequisite:** Phase 3 functional  
-**Goal:** Production-ready quality
+**Status:** 🎯 Next  
+**Prerequisite:** Phase 3 complete ✅  
+**Goal:** Close gaps with competitors, prepare v3.0 launch
+
+### 4A: Undo/Redo System (Priority)
+| # | Task | Notes |
+|---|------|-------|
+| 4A.1 | Implement UndoManager | JUCE built-in |
+| 4A.2 | Track plugin add/remove | Undoable actions |
+| 4A.3 | Track connection changes | Undoable actions |
+| 4A.4 | Track parameter changes | Optional |
+
+### 4B: CLAP Plugin Support
+| # | Task | Notes |
+|---|------|-------|
+| 4B.1 | Add clap-juce-extensions | FetchContent |
+| 4B.2 | Enable CLAPPluginFormat | Similar to VST3 |
+| 4B.3 | Test CLAP plugin loading | Verify compatibility |
+
+### 4C: Launch Prep (Pedalboard3)
+| # | Task | Notes |
+|---|------|-------|
+| 4C.1 | Rename to Pedalboard3 | CMakeLists, App.cpp, docs |
+| 4C.2 | Update README.md | Features, screenshots, badges |
+| 4C.3 | Create CHANGELOG.md | v3.0 release notes |
+| 4C.4 | Set up donations | GitHub Sponsors / Ko-fi |
+| 4C.5 | Draft announcement | KVR, Reddit, forums |
+
+### 4D: Cross-Platform (Stretch Goal)
+| # | Task | Notes |
+|---|------|-------|
+| 4D.1 | macOS build attempt | CMake + Xcode |
+| 4D.2 | Linux build attempt | CMake + GCC |
+| 4D.3 | Platform-specific fixes | As needed |
 
 ### 4A: Testing Expansion
 | # | Task | Notes |
