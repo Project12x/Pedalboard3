@@ -25,13 +25,11 @@
 //[Headers]     -- You can add your own extra header files here --
 #include "ColourScheme.h"
 #include "FilterGraph.h"
-#include "NiallsSocketLib/UDPSocket.h"
-
-
 #include "MidiAppFifo.h"
+#include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
-#include <JuceHeader.h>
 
+#include <JuceHeader.h>
 
 class PluginListWindow;
 //[/Headers]
@@ -55,295 +53,301 @@ class MainPanel : public Component,
                   public TextEditor::Listener,
                   public Button::Listener,
                   public ComboBox::Listener,
-                  public Slider::Listener {
-public:
-  //==============================================================================
-  MainPanel(ApplicationCommandManager *appManager);
-  ~MainPanel();
-
-  //==============================================================================
-  //[UserMethods]     -- You can add your own custom methods in this section.
-
-  ///	For the menu bar.
-  StringArray getMenuBarNames();
-  ///	For the menu bar.
-  PopupMenu getMenuForIndex(int topLevelMenuIndex, const String &menuName);
-  ///	For the menu bar.
-  void menuItemSelected(int menuItemID, int topLevelMenuIndex);
-
-  ///	For keyboard shortcuts etc.
-  ApplicationCommandTarget *getNextCommandTarget();
-  ///	For keyboard shortcuts etc.
-  void getAllCommands(Array<CommandID> &commands);
-  ///	For keyboard shortcuts etc.
-  void getCommandInfo(CommandID commandID, ApplicationCommandInfo &result);
-  ///	For keyboard shortcuts etc.
-  bool perform(const InvocationInfo &info);
-
-  ///	So we know what the commandManager is.
-  void setCommandManager(ApplicationCommandManager *manager);
-
-  ///	Used to add an ApplicationCommand to the queue so it'll get called in
-  ///the message thread.
-  void invokeCommandFromOtherThread(CommandID commandID);
-  ///	Used to update the tempo from a non-message thread.
-  void updateTempoFromOtherThread(double tempo);
-
-  ///	Used to update the CPU usage slider.
-  void timerCallback(int timerId);
-  ///	Used to save the plugin list.
-  void changeListenerCallback(ChangeBroadcaster *changedObject);
-  ///	Used to update the tempo.
-  void textEditorTextChanged(TextEditor &editor);
-  ///	Used to update the tempo.
-  void textEditorReturnKeyPressed(TextEditor &editor);
-
-  ///	Used to accept dragged .pdl files.
-  bool isInterestedInFileDrag(const StringArray &files);
-  ///	Used to accept dragged .pdl files.
-  void filesDropped(const StringArray &files, int x, int y);
-
-  ///	Used to update the socket's port.
-  void setSocketPort(const String &port);
-  ///	Used to update the socket's multicast address input.
-  void setSocketMulticast(const String &address);
-
-  ///	Enables/disables the audio input.
-  void enableAudioInput(bool val);
-  ///	Enables/disables the MIDI input.
-  void enableMidiInput(bool val);
-  ///	Enables/disables the OSC input.
-  void enableOscInput(bool val);
-  ///	Sets whether to automatically open the mappings window or not.
-  void setAutoMappingsWindow(bool val);
-
-  ///	Where the app listens for OSC messages.
-  void run();
-
-  ///	Returns the title of the current set of patches.
-  String getDocumentTitle();
-  ///	Loads a set of patches from the passed-in file.
-  Result loadDocument(const File &file);
-  ///	Tries to save the current patches to the passed-in file.
-  Result saveDocument(const File &file);
-  ///	Returns the last set of patches opened.
-  File getLastDocumentOpened();
-  ///	Saves the last set of patches opened.
-  void setLastDocumentOpened(const File &file);
-
-  ///	Used to update patches from PatchOrganiser.
-  ComboBox *getPatchComboBox() { return patchComboBox; };
-
-  ///	Used to clear the listWindow variable.
-  void setListWindow(PluginListWindow *win) { listWindow = win; };
-
-  ///	Adds a patch from its XmlElement.
-  void addPatch(XmlElement *patch);
-  ///	Saves the current patch to our patches array.
-  void savePatch();
-  ///	Duplicates the indexed patch.
-  void duplicatePatch(int index);
-  ///	Called from PatchOrganiser when it's moving patches up/down.
-  void nextSwitchDoNotSavePrev();
-  ///	Triggers a patch change from a Midi Program Change message.
-  void switchPatchFromProgramChange(int newPatch);
-  ///	Returns the index of the current patch.
-  int getCurrentPatch() const { return patchComboBox->getSelectedId() - 1; };
-
-  ///	Returns the PluginField's MidiMappingManager.
-  MidiMappingManager *getMidiMappingManager() {
-    return dynamic_cast<PluginField *>(viewport->getViewedComponent())
-        ->getMidiManager();
-  };
-  ///	Returns the PluginField's AppMappingManager.
-  OscMappingManager *getOscMappingManager() {
-    return dynamic_cast<PluginField *>(viewport->getViewedComponent())
-        ->getOscManager();
-  };
-
-  ///	Temp.
-  // void logMessage(const String &message);
-
-  ///	Constants for the various menu options.
-  /*!
-          NOTE: Add new constants TO THE END OF THE LIST, or the user's saved
-          mappings will get screwed up!
-   */
-  enum {
-    FileNew = 1,
-    FileOpen,
-    FileSave,
-    FileSaveAs,
-    FileSaveAsDefault,
-    FileResetDefault,
-    FileExit,
-    EditDeleteConnection,
-    EditOrganisePatches,
-    OptionsAudio,
-    OptionsPluginList,
-    OptionsPreferences,
-    OptionsColourSchemes,
-    OptionsKeyMappings,
-    HelpAbout,
-    PatchNextPatch,
-    PatchPrevPatch,
-    TransportPlay,
-    TransportRtz,
-    TransportTapTempo,
-    EditUserPresetManagement,
-    HelpDocumentation,
-    HelpLog
-  };
-
-  //[/UserMethods]
-
-  void paint(Graphics &g);
-  void resized();
-  void buttonClicked(Button *buttonThatWasClicked);
-  void comboBoxChanged(ComboBox *comboBoxThatHasChanged);
-  void sliderValueChanged(Slider *sliderThatWasMoved);
-
-  //==============================================================================
-juce_UseDebuggingNewOperator
-
-    private :
-    //[UserVariables]   -- You can add your own custom variables in this
-    //section.
-
-    ///	Helper method. Switches patches.
-    /*!
-            \param newPatch Index of the new patch to load.
-            \param savePrev Saves the current patch in the process.
-            \param reloadPatch Reloads the current patch.
-     */
-    void switchPatch(int newPatch, bool savePrev = true,
-                     bool reloadPatch = false);
-
-  ///	Helper method to load an SVG file from a binary chunk of data.
-  Drawable *loadSVGFromMemory(const void *dataToInitialiseFrom,
-                              size_t sizeInBytes);
-
-  ///	The IDs of the three timers.
-  enum { CpuTimer = 0, MidiAppTimer, ProgramChangeTimer };
-
-  ///	The last opened document.
-  static File lastDocument;
-
-  ///	Our copy of the commandManager.
-  ApplicationCommandManager *commandManager;
-  ///	Used to display tooltips.
-  TooltipWindow tooltips;
-
-  ///	The sound card settings.
-  AudioDeviceManager deviceManager;
-  ///	The graph representing the audio signal path.
-  FilterGraph signalPath;
-  ///	Object used to 'play' the signalPath object.
-  AudioProcessorPlayer graphPlayer;
-  ///	The list of plugins the user can load.
-  KnownPluginList pluginList;
-  ///	The socket we listen for OSC messages on.
-  UDPSocket sock;
-
-  ///	Used to protect sock when we change port/multicast address.
-  CriticalSection sockCritSec;
-
-  ///	Window to display/edit the list of possible plugins.
-  PluginListWindow *listWindow;
-
-  ///	The currently-loaded patches.
-  Array<XmlElement *> patches;
-  ///	The index of the current patch.
-  int currentPatch;
-  ///	Used to switch patches via Midi Program Changes.
-  int programChangePatch;
-
-  ///	The two drawables we use for the playButton.
-  std::unique_ptr<Drawable> playImage;
-  std::unique_ptr<Drawable> pauseImage;
-  ///	Whether the playPauseButton is currently displaying the play icon.
-  bool playing;
-
-  ///	Used to compensate for the stupid way the combo box handles the user
-  ///editing its text.
-  int lastCombo;
-
-  ///	Used to ensure patches don't get overwritten when they're being
-  ///re-ordered in PatchOrganiser.
-  bool doNotSaveNextPatch;
-
-  ///	Used for tap tempo when the user does it via keyboard.
-  int64 lastTempoTicks;
-
-  ///	Used to pass messages from the audio thread to the message thread.
-  MidiAppFifo midiAppFifo;
-
-  ///	Simple Component to pass to warningBox.
-  class ProgramChangeWarning : public Component {
+                  public Slider::Listener
+{
   public:
-    ///	Constructor.
-    ProgramChangeWarning() : index(0) { setSize(250, 150); };
-    ///	Destructor.
-    ~ProgramChangeWarning() {};
+    //==============================================================================
+    MainPanel(ApplicationCommandManager* appManager);
+    ~MainPanel();
 
-    ///	Draws the warning.
-    void paint(Graphics &g) {
-      String tempstr;
-      Font smallFont(24.0f);
-      Font bigFont(48.0f, Font::bold);
+    //==============================================================================
+    //[UserMethods]     -- You can add your own custom methods in this section.
 
-      g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
+    ///	For the menu bar.
+    StringArray getMenuBarNames();
+    ///	For the menu bar.
+    PopupMenu getMenuForIndex(int topLevelMenuIndex, const String& menuName);
+    ///	For the menu bar.
+    void menuItemSelected(int menuItemID, int topLevelMenuIndex);
 
-      g.setFont(smallFont);
-      g.drawText("Out of bounds", 0, 0, 250, 50,
-                 Justification(Justification::centred), false);
-      g.drawText("MIDI Program Change", 0, 24, 250, 50,
-                 Justification(Justification::centred), false);
-      g.drawText("received:", 0, 48, 250, 50,
-                 Justification(Justification::centred), false);
+    ///	For keyboard shortcuts etc.
+    ApplicationCommandTarget* getNextCommandTarget();
+    ///	For keyboard shortcuts etc.
+    void getAllCommands(Array<CommandID>& commands);
+    ///	For keyboard shortcuts etc.
+    void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result);
+    ///	For keyboard shortcuts etc.
+    bool perform(const InvocationInfo& info);
 
-      tempstr << index;
-      g.setFont(bigFont);
-      g.drawText(tempstr, 0, 88, 250, 50, Justification(Justification::centred),
-                 false);
+    ///	So we know what the commandManager is.
+    void setCommandManager(ApplicationCommandManager* manager);
+
+    ///	Used to add an ApplicationCommand to the queue so it'll get called in
+    /// the message thread.
+    void invokeCommandFromOtherThread(CommandID commandID);
+    ///	Used to update the tempo from a non-message thread.
+    void updateTempoFromOtherThread(double tempo);
+
+    ///	Used to update the CPU usage slider.
+    void timerCallback(int timerId);
+    ///	Used to save the plugin list.
+    void changeListenerCallback(ChangeBroadcaster* changedObject);
+    ///	Used to update the tempo.
+    void textEditorTextChanged(TextEditor& editor);
+    ///	Used to update the tempo.
+    void textEditorReturnKeyPressed(TextEditor& editor);
+
+    ///	Used to accept dragged .pdl files.
+    bool isInterestedInFileDrag(const StringArray& files);
+    ///	Used to accept dragged .pdl files.
+    void filesDropped(const StringArray& files, int x, int y);
+
+    ///	Used to update the socket's port.
+    void setSocketPort(const String& port);
+    ///	Used to update the socket's multicast address input.
+    void setSocketMulticast(const String& address);
+
+    ///	Enables/disables the audio input.
+    void enableAudioInput(bool val);
+    ///	Enables/disables the MIDI input.
+    void enableMidiInput(bool val);
+    ///	Enables/disables the OSC input.
+    void enableOscInput(bool val);
+    ///	Sets whether to automatically open the mappings window or not.
+    void setAutoMappingsWindow(bool val);
+
+    ///	Where the app listens for OSC messages.
+    void run();
+
+    ///	Returns the title of the current set of patches.
+    String getDocumentTitle();
+    ///	Loads a set of patches from the passed-in file.
+    Result loadDocument(const File& file);
+    ///	Tries to save the current patches to the passed-in file.
+    Result saveDocument(const File& file);
+    ///	Returns the last set of patches opened.
+    File getLastDocumentOpened();
+    ///	Saves the last set of patches opened.
+    void setLastDocumentOpened(const File& file);
+
+    ///	Used to update patches from PatchOrganiser.
+    ComboBox* getPatchComboBox() { return patchComboBox; };
+
+    ///	Used to clear the listWindow variable.
+    void setListWindow(PluginListWindow* win) { listWindow = win; };
+
+    ///	Adds a patch from its XmlElement.
+    void addPatch(XmlElement* patch);
+    ///	Saves the current patch to our patches array.
+    void savePatch();
+    ///	Duplicates the indexed patch.
+    void duplicatePatch(int index);
+    ///	Called from PatchOrganiser when it's moving patches up/down.
+    void nextSwitchDoNotSavePrev();
+    ///	Triggers a patch change from a Midi Program Change message.
+    void switchPatchFromProgramChange(int newPatch);
+    ///	Returns the index of the current patch.
+    int getCurrentPatch() const { return patchComboBox->getSelectedId() - 1; };
+
+    ///	Returns the PluginField's MidiMappingManager.
+    MidiMappingManager* getMidiMappingManager()
+    {
+        return dynamic_cast<PluginField*>(viewport->getViewedComponent())->getMidiManager();
     };
-    ///	Sets the offending index.
-    void setIndex(int i) { index = i; };
+    ///	Returns the PluginField's AppMappingManager.
+    OscMappingManager* getOscMappingManager()
+    {
+        return dynamic_cast<PluginField*>(viewport->getViewedComponent())->getOscManager();
+    };
 
-  private:
-    ///	The offending index.
-    int index;
-  };
-  ///	Used to inform the user when the user does a MIDI program change outside
-  ///the limits of the patch list.
-  ProgramChangeWarning warningText;
-  ///	Used to inform the user when the user does a MIDI program change outside
-  ///the limits of the patch list.
-  std::unique_ptr<CallOutBox> warningBox;
+    ///	Temp.
+    // void logMessage(const String &message);
 
-  ///	Temp.
-  // FileOutputStream outFile;
+    ///	Constants for the various menu options.
+    /*!
+            NOTE: Add new constants TO THE END OF THE LIST, or the user's saved
+            mappings will get screwed up!
+     */
+    enum
+    {
+        FileNew = 1,
+        FileOpen,
+        FileSave,
+        FileSaveAs,
+        FileSaveAsDefault,
+        FileResetDefault,
+        FileExit,
+        EditDeleteConnection,
+        EditOrganisePatches,
+        OptionsAudio,
+        OptionsPluginList,
+        OptionsPreferences,
+        OptionsColourSchemes,
+        OptionsKeyMappings,
+        HelpAbout,
+        PatchNextPatch,
+        PatchPrevPatch,
+        TransportPlay,
+        TransportRtz,
+        TransportTapTempo,
+        EditUserPresetManagement,
+        HelpDocumentation,
+        HelpLog,
+        EditUndo,
+        EditRedo,
+        EditPanic
+    };
 
-  //[/UserVariables]
+    //[/UserMethods]
 
-  //==============================================================================
-  Label *patchLabel;
-  TextButton *prevPatch;
-  TextButton *nextPatch;
-  ComboBox *patchComboBox;
-  Viewport *viewport;
-  Slider *cpuSlider;
-  Label *cpuLabel;
-  DrawableButton *playButton;
-  DrawableButton *rtzButton;
-  Label *tempoLabel;
-  TextEditor *tempoEditor;
-  ArrowButton *tapTempoButton;
+    void paint(Graphics& g);
+    void resized();
+    void buttonClicked(Button* buttonThatWasClicked);
+    void comboBoxChanged(ComboBox* comboBoxThatHasChanged);
+    void sliderValueChanged(Slider* sliderThatWasMoved);
 
-  //==============================================================================
-  // (prevent copy constructor and operator= being generated..)
-  MainPanel(const MainPanel &);
-  const MainPanel &operator=(const MainPanel &);
+    //==============================================================================
+  juce_UseDebuggingNewOperator
+
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this
+      // section.
+
+      ///	Helper method. Switches patches.
+      /*!
+              \param newPatch Index of the new patch to load.
+              \param savePrev Saves the current patch in the process.
+              \param reloadPatch Reloads the current patch.
+       */
+      void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
+
+    ///	Helper method to load an SVG file from a binary chunk of data.
+    Drawable* loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes);
+
+    ///	The IDs of the three timers.
+    enum
+    {
+        CpuTimer = 0,
+        MidiAppTimer,
+        ProgramChangeTimer
+    };
+
+    ///	The last opened document.
+    static File lastDocument;
+
+    ///	Our copy of the commandManager.
+    ApplicationCommandManager* commandManager;
+    ///	Used to display tooltips.
+    TooltipWindow tooltips;
+
+    ///	The sound card settings.
+    AudioDeviceManager deviceManager;
+    ///	The graph representing the audio signal path.
+    FilterGraph signalPath;
+    ///	Object used to 'play' the signalPath object.
+    AudioProcessorPlayer graphPlayer;
+    ///	The list of plugins the user can load.
+    KnownPluginList pluginList;
+    ///	The socket we listen for OSC messages on.
+    UDPSocket sock;
+
+    ///	Used to protect sock when we change port/multicast address.
+    CriticalSection sockCritSec;
+
+    ///	Window to display/edit the list of possible plugins.
+    PluginListWindow* listWindow;
+
+    ///	The currently-loaded patches.
+    Array<XmlElement*> patches;
+    ///	The index of the current patch.
+    int currentPatch;
+    ///	Used to switch patches via Midi Program Changes.
+    int programChangePatch;
+
+    ///	The two drawables we use for the playButton.
+    std::unique_ptr<Drawable> playImage;
+    std::unique_ptr<Drawable> pauseImage;
+    ///	Whether the playPauseButton is currently displaying the play icon.
+    bool playing;
+
+    ///	Used to compensate for the stupid way the combo box handles the user
+    /// editing its text.
+    int lastCombo;
+
+    ///	Used to ensure patches don't get overwritten when they're being
+    /// re-ordered in PatchOrganiser.
+    bool doNotSaveNextPatch;
+
+    ///	Used for tap tempo when the user does it via keyboard.
+    int64 lastTempoTicks;
+
+    ///	Used to pass messages from the audio thread to the message thread.
+    MidiAppFifo midiAppFifo;
+
+    ///	Simple Component to pass to warningBox.
+    class ProgramChangeWarning : public Component
+    {
+      public:
+        ///	Constructor.
+        ProgramChangeWarning() : index(0) { setSize(250, 150); };
+        ///	Destructor.
+        ~ProgramChangeWarning() {};
+
+        ///	Draws the warning.
+        void paint(Graphics& g)
+        {
+            String tempstr;
+            Font smallFont(24.0f);
+            Font bigFont(48.0f, Font::bold);
+
+            g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
+
+            g.setFont(smallFont);
+            g.drawText("Out of bounds", 0, 0, 250, 50, Justification(Justification::centred), false);
+            g.drawText("MIDI Program Change", 0, 24, 250, 50, Justification(Justification::centred), false);
+            g.drawText("received:", 0, 48, 250, 50, Justification(Justification::centred), false);
+
+            tempstr << index;
+            g.setFont(bigFont);
+            g.drawText(tempstr, 0, 88, 250, 50, Justification(Justification::centred), false);
+        };
+        ///	Sets the offending index.
+        void setIndex(int i) { index = i; };
+
+      private:
+        ///	The offending index.
+        int index;
+    };
+    ///	Used to inform the user when the user does a MIDI program change outside
+    /// the limits of the patch list.
+    ProgramChangeWarning warningText;
+    ///	Used to inform the user when the user does a MIDI program change outside
+    /// the limits of the patch list.
+    std::unique_ptr<CallOutBox> warningBox;
+
+    ///	Temp.
+    // FileOutputStream outFile;
+
+    //[/UserVariables]
+
+    //==============================================================================
+    Label* patchLabel;
+    TextButton* prevPatch;
+    TextButton* nextPatch;
+    ComboBox* patchComboBox;
+    Viewport* viewport;
+    Slider* cpuSlider;
+    Label* cpuLabel;
+    DrawableButton* playButton;
+    DrawableButton* rtzButton;
+    Label* tempoLabel;
+    TextEditor* tempoEditor;
+    ArrowButton* tapTempoButton;
+
+    //==============================================================================
+    // (prevent copy constructor and operator= being generated..)
+    MainPanel(const MainPanel&);
+    const MainPanel& operator=(const MainPanel&);
 };
 
 #endif // __JUCER_HEADER_MAINPANEL_MAINPANEL_89D8C0B__

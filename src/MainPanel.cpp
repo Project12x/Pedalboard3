@@ -586,10 +586,15 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
     }
     else if (menuName == "Edit")
     {
+        retval.addCommandItem(commandManager, EditUndo);
+        retval.addCommandItem(commandManager, EditRedo);
+        retval.addSeparator();
         retval.addCommandItem(commandManager, EditDeleteConnection);
         retval.addSeparator();
         retval.addCommandItem(commandManager, EditOrganisePatches);
         retval.addCommandItem(commandManager, EditUserPresetManagement);
+        retval.addSeparator();
+        retval.addCommandItem(commandManager, EditPanic);
     }
     else if (menuName == "Options")
     {
@@ -633,6 +638,9 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              EditDeleteConnection,
                              EditOrganisePatches,
                              EditUserPresetManagement,
+                             EditUndo,
+                             EditRedo,
+                             EditPanic,
                              OptionsPreferences,
                              OptionsAudio,
                              OptionsPluginList,
@@ -697,6 +705,18 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case EditUserPresetManagement:
         result.setInfo("User Preset Management", "Opens the user preset managemet window.", editCategory, 0);
+        break;
+    case EditUndo:
+        result.setInfo("Undo", "Undoes the last action.", editCategory, 0);
+        result.addDefaultKeypress(L'z', ModifierKeys::commandModifier);
+        break;
+    case EditRedo:
+        result.setInfo("Redo", "Redoes the previously undone action.", editCategory, 0);
+        result.addDefaultKeypress(L'y', ModifierKeys::commandModifier);
+        result.addDefaultKeypress(L'z', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+        break;
+    case EditPanic:
+        result.setInfo("Panic (All Notes Off)", "Sends All Notes Off on all MIDI channels.", editCategory, 0);
         break;
     case OptionsPreferences:
         result.setInfo("Misc Settings", "Displays miscellaneous settings.", optionsCategory, 0);
@@ -1001,6 +1021,23 @@ bool MainPanel::perform(const InvocationInfo& info)
             }
         }
         lastTempoTicks = ticks;
+    }
+    break;
+    case EditUndo:
+        signalPath.getUndoManager().undo();
+        break;
+    case EditRedo:
+        signalPath.getUndoManager().redo();
+        break;
+    case EditPanic:
+    {
+        // Send All Notes Off (CC 123) and All Sound Off (CC 120) on all channels
+        MidiMessageCollector& midiCollector = graphPlayer.getMidiMessageCollector();
+        for (int channel = 1; channel <= 16; ++channel)
+        {
+            midiCollector.addMessageToQueue(MidiMessage::allNotesOff(channel));
+            midiCollector.addMessageToQueue(MidiMessage::allSoundOff(channel));
+        }
     }
     break;
     }
