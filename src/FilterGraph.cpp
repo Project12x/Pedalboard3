@@ -66,15 +66,18 @@ FilterGraph::FilterGraph()
 
     if (audioInput)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        // Use Raw method to avoid adding to undo history
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
     }
 
     if (midiInput)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
+        // Use Raw method to avoid adding to undo history
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
     }
 
-    addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
+    // Use Raw method to avoid adding to undo history
+    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
 
     setChangedFlag(false);
 }
@@ -109,6 +112,7 @@ void FilterGraph::addFilter(const PluginDescription* desc, double x, double y)
 {
     if (desc != nullptr)
     {
+        undoManager.beginNewTransaction();
         undoManager.perform(new AddPluginAction(*this, *desc, x, y));
     }
 }
@@ -150,6 +154,7 @@ void FilterGraph::removeFilter(const AudioProcessorGraph::NodeID id)
         double x = node->properties.getWithDefault("x", 0.0);
         double y = node->properties.getWithDefault("y", 0.0);
         auto connections = getConnectionsForNode(id);
+        undoManager.beginNewTransaction();
         undoManager.perform(new RemovePluginAction(*this, id, desc, x, y, connections));
     }
 }
@@ -236,6 +241,7 @@ bool FilterGraph::canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int so
 bool FilterGraph::addConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                                 AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
 {
+    undoManager.beginNewTransaction();
     undoManager.perform(
         new AddConnectionAction(*this, sourceFilterUID, sourceFilterChannel, destFilterUID, destFilterChannel));
     // Check if connection exists now
@@ -246,6 +252,7 @@ bool FilterGraph::addConnection(AudioProcessorGraph::NodeID sourceFilterUID, int
 void FilterGraph::removeConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                                    AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel)
 {
+    undoManager.beginNewTransaction();
     undoManager.perform(
         new RemoveConnectionAction(*this, sourceFilterUID, sourceFilterChannel, destFilterUID, destFilterChannel));
 }

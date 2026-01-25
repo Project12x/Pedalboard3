@@ -34,6 +34,7 @@
 #include "SettingsManager.h"
 
 #include <set>
+#include <tuple>
 
 using namespace std;
 
@@ -61,7 +62,8 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
         p.fillInPluginDescription(desc);
 
-        signalPath->addFilter(&desc, 10, 215);
+        // Use Raw method to avoid adding to undo history
+        signalPath->addFilterRaw(&desc, 10, 215);
     }
 
     // Setup gui.
@@ -76,7 +78,8 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
         p.fillInPluginDescription(desc);
 
-        signalPath->addFilter(&desc, 100, 100);
+        // Use Raw method to avoid adding to undo history
+        signalPath->addFilterRaw(&desc, 100, 100);
 
         // And connect it up to the midi input.
         {
@@ -93,8 +96,9 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
                     dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())->setManager(&midiManager);
                 }
             }
-            signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
-                                      AudioProcessorGraph::midiChannelIndex);
+            // Use Raw method to avoid adding to undo history
+            signalPath->addConnectionRaw(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
+                                         AudioProcessorGraph::midiChannelIndex);
         }
     }
 
@@ -1542,8 +1546,19 @@ void PluginField::syncWithGraph()
         }
     }
 
-    // Also sync connections
-    // Remove orphan PluginConnections (connections to deleted nodes)
+    // Sync connections: remove UI connections not in graph, add graph connections not in UI
+    auto graphConnections = signalPath->getConnections();
+
+    // Build set of graph connections for fast lookup
+    std::set<std::tuple<uint32, int, uint32, int>> graphConnSet;
+    for (const auto& conn : graphConnections)
+    {
+        graphConnSet.insert(std::make_tuple(conn.source.nodeID.uid, conn.source.channelIndex,
+                                            conn.destination.nodeID.uid, conn.destination.channelIndex));
+    }
+
+    // Build set of UI connections
+    std::set<std::tuple<uint32, int, uint32, int>> uiConnSet;
     std::vector<PluginConnection*> connectionsToRemove;
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
@@ -1552,22 +1567,83 @@ void PluginField::syncWithGraph()
         {
             auto* src = conn->getSource();
             auto* dest = conn->getDestination();
-            bool valid = true;
 
-            if (src != nullptr && graphNodeIds.find(src->getUid()) == graphNodeIds.end())
-                valid = false;
-            if (dest != nullptr && graphNodeIds.find(dest->getUid()) == graphNodeIds.end())
-                valid = false;
+            if (src != nullptr && dest != nullptr)
+            {
+                auto key = std::make_tuple(src->getUid(), src->getChannel(), dest->getUid(), dest->getChannel());
+                uiConnSet.insert(key);
 
-            if (!valid)
+                // Check if this UI connection exists in graph
+                if (graphConnSet.find(key) == graphConnSet.end())
+                {
+                    connectionsToRemove.push_back(conn);
+                }
+            }
+            else
+            {
+                // Invalid connection, remove it
                 connectionsToRemove.push_back(conn);
+            }
         }
     }
 
+    // Remove UI connections that aren't in graph
     for (auto* conn : connectionsToRemove)
     {
         removeChildComponent(conn);
         delete conn;
+    }
+
+    // Add graph connections that aren't in UI
+    for (const auto& conn : graphConnections)
+    {
+        auto key = std::make_tuple(conn.source.nodeID.uid, conn.source.channelIndex, conn.destination.nodeID.uid,
+                                   conn.destination.channelIndex);
+
+        if (uiConnSet.find(key) == uiConnSet.end())
+        {
+            // Find the source and destination PluginComponents and their pins
+            PluginComponent* sourceComp = nullptr;
+            PluginComponent* destComp = nullptr;
+
+            for (int i = 0; i < getNumChildComponents(); ++i)
+            {
+                PluginComponent* pc = dynamic_cast<PluginComponent*>(getChildComponent(i));
+                if (pc != nullptr)
+                {
+                    if (pc->getNumOutputPins() > 0 && pc->getOutputPin(0)->getUid() == conn.source.nodeID.uid)
+                        sourceComp = pc;
+                    if (pc->getNumInputPins() > 0 && pc->getInputPin(0)->getUid() == conn.destination.nodeID.uid)
+                        destComp = pc;
+                }
+            }
+
+            if (sourceComp != nullptr && destComp != nullptr)
+            {
+                PluginPinComponent* sourcePin = nullptr;
+                PluginPinComponent* destPin = nullptr;
+
+                // Find the source pin by channel
+                bool isMidiChannel = (conn.source.channelIndex == AudioProcessorGraph::midiChannelIndex);
+                if (isMidiChannel)
+                {
+                    sourcePin = sourceComp->getParamPin(0);
+                    destPin = destComp->getParamPin(0);
+                }
+                else
+                {
+                    if (conn.source.channelIndex < sourceComp->getNumOutputPins())
+                        sourcePin = sourceComp->getOutputPin(conn.source.channelIndex);
+                    if (conn.destination.channelIndex < destComp->getNumInputPins())
+                        destPin = destComp->getInputPin(conn.destination.channelIndex);
+                }
+
+                if (sourcePin != nullptr && destPin != nullptr)
+                {
+                    addAndMakeVisible(new PluginConnection(sourcePin, destPin));
+                }
+            }
+        }
     }
 
     repaint();
