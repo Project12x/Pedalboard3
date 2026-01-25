@@ -30,9 +30,72 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 ---
 
-## Phase 1-3: ✅ COMPLETE
+## Phase 1: JUCE 8 Migration ✅ COMPLETE
 
-See git history for completed JUCE 8 migration, tooling setup, VST3 support, theme system.
+**Goal:** Get the codebase building with JUCE 8
+
+| # | Task | Status |
+|---|------|--------|
+| 1.1 | Update JUCE submodule to 8.x | ✅ Done |
+| 1.2 | Create CMakeLists.txt | ✅ Done |
+| 1.3 | Fix NodeID.uid conversions | ✅ Done |
+| 1.4 | Fix Node::Ptr.get() calls | ✅ Done |
+| 1.5 | Fix unique_ptr ownership | ✅ Done |
+| 1.6 | Fix ScopedPointer removal | ✅ Done |
+| 1.7 | Build and smoke test | ✅ Done |
+
+---
+
+## Phase 2: Foundation & Tooling ✅ COMPLETE
+
+**Goal:** Establish modern development foundation
+
+### 2A: Build System
+| # | Task | Status |
+|---|------|--------|
+| 2A.1 | CPM.cmake dependency manager | ✅ Done |
+| 2A.2 | .clang-format | ✅ Done |
+| 2A.3 | CMakePresets.json | ✅ Done |
+| 2A.4 | Compiler warnings `/W4` | ✅ Done |
+
+### 2B: Core Libraries
+| # | Library | Purpose | Status |
+|---|---------|---------|--------|
+| 2B.1 | fmt | String formatting | ✅ Done |
+| 2B.2 | spdlog | Async logging | ✅ Done |
+| 2B.3 | nlohmann/json | JSON handling | ✅ Done |
+
+### 2C: Testing Framework
+| # | Task | Status |
+|---|------|--------|
+| 2C.1 | Catch2 integration | ✅ Done |
+| 2C.2 | tests/ directory | ✅ Done |
+| 2C.3 | First smoke test | ✅ Done (11 assertions) |
+
+---
+
+## Phase 3: Core Features & UI ✅ COMPLETE
+
+**Goal:** Working VST3 host with essential features
+
+### 3A: Plugin System
+| # | Task | Status |
+|---|------|--------|
+| 3A.1 | Enable VST3PluginFormat | ✅ Done |
+| 3A.2 | 64-bit native build | ✅ Done |
+| 3A.3 | Background plugin scanning | ✅ Working |
+| 3A.4 | Settings → JSON (SettingsManager) | ✅ Done |
+
+### 3B: Theme System
+| # | Task | Status |
+|---|------|--------|
+| 3B.1 | 5 built-in themes | ✅ Done |
+| 3B.2 | Theme dropdown selector | ✅ Done |
+| 3B.3 | Live LookAndFeel refresh | ✅ Done |
+| 3B.4 | Delete protection for built-ins | ✅ Done |
+| 3B.5 | Menu text visibility fix | ✅ Done |
+
+**Themes:** Midnight (default), Daylight, Synthwave, Deep Ocean, Forest
 
 ---
 
