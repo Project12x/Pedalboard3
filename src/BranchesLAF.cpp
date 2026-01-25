@@ -22,7 +22,6 @@
 #include "ColourScheme.h"
 #include "LookAndFeelImages.h"
 
-
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -65,6 +64,30 @@ BranchesLAF::BranchesLAF() : LookAndFeel_V4()
 
 //------------------------------------------------------------------------------
 BranchesLAF::~BranchesLAF() {}
+
+//------------------------------------------------------------------------------
+void BranchesLAF::refreshColours()
+{
+    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
+
+    setColour(TextButton::buttonColourId, colours["Button Colour"]);
+    setColour(TextButton::buttonOnColourId, colours["Button Colour"]);
+    setColour(PopupMenu::highlightedBackgroundColourId, colours["Menu Selection Colour"]);
+    setColour(PopupMenu::backgroundColourId, colours["Window Background"]);
+    setColour(AlertWindow::backgroundColourId, colours["Window Background"]);
+    setColour(ComboBox::buttonColourId, colours["Button Colour"]);
+    setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
+    setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
+    setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
+    setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
+
+    setColour(PopupMenu::textColourId, colours["Text Colour"]);
+    setColour(PopupMenu::highlightedTextColourId, colours["Text Colour"]);
+    setColour(TextButton::textColourOnId, colours["Text Colour"]);
+    setColour(TextButton::textColourOffId, colours["Text Colour"]);
+    setColour(ComboBox::textColourId, colours["Text Colour"]);
+    setColour(Label::textColourId, colours["Text Colour"]);
+}
 
 //------------------------------------------------------------------------------
 void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,

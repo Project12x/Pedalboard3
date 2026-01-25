@@ -21,10 +21,12 @@
 
 //[Headers] You can add your own extra header files here...
 
+#include "BranchesLAF.h"
 #include "ColourScheme.h"
 #include "JuceHelperStuff.h"
 #include "SettingsManager.h"
 #include "Vectors.h"
+
 
 //[/Headers]
 
@@ -95,18 +97,12 @@ ColourSchemeEditor::ColourSchemeEditor()
     colourEditor->setCurrentColour(ColourScheme::getInstance().colours.begin()->second);
     colourEditor->addChangeListener(this);
 
-    // Fill out the preset combo box.
-    int i;
-    Array<File> presets;
-    File settingsDir = JuceHelperStuff::getAppDataFolder();
-
-    settingsDir.findChildFiles(presets, File::findFiles, false, "*.colourscheme");
-    for (i = 0; i < presets.size(); ++i)
+    // Fill out the preset combo box using getPresets() which includes built-in themes
+    StringArray presets = ColourScheme::getInstance().getPresets();
+    for (int i = 0; i < presets.size(); ++i)
     {
-        String tempstr = presets[i].getFileNameWithoutExtension();
-
-        presetSelector->addItem(tempstr, i + 1);
-        if (tempstr == ColourScheme::getInstance().presetName)
+        presetSelector->addItem(presets[i], i + 1);
+        if (presets[i] == ColourScheme::getInstance().presetName)
             presetSelector->setSelectedId(i + 1, true);
     }
 
@@ -190,6 +186,10 @@ void ColourSchemeEditor::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
         // here..
 
         ColourScheme::getInstance().loadPreset(presetSelector->getText());
+
+        // Refresh LookAndFeel colors for the new theme
+        if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
+            laf->refreshColours();
 
         // Update colourEditor.
         {
@@ -299,11 +299,29 @@ void ColourSchemeEditor::buttonClicked(Button* button)
     {
         if (presetSelector->getNumItems() > 1)
         {
+            String presetName = presetSelector->getText();
+
+            // Check if this is a built-in preset (can't delete those)
+            StringArray builtIn = ColourScheme::getBuiltInPresets();
+            if (builtIn.contains(presetName))
+            {
+                AlertWindow::showMessageBox(AlertWindow::InfoIcon, "Cannot Delete",
+                                            "Built-in themes cannot be deleted.");
+                return;
+            }
+
+            // Confirm before deleting
+            bool confirmed = AlertWindow::showOkCancelBox(AlertWindow::WarningIcon, "Delete Colour Scheme",
+                                                          "Are you sure you want to delete '" + presetName + "'?",
+                                                          "Delete", "Cancel");
+
+            if (!confirmed)
+                return;
+
             int i;
             File tempFile;
             String tempstr;
             StringArray presetsArray;
-            String presetName = presetSelector->getText();
             File settingsDir = JuceHelperStuff::getAppDataFolder();
 
             tempstr << presetName << ".colourscheme";
