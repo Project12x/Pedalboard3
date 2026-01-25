@@ -21,35 +21,42 @@
 #define COLOURSCHEME_H_
 
 #include <JuceHeader.h>
-
 #include <map>
+
 
 ///	Singleton struct handling colour schemes.
 struct ColourScheme
 {
   public:
-	///	The map of all the available colours.
-	std::map<String, Colour> colours;
-	///	The name of the current colour scheme preset.
-	String presetName;
+    ///	The map of all the available colours.
+    std::map<String, Colour> colours;
+    ///	The name of the current colour scheme preset.
+    String presetName;
 
-	///	Returns the sole instance of the singleton.
-	static ColourScheme& getInstance();
+    ///	Returns the sole instance of the singleton.
+    static ColourScheme& getInstance();
 
-	///	Returns a StringArray of all the available colour scheme presets.
-	const StringArray getPresets() const;
-	///	Loads a colour scheme preset.
-	void loadPreset(const String& name);
-	///	Saves a colour scheme preset.
-	void savePreset(const String& name);
+    ///	Returns a StringArray of all the available colour scheme presets.
+    const StringArray getPresets() const;
+    ///	Loads a colour scheme preset.
+    void loadPreset(const String& name);
+    ///	Saves a colour scheme preset.
+    void savePreset(const String& name);
 
-	///	Returns true if colours == the named preset.
-	bool doesColoursMatchPreset(const String& name);
+    ///	Returns true if colours == the named preset.
+    bool doesColoursMatchPreset(const String& name);
+
+    ///	Returns a StringArray of built-in theme names.
+    static const StringArray getBuiltInPresets();
+
+    ///	Loads a built-in preset by name. Returns true if found.
+    bool loadBuiltInPreset(const String& name);
+
   private:
-	///	Constructor.
-	ColourScheme();
-	///	Destructor.
-	~ColourScheme();
+    ///	Constructor.
+    ColourScheme();
+    ///	Destructor.
+    ~ColourScheme();
 };
 
 #endif

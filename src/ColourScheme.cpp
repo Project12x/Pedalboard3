@@ -21,7 +21,6 @@
 
 #include "JuceHelperStuff.h"
 
-
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -40,9 +39,18 @@ const StringArray ColourScheme::getPresets() const
     StringArray retval;
     File settingsDir = JuceHelperStuff::getAppDataFolder();
 
+    // Add built-in presets first
+    retval.addArray(getBuiltInPresets());
+
+    // Add user-saved presets from filesystem
     settingsDir.findChildFiles(files, File::findFiles, false, "*.colourscheme");
     for (i = 0; i < files.size(); ++i)
-        retval.add(files[i].getFileNameWithoutExtension());
+    {
+        String presetName = files[i].getFileNameWithoutExtension();
+        // Avoid duplicates with built-in names
+        if (!retval.contains(presetName))
+            retval.add(presetName);
+    }
 
     return retval;
 }
@@ -81,6 +89,11 @@ void ColourScheme::loadPreset(const String& name)
                 presetName = name;
             }
         }
+    }
+    else
+    {
+        // Try loading as built-in preset
+        loadBuiltInPreset(name);
     }
 }
 
@@ -157,6 +170,154 @@ bool ColourScheme::doesColoursMatchPreset(const String& name)
 }
 
 //------------------------------------------------------------------------------
+const StringArray ColourScheme::getBuiltInPresets()
+{
+    return {"Midnight", "Daylight", "Synthwave", "Deep Ocean", "Forest"};
+}
+
+//------------------------------------------------------------------------------
+bool ColourScheme::loadBuiltInPreset(const String& name)
+{
+    if (name == "Midnight")
+    {
+        // Default dark theme - professional and easy on eyes
+        colours["Window Background"] = Colour(0xFF1A1A2E);
+        colours["Field Background"] = Colour(0xFF16213E);
+        colours["Text Colour"] = Colour(0xFFE8E8E8);
+        colours["Plugin Border"] = Colour(0xFF3A3A5C);
+        colours["Plugin Background"] = Colour(0xFF252545);
+        colours["Audio Connection"] = Colour(0xFF00D9FF);
+        colours["Parameter Connection"] = Colour(0xFFFFAA00);
+        colours["Button Colour"] = Colour(0xFF2D2D50);
+        colours["Button Highlight"] = Colour(0xFF4A4A70);
+        colours["Text Editor Colour"] = Colour(0xFF0F0F23);
+        colours["Menu Selection Colour"] = Colour(0xFF00D9FF);
+        colours["CPU Meter Colour"] = Colour(0xFF00FF88);
+        colours["Dialog Inner Background"] = Colour(0xFF252545);
+        colours["Slider Colour"] = Colour(0xFF6366F1);
+        colours["List Selected Colour"] = Colour(0xFF3A3A8C);
+        colours["VU Meter Lower Colour"] = Colour(0x7F00BF00);
+        colours["VU Meter Upper Colour"] = Colour(0x7FFFFF00);
+        colours["VU Meter Over Colour"] = Colour(0x7FFF0000);
+        colours["Vector Colour"] = Colour(0x80000000);
+        colours["Waveform Colour"] = Colour(0xFF6366F1);
+        colours["Level Dial Colour"] = Colour(0xFF4F46E5);
+        colours["Tick Box Colour"] = Colour(0x806366F1);
+    }
+    else if (name == "Daylight")
+    {
+        // Light theme for bright environments
+        colours["Window Background"] = Colour(0xFFF5F5F5);
+        colours["Field Background"] = Colour(0xFFFFFFFF);
+        colours["Text Colour"] = Colour(0xFF1A1A1A);
+        colours["Plugin Border"] = Colour(0xFFCCCCCC);
+        colours["Plugin Background"] = Colour(0xFFE8E8E8);
+        colours["Audio Connection"] = Colour(0xFF0077CC);
+        colours["Parameter Connection"] = Colour(0xFFCC6600);
+        colours["Button Colour"] = Colour(0xFFDDDDDD);
+        colours["Button Highlight"] = Colour(0xFFBBBBBB);
+        colours["Text Editor Colour"] = Colour(0xFFFFFFFF);
+        colours["Menu Selection Colour"] = Colour(0xFF0077CC);
+        colours["CPU Meter Colour"] = Colour(0xFF00AA00);
+        colours["Dialog Inner Background"] = Colour(0xFFFFFFFF);
+        colours["Slider Colour"] = Colour(0xFF0077CC);
+        colours["List Selected Colour"] = Colour(0xFFCCE5FF);
+        colours["VU Meter Lower Colour"] = Colour(0x7F00AA00);
+        colours["VU Meter Upper Colour"] = Colour(0x7FCCCC00);
+        colours["VU Meter Over Colour"] = Colour(0x7FCC0000);
+        colours["Vector Colour"] = Colour(0x40000000);
+        colours["Waveform Colour"] = Colour(0xFF0077CC);
+        colours["Level Dial Colour"] = Colour(0xFF005599);
+        colours["Tick Box Colour"] = Colour(0x800077CC);
+    }
+    else if (name == "Synthwave")
+    {
+        // Retro neon 80s aesthetic
+        colours["Window Background"] = Colour(0xFF0D0221);
+        colours["Field Background"] = Colour(0xFF1A0533);
+        colours["Text Colour"] = Colour(0xFFFF00FF);
+        colours["Plugin Border"] = Colour(0xFFFF00AA);
+        colours["Plugin Background"] = Colour(0xFF2D0A4E);
+        colours["Audio Connection"] = Colour(0xFF00FFFF);
+        colours["Parameter Connection"] = Colour(0xFFFF6B00);
+        colours["Button Colour"] = Colour(0xFF3D1A6D);
+        colours["Button Highlight"] = Colour(0xFF5A2D82);
+        colours["Text Editor Colour"] = Colour(0xFF0A0015);
+        colours["Menu Selection Colour"] = Colour(0xFFFF00FF);
+        colours["CPU Meter Colour"] = Colour(0xFF00FF00);
+        colours["Dialog Inner Background"] = Colour(0xFF1A0533);
+        colours["Slider Colour"] = Colour(0xFFFF00FF);
+        colours["List Selected Colour"] = Colour(0xFF5A2D82);
+        colours["VU Meter Lower Colour"] = Colour(0x7F00FFFF);
+        colours["VU Meter Upper Colour"] = Colour(0x7FFF00FF);
+        colours["VU Meter Over Colour"] = Colour(0x7FFF0000);
+        colours["Vector Colour"] = Colour(0x80FF00FF);
+        colours["Waveform Colour"] = Colour(0xFF00FFFF);
+        colours["Level Dial Colour"] = Colour(0xFFFF00AA);
+        colours["Tick Box Colour"] = Colour(0x80FF00FF);
+    }
+    else if (name == "Deep Ocean")
+    {
+        // Calm blue underwater theme
+        colours["Window Background"] = Colour(0xFF0A1628);
+        colours["Field Background"] = Colour(0xFF0D1F3C);
+        colours["Text Colour"] = Colour(0xFFB8D4E8);
+        colours["Plugin Border"] = Colour(0xFF1E4976);
+        colours["Plugin Background"] = Colour(0xFF142D4C);
+        colours["Audio Connection"] = Colour(0xFF00C8FF);
+        colours["Parameter Connection"] = Colour(0xFF7DD3FC);
+        colours["Button Colour"] = Colour(0xFF1A3A5C);
+        colours["Button Highlight"] = Colour(0xFF2A5A8C);
+        colours["Text Editor Colour"] = Colour(0xFF081420);
+        colours["Menu Selection Colour"] = Colour(0xFF00C8FF);
+        colours["CPU Meter Colour"] = Colour(0xFF00DDAA);
+        colours["Dialog Inner Background"] = Colour(0xFF0D1F3C);
+        colours["Slider Colour"] = Colour(0xFF0EA5E9);
+        colours["List Selected Colour"] = Colour(0xFF1E4976);
+        colours["VU Meter Lower Colour"] = Colour(0x7F00AACC);
+        colours["VU Meter Upper Colour"] = Colour(0x7F00DDFF);
+        colours["VU Meter Over Colour"] = Colour(0x7FFF6666);
+        colours["Vector Colour"] = Colour(0x8000C8FF);
+        colours["Waveform Colour"] = Colour(0xFF7DD3FC);
+        colours["Level Dial Colour"] = Colour(0xFF0284C7);
+        colours["Tick Box Colour"] = Colour(0x800EA5E9);
+    }
+    else if (name == "Forest")
+    {
+        // Natural green and earth tones
+        colours["Window Background"] = Colour(0xFF1A2F1A);
+        colours["Field Background"] = Colour(0xFF0F1F0F);
+        colours["Text Colour"] = Colour(0xFFD4E8C8);
+        colours["Plugin Border"] = Colour(0xFF3A5A3A);
+        colours["Plugin Background"] = Colour(0xFF244024);
+        colours["Audio Connection"] = Colour(0xFF66CC66);
+        colours["Parameter Connection"] = Colour(0xFFCCAA44);
+        colours["Button Colour"] = Colour(0xFF2A4A2A);
+        colours["Button Highlight"] = Colour(0xFF3A6A3A);
+        colours["Text Editor Colour"] = Colour(0xFF0A150A);
+        colours["Menu Selection Colour"] = Colour(0xFF66CC66);
+        colours["CPU Meter Colour"] = Colour(0xFF88EE88);
+        colours["Dialog Inner Background"] = Colour(0xFF1A2F1A);
+        colours["Slider Colour"] = Colour(0xFF4ADE80);
+        colours["List Selected Colour"] = Colour(0xFF2A5A2A);
+        colours["VU Meter Lower Colour"] = Colour(0x7F22BB22);
+        colours["VU Meter Upper Colour"] = Colour(0x7FAADD22);
+        colours["VU Meter Over Colour"] = Colour(0x7FDD4444);
+        colours["Vector Colour"] = Colour(0x8066CC66);
+        colours["Waveform Colour"] = Colour(0xFF86EFAC);
+        colours["Level Dial Colour"] = Colour(0xFF22C55E);
+        colours["Tick Box Colour"] = Colour(0x804ADE80);
+    }
+    else
+    {
+        return false; // Unknown preset
+    }
+
+    presetName = name;
+    return true;
+}
+
+//------------------------------------------------------------------------------
 ColourScheme::ColourScheme()
 {
     File defaultFile = JuceHelperStuff::getAppDataFolder().getChildFile("default.colourscheme");
@@ -165,33 +326,8 @@ ColourScheme::ColourScheme()
         loadPreset("default");
     else
     {
-        presetName = "default";
-
-        colours["Window Background"] = Colour(0xFF333333);
-        colours["Field Background"] = Colour(0xFF222222);
-        colours["Text Colour"] = Colour(0xFFEEEEEE);
-        colours["Plugin Border"] = Colour(0xFF555555);
-        colours["Plugin Background"] = Colour(0xFF444444);
-        colours["Audio Connection"] = Colour(0xFF00AAFF);
-        colours["Parameter Connection"] = Colour(0xFFFFAA00);
-        colours["Button Colour"] = Colour(0xFF444444);
-        colours["Button Highlight"] = Colour(0xFF666666);
-        colours["Text Editor Colour"] = Colour(0xFF222222);
-        colours["Menu Selection Colour"] = Colour(0xFF00AAFF); // New entry for menu highlights
-        colours["CPU Meter Colour"] = Colour(0xFF00FF00);
-        colours["Dialog Inner Background"] = Colour(0xFFFFFFFF);
-        colours["CPU Meter Colour"] = Colour(0xB0B0B0FF);
-        colours["Slider Colour"] = Colour(0xFF9A9181);
-        colours["List Selected Colour"] = Colour(0xFFB0B0FF);
-        colours["VU Meter Lower Colour"] = Colour(0x7F00BF00);
-        colours["VU Meter Upper Colour"] = Colour(0x7FFFFF00);
-        colours["VU Meter Over Colour"] = Colour(0x7FFF0000);
-        colours["Vector Colour"] = Colour(0x80000000);
-        colours["Menu Selection Colour"] = Colour(0x40000000);
-        colours["Waveform Colour"] = Colour(0xFFB0B0FF);
-        colours["Level Dial Colour"] = Colour(0xFFB0B0FF).darker(0.25f);
-        colours["Tick Box Colour"] = Colour(0x809A9181);
-
+        // Load built-in Midnight theme as default
+        loadBuiltInPreset("Midnight");
         savePreset("default");
     }
 }
