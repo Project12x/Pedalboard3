@@ -23,7 +23,6 @@
 #include <JuceHeader.h>
 #include <map>
 
-
 ///	Singleton struct handling colour schemes.
 struct ColourScheme
 {
@@ -46,10 +45,13 @@ struct ColourScheme
     ///	Returns true if colours == the named preset.
     bool doesColoursMatchPreset(const String& name);
 
-    ///	Returns a StringArray of built-in theme names.
+    /// @brief Returns a StringArray of built-in theme names.
+    /// @return StringArray containing: Midnight, Daylight, Synthwave, Deep Ocean, Forest
     static const StringArray getBuiltInPresets();
 
-    ///	Loads a built-in preset by name. Returns true if found.
+    /// @brief Loads a built-in preset by name.
+    /// @param name The preset name (e.g., "Midnight", "Synthwave")
+    /// @return true if the preset was found and loaded, false otherwise
     bool loadBuiltInPreset(const String& name);
 
   private:

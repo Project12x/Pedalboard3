@@ -31,7 +31,8 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Destructor.
     ~BranchesLAF();
 
-    /// Refresh LookAndFeel colors from ColourScheme (call after theme change).
+    /// @brief Refresh LookAndFeel colors from ColourScheme.
+    /// Call this after changing theme to update menu/button colors.
     void refreshColours();
 
     ///	Draws the buttons.

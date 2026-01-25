@@ -4,17 +4,37 @@
 
 ---
 
-## Current Focus: Phase 3 - VST3 & Core Features
+## Current Focus: Phase 4 - Plugin Management
 
-**Status:** ✅ Core Complete (Needs UI Polish)  
+**Status:** ✅ Phase 3 Complete  
 **Last Updated:** 2026-01-24
 
-### Recent Wins
+### Recent Wins (Phase 3)
+
 - ✅ VST3 plugin format enabled and working
 - ✅ Settings migrated to JSON (`SettingsManager`)
 - ✅ UI visibility fixed (dark theme, high contrast text)
 - ✅ VST3 I/O bus layouts enforced (stereo)
-- ✅ App launches and scans plugins successfully
+- ✅ 5 built-in themes: Midnight, Daylight, Synthwave, Deep Ocean, Forest
+- ✅ Theme switching with live LookAndFeel refresh
+- ✅ Delete confirmation for custom presets
+
+---
+
+## Theme System
+
+| Theme | Description |
+|-------|-------------|
+| Midnight | Default dark theme (indigo/purple) |
+| Daylight | Light mode for bright environments |
+| Synthwave | Retro neon 80s aesthetic |
+| Deep Ocean | Calm blue underwater theme |
+| Forest | Natural green and earth tones |
+
+**Files:**
+- `ColourScheme.h/cpp` - Theme definitions and persistence
+- `ColourSchemeEditor.cpp` - Theme picker UI
+- `BranchesLAF.cpp` - LookAndFeel integration
 
 ---
 
@@ -22,29 +42,26 @@
 
 | File | Changes |
 |------|---------|
-| `SettingsManager.h/cpp` | **NEW** - JSON-based settings (replaces `PropertiesSingleton`) |
+| `SettingsManager.h/cpp` | **NEW** - JSON-based settings |
+| `ColourScheme.h/cpp` | Built-in theme presets |
+| `BranchesLAF.h/cpp` | `refreshColours()` for live updates |
+| `ColourSchemeEditor.cpp` | Theme dropdown, delete protection |
 | `FilterGraph.cpp` | VST3 stereo I/O enforcement |
-| `BranchesLAF.cpp` | High contrast UI colors |
-| `App.cpp` | SettingsManager initialization |
-| `MainPanel.cpp` | Settings migration |
-| `PluginField.cpp` | Settings migration |
 
 ---
 
 ## Settings System
 
-**Old:** `PropertiesSingleton` → JUCE `PropertiesFile` (XML/binary)  
-**New:** `SettingsManager` → `nlohmann/json` → `settings.json`
-
-Settings file location: `%APPDATA%\Pedalboard3\settings.json`
+**Location:** `%APPDATA%\Pedalboard3\settings.json`  
+**Engine:** `SettingsManager` → `nlohmann/json`
 
 ---
 
 ## Next Steps
 
-1. **Phase 3 Remaining:** UI polish (theme system, zoom controls)
-2. **Phase 4:** Quality & Stability (tests, profiling, refactoring)
-3. Remove deprecated `PropertiesSingleton` (currently commented out)
+1. **Phase 4:** Plugin Management (better scanning, organize, favorites)
+2. **Phase 5:** Deferred features (zoom, snap-to-grid, libremidi)
+3. Remove deprecated `PropertiesSingleton` code
 
 ---
 
@@ -55,9 +72,9 @@ Settings file location: `%APPDATA%\Pedalboard3\settings.json`
 | VST3 Loading | ✅ Working |
 | Plugin Scanning | ✅ Working |
 | Settings Persistence | ✅ JSON |
+| Theme System | ✅ Complete |
 | MIDI Mapping | ⚠️ Legacy (works) |
 | OSC Mapping | ⚠️ Legacy (works) |
-| Theme System | ⏳ Phase 3C |
 
 ---
 
