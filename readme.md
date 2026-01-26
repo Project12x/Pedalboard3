@@ -34,7 +34,7 @@ Pedalboard3 is a modular VST3 plugin host designed for guitarists, keyboardists,
 
 ### Windows (64-bit)
 
-1. Download the latest release from [Releases](https://github.com/YOUR_USERNAME/Pedalboard3/releases)
+1. Download the latest release from [Releases](https://github.com/Project12x/Pedalboard3/releases)
 2. Extract `Pedalboard3.exe` to your preferred location
 3. Run and scan for your VST3 plugins via **Options → Plugin List**
 
@@ -46,7 +46,7 @@ Pedalboard3 is a modular VST3 plugin host designed for guitarists, keyboardists,
 - Git
 
 ```bash
-git clone --recursive https://github.com/YOUR_USERNAME/Pedalboard3.git
+git clone --recursive https://github.com/Project12x/Pedalboard3.git
 cd Pedalboard3
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
@@ -116,7 +116,7 @@ Contributions are welcome! This is a GPL v3 project.
 If you find Pedalboard3 useful, consider supporting development:
 
 - ⭐ Star this repo
-- 🐛 Report bugs via [Issues](https://github.com/YOUR_USERNAME/Pedalboard3/issues)
+- 🐛 Report bugs via [Issues](https://github.com/Project12x/Pedalboard3/issues)
 - ☕ [Buy me a coffee](https://ko-fi.com/YOUR_USERNAME) *(coming soon)*
 
 ---
