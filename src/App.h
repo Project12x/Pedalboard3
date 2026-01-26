@@ -1,6 +1,6 @@
 //	App.h - Main application stuff.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ class App : public JUCEApplication
     ///	Returns the name of the application (duh...).
     const String getApplicationName() { return "Pedalboard 3"; };
     ///	Returns the current version.
-    const String getApplicationVersion() { return "2.14"; };
+    const String getApplicationVersion() { return "3.0"; };
     ///	Whether or not we want to allow more than one instance to run.
     bool moreThanOneInstanceAllowed() { return true; };
     ///	Not used right now?
@@ -60,7 +60,7 @@ class App : public JUCEApplication
     ///	Used to show/hide the tray icon.
     void showTrayIcon(bool val);
 
-  juce_UseDebuggingNewOperator private :
+private :
       ///	Pointer to our main window.
       DocumentWindow* win;
     ///	Pointer to our tray icon.
@@ -96,7 +96,7 @@ class StupidWindow : public DocumentWindow
     ///	Used to handle menus and shortcuts etc.
     ApplicationCommandManager commandManager;
     ///	Our custom LookAndFeel.
-    ScopedPointer<BranchesLAF> laf;
+    std::unique_ptr<BranchesLAF> laf;
 };
 
 #endif

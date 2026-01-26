@@ -1,6 +1,6 @@
 //	PresetManager.cpp - A class used to keep track of user-saved plugin presets.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2012 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 //------------------------------------------------------------------------------
 PresetManager::PresetManager()
 {
-	File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets");
+	File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
 
 	if(!presetDir.exists())
 		presetDir.createDirectory();
@@ -90,5 +90,5 @@ void PresetManager::getListOfUserPresets(const String& pluginName,
 //------------------------------------------------------------------------------
 File PresetManager::getPluginPresetDir(const String& pluginName)
 {
-	return File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets").getChildFile(pluginName);
+	return File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets").getChildFile(pluginName);
 }

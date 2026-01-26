@@ -23,13 +23,13 @@
 #define __JUCER_HEADER_FILEPLAYERCONTROL_FILEPLAYERCONTROL_54B42392__
 
 //[Headers]     -- You can add your own extra header files here --
-#include <JuceHeader.h>
 #include "WaveformDisplay.h"
+
+#include <JuceHeader.h>
+
 
 class FilePlayerProcessor;
 //[/Headers]
-
-
 
 //==============================================================================
 /**
@@ -39,54 +39,52 @@ class FilePlayerProcessor;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class FilePlayerControl  : public Component,
-                           public FilenameComponentListener,
-                           public Timer,
-                           public ChangeListener,
-                           public Button::Listener
+class FilePlayerControl : public Component,
+                          public FilenameComponentListener,
+                          public Timer,
+                          public ChangeListener,
+                          public Button::Listener
 {
-public:
+  public:
     //==========================================================================
-    FilePlayerControl (FilePlayerProcessor *proc);
+    FilePlayerControl(FilePlayerProcessor* proc);
     ~FilePlayerControl();
 
     //==========================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
 
-	///	Used to load a sound file.
-	void filenameComponentChanged(FilenameComponent *filenameComp);
-	///	Used to update the read position graphic.
-	void timerCallback();
-	///	Used to change the player's read position when the user clicks on the WaveformDisplay.
-	void changeListenerCallback(ChangeBroadcaster *source);
+    ///	Used to load a sound file.
+    void filenameComponentChanged(FilenameComponent* filenameComp);
+    ///	Used to update the read position graphic.
+    void timerCallback();
+    ///	Used to change the player's read position when the user clicks on the WaveformDisplay.
+    void changeListenerCallback(ChangeBroadcaster* source);
 
-	///	Changes the colour of the WaveformDisplay background.
-	void setWaveformBackground(const Colour& col);
+    ///	Changes the colour of the WaveformDisplay background.
+    void setWaveformBackground(const Colour& col);
 
-	///	Used to keep track of the last directory the user loaded a sound from.
-	static File lastDir;
+    ///	Used to keep track of the last directory the user loaded a sound from.
+    static File lastDir;
 
     //[/UserMethods]
 
-    void paint (Graphics& g);
+    void paint(Graphics& g);
     void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
+    void buttonClicked(Button* buttonThatWasClicked);
 
-
-
-private:
-	JUCE_LEAK_DETECTOR(FilePlayerControl)
+  private:
+    JUCE_LEAK_DETECTOR(FilePlayerControl)
 
     //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	Our copy of the AudioProcessor pointer.
-	FilePlayerProcessor *processor;
+    ///	Our copy of the AudioProcessor pointer.
+    FilePlayerProcessor* processor;
 
-	///	The two drawables we use for the playButton.
-	ScopedPointer<Drawable> playImage;
-	ScopedPointer<Drawable> pauseImage;
-	///	Whether the playPauseButton is currently displaying the play icon.
-	bool playing;
+    ///	The two drawables we use for the playButton.
+    std::unique_ptr<Drawable> playImage;
+    std::unique_ptr<Drawable> pauseImage;
+    ///	Whether the playPauseButton is currently displaying the play icon.
+    bool playing;
 
     //[/UserVariables]
 
@@ -98,12 +96,10 @@ private:
     DrawableButton* playPauseButton;
     DrawableButton* rtzButton;
 
-
     //==========================================================================
     // (prevent copy constructor and operator= being generated..)
-    FilePlayerControl (const FilePlayerControl&);
-    const FilePlayerControl& operator= (const FilePlayerControl&);
+    FilePlayerControl(const FilePlayerControl&);
+    const FilePlayerControl& operator=(const FilePlayerControl&);
 };
 
-
-#endif   // __JUCER_HEADER_FILEPLAYERCONTROL_FILEPLAYERCONTROL_54B42392__
+#endif // __JUCER_HEADER_FILEPLAYERCONTROL_FILEPLAYERCONTROL_54B42392__

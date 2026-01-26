@@ -366,18 +366,18 @@ MainPanel::~MainPanel()
         delete patches[i];
     //[/Destructor_pre]
 
-    deleteAndZero(patchLabel);
-    deleteAndZero(prevPatch);
-    deleteAndZero(nextPatch);
-    deleteAndZero(patchComboBox);
-    deleteAndZero(viewport);
-    deleteAndZero(cpuSlider);
-    deleteAndZero(cpuLabel);
-    deleteAndZero(playButton);
-    deleteAndZero(rtzButton);
-    deleteAndZero(tempoLabel);
-    deleteAndZero(tempoEditor);
-    deleteAndZero(tapTempoButton);
+    delete patchLabel; patchLabel = nullptr;
+    delete prevPatch; prevPatch = nullptr;
+    delete nextPatch; nextPatch = nullptr;
+    delete patchComboBox; patchComboBox = nullptr;
+    delete viewport; viewport = nullptr;
+    delete cpuSlider; cpuSlider = nullptr;
+    delete cpuLabel; cpuLabel = nullptr;
+    delete playButton; playButton = nullptr;
+    delete rtzButton; rtzButton = nullptr;
+    delete tempoLabel; tempoLabel = nullptr;
+    delete tempoEditor; tempoEditor = nullptr;
+    delete tapTempoButton; tapTempoButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -1402,7 +1402,7 @@ void MainPanel::run()
 //------------------------------------------------------------------------------
 String MainPanel::getDocumentTitle()
 {
-    return "Pedalboard2 Patch File";
+    return "Pedalboard3 Patch File";
 }
 
 //------------------------------------------------------------------------------
@@ -1415,7 +1415,7 @@ Result MainPanel::loadDocument(const File& file)
 
     if (root)
     {
-        if (root->hasTagName("Pedalboard2PatchFile"))
+        if (root->hasTagName("Pedalboard3PatchFile"))
         {
             // Clear existing patches.
             for (i = 0; i < patches.size(); ++i)
@@ -1489,7 +1489,7 @@ Result MainPanel::saveDocument(const File& file)
 {
     int i;
     PluginField* field = ((PluginField*)viewport->getViewedComponent());
-    XmlElement* main = new XmlElement("Pedalboard2PatchFile");
+    XmlElement* main = new XmlElement("Pedalboard3PatchFile");
     XmlElement* patch = field->getXml();
 
     // Save the current patch.

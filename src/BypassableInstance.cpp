@@ -1,7 +1,7 @@
 //	BypassableInstance.cpp - Wrapper class to provide a bypass to
 //							 AudioPluginInstance.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -21,147 +21,138 @@
 #include "BypassableInstance.h"
 
 //------------------------------------------------------------------------------
-BypassableInstance::BypassableInstance(AudioPluginInstance *plug):
-plugin(plug),
-tempBuffer(2, 4096),
-bypass(false),
-bypassRamp(0.0f),
-midiChannel(0)
+BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
+    : plugin(plug), tempBuffer(2, 4096), bypass(false), bypassRamp(0.0f), midiChannel(0)
 {
-	jassert(plugin);
+    jassert(plugin);
 
-	setPlayConfigDetails(plugin->getNumInputChannels(),
-						 plugin->getNumOutputChannels(),
-						 plugin->getSampleRate(),
-						 plugin->getBlockSize());
+    // Use modern bus layout API instead of deprecated setPlayConfigDetails
+    auto layout = plugin->getBusesLayout();
+    setBusesLayout(layout);
 }
 
 //------------------------------------------------------------------------------
 BypassableInstance::~BypassableInstance()
 {
-	delete plugin;
+    delete plugin;
 }
 
 //------------------------------------------------------------------------------
-void BypassableInstance::prepareToPlay(double sampleRate,
-									   int estimatedSamplesPerBlock)
+void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock)
 {
-	int numChannels;
+    int numChannels;
 
-	if(plugin->getNumInputChannels() > plugin->getNumOutputChannels())
-		numChannels = plugin->getNumInputChannels();
-	else
-		numChannels = plugin->getNumOutputChannels();
+    // Use modern channel count APIs
+    int numInputs = plugin->getTotalNumInputChannels();
+    int numOutputs = plugin->getTotalNumOutputChannels();
 
-	jassert(numChannels > 0);
+    if (numInputs > numOutputs)
+        numChannels = numInputs;
+    else
+        numChannels = numOutputs;
 
-	midiCollector.reset(sampleRate);
+    jassert(numChannels > 0);
 
-	//Since we only get an estimate of the number of samples per block, multiply
-	//that number by 2 to ensure we don't run out of space.
-	tempBuffer.setSize(numChannels, (estimatedSamplesPerBlock * 2));
+    midiCollector.reset(sampleRate);
 
-	plugin->setPlayHead(getPlayHead());
-	plugin->setPlayConfigDetails(plugin->getNumInputChannels(),
-								 plugin->getNumOutputChannels(),
-								 sampleRate,
-								 estimatedSamplesPerBlock);
-	plugin->prepareToPlay(sampleRate, estimatedSamplesPerBlock);
+    // Since we only get an estimate of the number of samples per block, multiply
+    // that number by 2 to ensure we don't run out of space.
+    tempBuffer.setSize(numChannels, (estimatedSamplesPerBlock * 2));
+
+    plugin->setPlayHead(getPlayHead());
+    // Use modern bus layout instead of deprecated setPlayConfigDetails
+    auto layout = plugin->getBusesLayout();
+    plugin->setBusesLayout(layout);
+    plugin->prepareToPlay(sampleRate, estimatedSamplesPerBlock);
 }
 
 //------------------------------------------------------------------------------
 void BypassableInstance::releaseResources()
 {
-	plugin->releaseResources();
+    plugin->releaseResources();
 }
 
 //------------------------------------------------------------------------------
-void BypassableInstance::processBlock(AudioSampleBuffer &buffer,
-									  MidiBuffer &midiMessages)
+void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
-	int i, j;
-	float rampVal = bypassRamp;
-	MidiBuffer tempMidi;
-	MidiBuffer::Iterator it(midiMessages);
+    int i, j;
+    float rampVal = bypassRamp;
+    MidiBuffer tempMidi;
+    MidiBuffer::Iterator it(midiMessages);
 
-	jassert(buffer.getNumChannels() <= tempBuffer.getNumChannels());
+    jassert(buffer.getNumChannels() <= tempBuffer.getNumChannels());
 
-	//Pass on any MIDI messages received via OSC.
-	midiCollector.removeNextBlockOfMessages(tempMidi, buffer.getNumSamples());
-	if(!midiMessages.isEmpty())
-	{
-		MidiMessage tempMess;
-		int tempSample;
+    // Pass on any MIDI messages received via OSC.
+    midiCollector.removeNextBlockOfMessages(tempMidi, buffer.getNumSamples());
+    if (!midiMessages.isEmpty())
+    {
+        MidiMessage tempMess;
+        int tempSample;
 
-		while(it.getNextEvent(tempMess, tempSample))
-		{
-			//Filter out any messages on the wrong channel.
-			if((midiChannel == 0) || (tempMess.getChannel() == midiChannel))
-				tempMidi.addEvent(tempMess, tempSample);
-		}
-	}
+        while (it.getNextEvent(tempMess, tempSample))
+        {
+            // Filter out any messages on the wrong channel.
+            if ((midiChannel == 0) || (tempMess.getChannel() == midiChannel))
+                tempMidi.addEvent(tempMess, tempSample);
+        }
+    }
 
+    tempBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);
 
-	tempBuffer.setSize(buffer.getNumChannels(),
-					   buffer.getNumSamples(),
-					   false,
-					   false,
-					   true);
+    // Fill out our temporary buffer correctly.
+    for (i = 0; i < buffer.getNumChannels(); ++i)
+        tempBuffer.copyFrom(i, 0, buffer, i, 0, buffer.getNumSamples());
 
-	//Fill out our temporary buffer correctly.
-	for(i=0;i<buffer.getNumChannels();++i)
-		tempBuffer.copyFrom(i, 0, buffer, i, 0, buffer.getNumSamples());
+    // Get the plugin's audio.
+    plugin->processBlock(buffer, tempMidi);
 
-	//Get the plugin's audio.
-	plugin->processBlock(buffer, tempMidi);
+    // Add any new midi data to midiMessages.
+    if (!tempMidi.isEmpty())
+        midiMessages.swapWith(tempMidi);
 
-	//Add any new midi data to midiMessages.
-	if(!tempMidi.isEmpty())
-		midiMessages.swapWith(tempMidi);
+    // Add the correct (bypassed or un-bypassed) audio back to the buffer.
+    for (j = 0; j < buffer.getNumChannels(); ++j)
+    {
+        float* origData = tempBuffer.getWritePointer(j);
+        float* newData = buffer.getWritePointer(j);
 
-	//Add the correct (bypassed or un-bypassed) audio back to the buffer.
-	for(j=0;j<buffer.getNumChannels();++j)
-	{
-		float *origData = tempBuffer.getWritePointer(j);
-		float *newData = buffer.getWritePointer(j);
+        rampVal = bypassRamp;
+        for (i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            newData[i] = (origData[i] * rampVal) + (newData[i] * (1.0f - rampVal));
 
-		rampVal = bypassRamp;
-		for(i=0;i<buffer.getNumSamples();++i)
-		{
-			newData[i] = (origData[i] * rampVal) + (newData[i] * (1.0f-rampVal));
-
-			if(bypass && (rampVal < 1.0f))
-			{
-				rampVal += 0.001f;
-				if(rampVal > 1.0f)
-					rampVal = 1.0f;
-			}
-			else if(!bypass && (rampVal > 0.0f))
-			{
-				rampVal -= 0.001f;
-				if(rampVal < 0.0f)
-					rampVal = 0.0f;
-			}
-		}
-	}
-	bypassRamp = rampVal;
+            if (bypass && (rampVal < 1.0f))
+            {
+                rampVal += 0.001f;
+                if (rampVal > 1.0f)
+                    rampVal = 1.0f;
+            }
+            else if (!bypass && (rampVal > 0.0f))
+            {
+                rampVal -= 0.001f;
+                if (rampVal < 0.0f)
+                    rampVal = 0.0f;
+            }
+        }
+    }
+    bypassRamp = rampVal;
 }
 
 //------------------------------------------------------------------------------
 void BypassableInstance::setBypass(bool val)
 {
-	bypass = val;
+    bypass = val;
 }
 
 //------------------------------------------------------------------------------
 void BypassableInstance::setMIDIChannel(int val)
 {
-	midiChannel = val;
+    midiChannel = val;
 }
 
 //------------------------------------------------------------------------------
 void BypassableInstance::addMidiMessage(const MidiMessage& message)
 {
-	if((midiChannel == 0) || (message.getChannel() == midiChannel))
-		midiCollector.addMessageToQueue(message);
+    if ((midiChannel == 0) || (message.getChannel() == midiChannel))
+        midiCollector.addMessageToQueue(message);
 }

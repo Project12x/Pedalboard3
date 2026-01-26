@@ -90,12 +90,12 @@ UserPresetWindow::~UserPresetWindow()
 
     //[/Destructor_pre]
 
-    deleteAndZero (presetList);
-    deleteAndZero (copyButton);
-    deleteAndZero (removeButton);
-    deleteAndZero (importButton);
-    deleteAndZero (exportButton);
-    deleteAndZero (renameButton);
+    delete presetList; presetList = nullptr;
+    delete copyButton; copyButton = nullptr;
+    delete removeButton; removeButton = nullptr;
+    delete importButton; importButton = nullptr;
+    delete exportButton; exportButton = nullptr;
+    delete renameButton; renameButton = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -228,7 +228,7 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 			if(phil.browseForFileToOpen())
 			{
 				String pluginName = whichPlugin.getComboBoxComponent("plugins")->getText();
-				File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets");
+				File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
 				File pluginDir = presetDir.getChildFile(pluginName);
 				File srcPreset = phil.getResult();
 

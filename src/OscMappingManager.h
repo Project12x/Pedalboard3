@@ -1,6 +1,6 @@
 //	OscMappingManager.h - Class which dispatches OSC messages to OscMappings.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -74,7 +74,7 @@ class OscMapping : public Mapping
 	///	Sets the mapping's OSC parameter index.
 	void setParameterIndex(int val);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The OscMappingManager to register with.
 	OscMappingManager *mappingManager;
@@ -119,7 +119,7 @@ class OscAppMapping
 	///	Returns the CommandId this mapping applies to.
 	CommandID getId() const {return id;};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The main MidiMappingManager.
 	OscMappingManager *oscManager;
@@ -175,7 +175,7 @@ class OscMappingManager
 	///	Returns an array of all unique OSC addresses the manager has received so far.
 	const StringArray& getReceivedAddresses() const {return uniqueAddresses;};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Holds all the OscMappings to dispatch messages to.
 	std::multimap<String, OscMapping *> mappings;
@@ -262,7 +262,7 @@ class OscInput : public AudioPluginInstance
 	///	We have no state information.
 	void setStateInformation(const void *data, int sizeInBytes) {};
 
-	juce_UseDebuggingNewOperator
+
 };
 
 #endif

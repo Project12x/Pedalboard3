@@ -3,7 +3,7 @@
 //	This file is part of Niall's OSC Lib - a simple library providing the basic
 //	operations necessary for communicating via Open Sound Control.
 //	Copyright (C) 2005-2009  Niall Moody
-//	
+//
 //	This program is free software: you can redistribute it and/or modify
 //	it under the terms of the GNU General Public License as published by
 //	the Free Software Foundation, either version 3 of the License, or
@@ -19,19 +19,22 @@
 //	----------------------------------------------------------------------------
 
 #ifdef WIN32
-//Needed so we can use ntohl().
-#include <winsock.h>
-//Needed so we can use _ftime.
-#include <sys/timeb.h>
+    // Needed so we can use ntohl().
+    #include <winsock.h>
+    // Needed so we can use _ftime.
+    #include <sys/timeb.h>
 #else
-#include <sys/types.h>
-#include <netinet/in.h>
+    #include <netinet/in.h>
+    #include <sys/types.h>
+
 #endif
 
 #include "OSCTimeTag.h"
-#include <sstream>
+
 #include <cmath>
 #include <ctime>
+#include <sstream>
+
 
 using namespace std;
 
@@ -41,198 +44,196 @@ namespace OSC
 //------------------------------------------------------------------------------
 TimeTag::TimeTag(const TimeTag& copy)
 {
-	seconds = copy.seconds;
-	fraction = copy.fraction;
+    seconds = copy.seconds;
+    fraction = copy.fraction;
 }
 
 //------------------------------------------------------------------------------
 TimeTag::TimeTag()
 {
-	seconds = 0;
-	fraction = 1;
+    seconds = 0;
+    fraction = 1;
 }
 
 //------------------------------------------------------------------------------
 TimeTag::TimeTag(const uint32_t seconds, const uint32_t fraction)
 {
-	this->seconds = seconds;
-	this->fraction = fraction;
+    this->seconds = seconds;
+    this->fraction = fraction;
 }
 
 //------------------------------------------------------------------------------
-TimeTag::TimeTag(char *data)
+TimeTag::TimeTag(char* data)
 {
-	uint32_t *tempBytes;
+    uint32_t* tempBytes;
 
-	//Get the seconds.
-	tempBytes = reinterpret_cast<uint32_t *>(data);
-	seconds = ntohl(*tempBytes);
+    // Get the seconds.
+    tempBytes = reinterpret_cast<uint32_t*>(data);
+    seconds = ntohl(*tempBytes);
 
-	//Get the fractional part.
-	tempBytes = reinterpret_cast<uint32_t *>(data+4);
-	fraction = ntohl(*tempBytes);
+    // Get the fractional part.
+    tempBytes = reinterpret_cast<uint32_t*>(data + 4);
+    fraction = ntohl(*tempBytes);
 }
 
 //------------------------------------------------------------------------------
 string TimeTag::getTimeAsText()
 {
-	ostringstream out(ostringstream::out);
+    ostringstream out(ostringstream::out);
 
-	//*********************************************************************
-	//****TODO: Make sure fraction displays the correct number of zeros****
-	//*********************************************************************
-	out << (unsigned int)seconds << "." << (unsigned int)fraction;
+    // NOTE: Fraction may not display correct leading zeros - known limitation in legacy OSC code
+    out << (unsigned int)seconds << "." << (unsigned int)fraction;
 
-	return out.str();
+    return out.str();
 }
 
 //------------------------------------------------------------------------------
 void TimeTag::setSeconds(const uint32_t val)
 {
-	seconds = val;
+    seconds = val;
 }
 
 //------------------------------------------------------------------------------
 void TimeTag::setFraction(const uint32_t val)
 {
-	fraction = val;
+    fraction = val;
 }
 
 //------------------------------------------------------------------------------
 void TimeTag::setTime(const uint32_t seconds, const uint32_t fraction)
 {
-	this->seconds = seconds;
-	this->fraction = fraction;
+    this->seconds = seconds;
+    this->fraction = fraction;
 }
 
 //------------------------------------------------------------------------------
 TimeTag TimeTag::getCurrentTime()
 {
-	uint32_t retSeconds;
-	uint32_t retFraction;
+    uint32_t retSeconds;
+    uint32_t retFraction;
 
 #ifdef WIN32
-	_timeb currentTime;
+    _timeb currentTime;
 
-	_ftime_s(&currentTime);
+    _ftime_s(&currentTime);
 
-	//2208988800 = Num. seconds from 1900 to 1970, where _ftime starts from.
-	retSeconds = 2208988800 + static_cast<uint32_t>(currentTime.time);
-	//Correct for timezone.
-	retSeconds -= static_cast<uint32_t>(60 * currentTime.timezone);
-	//Correct for daylight savings time.
-	if(currentTime.dstflag)
-		retSeconds += static_cast<uint32_t>(3600);
+    // 2208988800 = Num. seconds from 1900 to 1970, where _ftime starts from.
+    retSeconds = 2208988800 + static_cast<uint32_t>(currentTime.time);
+    // Correct for timezone.
+    retSeconds -= static_cast<uint32_t>(60 * currentTime.timezone);
+    // Correct for daylight savings time.
+    if (currentTime.dstflag)
+        retSeconds += static_cast<uint32_t>(3600);
 
-	retFraction = static_cast<uint32_t>(currentTime.millitm);
-	//Fill up all 32 bits...
-	retFraction *= static_cast<uint32_t>(static_cast<float>(1<<31)/1000000.0f);
+    retFraction = static_cast<uint32_t>(currentTime.millitm);
+    // Fill up all 32 bits...
+    retFraction *= static_cast<uint32_t>(static_cast<float>(1 << 31) / 1000000.0f);
 #else
-	retSeconds = 0;
-	retFraction = 0;
+    retSeconds = 0;
+    retFraction = 0;
 #endif
 
-	return TimeTag(retSeconds, retFraction);
+    return TimeTag(retSeconds, retFraction);
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator==(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(seconds == other.seconds)
-	{
-		if(fraction == other.fraction)
-			retval = true;
-	}
+    if (seconds == other.seconds)
+    {
+        if (fraction == other.fraction)
+            retval = true;
+    }
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator!=(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(seconds != other.seconds)
-		retval = true;
-	else if(fraction != other.fraction)
-		retval = true;
+    if (seconds != other.seconds)
+        retval = true;
+    else if (fraction != other.fraction)
+        retval = true;
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator<(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(fraction < other.fraction)
-	{
-		if(seconds <= other.seconds)
-			retval = true;
-	}
-	else if(seconds < other.seconds)
-		retval = true;
+    if (fraction < other.fraction)
+    {
+        if (seconds <= other.seconds)
+            retval = true;
+    }
+    else if (seconds < other.seconds)
+        retval = true;
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator>(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(fraction > other.fraction)
-	{
-		if(seconds >= other.seconds)
-			retval = true;
-	}
-	else if(seconds > other.seconds)
-		retval = true;
+    if (fraction > other.fraction)
+    {
+        if (seconds >= other.seconds)
+            retval = true;
+    }
+    else if (seconds > other.seconds)
+        retval = true;
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator<=(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(fraction <= other.fraction)
-	{
-		if(seconds <= other.seconds)
-			retval = true;
-	}
-	else if(seconds <= other.seconds)
-		retval = true;
+    if (fraction <= other.fraction)
+    {
+        if (seconds <= other.seconds)
+            retval = true;
+    }
+    else if (seconds <= other.seconds)
+        retval = true;
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 bool TimeTag::operator>=(const TimeTag& other)
 {
-	bool retval = false;
+    bool retval = false;
 
-	if(fraction > other.fraction)
-	{
-		if(seconds >= other.seconds)
-			retval = true;
-	}
-	else if(seconds > other.seconds)
-		retval = true;
+    if (fraction > other.fraction)
+    {
+        if (seconds >= other.seconds)
+            retval = true;
+    }
+    else if (seconds > other.seconds)
+        retval = true;
 
-	return retval;
+    return retval;
 }
 
 //------------------------------------------------------------------------------
 TimeTag TimeTag::operator=(const TimeTag& other)
 {
-	seconds = other.seconds;
-	fraction = other.fraction;
+    seconds = other.seconds;
+    fraction = other.fraction;
 
-	return *this;
+    return *this;
 }
 
-}
+} // namespace OSC

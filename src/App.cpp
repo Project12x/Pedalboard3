@@ -1,6 +1,6 @@
 //	App.cpp - Main application stuff.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,6 @@
 #include "MidiMappingManager.h"
 #include "NiallsAudioPluginFormat.h"
 #include "OscMappingManager.h"
-// #include "PropertiesSingleton.h"
 #include "SettingsManager.h"
 #include "TrayIcon.h"
 
@@ -122,15 +121,9 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
     {
         InternalPluginFormat* internalFormat = new InternalPluginFormat;
         VST3PluginFormat* vst3Format = new VST3PluginFormat;
-        // LADSPAPluginFormat *ladspaFormat = new LADSPAPluginFormat;
-        // VSTPluginFormat *vstFormat = new VSTPluginFormat;
-        // NiallsAudioPluginFormat *napFormat = new NiallsAudioPluginFormat;
 
         AudioPluginFormatManagerSingleton::getInstance().addFormat(internalFormat);
         AudioPluginFormatManagerSingleton::getInstance().addFormat(vst3Format);
-        // AudioPluginFormatManager::getInstance()->addFormat(napFormat);
-        // AudioPluginFormatManager::getInstance()->addFormat(vstFormat);
-        // AudioPluginFormatManager::getInstance()->addFormat(ladspaFormat);
     }
 
     // Load correct colour scheme.
@@ -143,7 +136,8 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
                 ColourScheme::getInstance().loadPreset(scheme);
         }
 
-        LookAndFeel::setDefaultLookAndFeel(laf = new BranchesLAF());
+        laf.reset(new BranchesLAF());
+        LookAndFeel::setDefaultLookAndFeel(laf.get());
         setResizable(true, false);
         setContentOwned(mainPanel = new MainPanel(&commandManager), true);
         // mainPanel->setCommandManager(&commandManager);

@@ -1,6 +1,6 @@
 //	Mapping.h - The various mapping classes.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@ class Mapping
 	///	Sets this mapping's parameter.
 	void setParameter(int val);
 
-	juce_UseDebuggingNewOperator
+
   protected:
 	///	Called from subclasses to update their parameter.
 	void updateParameter(float val);

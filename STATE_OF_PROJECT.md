@@ -1,13 +1,13 @@
 # State of the Project
 
-> **For LLMs and Engineers:** This document provides persistent context about the current state of Pedalboard2 modernization. Read this first when joining the project.
+> **For LLMs and Engineers:** This document provides persistent context about the current state of Pedalboard3 modernization. Read this first when joining the project.
 
 ---
 
 ## Current Focus: Phase 4 - Plugin Management
 
 **Status:** ✅ Phase 3 Complete  
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-01-25
 
 ### Recent Wins (Phase 3)
 
@@ -18,6 +18,9 @@
 - ✅ 5 built-in themes: Midnight, Daylight, Synthwave, Deep Ocean, Forest
 - ✅ Theme switching with live LookAndFeel refresh
 - ✅ Delete confirmation for custom presets
+- ✅ **JUCE 8 LookAndFeel fixes** (setColour before setFont order)
+- ✅ LogDisplay background now uses ColourScheme
+- ✅ ToggleButton text colors added to BranchesLAF
 
 ---
 
@@ -44,7 +47,7 @@
 |------|---------|
 | `SettingsManager.h/cpp` | **NEW** - JSON-based settings |
 | `ColourScheme.h/cpp` | Built-in theme presets |
-| `BranchesLAF.h/cpp` | `refreshColours()` for live updates |
+| `BranchesLAF.h/cpp` | `refreshColours()`, JUCE 8 `override` keywords, ToggleButton colors |
 | `ColourSchemeEditor.cpp` | Theme dropdown, delete protection |
 | `FilterGraph.cpp` | VST3 stereo I/O enforcement |
 
@@ -78,4 +81,4 @@
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-25*

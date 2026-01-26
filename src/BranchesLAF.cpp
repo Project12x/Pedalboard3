@@ -60,6 +60,11 @@ BranchesLAF::BranchesLAF() : LookAndFeel_V4()
     setColour(TextButton::textColourOffId, colours["Text Colour"]);
     setColour(ComboBox::textColourId, colours["Text Colour"]);
     setColour(Label::textColourId, colours["Text Colour"]);
+
+    // ToggleButton colors (needed for JUCE 8 compatibility)
+    setColour(ToggleButton::textColourId, colours["Text Colour"]);
+    setColour(ToggleButton::tickColourId, colours["Vector Colour"]);
+    setColour(ToggleButton::tickDisabledColourId, colours["Tick Box Colour"]);
 }
 
 //------------------------------------------------------------------------------
@@ -87,6 +92,11 @@ void BranchesLAF::refreshColours()
     setColour(TextButton::textColourOffId, colours["Text Colour"]);
     setColour(ComboBox::textColourId, colours["Text Colour"]);
     setColour(Label::textColourId, colours["Text Colour"]);
+
+    // ToggleButton colors (needed for JUCE 8 compatibility)
+    setColour(ToggleButton::textColourId, colours["Text Colour"]);
+    setColour(ToggleButton::tickColourId, colours["Vector Colour"]);
+    setColour(ToggleButton::tickDisabledColourId, colours["Tick Box Colour"]);
 }
 
 //------------------------------------------------------------------------------
@@ -179,14 +189,14 @@ void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOv
 {
     int inc;
 
-    g.setFont(Font(15.0f));
+    g.setFont(Font(FontOptions().withHeight(15.0f)));
     g.setColour(
         ::ColourScheme::getInstance().colours["Text Colour"].withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 
     const int yIndent = jmin(4, button.proportionOfHeight(0.3f));
     const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    const int fontHeight = roundFloatToInt(Font(15.0f).getHeight() * 0.6f);
+    const int fontHeight = roundFloatToInt(Font(FontOptions().withHeight(15.0f)).getHeight() * 0.6f);
     const int leftIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
     const int rightIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
 
@@ -479,7 +489,7 @@ void BranchesLAF::drawMenuBarBackground(Graphics& g, int width, int height, bool
 //------------------------------------------------------------------------------
 Font BranchesLAF::getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText)
 {
-    return Font(15.0f);
+    return Font(FontOptions().withHeight(15.0f));
 }
 
 //------------------------------------------------------------------------------
@@ -650,7 +660,7 @@ void BranchesLAF::drawKeymapChangeButton(Graphics& g, int width, int height, But
         drawButtonBackground(g, button, colours["Button Colour"], button.isOver(), button.isDown());
 
         g.setColour(colours["Text Colour"]);
-        g.setFont(height * 0.6f);
+        g.setFont(Font(FontOptions().withHeight(height * 0.6f)));
         g.drawFittedText(keyDescription, 3, 0, width - 6, height, Justification::centred, 1);
     }
     else
@@ -712,8 +722,9 @@ void BranchesLAF::drawToggleButton(Graphics& g, ToggleButton& button, bool isMou
     drawTickBox(g, button, 4.0f, (button.getHeight() - tickWidth) * 0.5f, tickWidth, tickWidth, button.getToggleState(),
                 button.isEnabled(), isMouseOverButton, isButtonDown);
 
+    // JUCE 8: setColour MUST come before setFont
     g.setColour(::ColourScheme::getInstance().colours["Text Colour"]);
-    g.setFont(fontSize);
+    g.setFont(Font(FontOptions().withHeight(fontSize)));
 
     if (!button.isEnabled())
         g.setOpacity(0.5f);

@@ -135,11 +135,11 @@ MappingEntryOsc::~MappingEntryOsc()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    deleteAndZero (paramComboBox);
-    deleteAndZero (addressLabel);
-    deleteAndZero (addressEditor);
-    deleteAndZero (oscParamLabel);
-    deleteAndZero (oscParamSlider);
+    delete paramComboBox; paramComboBox = nullptr;
+    delete addressLabel; addressLabel = nullptr;
+    delete addressEditor; addressEditor = nullptr;
+    delete oscParamLabel; oscParamLabel = nullptr;
+    delete oscParamSlider; oscParamSlider = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..

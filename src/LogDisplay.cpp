@@ -21,77 +21,70 @@
 
 //[Headers] You can add your own extra header files here...
 
+#include "ColourScheme.h"
 #include "LogFile.h"
+
 
 //[/Headers]
 
 #include "LogDisplay.h"
 
-
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 //[/MiscUserDefs]
 
 //==============================================================================
-LogDisplay::LogDisplay ()
-    : logEditor (0),
-      startStopButton (0),
-      midiButton (0),
-      oscButton (0),
-      pedalboardButton (0),
-      filterLabel (0)
+LogDisplay::LogDisplay()
+    : logEditor(0), startStopButton(0), midiButton(0), oscButton(0), pedalboardButton(0), filterLabel(0)
 {
-    addAndMakeVisible (logEditor = new TextEditor ("logEditor"));
-    logEditor->setMultiLine (true);
-    logEditor->setReturnKeyStartsNewLine (true);
-    logEditor->setReadOnly (true);
-    logEditor->setScrollbarsShown (true);
-    logEditor->setCaretVisible (false);
-    logEditor->setPopupMenuEnabled (true);
-    logEditor->setText (String());
+    addAndMakeVisible(logEditor = new TextEditor("logEditor"));
+    logEditor->setMultiLine(true);
+    logEditor->setReturnKeyStartsNewLine(true);
+    logEditor->setReadOnly(true);
+    logEditor->setScrollbarsShown(true);
+    logEditor->setCaretVisible(false);
+    logEditor->setPopupMenuEnabled(true);
+    logEditor->setText(String());
 
-    addAndMakeVisible (startStopButton = new TextButton ("startStopButton"));
-    startStopButton->setButtonText ("Start Logging");
-    startStopButton->addListener (this);
+    addAndMakeVisible(startStopButton = new TextButton("startStopButton"));
+    startStopButton->setButtonText("Start Logging");
+    startStopButton->addListener(this);
 
-    addAndMakeVisible (midiButton = new ToggleButton ("midiButton"));
-    midiButton->setButtonText ("MIDI");
-    midiButton->addListener (this);
-    midiButton->setToggleState (true, false);
+    addAndMakeVisible(midiButton = new ToggleButton("midiButton"));
+    midiButton->setButtonText("MIDI");
+    midiButton->addListener(this);
+    midiButton->setToggleState(true, false);
 
-    addAndMakeVisible (oscButton = new ToggleButton ("oscButton"));
-    oscButton->setButtonText ("OSC");
-    oscButton->addListener (this);
-    oscButton->setToggleState (true, false);
+    addAndMakeVisible(oscButton = new ToggleButton("oscButton"));
+    oscButton->setButtonText("OSC");
+    oscButton->addListener(this);
+    oscButton->setToggleState(true, false);
 
-    addAndMakeVisible (pedalboardButton = new ToggleButton ("pedalboardButton"));
-    pedalboardButton->setButtonText ("Pedalboard");
-    pedalboardButton->addListener (this);
-    pedalboardButton->setToggleState (true, false);
+    addAndMakeVisible(pedalboardButton = new ToggleButton("pedalboardButton"));
+    pedalboardButton->setButtonText("Pedalboard");
+    pedalboardButton->addListener(this);
+    pedalboardButton->setToggleState(true, false);
 
-    addAndMakeVisible (filterLabel = new Label ("filterLabel",
-                                                "Filter:"));
-    filterLabel->setFont (Font (15.0000f, Font::plain));
-    filterLabel->setJustificationType (Justification::centredLeft);
-    filterLabel->setEditable (false, false, false);
-    filterLabel->setColour (TextEditor::textColourId, Colours::black);
-    filterLabel->setColour (TextEditor::backgroundColourId, Colour (0x0));
-
+    addAndMakeVisible(filterLabel = new Label("filterLabel", "Filter:"));
+    filterLabel->setFont(Font(15.0000f, Font::plain));
+    filterLabel->setJustificationType(Justification::centredLeft);
+    filterLabel->setEditable(false, false, false);
+    filterLabel->setColour(TextEditor::textColourId, Colours::black);
+    filterLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     //[UserPreSize]
 
-	if(LogFile::getInstance().getIsLogging())
-	{
-		updateLog(true);
+    if (LogFile::getInstance().getIsLogging())
+    {
+        updateLog(true);
 
-		startStopButton->setButtonText("Stop Logging");
-	}
+        startStopButton->setButtonText("Stop Logging");
+    }
 
-	LogFile::getInstance().addChangeListener(this);
+    LogFile::getInstance().addChangeListener(this);
 
     //[/UserPreSize]
 
-    setSize (600, 400);
-
+    setSize(600, 400);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -101,29 +94,34 @@ LogDisplay::~LogDisplay()
 {
     //[Destructor_pre]. You can add your own custom destruction code here..
 
-	LogFile::getInstance().removeChangeListener(this);
+    LogFile::getInstance().removeChangeListener(this);
 
     //[/Destructor_pre]
 
-    deleteAndZero (logEditor);
-    deleteAndZero (startStopButton);
-    deleteAndZero (midiButton);
-    deleteAndZero (oscButton);
-    deleteAndZero (pedalboardButton);
-    deleteAndZero (filterLabel);
-
+    delete logEditor;
+    logEditor = nullptr;
+    delete startStopButton;
+    startStopButton = nullptr;
+    delete midiButton;
+    midiButton = nullptr;
+    delete oscButton;
+    oscButton = nullptr;
+    delete pedalboardButton;
+    pedalboardButton = nullptr;
+    delete filterLabel;
+    filterLabel = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
 }
 
 //==============================================================================
-void LogDisplay::paint (Graphics& g)
+void LogDisplay::paint(Graphics& g)
 {
     //[UserPrePaint] Add your own custom painting code here..
     //[/UserPrePaint]
 
-    g.fillAll (Colour (0xffeeece1));
+    g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
     //[UserPaint] Add your own custom painting code here..
     //[/UserPaint]
@@ -131,17 +129,17 @@ void LogDisplay::paint (Graphics& g)
 
 void LogDisplay::resized()
 {
-    logEditor->setBounds (8, 8, getWidth() - 16, getHeight() - 40);
-    startStopButton->setBounds (8, getHeight() - 28, 150, 24);
-    midiButton->setBounds (208, getHeight() - 28, 56, 24);
-    oscButton->setBounds (264, getHeight() - 28, 56, 24);
-    pedalboardButton->setBounds (320, getHeight() - 28, 96, 24);
-    filterLabel->setBounds (164, getHeight() - 28, 48, 24);
+    logEditor->setBounds(8, 8, getWidth() - 16, getHeight() - 40);
+    startStopButton->setBounds(8, getHeight() - 28, 150, 24);
+    midiButton->setBounds(208, getHeight() - 28, 56, 24);
+    oscButton->setBounds(264, getHeight() - 28, 56, 24);
+    pedalboardButton->setBounds(320, getHeight() - 28, 96, 24);
+    filterLabel->setBounds(164, getHeight() - 28, 48, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
 
-void LogDisplay::buttonClicked (Button* buttonThatWasClicked)
+void LogDisplay::buttonClicked(Button* buttonThatWasClicked)
 {
     //[UserbuttonClicked_Pre]
     //[/UserbuttonClicked_Pre]
@@ -150,29 +148,29 @@ void LogDisplay::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_startStopButton] -- add your button handler code here..
 
-		if(LogFile::getInstance().getIsLogging())
-		{
-			//Stop logging.
-			LogFile::getInstance().stop();
-			logEditor->setText("");
-			lastEvent = Time();
+        if (LogFile::getInstance().getIsLogging())
+        {
+            // Stop logging.
+            LogFile::getInstance().stop();
+            logEditor->setText("");
+            lastEvent = Time();
 
-			startStopButton->setButtonText("Start Logging");
-		}
-		else
-		{
-			//Start logging.
-			LogFile::getInstance().start();
+            startStopButton->setButtonText("Start Logging");
+        }
+        else
+        {
+            // Start logging.
+            LogFile::getInstance().start();
 
-			startStopButton->setButtonText("Stop Logging");
-		}
+            startStopButton->setButtonText("Stop Logging");
+        }
         //[/UserButtonCode_startStopButton]
     }
     else if (buttonThatWasClicked == midiButton)
     {
         //[UserButtonCode_midiButton] -- add your button handler code here..
 
-		updateLog(true);
+        updateLog(true);
 
         //[/UserButtonCode_midiButton]
     }
@@ -180,7 +178,7 @@ void LogDisplay::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_oscButton] -- add your button handler code here..
 
-		updateLog(true);
+        updateLog(true);
 
         //[/UserButtonCode_oscButton]
     }
@@ -188,7 +186,7 @@ void LogDisplay::buttonClicked (Button* buttonThatWasClicked)
     {
         //[UserButtonCode_pedalboardButton] -- add your button handler code here..
 
-		updateLog(true);
+        updateLog(true);
 
         //[/UserButtonCode_pedalboardButton]
     }
@@ -197,52 +195,49 @@ void LogDisplay::buttonClicked (Button* buttonThatWasClicked)
     //[/UserbuttonClicked_Post]
 }
 
-
-
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
 
 //------------------------------------------------------------------------------
-void LogDisplay::changeListenerCallback(ChangeBroadcaster *source)
+void LogDisplay::changeListenerCallback(ChangeBroadcaster* source)
 {
-	if(source == &(LogFile::getInstance()))
-		updateLog(false);
+    if (source == &(LogFile::getInstance()))
+        updateLog(false);
 }
 
 //------------------------------------------------------------------------------
 void LogDisplay::updateLog(bool fromTheBeginning)
 {
-	StringArray tempArr;
+    StringArray tempArr;
 
-	if(fromTheBeginning)
-	{
-		lastEvent = Time();
-		logEditor->setText("");
-	}
-	//Make sure the caret's at the end of the string.
-	else
-		logEditor->moveCaretToEnd();
+    if (fromTheBeginning)
+    {
+        lastEvent = Time();
+        logEditor->setText("");
+    }
+    // Make sure the caret's at the end of the string.
+    else
+        logEditor->moveCaretToEnd();
 
-	//Fill out tempArr with the event types we're interested in.
-	if(midiButton->getToggleState())
-		tempArr.add("MIDI");
-	if(oscButton->getToggleState())
-		tempArr.add("OSC");
-	if(pedalboardButton->getToggleState())
-		tempArr.add("Pedalboard");
+    // Fill out tempArr with the event types we're interested in.
+    if (midiButton->getToggleState())
+        tempArr.add("MIDI");
+    if (oscButton->getToggleState())
+        tempArr.add("OSC");
+    if (pedalboardButton->getToggleState())
+        tempArr.add("Pedalboard");
 
-	//Append the new events to our editor.
-	if(fromTheBeginning)
-		logEditor->setText(LogFile::getInstance().getLogContents(tempArr, lastEvent));
-	else
-		logEditor->insertTextAtCaret(LogFile::getInstance().getLogContents(tempArr, lastEvent));
+    // Append the new events to our editor.
+    if (fromTheBeginning)
+        logEditor->setText(LogFile::getInstance().getLogContents(tempArr, lastEvent));
+    else
+        logEditor->insertTextAtCaret(LogFile::getInstance().getLogContents(tempArr, lastEvent));
 
-	//So that the next time this gets called getLogContents() doesn't return
-	//the last line a second time.
-	lastEvent += RelativeTime(0.001);
+    // So that the next time this gets called getLogContents() doesn't return
+    // the last line a second time.
+    lastEvent += RelativeTime(0.001);
 }
 
 //[/MiscUserCode]
-
 
 //==============================================================================
 #if 0

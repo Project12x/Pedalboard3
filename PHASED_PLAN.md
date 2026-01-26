@@ -1,6 +1,6 @@
 # Pedalboard3 Modernization - Phased Implementation Plan
 
-A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP pedalboard host.
+A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP pedalboard host.
 
 > **Ordering Principle:** Each phase builds on the previous. Complete phases in order.
 
@@ -10,7 +10,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 | Tier | Release | Price | Content |
 |------|---------|-------|---------|
-| **Community** | Phase 4 | Free | Modernized Pedalboard2 + Undo + CLAP |
+| **Community** | Phase 4 | Free | Modernized Pedalboard3 + Undo + CLAP |
 | **Pro** | Phase 5+ | $15-25 | Setlist, Stage Mode, Input devices |
 
 ---
@@ -94,6 +94,7 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 | 3B.3 | Live LookAndFeel refresh | ✅ Done |
 | 3B.4 | Delete protection for built-ins | ✅ Done |
 | 3B.5 | Menu text visibility fix | ✅ Done |
+| 3B.6 | JUCE 8 LookAndFeel fixes (setColour order) | ✅ Done |
 
 **Themes:** Midnight (default), Daylight, Synthwave, Deep Ocean, Forest
 
@@ -105,29 +106,33 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 > **Release:** Free on GitHub, announce on KVR/Reddit
 
-### 4A: Undo/Redo (Priority)
-| # | Task | Notes |
-|---|------|-------|
-| 4A.1 | Implement UndoManager | JUCE built-in |
-| 4A.2 | Track plugin add/remove | Undoable |
-| 4A.3 | Track connection changes | Undoable |
-| 4A.4 | Panic button | All notes off |
+### 4A: Undo/Redo ✅ COMPLETE
+| # | Task | Status |
+|---|------|--------|
+| 4A.1 | Implement UndoManager | ✅ Done |
+| 4A.2 | Track plugin add/remove | ✅ Done |
+| 4A.3 | Track connection changes | ✅ Done |
+| 4A.4 | Panic button | ✅ Done |
 
-### 4B: CLAP Plugin Support
-| # | Task | Notes |
-|---|------|-------|
-| 4B.1 | Add clap-juce-extensions | CPM/FetchContent |
-| 4B.2 | Enable CLAPPluginFormat | Like VST3 |
-| 4B.3 | Test CLAP loading | Verify |
+### 4B: CLAP Plugin Support ⏸️ DEFERRED
+> **Note:** clap-juce-extensions not yet stable with JUCE 8. Will revisit when mature.
+
+| # | Task | Status |
+|---|------|--------|
+| 4B.1 | Add clap-juce-extensions | ⏸️ Deferred |
+| 4B.2 | Enable CLAPPluginFormat | ⏸️ Deferred |
+| 4B.3 | Test CLAP loading | ⏸️ Deferred |
 
 ### 4C: Launch Prep
-| # | Task | Notes |
-|---|------|-------|
-| 4C.1 | Rename to Pedalboard3 | CMake, App.cpp, docs |
-| 4C.2 | Update README.md | Features, screenshots |
-| 4C.3 | Create CHANGELOG.md | v3.0 notes |
-| 4C.4 | Set up donations | GitHub Sponsors / Ko-fi |
-| 4C.5 | Draft announcement | KVR, Reddit |
+| # | Task | Status |
+|---|------|--------|
+| 4C.1 | Rename to Pedalboard3 | ✅ Done |
+| 4C.2 | Update README.md | ✅ Done |
+| 4C.3 | Create CHANGELOG.md | ✅ Done |
+| 4C.4 | Code hygiene cleanup | ✅ Done |
+| 4C.5 | Email draft to Niall | ✅ Done |
+| 4C.6 | Set up donations | ⏳ Planned |
+| 4C.7 | Draft announcement | ⏳ Planned |
 
 ---
 
@@ -306,4 +311,4 @@ A roadmap for modernizing Pedalboard2 into **Pedalboard3** - a modern VST3/CLAP 
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-25*

@@ -142,12 +142,12 @@ ColourSchemeEditor::~ColourSchemeEditor()
 
     //[/Destructor_pre]
 
-    deleteAndZero(colourEditor);
-    deleteAndZero(colourSelector);
-    deleteAndZero(presetSelector);
-    deleteAndZero(deleteButton);
-    deleteAndZero(saveButton);
-    deleteAndZero(newButton);
+    delete colourEditor; colourEditor = nullptr;
+    delete colourSelector; colourSelector = nullptr;
+    delete presetSelector; presetSelector = nullptr;
+    delete deleteButton; deleteButton = nullptr;
+    delete saveButton; saveButton = nullptr;
+    delete newButton; newButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]

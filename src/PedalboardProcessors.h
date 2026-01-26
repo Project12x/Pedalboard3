@@ -1,6 +1,6 @@
 //	PedalboardProcessors.h - Internal processors provided by the app.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -42,7 +42,7 @@ class PedalboardProcessor : public AudioPluginInstance
 	///	Returns the size of the controls component.
 	virtual Point<int> getSize() = 0;
 
-	juce_UseDebuggingNewOperator
+
 };
 
 //------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class LevelProcessor : public PedalboardProcessor
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The level parameter.
 	float level;
@@ -236,12 +236,12 @@ class FilePlayerProcessor : public PedalboardProcessor,
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The transport source which plays the file.
 	AudioTransportSource transportSource;
 	///	The actual sound file source.
-	ScopedPointer<AudioFormatReaderSource> soundFileSource;
+	std::unique_ptr<AudioFormatReaderSource> soundFileSource;
 
 	///	The file we're playing.
 	File soundFile;
@@ -332,7 +332,7 @@ class OutputToggleProcessor : public PedalboardProcessor
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The toggle parameter.
 	bool toggle;
@@ -423,7 +423,7 @@ class VuMeterProcessor : public PedalboardProcessor
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The current level.
 	float levelLeft;
@@ -532,7 +532,7 @@ class RecorderProcessor : public PedalboardProcessor,
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The file being recorded to.
 	File soundFile;
@@ -658,12 +658,12 @@ class MetronomeProcessor : public PedalboardProcessor,
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The transport sources which play the accent and click files.
 	AudioTransportSource transportSource[2];
 	///	The accent and click sound file sources.
-	ScopedPointer<AudioFormatReaderSource> soundFileSource[2];
+	std::unique_ptr<AudioFormatReaderSource> soundFileSource[2];
 	///	The files we're playing.
 	File files[2];
 
@@ -850,7 +850,7 @@ class LooperProcessor : public PedalboardProcessor,
 	///	Saves the position of the slider and the size and position of the editor.
 	void setStateInformation(const void *data, int sizeInBytes);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Helper method. Copies the contents of tempBuffer into fadeInBuffer.
 	void fillFadeInBuffer();

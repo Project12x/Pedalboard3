@@ -43,9 +43,9 @@ AboutPage::AboutPage(const String& ip)
     titleLabel->setColour(TextEditor::textColourId, Colours::black);
     titleLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(descriptionLabel = new Label(
-                          "descriptionLabel", "A simple plugin host intended for live use, with plugin\nparameters "
-                                              "easily mapped to MIDI or Open Sound Control inputs."));
+    addAndMakeVisible(descriptionLabel =
+                          new Label("descriptionLabel", "A modern VST3 plugin host for live performance.\nPlugin "
+                                                        "parameters easily mapped to MIDI or OSC controllers."));
     descriptionLabel->setFont(Font(15.0000f, Font::plain));
     descriptionLabel->setJustificationType(Justification::topLeft);
     descriptionLabel->setEditable(false, false, false);
@@ -53,10 +53,9 @@ AboutPage::AboutPage(const String& ip)
     descriptionLabel->setColour(TextEditor::textColourId, Colours::black);
     descriptionLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(
-        creditsLabel = new Label(
-            "creditsLabel",
-            "Written using the JUCE library, with sections taken from\nthe \'audio plugin host\' example code."));
+    addAndMakeVisible(creditsLabel =
+                          new Label("creditsLabel",
+                                    "Modernized from Pedalboard2 by Niall Moody.\nBuilt with JUCE 8 and modern C++."));
     creditsLabel->setFont(Font(15.0000f, Font::plain));
     creditsLabel->setJustificationType(Justification::topLeft);
     creditsLabel->setEditable(false, false, false);
@@ -64,7 +63,9 @@ AboutPage::AboutPage(const String& ip)
     creditsLabel->setColour(TextEditor::textColourId, Colours::black);
     creditsLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(authorLabel = new Label("authorLabel", "Author: Niall Moody\nLicense: GPL v3"));
+    addAndMakeVisible(
+        authorLabel = new Label("authorLabel",
+                                "Author: Eric Steenwerth (2024-2026)\nOriginal: Niall Moody (2011) | License: GPL v3"));
     authorLabel->setFont(Font(15.0000f, Font::plain));
     authorLabel->setJustificationType(Justification::topLeft);
     authorLabel->setEditable(false, false, false);
@@ -76,10 +77,9 @@ AboutPage::AboutPage(const String& ip)
     niallmoodyLink->setTooltip("http://www.niallmoody.com");
     niallmoodyLink->setButtonText("niallmoody.com");
 
-    addAndMakeVisible(
-        juceLink = new HyperlinkButton("rawmaterialsoftware.com/juce", URL("http://www.rawmaterialsoftware.com/juce")));
-    juceLink->setTooltip("http://www.rawmaterialsoftware.com/juce");
-    juceLink->setButtonText("rawmaterialsoftware.com/juce");
+    addAndMakeVisible(juceLink = new HyperlinkButton("juce.com", URL("https://juce.com")));
+    juceLink->setTooltip("https://juce.com");
+    juceLink->setButtonText("juce.com");
 
     addAndMakeVisible(versionLabel = new Label("versionLabel", "Version: 2.00"));
     versionLabel->setFont(Font(12.0000f, Font::plain));
@@ -142,15 +142,24 @@ AboutPage::~AboutPage()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    deleteAndZero(titleLabel);
-    deleteAndZero(descriptionLabel);
-    deleteAndZero(creditsLabel);
-    deleteAndZero(authorLabel);
-    deleteAndZero(niallmoodyLink);
-    deleteAndZero(juceLink);
-    deleteAndZero(versionLabel);
-    deleteAndZero(juceVersionLabel);
-    deleteAndZero(ipAddressLabel);
+    delete titleLabel;
+    titleLabel = nullptr;
+    delete descriptionLabel;
+    descriptionLabel = nullptr;
+    delete creditsLabel;
+    creditsLabel = nullptr;
+    delete authorLabel;
+    authorLabel = nullptr;
+    delete niallmoodyLink;
+    niallmoodyLink = nullptr;
+    delete juceLink;
+    juceLink = nullptr;
+    delete versionLabel;
+    versionLabel = nullptr;
+    delete juceVersionLabel;
+    juceVersionLabel = nullptr;
+    delete ipAddressLabel;
+    ipAddressLabel = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]

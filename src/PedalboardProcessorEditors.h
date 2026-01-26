@@ -1,7 +1,7 @@
 //	PedalboardProcessorEditors.h - The various editors for the app's internal
 //								   processors.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -51,7 +51,7 @@ class LevelControl : public Component,
 	///	Sets the processor's level from the slider.
 	void sliderValueChanged(Slider *slider);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Our copy of the associated LevelProcessor.
 	LevelProcessor *processor;
@@ -83,7 +83,7 @@ class LevelEditor : public AudioProcessorEditor,
 	///	Sets the processor's level from the slider.
 	void sliderValueChanged(Slider *slider);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The rotary slider.
 	Slider *slider;
@@ -116,7 +116,7 @@ class FilePlayerEditor : public AudioProcessorEditor,
 	///	So we can update the window's bounds.
 	void timerCallback();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The actual file player controls.
 	FilePlayerControl *controls;
@@ -146,7 +146,7 @@ class OutputToggleControl : public Component,
 	///	To toggle between outputs.
 	void buttonClicked(Button *button);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Our copy of the associated OutputToggleProcessor.
 	OutputToggleProcessor *processor;
@@ -179,7 +179,7 @@ class OutputToggleEditor : public AudioProcessorEditor,
 	///	To toggle between outputs.
 	void buttonClicked(Button *button);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The toggle button.
 	DrawableButton *toggleButton;
@@ -211,7 +211,7 @@ class VuMeterControl : public Component,
 	///	Updates the meter.
 	void timerCallback();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Our copy of the associated VuMeterProcessor.
 	VuMeterProcessor *processor;
@@ -239,7 +239,7 @@ class VuMeterEditor : public AudioProcessorEditor
 	///	So we can paint the background a nice colour.
 	void paint(Graphics& g);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The vu meter control.
 	VuMeterControl *meter;
@@ -273,7 +273,7 @@ class AudioRecorderEditor : public AudioProcessorEditor,
 	///	So we can update the window's bounds.
 	void timerCallback();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The actual file player controls.
 	AudioRecorderControl *controls;
@@ -305,7 +305,7 @@ class MetronomeEditor : public AudioProcessorEditor, public Timer
 	///	So we can update the window's bounds.
 	void timerCallback();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The actual metronome controls.
 	MetronomeControl *controls;

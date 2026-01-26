@@ -1,6 +1,6 @@
 //	LogFile.h - Singleton used for logging events.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2013 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -89,7 +89,7 @@ class LogFile : public ChangeBroadcaster
 	};
 
 	///	The log file output stream.
-	ScopedPointer<FileOutputStream> logFile;
+	std::unique_ptr<FileOutputStream> logFile;
 	///	True if we're currently logging events.
 	bool isLogging;
 

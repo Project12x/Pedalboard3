@@ -1,7 +1,7 @@
 //	PluginComponent.cpp - Component representing a plugin/filter in the
 //						  PluginField.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -76,15 +76,15 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input"))
     {
-        ScopedPointer<Drawable> closeUp(
+        std::unique_ptr<Drawable> closeUp(
             JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbutton_svg, Vectors::closefilterbutton_svgSize));
-        ScopedPointer<Drawable> closeOver(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttonover_svg,
-                                                                             Vectors::closefilterbuttonover_svgSize));
-        ScopedPointer<Drawable> closeDown(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttondown_svg,
-                                                                             Vectors::closefilterbuttondown_svgSize));
-        ScopedPointer<Drawable> bypassOff(
+        std::unique_ptr<Drawable> closeOver(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttonover_svg,
+                                                                               Vectors::closefilterbuttonover_svgSize));
+        std::unique_ptr<Drawable> closeDown(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttondown_svg,
+                                                                               Vectors::closefilterbuttondown_svgSize));
+        std::unique_ptr<Drawable> bypassOff(
             JuceHelperStuff::loadSVGFromMemory(Vectors::bypassbuttonoff_svg, Vectors::bypassbuttonoff_svgSize));
-        ScopedPointer<Drawable> bypassOn(
+        std::unique_ptr<Drawable> bypassOn(
             JuceHelperStuff::loadSVGFromMemory(Vectors::bypassbuttonon_svg, Vectors::bypassbuttonon_svgSize));
 
         // So the audio I/O etc. don't get their titles squeezed by the
@@ -102,14 +102,14 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         addAndMakeVisible(mappingsButton);
 
         bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
-        bypassButton->setImages(bypassOff, nullptr, nullptr, nullptr, bypassOn);
+        bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
         bypassButton->setClickingTogglesState(true);
         bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
         bypassButton->addListener(this);
         addAndMakeVisible(bypassButton);
 
         deleteButton = new DrawableButton("DeleteFilterButton", DrawableButton::ImageRaw);
-        deleteButton->setImages(closeUp, closeOver, closeDown);
+        deleteButton->setImages(closeUp.get(), closeOver.get(), closeDown.get());
         deleteButton->setEdgeIndent(0);
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
         deleteButton->addListener(this);
@@ -404,7 +404,6 @@ void PluginComponent::getCachedPreset(int index, MemoryBlock& memBlock)
 void PluginComponent::determineSize(bool onlyUpdateWidth)
 {
     int i;
-    // float l, r, t, b;
     Rectangle<float> bounds;
     float nameWidth;
     float inputWidth = 0.0f;

@@ -160,9 +160,6 @@ class MainPanel : public Component,
         return dynamic_cast<PluginField*>(viewport->getViewedComponent())->getOscManager();
     };
 
-    ///	Temp.
-    // void logMessage(const String &message);
-
     ///	Constants for the various menu options.
     /*!
             NOTE: Add new constants TO THE END OF THE LIST, or the user's saved
@@ -207,7 +204,7 @@ class MainPanel : public Component,
     void sliderValueChanged(Slider* sliderThatWasMoved);
 
     //==============================================================================
-  juce_UseDebuggingNewOperator
+
 
       private :
       //[UserVariables]   -- You can add your own custom variables in this
@@ -324,9 +321,6 @@ class MainPanel : public Component,
     ///	Used to inform the user when the user does a MIDI program change outside
     /// the limits of the patch list.
     std::unique_ptr<CallOutBox> warningBox;
-
-    ///	Temp.
-    // FileOutputStream outFile;
 
     //[/UserVariables]
 

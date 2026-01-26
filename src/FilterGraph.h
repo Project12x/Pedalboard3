@@ -63,7 +63,7 @@ class FilterConnection
     int destChannel;
 
     //==============================================================================
-  juce_UseDebuggingNewOperator
+
 
       private : FilterGraph& owner;
 
@@ -105,7 +105,7 @@ xml);
     typedef ReferenceCountedObjectPtr <FilterInGraph> Ptr;
 
     //==============================================================================
-    juce_UseDebuggingNewOperator
+
 
 private:
     friend class FilterGraphPlayer;
@@ -215,7 +215,7 @@ class FilterGraph : public FileBasedDocument
     static const int midiChannelNumber;
 
     //==============================================================================
-  juce_UseDebuggingNewOperator
+
 
       private :
       // friend class FilterGraphPlayer;

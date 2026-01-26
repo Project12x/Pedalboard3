@@ -1,6 +1,6 @@
 //	JuceHelperStuff.cpp - Some useful helper functions.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2012 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -112,7 +112,7 @@ File JuceHelperStuff::getAppDataFolder() {
 #ifdef __APPLE__
   File retval = File::getSpecialLocation(File::userApplicationDataDirectory)
                     .getChildFile("Application Support")
-                    .getChildFile("Pedalboard2");
+                    .getChildFile("Pedalboard3");
 
   if (!retval.exists())
     retval.createDirectory();
@@ -120,6 +120,6 @@ File JuceHelperStuff::getAppDataFolder() {
   return retval;
 #else
   return File::getSpecialLocation(File::userApplicationDataDirectory)
-      .getChildFile("Pedalboard2");
+      .getChildFile("Pedalboard3");
 #endif
 }

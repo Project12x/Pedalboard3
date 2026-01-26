@@ -1,7 +1,7 @@
 //	PluginComponent.h - Component representing a plugin/filter in the
 //						PluginField.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -114,7 +114,7 @@ class PluginComponent : public Component,
 	///	Returns the number of param pins.
 	int getNumParamPins() const {return paramPins.size();};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Helper method to determine what size the component should be.
 	/*!
@@ -205,7 +205,7 @@ class PluginPinComponent : public Component
 	///	Returns whether this is an audio or parameter(/midi) pin.
 	bool getParameterPin() const {return parameterPin;};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Whether it's an input or an output pin.
 	bool direction;
@@ -230,7 +230,7 @@ class PluginEditorWindow : public DocumentWindow
 	///	Used to close the window.
 	void closeButtonPressed();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The 'parent' PluginComponent.
 	PluginComponent *component;
@@ -309,7 +309,7 @@ class PluginConnection : public Component,
 	///	Returns true if the user was holding shift when they created this connection.
 	bool getRepresentsAllOutputs() const {return representsAllOutputs;};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Helper method to help determine the component's size/bezier curve.
 	/*!

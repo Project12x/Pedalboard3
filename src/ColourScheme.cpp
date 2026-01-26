@@ -1,6 +1,6 @@
 //	ColourScheme.cpp - Singleton struct handling colour schemes.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2012 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -71,7 +71,7 @@ void ColourScheme::loadPreset(const String& name)
 
         if (rootXml)
         {
-            if (rootXml->hasTagName("Pedalboard2ColourScheme"))
+            if (rootXml->hasTagName("Pedalboard3ColourScheme"))
             {
                 forEachXmlChildElement(*rootXml, colour)
                 {
@@ -102,7 +102,7 @@ void ColourScheme::savePreset(const String& name)
 {
     String filename;
     map<String, Colour>::iterator it;
-    XmlElement rootXml("Pedalboard2ColourScheme");
+    XmlElement rootXml("Pedalboard3ColourScheme");
     File settingsDir = JuceHelperStuff::getAppDataFolder();
 
     filename << name << ".colourscheme";
@@ -140,7 +140,7 @@ bool ColourScheme::doesColoursMatchPreset(const String& name)
 
         if (rootXml)
         {
-            if (rootXml->hasTagName("Pedalboard2ColourScheme"))
+            if (rootXml->hasTagName("Pedalboard3ColourScheme"))
             {
                 forEachXmlChildElement(*rootXml, colour)
                 {

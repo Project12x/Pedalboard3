@@ -100,10 +100,10 @@ PresetBar::~PresetBar() {
   //[Destructor_pre]. You can add your own custom destruction code here..
   //[/Destructor_pre]
 
-  deleteAndZero(presetsComboBox);
-  deleteAndZero(presetsLabel);
-  deleteAndZero(importButton);
-  deleteAndZero(saveButton);
+  delete presetsComboBox; presetsComboBox = nullptr;
+  delete presetsLabel; presetsLabel = nullptr;
+  delete importButton; importButton = nullptr;
+  delete saveButton; saveButton = nullptr;
 
   //[Destructor]. You can add your own custom destruction code here..
   //[/Destructor]

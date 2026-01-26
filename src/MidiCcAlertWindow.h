@@ -1,6 +1,6 @@
 //	MidiCcAlertWindow.h - Overridden AlertWindow allowing us to use MIDI learn.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify

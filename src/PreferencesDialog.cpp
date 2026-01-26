@@ -233,28 +233,28 @@ PreferencesDialog::~PreferencesDialog()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    deleteAndZero(oscPortLabel);
-    deleteAndZero(oscPortEditor);
-    deleteAndZero(oscLabel);
-    deleteAndZero(oscMulticastLabel);
-    deleteAndZero(oscMulticastEditor);
-    deleteAndZero(multicastHintLabel);
-    deleteAndZero(ioOptionsLabel);
-    deleteAndZero(audioInputButton);
-    deleteAndZero(midiInputButton);
-    deleteAndZero(oscInputButton);
-    deleteAndZero(otherLabel);
-    deleteAndZero(mappingsWindowButton);
-    deleteAndZero(loopPatchesButton);
-    deleteAndZero(windowsOnTopButton);
-    deleteAndZero(ignorePinNamesButton);
-    deleteAndZero(midiLabel);
-    deleteAndZero(midiProgramChangeButton);
-    deleteAndZero(mmcTransportButton);
-    deleteAndZero(useTrayIconButton);
-    deleteAndZero(startInTrayButton);
-    deleteAndZero(fixedSizeButton);
-    deleteAndZero(pdlAudioSettingsButton);
+    delete oscPortLabel; oscPortLabel = nullptr;
+    delete oscPortEditor; oscPortEditor = nullptr;
+    delete oscLabel; oscLabel = nullptr;
+    delete oscMulticastLabel; oscMulticastLabel = nullptr;
+    delete oscMulticastEditor; oscMulticastEditor = nullptr;
+    delete multicastHintLabel; multicastHintLabel = nullptr;
+    delete ioOptionsLabel; ioOptionsLabel = nullptr;
+    delete audioInputButton; audioInputButton = nullptr;
+    delete midiInputButton; midiInputButton = nullptr;
+    delete oscInputButton; oscInputButton = nullptr;
+    delete otherLabel; otherLabel = nullptr;
+    delete mappingsWindowButton; mappingsWindowButton = nullptr;
+    delete loopPatchesButton; loopPatchesButton = nullptr;
+    delete windowsOnTopButton; windowsOnTopButton = nullptr;
+    delete ignorePinNamesButton; ignorePinNamesButton = nullptr;
+    delete midiLabel; midiLabel = nullptr;
+    delete midiProgramChangeButton; midiProgramChangeButton = nullptr;
+    delete mmcTransportButton; mmcTransportButton = nullptr;
+    delete useTrayIconButton; useTrayIconButton = nullptr;
+    delete startInTrayButton; startInTrayButton = nullptr;
+    delete fixedSizeButton; fixedSizeButton = nullptr;
+    delete pdlAudioSettingsButton; pdlAudioSettingsButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]

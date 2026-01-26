@@ -1,6 +1,6 @@
 //	ColourScheme.h - Singleton struct handling colour schemes.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2012 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify

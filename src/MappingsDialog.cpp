@@ -179,16 +179,16 @@ MappingsDialog::~MappingsDialog() {
 
   //[/Destructor_pre]
 
-  deleteAndZero(mappingsList);
-  deleteAndZero(addMidiButton);
-  deleteAndZero(addOscButton);
-  deleteAndZero(deleteButton);
-  deleteAndZero(overrideMidiButton);
-  deleteAndZero(oscMidiAddressLabel);
-  deleteAndZero(oscMidiAddress);
-  deleteAndZero(oscHintLabel);
-  deleteAndZero(midiChannelLabel);
-  deleteAndZero(midiChannelComboBox);
+  delete mappingsList; mappingsList = nullptr;
+  delete addMidiButton; addMidiButton = nullptr;
+  delete addOscButton; addOscButton = nullptr;
+  delete deleteButton; deleteButton = nullptr;
+  delete overrideMidiButton; overrideMidiButton = nullptr;
+  delete oscMidiAddressLabel; oscMidiAddressLabel = nullptr;
+  delete oscMidiAddress; oscMidiAddress = nullptr;
+  delete oscHintLabel; oscHintLabel = nullptr;
+  delete midiChannelLabel; midiChannelLabel = nullptr;
+  delete midiChannelComboBox; midiChannelComboBox = nullptr;
 
   //[Destructor]. You can add your own custom destruction code here..
   //[/Destructor]

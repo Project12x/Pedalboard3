@@ -30,8 +30,6 @@ class WaveformDisplayLite;
 
 //[/Headers]
 
-
-
 //==============================================================================
 /**
                                                                     //[Comments]
@@ -40,49 +38,47 @@ class WaveformDisplayLite;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class AudioRecorderControl  : public Component,
-                              public FilenameComponentListener,
-                              public ChangeListener,
-                              public Button::Listener
+class AudioRecorderControl : public Component,
+                             public FilenameComponentListener,
+                             public ChangeListener,
+                             public Button::Listener
 {
-public:
+  public:
     //==============================================================================
-    AudioRecorderControl (RecorderProcessor *proc, AudioThumbnail& thumbnail);
+    AudioRecorderControl(RecorderProcessor* proc, AudioThumbnail& thumbnail);
     ~AudioRecorderControl();
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
 
-	///	Used to load a sound file.
-	void filenameComponentChanged(FilenameComponent *filenameComp);
-	///	Used to change the player's read position when the user clicks on the WaveformDisplay.
-	void changeListenerCallback(ChangeBroadcaster *source);
+    ///	Used to load a sound file.
+    void filenameComponentChanged(FilenameComponent* filenameComp);
+    ///	Used to change the player's read position when the user clicks on the WaveformDisplay.
+    void changeListenerCallback(ChangeBroadcaster* source);
 
-	///	Changes the colour of the WaveformDisplay background.
-	void setWaveformBackground(const Colour& col);
+    ///	Changes the colour of the WaveformDisplay background.
+    void setWaveformBackground(const Colour& col);
 
     //[/UserMethods]
 
-    void paint (Graphics& g);
+    void paint(Graphics& g);
     void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
-
-
+    void buttonClicked(Button* buttonThatWasClicked);
 
     //==============================================================================
-    juce_UseDebuggingNewOperator
 
-private:
-    //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	Our copy of the AudioProcessor pointer.
-	RecorderProcessor *processor;
+      private :
+      //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	The two drawables we use for the playButton.
-	ScopedPointer<Drawable> recordImage;
-	ScopedPointer<Drawable> stopImage;
-	///	Whether the recordButton is currently displaying the record icon.
-	bool recording;
+      ///	Our copy of the AudioProcessor pointer.
+      RecorderProcessor* processor;
+
+    ///	The two drawables we use for the playButton.
+    std::unique_ptr<Drawable> recordImage;
+    std::unique_ptr<Drawable> stopImage;
+    ///	Whether the recordButton is currently displaying the record icon.
+    bool recording;
 
     //[/UserVariables]
 
@@ -92,12 +88,10 @@ private:
     ToggleButton* syncButton;
     DrawableButton* recordButton;
 
-
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)
-    AudioRecorderControl (const AudioRecorderControl&);
-    const AudioRecorderControl& operator= (const AudioRecorderControl&);
+    AudioRecorderControl(const AudioRecorderControl&);
+    const AudioRecorderControl& operator=(const AudioRecorderControl&);
 };
 
-
-#endif   // __JUCER_HEADER_AUDIORECORDERCONTROL_AUDIORECORDERCONTROL_504296E2__
+#endif // __JUCER_HEADER_AUDIORECORDERCONTROL_AUDIORECORDERCONTROL_504296E2__

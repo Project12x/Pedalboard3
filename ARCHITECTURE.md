@@ -1,4 +1,4 @@
-# Pedalboard2 Architecture
+# Pedalboard3 Architecture
 
 > **For LLMs and Engineers:** This document describes the codebase structure, key patterns, and JUCE 8 API changes.
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Pedalboard2 is a **JUCE-based audio plugin host** for live performance. It allows:
+Pedalboard3 is a **JUCE-based audio plugin host** for live performance. It allows:
 - Loading audio plugins (VST3) into a signal graph
 - MIDI/OSC control of parameters and routing
 - Patch management for live performance switching
@@ -130,6 +130,20 @@ Component* createItemComponent() override;
 std::unique_ptr<Component> createItemComponent() override;
 ```
 
+### Graphics setColour/setFont Order
+
+```cpp
+// OLD (JUCE 7 - order didn't matter)
+g.setFont(Font(15.0f));
+g.setColour(Colours::white);
+g.drawText(...);
+
+// NEW (JUCE 8 - setColour MUST come first)
+g.setColour(Colours::white);  // Color first!
+g.setFont(Font(FontOptions().withHeight(15.0f)));
+g.drawText(...);  // Now color is applied
+```
+
 ---
 
 ## Threading Model
@@ -183,4 +197,4 @@ cmake --build build --config Release
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-25*

@@ -1,7 +1,7 @@
 //	MidiMappingManager.h - Class which dispatches MIDI CC messages to
 //						   MidiMappings.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -88,7 +88,7 @@ class MidiMapping : public Mapping
 	///	Sets the mapping's upper bound.
 	void setUpperBound(float val);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The MidiMappingManager to register with.
 	MidiMappingManager *mappingManager;
@@ -139,7 +139,7 @@ class MidiAppMapping
 	///	Returns the CommandId this mapping applies to.
 	CommandID getId() const {return id;};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The main MidiMappingManager.
 	MidiMappingManager *midiManager;
@@ -204,7 +204,7 @@ class MidiMappingManager
 	///	Returns a StringArray with the full range of named MIDI CCs.
 	static const StringArray getCCNames();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Holds all the MidiMappings to dispatch messages to.
 	/*!
@@ -297,7 +297,7 @@ class MidiInterceptor : public AudioPluginInstance
 	///	We have no state information.
 	void setStateInformation(const void *data, int sizeInBytes) {};
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The MidiMappingManager to pass Midi messages to.
 	MidiMappingManager *midiManager;

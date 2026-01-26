@@ -1,6 +1,6 @@
 //	WaveformDisplay.h - A component that displays a waveform.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -54,7 +54,7 @@ class WaveformDisplay : public Component,
 	///	Sets the background colour.
 	void setBackgroundColour(const Colour& col);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The current thumbnail.
     AudioThumbnail *thumbnail;
@@ -90,7 +90,7 @@ class WaveformDisplayLite : public Component,
 	///	Sets the background colour.
 	void setBackgroundColour(const Colour& col);
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	The current thumbnail.
     AudioThumbnail &thumbnail;

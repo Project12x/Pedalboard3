@@ -62,11 +62,11 @@ AudioRecorderControl::AudioRecorderControl (RecorderProcessor *proc, AudioThumbn
 
 	recording = false;
 
-	recordImage = JuceHelperStuff::loadSVGFromMemory(Vectors::recordbutton_svg,
-													 Vectors::recordbutton_svgSize);
-	stopImage = JuceHelperStuff::loadSVGFromMemory(Vectors::stopbutton_svg,
-												   Vectors::stopbutton_svgSize);
-	recordButton->setImages(recordImage);
+	recordImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::recordbutton_svg,
+													 Vectors::recordbutton_svgSize));
+	stopImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::stopbutton_svg,
+												   Vectors::stopbutton_svgSize));
+	recordButton->setImages(recordImage.get());
 	recordButton->setColour(DrawableButton::backgroundColourId,
 						    ColourScheme::getInstance().colours["Button Colour"]);
 	recordButton->setColour(DrawableButton::backgroundOnColourId,
@@ -104,10 +104,10 @@ AudioRecorderControl::~AudioRecorderControl()
 
     //[/Destructor_pre]
 
-    deleteAndZero (fileDisplay);
-    deleteAndZero (filename);
-    deleteAndZero (syncButton);
-    deleteAndZero (recordButton);
+    delete fileDisplay; fileDisplay = nullptr;
+    delete filename; filename = nullptr;
+    delete syncButton; syncButton = nullptr;
+    delete recordButton; recordButton = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -155,9 +155,9 @@ void AudioRecorderControl::buttonClicked (Button* buttonThatWasClicked)
 	else if(buttonThatWasClicked == recordButton)
 	{
 		if(!recording)
-			recordButton->setImages(stopImage);
+			recordButton->setImages(stopImage.get());
 		else
-			recordButton->setImages(recordImage);
+			recordButton->setImages(recordImage.get());
 		recording = !recording;
 
 		/*if(recording)
@@ -188,12 +188,12 @@ void AudioRecorderControl::changeListenerCallback(ChangeBroadcaster *source)
 	{
 		if(processor->isRecording())
 		{
-			recordButton->setImages(stopImage);
+			recordButton->setImages(stopImage.get());
 			recording = true;
 		}
 		else
 		{
-			recordButton->setImages(recordImage);
+			recordButton->setImages(recordImage.get());
 			recording = false;
 		}
 		syncButton->setToggleState(processor->getParameter(RecorderProcessor::SyncToMainTransport) > 0.5f, false);

@@ -1,6 +1,6 @@
 //	PresetManager.h - A class used to keep track of user-saved plugin presets.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2012 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -37,7 +37,7 @@ class PresetManager
 	/*!
 		This is essentially a wrapper for the above importPreset(); it just
 		calculates a file path from the presetName passed in, like so:
-		<Pedalboard2 user data dir>/presets/<plugin name>/<presetName>.fxp
+		<Pedalboard3 user data dir>/presets/<plugin name>/<presetName>.fxp
 	 */
 	void importPreset(const String& presetName, AudioProcessor *plugin);
 	///	Saves the contents of a MemoryBlock to a .fxp file.

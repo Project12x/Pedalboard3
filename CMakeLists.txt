@@ -1,11 +1,11 @@
 # ==============================================================================
-# Pedalboard2 Modern - CMake Build Configuration
+# Pedalboard3 Modern - CMake Build Configuration
 # Based on JUCE 8.x with VST3 plugin hosting support
 # ==============================================================================
 
 cmake_minimum_required(VERSION 3.22)
 
-project(Pedalboard2
+project(Pedalboard3
     VERSION 3.0.0
     DESCRIPTION "Modern VST3 Pedalboard Software for Live Performance"
     LANGUAGES CXX
@@ -47,9 +47,9 @@ CPMAddPackage(
 # ==============================================================================
 # Testing Framework
 # ==============================================================================
-option(PEDALBOARD2_BUILD_TESTS "Build tests" ON)
+option(Pedalboard3_BUILD_TESTS "Build tests" ON)
 
-if(PEDALBOARD2_BUILD_TESTS)
+if(Pedalboard3_BUILD_TESTS)
     CPMAddPackage(
         NAME Catch2
         GITHUB_REPOSITORY catchorg/Catch2
@@ -91,7 +91,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(JUCE)
 
 # Define the application
-juce_add_gui_app(Pedalboard2
+juce_add_gui_app(Pedalboard3
     PRODUCT_NAME "Pedalboard3"
     COMPANY_NAME "Pedalboard3 Project"
     BUNDLE_ID "com.pedalboard3.app"
@@ -100,10 +100,10 @@ juce_add_gui_app(Pedalboard2
 )
 
 # Generate JUCE header
-juce_generate_juce_header(Pedalboard2)
+juce_generate_juce_header(Pedalboard3)
 
 # Source files - Core
-target_sources(Pedalboard2 PRIVATE
+target_sources(Pedalboard3 PRIVATE
     # Application
     src/App.cpp
     src/App.h
@@ -235,12 +235,12 @@ target_sources(Pedalboard2 PRIVATE
 )
 
 # Compile definitions
-target_compile_definitions(Pedalboard2 PRIVATE
+target_compile_definitions(Pedalboard3 PRIVATE
     # JUCE Settings
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:Pedalboard2,JUCE_PRODUCT_NAME>"
-    JUCE_APPLICATION_VERSION_STRING="$<TARGET_PROPERTY:Pedalboard2,JUCE_VERSION>"
+    JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:Pedalboard3,JUCE_PRODUCT_NAME>"
+    JUCE_APPLICATION_VERSION_STRING="$<TARGET_PROPERTY:Pedalboard3,JUCE_VERSION>"
     
     # Plugin Hosting - VST3 is primary
     JUCE_PLUGINHOST_VST3=1
@@ -264,7 +264,7 @@ target_compile_definitions(Pedalboard2 PRIVATE
 )
 
 # Link JUCE modules
-target_link_libraries(Pedalboard2 PRIVATE
+target_link_libraries(Pedalboard3 PRIVATE
     juce::juce_audio_basics
     juce::juce_audio_devices
     juce::juce_audio_formats
@@ -291,26 +291,26 @@ target_link_libraries(Pedalboard2 PRIVATE
 
 # Windows-specific settings
 if(WIN32)
-    target_compile_definitions(Pedalboard2 PRIVATE
+    target_compile_definitions(Pedalboard3 PRIVATE
         _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
     )
     
     # Link Windows libraries for network/socket support
-    target_link_libraries(Pedalboard2 PRIVATE
+    target_link_libraries(Pedalboard3 PRIVATE
         ws2_32
     )
 endif()
 
 # Copy resources to build directory (for development)
-add_custom_command(TARGET Pedalboard2 POST_BUILD
+add_custom_command(TARGET Pedalboard3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
-        "$<TARGET_FILE_DIR:Pedalboard2>/documentation"
+        "$<TARGET_FILE_DIR:Pedalboard3>/documentation"
 )
 
 # ==============================================================================
 # Tests
 # ==============================================================================
-if(PEDALBOARD2_BUILD_TESTS)
+if(Pedalboard3_BUILD_TESTS)
     add_subdirectory(tests)
 endif()

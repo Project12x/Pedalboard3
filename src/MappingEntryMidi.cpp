@@ -236,11 +236,11 @@ MappingEntryMidi::~MappingEntryMidi()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    deleteAndZero (ccComboBox);
-    deleteAndZero (latchButton);
-    deleteAndZero (slider);
-    deleteAndZero (rangeLabel);
-    deleteAndZero (paramComboBox);
+    delete ccComboBox; ccComboBox = nullptr;
+    delete latchButton; latchButton = nullptr;
+    delete slider; slider = nullptr;
+    delete rangeLabel; rangeLabel = nullptr;
+    delete paramComboBox; paramComboBox = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..

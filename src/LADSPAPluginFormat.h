@@ -56,7 +56,7 @@ public:
     const FileSearchPath getDefaultLocationsToSearch();
 
     //==============================================================================
-    juce_UseDebuggingNewOperator
+
 
 private:
     LADSPAPluginFormat (const LADSPAPluginFormat&);

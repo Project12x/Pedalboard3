@@ -1,6 +1,6 @@
 //	PluginField.h - Field representing the signal path through the app.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -157,7 +157,7 @@ class PluginField : public Component,
     ///	Used after undo/redo to add/remove PluginComponents as needed.
     void syncWithGraph();
 
-  juce_UseDebuggingNewOperator private :
+private :
       ///	Helper method. Clears mappings.
       void clearMappings();
     ///	Helper method. Handles a single OSC bundle.

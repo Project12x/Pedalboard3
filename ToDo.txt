@@ -1,4 +1,4 @@
-Pedalboard2 ToDo
+Pedalboard3 ToDo
 ----------------
 - Update to latest version of JUCE.
 - Midi Output.

@@ -95,13 +95,13 @@ PatchOrganiser::~PatchOrganiser() {
   //[Destructor_pre]. You can add your own custom destruction code here..
   //[/Destructor_pre]
 
-  deleteAndZero(patchList);
-  deleteAndZero(addButton);
-  deleteAndZero(copyButton);
-  deleteAndZero(removeButton);
-  deleteAndZero(moveUpButton);
-  deleteAndZero(moveDownButton);
-  deleteAndZero(importButton);
+  delete patchList; patchList = nullptr;
+  delete addButton; addButton = nullptr;
+  delete copyButton; copyButton = nullptr;
+  delete removeButton; removeButton = nullptr;
+  delete moveUpButton; moveUpButton = nullptr;
+  delete moveDownButton; moveDownButton = nullptr;
+  delete importButton; importButton = nullptr;
 
   //[Destructor]. You can add your own custom destruction code here..
   //[/Destructor]

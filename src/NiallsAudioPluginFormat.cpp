@@ -1,6 +1,6 @@
 //	NiallsAudioPluginFormat.cpp - Describes the NiallsAudioPlugin format.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -66,7 +66,7 @@ void NiallsAudioPluginFormat::findAllTypesForFile(OwnedArray<PluginDescription>&
 		cout << "NiallsAudioPluginFormat: Caught exception interrogating plugin." << endl;
 	}
 
-	deleteAndZero(instance);
+	delete instance; instance = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ AudioPluginInstance *NiallsAudioPluginFormat::createInstanceFromDescription(cons
 				if(!result->getPluginLoadedOkay())
 				{
 					cout << "NiallsAudioPluginFormat: Could not load plugin." << endl;
-					deleteAndZero(result);
+					delete result; result = nullptr;
 				}
 			}
 		}
@@ -450,7 +450,7 @@ NAPModuleHandle *NAPModuleHandle::findOrCreateModule(const File& file)
 		{
 			/*delete m;
 			m = 0;*/
-			deleteAndZero(m);
+			delete m; m = nullptr;
 		}
 	}
 

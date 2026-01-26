@@ -1,7 +1,7 @@
 //	AudioSingletons.h - A couple of singleton wrappers to some of JUCE' audio
 //						classes.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2011 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ class AudioPluginFormatManagerSingleton
 	 */
 	static void killInstance();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Constructor.
 	AudioPluginFormatManagerSingleton();
@@ -62,7 +62,7 @@ class AudioFormatManagerSingleton
 	 */
 	static void killInstance();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Constructor.
 	AudioFormatManagerSingleton();
@@ -88,7 +88,7 @@ class AudioThumbnailCacheSingleton
 	 */
 	static void killInstance();
 
-	juce_UseDebuggingNewOperator
+
   private:
 	///	Constructor.
 	AudioThumbnailCacheSingleton();

@@ -1,4 +1,4 @@
-Pedalboard2 ChangeLog
+Pedalboard3 ChangeLog
 ---------------------
 
 v2.14
@@ -135,8 +135,8 @@ v2.06
 - Refactored creation of mappings so they don't register themselves in their
   constructors.
 - Added 'Save as Default file' option (current file saved as 'default.pdl'
-  inside the Pedalboard2 settings folder (<user>/AppData/Roaming/Pedalboard2 on
-  Windows, <user>/Library/Application Support/Pedalboard2 on OSX)).
+  inside the Pedalboard3 settings folder (<user>/AppData/Roaming/Pedalboard3 on
+  Windows, <user>/Library/Application Support/Pedalboard3 on OSX)).
 
 v2.05
 -----

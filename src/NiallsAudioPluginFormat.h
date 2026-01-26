@@ -1,6 +1,6 @@
 //	NiallsAudioPluginFormat.h - Describes the NiallsAudioPlugin format.
 //	----------------------------------------------------------------------------
-//	This file is part of Pedalboard2, an audio plugin host.
+//	This file is part of Pedalboard3, an audio plugin host.
 //	Copyright (c) 2009 Niall Moody.
 //
 //	This program is free software: you can redistribute it and/or modify
@@ -164,7 +164,7 @@ class NAPModuleHandle : public ReferenceCountedObject
 	///	Creates a new NAPModuleHandle, or returns the existing one.
     static NAPModuleHandle *findOrCreateModule(const File& file);
 
-    juce_UseDebuggingNewOperator
+
   public:
 	///	The library file.
     File file;

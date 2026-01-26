@@ -71,16 +71,16 @@ FilePlayerControl::FilePlayerControl (FilePlayerProcessor *proc)
 
 
     //[UserPreSize]
-	ScopedPointer<Drawable> rtzImage(JuceHelperStuff::loadSVGFromMemory(Vectors::rtzbutton_svg,
+	std::unique_ptr<Drawable> rtzImage(JuceHelperStuff::loadSVGFromMemory(Vectors::rtzbutton_svg,
 																	    Vectors::rtzbutton_svgSize));
 
 	playing = false;
 
-	playImage = JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg,
-												   Vectors::playbutton_svgSize);
-	pauseImage = JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg,
-												    Vectors::pausebutton_svgSize);
-	playPauseButton->setImages(playImage);
+	playImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg,
+												   Vectors::playbutton_svgSize));
+	pauseImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg,
+												    Vectors::pausebutton_svgSize));
+	playPauseButton->setImages(playImage.get());
 	playPauseButton->setColour(DrawableButton::backgroundColourId,
 							   ColourScheme::getInstance().colours["Button Colour"]);
 	playPauseButton->setColour(DrawableButton::backgroundOnColourId,
@@ -91,7 +91,7 @@ FilePlayerControl::FilePlayerControl (FilePlayerProcessor *proc)
 	//Used to make sure we're playing if the processor is already playing.
 	changeListenerCallback(processor);
 
-	rtzButton->setImages(rtzImage);
+	rtzButton->setImages(rtzImage.get());
 	rtzButton->setColour(DrawableButton::backgroundColourId,
 					     ColourScheme::getInstance().colours["Button Colour"]);
 	rtzButton->setColour(DrawableButton::backgroundOnColourId,
@@ -137,12 +137,12 @@ FilePlayerControl::~FilePlayerControl()
 
     //[/Destructor_pre]
 
-    deleteAndZero (fileDisplay);
-    deleteAndZero (filename);
-    deleteAndZero (syncButton);
-    deleteAndZero (loopButton);
-    deleteAndZero (playPauseButton);
-    deleteAndZero (rtzButton);
+    delete fileDisplay; fileDisplay = nullptr;
+    delete filename; filename = nullptr;
+    delete syncButton; syncButton = nullptr;
+    delete loopButton; loopButton = nullptr;
+    delete playPauseButton; playPauseButton = nullptr;
+    delete rtzButton; rtzButton = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -203,9 +203,9 @@ void FilePlayerControl::buttonClicked (Button* buttonThatWasClicked)
 	else if(buttonThatWasClicked == playPauseButton)
 	{
 		if(!playing)
-			playPauseButton->setImages(pauseImage);
+			playPauseButton->setImages(pauseImage.get());
 		else
-			playPauseButton->setImages(playImage);
+			playPauseButton->setImages(playImage.get());
 		playing = !playing;
 		processor->setParameter(FilePlayerProcessor::Play, 1.0f);
 	}
@@ -250,12 +250,12 @@ void FilePlayerControl::changeListenerCallback(ChangeBroadcaster *source)
 	{
 		if(processor->isPlaying())
 		{
-			playPauseButton->setImages(pauseImage);
+			playPauseButton->setImages(pauseImage.get());
 			playing = true;
 		}
 		else
 		{
-			playPauseButton->setImages(playImage);
+			playPauseButton->setImages(playImage.get());
 			playing = false;
 		}
 		fileDisplay->setReadPointer((float)processor->getReadPosition());

@@ -29,7 +29,7 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Constructor.
     BranchesLAF();
     ///	Destructor.
-    ~BranchesLAF();
+    ~BranchesLAF() override;
 
     /// @brief Refresh LookAndFeel colors from ColourScheme.
     /// Call this after changing theme to update menu/button colors.
@@ -37,63 +37,69 @@ class BranchesLAF : public LookAndFeel_V4
 
     ///	Draws the buttons.
     void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour, bool isMouseOverButton,
-                              bool isButtonDown);
+                              bool isButtonDown) override;
     ///	Draws button text.
-    void drawButtonText(Graphics& g, TextButton& button, bool isMouseOverButton, bool isButtonDown);
+    void drawButtonText(Graphics& g, TextButton& button, bool isMouseOverButton, bool isButtonDown) override;
 
     ///	Draws the scrollbar buttons.
     void drawScrollbarButton(Graphics& g, ScrollBar& scrollbar, int width, int height, int buttonDirection,
-                             bool isScrollbarVertical, bool isMouseOverButton, bool isButtonDown);
+                             bool isScrollbarVertical, bool isMouseOverButton, bool isButtonDown) override;
     ///	Draws the scrollbar.
     void drawScrollbar(Graphics& g, ScrollBar& scrollbar, int x, int y, int width, int height, bool isScrollbarVertical,
-                       int thumbStartPosition, int thumbSize, bool isMouseOver, bool isMouseDown);
+                       int thumbStartPosition, int thumbSize, bool isMouseOver, bool isMouseDown) override;
 
     ///	Draws the menubar.
-    void drawMenuBarBackground(Graphics& g, int width, int height, bool isMouseOverBar, MenuBarComponent& menuBar);
+    void drawMenuBarBackground(Graphics& g, int width, int height, bool isMouseOverBar,
+                               MenuBarComponent& menuBar) override;
     ///	Returns the menubar font.
-    Font getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText);
+    Font getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText) override;
     ///	Draws the menubar items.
     void drawMenuBarItem(Graphics& g, int width, int height, int itemIndex, const String& itemText,
-                         bool isMouseOverItem, bool isMenuOpen, bool isMouseOverBar, MenuBarComponent& menuBar);
+                         bool isMouseOverItem, bool isMenuOpen, bool isMouseOverBar,
+                         MenuBarComponent& menuBar) override;
     ///	The width of a menubar item.
-    int getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText);
+    int getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText) override;
     ///	Returns the popup meun font.
-    Font getPopupMenuFont() { return Font(15.0f); };
+    Font getPopupMenuFont() override { return Font(FontOptions().withHeight(15.0f)); };
     ///	Draws the popup menu background.
-    void drawPopupMenuBackground(Graphics& g, int width, int height);
+    void drawPopupMenuBackground(Graphics& g, int width, int height) override;
     ///	Cancels menus' drop shadow.
-    int getMenuWindowFlags() { return 0; };
+    int getMenuWindowFlags() override { return 0; };
+
+    /// Use legacy font metrics to maintain JUCE 7 text sizing behavior
+    TypefaceMetricsKind getDefaultMetricsKind() const override { return TypefaceMetricsKind::legacy; }
 
     ///	Returns the image of a folder for the file chooser.
-    const Drawable* getDefaultFolderImage();
+    const Drawable* getDefaultFolderImage() override;
     ///	Draws a combobox (used in the file chooser).
     void drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY, int buttonW,
-                      int buttonH, ComboBox& box);
+                      int buttonH, ComboBox& box) override;
 
     ///	Draws the ProgressBar.
     void drawProgressBar(Graphics& g, ProgressBar& progressBar, int width, int height, double progress,
-                         const String& textToShow);
+                         const String& textToShow) override;
 
     ///	Draws the KeymapChange button.
-    void drawKeymapChangeButton(Graphics& g, int width, int height, Button& button, const String& keyDescription);
+    void drawKeymapChangeButton(Graphics& g, int width, int height, Button& button,
+                                const String& keyDescription) override;
 
     ///	Draws a Label.
-    void drawLabel(Graphics& g, Label& label);
+    void drawLabel(Graphics& g, Label& label) override;
 
     ///	Draws a ToggleButton.
-    void drawToggleButton(Graphics& g, ToggleButton& button, bool isMouseOverButton, bool isButtonDown);
+    void drawToggleButton(Graphics& g, ToggleButton& button, bool isMouseOverButton, bool isButtonDown) override;
 
     ///	Drwas a tick box.
     void drawTickBox(Graphics& g, Component& component, float x, float y, float w, float h, bool ticked, bool isEnabled,
-                     bool isMouseOverButton, bool isButtonDown);
+                     bool isMouseOverButton, bool isButtonDown) override;
 
     ///	Fills in the TextEditor background.
-    void fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& textEditor);
+    void fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& textEditor) override;
 
     ///	Draws the callout box.
-    void drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const Path& path, Image& cachedImage);
+    void drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const Path& path, Image& cachedImage) override;
 
-    juce_UseDebuggingNewOperator
+
 };
 
 #endif

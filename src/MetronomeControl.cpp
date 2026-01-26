@@ -148,15 +148,15 @@ MetronomeControl::~MetronomeControl() {
   //[Destructor_pre]. You can add your own custom destruction code here..
   //[/Destructor_pre]
 
-  deleteAndZero(syncButton);
-  deleteAndZero(playPauseButton);
-  deleteAndZero(accentFile);
-  deleteAndZero(accentLabel);
-  deleteAndZero(clickFile);
-  deleteAndZero(clickLabel);
-  deleteAndZero(numeratorLabel);
-  deleteAndZero(denominatorLabel);
-  deleteAndZero(separatorLabel);
+  delete syncButton; syncButton = nullptr;
+  delete playPauseButton; playPauseButton = nullptr;
+  delete accentFile; accentFile = nullptr;
+  delete accentLabel; accentLabel = nullptr;
+  delete clickFile; clickFile = nullptr;
+  delete clickLabel; clickLabel = nullptr;
+  delete numeratorLabel; numeratorLabel = nullptr;
+  delete denominatorLabel; denominatorLabel = nullptr;
+  delete separatorLabel; separatorLabel = nullptr;
 
   //[Destructor]. You can add your own custom destruction code here..
   processor->removeChangeListener(this);

@@ -186,7 +186,7 @@ private:
 		void itemOpennessChanged(bool isNowOpen)
 		{
 			int i;
-			File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard2").getChildFile("presets");
+			File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
 			Array<File> pluginDirs;
 
 			clearSubItems();
