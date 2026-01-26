@@ -166,6 +166,8 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 5C.2 | Backing track player | Audio files |
 | 5C.3 | Wire visualization | Beautiful graphs |
 | 5C.4 | Plugin preset nav | MIDI/OSC next/prev |
+| 5C.5 | **Ableton Link** | Sync with other musicians |
+| 5C.6 | Internal MIDI file player | Backing tracks, no plugins needed |
 
 ### 5D: Database & Cache
 | # | Library | Purpose |
@@ -271,8 +273,10 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 ### 8B: Plugin Formats
 | # | Format | Notes |
 |---|--------|-------|
-| 8B.1 | LV2 | Linux |
+| 8B.1 | LV2 | Linux standard |
 | 8B.2 | Plugin sandboxing | Crash isolation |
+| 8B.3 | 32↔64-bit bridging | Run legacy plugins |
+| 8B.4 | SoundFont (SF2/SFZ) | Built-in instruments |
 
 ### 8C: Future
 | # | Feature | Notes |
