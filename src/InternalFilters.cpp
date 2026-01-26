@@ -29,89 +29,106 @@
   ==============================================================================
 */
 
-#include "PedalboardProcessors.h"
+#include "InternalFilters.h"
+
+#include "FilterGraph.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
-#include "InternalFilters.h"
-#include "FilterGraph.h"
+#include "PedalboardProcessors.h"
+
 
 //==============================================================================
 InternalPluginFormat::InternalPluginFormat()
 {
     {
-        AudioProcessorGraph::AudioGraphIOProcessor p (AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
-        p.fillInPluginDescription (audioOutDesc);
+        AudioProcessorGraph::AudioGraphIOProcessor p(AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
+        p.fillInPluginDescription(audioOutDesc);
+        audioOutDesc.category = "Built-in";
     }
 
     {
-        AudioProcessorGraph::AudioGraphIOProcessor p (AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
-        p.fillInPluginDescription (audioInDesc);
+        AudioProcessorGraph::AudioGraphIOProcessor p(AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
+        p.fillInPluginDescription(audioInDesc);
+        audioInDesc.category = "Built-in";
     }
 
     {
-        AudioProcessorGraph::AudioGraphIOProcessor p (AudioProcessorGraph::AudioGraphIOProcessor::midiInputNode);
-        p.fillInPluginDescription (midiInDesc);
+        AudioProcessorGraph::AudioGraphIOProcessor p(AudioProcessorGraph::AudioGraphIOProcessor::midiInputNode);
+        p.fillInPluginDescription(midiInDesc);
+        midiInDesc.category = "Built-in";
     }
 
     {
         MidiInterceptor p;
-        p.fillInPluginDescription (midiInterceptorDesc);
+        p.fillInPluginDescription(midiInterceptorDesc);
+        midiInterceptorDesc.category = "Built-in";
     }
 
     {
         OscInput p;
-        p.fillInPluginDescription (oscInputDesc);
+        p.fillInPluginDescription(oscInputDesc);
+        oscInputDesc.category = "Built-in";
     }
 
     {
         LevelProcessor p;
-        p.fillInPluginDescription (levelProcDesc);
+        p.fillInPluginDescription(levelProcDesc);
+        levelProcDesc.category = "Built-in";
     }
 
     {
         FilePlayerProcessor p;
-        p.fillInPluginDescription (filePlayerProcDesc);
+        p.fillInPluginDescription(filePlayerProcDesc);
+        filePlayerProcDesc.category = "Built-in";
     }
 
     {
         OutputToggleProcessor p;
-        p.fillInPluginDescription (outputToggleProcDesc);
+        p.fillInPluginDescription(outputToggleProcDesc);
+        outputToggleProcDesc.category = "Built-in";
     }
 
     {
         VuMeterProcessor p;
-        p.fillInPluginDescription (vuMeterProcDesc);
+        p.fillInPluginDescription(vuMeterProcDesc);
+        vuMeterProcDesc.category = "Built-in";
     }
 
     {
         RecorderProcessor p;
-        p.fillInPluginDescription (recorderProcDesc);
+        p.fillInPluginDescription(recorderProcDesc);
+        recorderProcDesc.category = "Built-in";
     }
 
     {
         MetronomeProcessor p;
-        p.fillInPluginDescription (metronomeProcDesc);
+        p.fillInPluginDescription(metronomeProcDesc);
+        metronomeProcDesc.category = "Built-in";
     }
 
     {
         LooperProcessor p;
-        p.fillInPluginDescription (looperProcDesc);
+        p.fillInPluginDescription(looperProcDesc);
+        looperProcDesc.category = "Built-in";
     }
 }
 
-AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription (const PluginDescription& desc)
+AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
 {
     if (desc.name == audioOutDesc.name)
     {
-        return new AudioProcessorGraph::AudioGraphIOProcessor (AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
+        return new AudioProcessorGraph::AudioGraphIOProcessor(
+            AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode);
     }
     else if (desc.name == audioInDesc.name)
     {
-        return new AudioProcessorGraph::AudioGraphIOProcessor (AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
+        return new AudioProcessorGraph::AudioGraphIOProcessor(
+            AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode);
     }
     else if (desc.name == midiInDesc.name)
     {
-        return new AudioProcessorGraph::AudioGraphIOProcessor (AudioProcessorGraph::AudioGraphIOProcessor::midiInputNode);
+        return new AudioProcessorGraph::AudioGraphIOProcessor(
+            AudioProcessorGraph::AudioGraphIOProcessor::midiInputNode);
     }
     else if (desc.name == midiInterceptorDesc.name)
     {
@@ -153,7 +170,7 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription (const 
     return 0;
 }
 
-const PluginDescription* InternalPluginFormat::getDescriptionFor (const InternalFilterType type)
+const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalFilterType type)
 {
     switch (type)
     {
@@ -163,31 +180,31 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor (const Internal
         return &audioOutDesc;
     case midiInputFilter:
         return &midiInDesc;
-	case midiInterceptorFilter:
-		return &midiInterceptorDesc;
-	case oscInputFilter:
-		return &oscInputDesc;
-	case levelProcFilter:
-		return &levelProcDesc;
-	case filePlayerProcFilter:
-		return &filePlayerProcDesc;
-	case outputToggleProcFilter:
-		return &outputToggleProcDesc;
-	case vuMeterProcFilter:
-		return &vuMeterProcDesc;
-	case recorderProcFilter:
-		return &recorderProcDesc;
-	case metronomeProcFilter:
-		return &metronomeProcDesc;
-	case looperProcFilter:
-		return &looperProcDesc;
-	default:
-		return 0;
+    case midiInterceptorFilter:
+        return &midiInterceptorDesc;
+    case oscInputFilter:
+        return &oscInputDesc;
+    case levelProcFilter:
+        return &levelProcDesc;
+    case filePlayerProcFilter:
+        return &filePlayerProcDesc;
+    case outputToggleProcFilter:
+        return &outputToggleProcDesc;
+    case vuMeterProcFilter:
+        return &vuMeterProcDesc;
+    case recorderProcFilter:
+        return &recorderProcDesc;
+    case metronomeProcFilter:
+        return &metronomeProcDesc;
+    case looperProcFilter:
+        return &looperProcDesc;
+    default:
+        return 0;
     }
 }
 
-void InternalPluginFormat::getAllTypes (OwnedArray <PluginDescription>& results)
+void InternalPluginFormat::getAllTypes(OwnedArray<PluginDescription>& results)
 {
-    for (int i = 0; i < (int) endOfFilterTypes; ++i)
-        results.add (new PluginDescription (*getDescriptionFor ((InternalFilterType) i)));
+    for (int i = 0; i < (int)endOfFilterTypes; ++i)
+        results.add(new PluginDescription(*getDescriptionFor((InternalFilterType)i)));
 }

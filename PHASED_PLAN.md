@@ -189,15 +189,32 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 
 ## Phase 6: Stability & Polish
 
-**Goal:** Production-ready quality
+**Goal:** Production-ready quality with premium UI/UX
 
-### 6A: Visual Polish
-| # | Task | License |
-|---|------|---------|
-| 6A.1 | Inter font | SIL OFL |
-| 6A.2 | JetBrains Mono | SIL OFL |
-| 6A.3 | Lucide icons | ISC |
-| 6A.4 | blend2d vectors | zlib |
+> **Competitive Edge:** Carla and Element are powerful but have developer-focused UIs.
+> Pedalboard3's differentiator is an **intuitive, polished GUI** that feels premium.
+
+### 6A: Premium UI/UX Polish 🎨
+| # | Task | Notes |
+|---|------|-------|
+| 6A.1 | **Inter font** | Modern, readable UI font (SIL OFL) |
+| 6A.2 | **JetBrains Mono** | Monospace for values/logs (SIL OFL) |
+| 6A.3 | **Lucide icons** | Consistent modern iconography (ISC) |
+| 6A.4 | **blend2d vectors** | Smooth vector graphics (zlib) |
+| 6A.5 | **Smooth animations** | Connection drawing, plugin add/remove |
+| 6A.6 | **Cable glow effects** | Audio flowing = subtle pulse/glow |
+| 6A.7 | **Hover tooltips** | Descriptive tooltips on all controls |
+| 6A.8 | **Connection highlighting** | Highlight path on hover |
+| 6A.9 | **Plugin thumbnails** | Visual preview in plugin list |
+| 6A.10 | **Drag & drop polish** | Smooth ghost preview when dragging |
+| 6A.11 | **Keyboard shortcuts overlay** | Press `?` to show all shortcuts |
+| 6A.12 | **Dark/light mode auto-switch** | Match OS preference |
+| 6A.13 | **Welcome screen** | First-run tutorial/quick start |
+| 6A.14 | **Plugin search with fuzzy match** | Type-to-filter with smart matching |
+| 6A.15 | **Recent files quick access** | File > Recent with previews |
+| 6A.16 | **Undo/redo toast notifications** | "Removed Reverb" with undo link |
+| 6A.17 | **CPU meter redesign** | Animated, gradient bar |
+| 6A.18 | **Plugin bypass visual feedback** | Dimmed + strikethrough when bypassed |
 
 ### 6B: Testing
 | # | Task | Notes |
@@ -206,6 +223,8 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 6B.2 | MIDI mapping tests | CC assignment |
 | 6B.3 | Plugin loading tests | VST3/CLAP |
 | 6B.4 | Tracy profiler | Performance |
+| 6B.5 | **Plugin load crash protection** | Try-catch + error dialog |
+| 6B.6 | **Incompatible plugin detection** | Scan on startup, warn user |
 
 ### 6C: Bug Fixes (Legacy)
 | # | Issue |
@@ -231,6 +250,7 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 6E.3 | Plugin pins enlarge on hover |
 | 6E.4 | Hotkey to bypass all |
 | 6E.5 | Tempo display improvements |
+| 6E.6 | Bidirectional connection dragging (input→output) |
 
 ### 6F: Cross-Platform
 | # | Task | Notes |

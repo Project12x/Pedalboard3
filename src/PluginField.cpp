@@ -153,9 +153,54 @@ void PluginField::mouseDown(const MouseEvent& e)
         int result = 0;
         PopupMenu menu;
 
-        pluginList->addToMenu(menu, KnownPluginList::sortAlphabetically);
+        // Build a custom organized menu:
+        // 1. Built-in processors at top
+        // 2. Categorized VST3 plugins
+        // 3. "All Plugins" flat list at bottom
 
-        // result = menu.showAt(Rectangle<int>(e.x, e.y, 0, 0));
+        // First, add Built-in submenu at the very top
+        PopupMenu builtInMenu;
+        PopupMenu allPluginsMenu;
+        std::map<String, PopupMenu> categoryMenus;
+
+        // Collect all plugin types
+        auto types = pluginList->getTypes();
+
+        for (int i = 0; i < types.size(); ++i)
+        {
+            const auto& type = types.getReference(i);
+
+            // Check for internal plugins - add to Pedalboard submenu
+            if (type.pluginFormatName == "Internal" || type.category == "Built-in")
+            {
+                builtInMenu.addItem(i + 1, type.name);
+            }
+            else
+            {
+                // External plugin - add to category and All Plugins
+                String category = type.category.isNotEmpty() ? type.category : "Uncategorized";
+                categoryMenus[category].addItem(i + 1, type.name);
+                allPluginsMenu.addItem(i + 1, type.name);
+            }
+        }
+
+        // Add Pedalboard submenu first if it has items
+        if (builtInMenu.getNumItems() > 0)
+        {
+            menu.addSubMenu("Pedalboard", builtInMenu);
+            menu.addSeparator();
+        }
+
+        // Add category submenus in alphabetical order
+        for (auto& [category, categoryMenu] : categoryMenus)
+        {
+            menu.addSubMenu(category, categoryMenu);
+        }
+
+        // Add separator and "All Plugins" submenu at the end
+        menu.addSeparator();
+        menu.addSubMenu("All Plugins", allPluginsMenu);
+
         result = menu.show();
 
         if (result > 0)
