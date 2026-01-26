@@ -175,6 +175,14 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 5D.1 | SQLite | Plugin cache |
 | 5D.2 | sqlite_orm | C++ wrapper |
 
+### 5E: Advanced Routing
+| # | Feature | Notes |
+|---|---------|-------|
+| 5E.1 | **A/B splitter node** | Send to two parallel chains |
+| 5E.2 | **Y merger node** | Combine two chains back |
+| 5E.3 | **Wet/dry mix node** | Blend parallel paths |
+| 5E.4 | **Crossfade node** | Smooth transition between A/B |
+
 ---
 
 ## Phase 6: Stability & Polish
@@ -227,6 +235,13 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 |---|------|-------|
 | 6F.1 | macOS build | CMake + Xcode |
 | 6F.2 | Linux build | CMake + GCC |
+
+### 6G: Headless Mode (Hardware Prep)
+| # | Task | Notes |
+|---|------|-------|
+| 6G.1 | `--no-gui` execution | Run without display |
+| 6G.2 | JSON/OSC control API | Remote preset switching |
+| 6G.3 | Systemd service file | Auto-start on Linux boot |
 
 ---
 
@@ -287,6 +302,15 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 8C.4 | OSC timeline | Sequencing |
 | 8C.5 | Mobile remote | Phone control |
 | 8C.6 | Scripting | Like GP Script |
+
+### 8D: Hardware Integration
+| # | Feature | Notes |
+|---|---------|-------|
+| 8D.1 | ARM Linux build | Raspberry Pi 4/5 |
+| 8D.2 | JACK audio backend | Pro Linux audio |
+| 8D.3 | GPIO control | Physical buttons/LEDs |
+| 8D.4 | LCD/OLED display | Simple hardware UI |
+| 8D.5 | Minimal memory mode | Optimize for 2GB RAM |
 
 ---
 
