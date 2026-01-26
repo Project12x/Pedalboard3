@@ -99,7 +99,8 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Draws the callout box.
     void drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const Path& path, Image& cachedImage) override;
 
-
+    /// Draws an AlertWindow.
+    void drawAlertBox(Graphics& g, AlertWindow& alert, const Rectangle<int>& textArea, TextLayout& textLayout) override;
 };
 
 #endif

@@ -894,34 +894,24 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case OptionsAudio:
     {
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving patch before dialog");
         savePatch();
 
-        // Scope for AudioDeviceSelectorComponent - destructor runs at end of this block
         {
-            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Creating AudioDeviceSelectorComponent");
             AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
             win.setSize(380, 400);
-
-            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Showing modal dialog");
             JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);
-            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed");
         }
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: AudioDeviceSelectorComponent destroyed");
 
-        // NOTE: We no longer call switchPatch here - the patch is already loaded
-        // and doesn't need to be reloaded just because audio settings changed.
-        // This was causing crashes with some plugins.
+        // NOTE: We intentionally do NOT call switchPatch here - the patch is already
+        // loaded and reloading causes crashes with some plugins (e.g., Frohmager).
 
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving audio device state");
         std::unique_ptr<XmlElement> audioState = deviceManager.createStateXml();
         if (audioState)
         {
             SettingsManager::getInstance().setValue("audioDeviceState", audioState->toString());
             SettingsManager::getInstance().save();
         }
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete");
     }
     break;
     case OptionsPluginList:

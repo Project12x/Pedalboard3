@@ -787,3 +787,68 @@ void BranchesLAF::drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const P
     shadow.setShadowProperties(shad);
     shadow.applyEffect(content, g, 1.0f, 1.0f);
 }
+
+//------------------------------------------------------------------------------
+void BranchesLAF::drawAlertBox(Graphics& g, AlertWindow& alert, const Rectangle<int>& textArea, TextLayout& textLayout)
+{
+    // Get colors from the colour scheme
+    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
+
+    // Draw background
+    g.fillAll(colours["Window Background"]);
+
+    // Draw a subtle border
+    g.setColour(Colours::black.withAlpha(0.3f));
+    g.drawRect(alert.getLocalBounds(), 1);
+
+    // Get the icon component if present
+    auto bounds = alert.getLocalBounds().reduced(1);
+    int iconSpaceUsed = 0;
+
+    // Check for icon - JUCE AlertWindows typically have an icon on the left
+    auto iconType = alert.getAlertType();
+    if (iconType != AlertWindow::NoIcon)
+    {
+        // Draw the icon
+        Path icon;
+        uint32 colour;
+        constexpr int iconSize = 80;
+
+        if (iconType == AlertWindow::WarningIcon)
+        {
+            colour = 0x55ff5555;
+            icon.addTriangle(iconSize * 0.5f, 0.0f, iconSize * 1.0f, iconSize * 0.866f, 0.0f, iconSize * 0.866f);
+            icon.addEllipse(iconSize * 0.42f, iconSize * 0.6f, iconSize * 0.16f, iconSize * 0.16f);
+            icon.addRectangle(iconSize * 0.45f, iconSize * 0.25f, iconSize * 0.1f, iconSize * 0.3f);
+        }
+        else if (iconType == AlertWindow::InfoIcon)
+        {
+            colour = 0x605555ff;
+            icon.addEllipse(0.0f, 0.0f, iconSize, iconSize);
+            icon.addRectangle(iconSize * 0.4f, iconSize * 0.25f, iconSize * 0.2f, iconSize * 0.15f);
+            icon.addRectangle(iconSize * 0.4f, iconSize * 0.45f, iconSize * 0.2f, iconSize * 0.35f);
+        }
+        else if (iconType == AlertWindow::QuestionIcon)
+        {
+            colour = 0x60AAAAAA;
+            icon.addEllipse(0.0f, 0.0f, iconSize, iconSize);
+            icon.addEllipse(iconSize * 0.42f, iconSize * 0.72f, iconSize * 0.16f, iconSize * 0.16f);
+
+            Path q;
+            q.addEllipse(iconSize * 0.22f, iconSize * 0.13f, iconSize * 0.56f, iconSize * 0.42f);
+            q.addRectangle(iconSize * 0.4f, iconSize * 0.45f, iconSize * 0.2f, iconSize * 0.2f);
+            icon.addPath(q, AffineTransform::rotation(0.15f, iconSize * 0.5f, iconSize * 0.5f));
+        }
+
+        const Rectangle<int> iconRect(8, bounds.getY() + 8, iconSize, iconSize);
+        icon.applyTransform(icon.getTransformToScaleToFit(iconRect.toFloat(), true));
+        g.setColour(Colour(colour));
+        g.fillPath(icon);
+
+        iconSpaceUsed = iconRect.getRight();
+    }
+
+    // Draw the text layout - this replaces the duplicate drawing issue
+    g.setColour(colours["Text Colour"]);
+    textLayout.draw(g, textArea.toFloat());
+}
