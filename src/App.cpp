@@ -26,6 +26,7 @@
 #include "ColourScheme.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
+#include "LogFile.h"
 #include "MainTransport.h"
 #include "MidiMappingManager.h"
 #include "NiallsAudioPluginFormat.h"
@@ -49,6 +50,14 @@ void App::initialise(const String& commandLine)
     useTrayIcon = false;
 #endif
     startInTray = SettingsManager::getInstance().getBool("startInTray");
+
+    // Check for --debug flag to auto-start logging
+    if (commandLine.contains("--debug") || commandLine.contains("-d"))
+    {
+        LogFile::getInstance().start();
+        LogFile::getInstance().logEvent("Pedalboard", "Debug mode enabled - logging started");
+        LogFile::getInstance().logEvent("Pedalboard", "Pedalboard3 v3.0 starting...");
+    }
 
     win = new StupidWindow(commandLine, (useTrayIcon && startInTray));
 
