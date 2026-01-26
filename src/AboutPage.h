@@ -26,8 +26,6 @@
 #include <JuceHeader.h>
 //[/Headers]
 
-
-
 //==============================================================================
 /**
                                                                     //[Comments]
@@ -36,29 +34,27 @@
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class AboutPage  : public Component
+class AboutPage : public Component
 {
-public:
+  public:
     //==============================================================================
-    AboutPage (const String& ip);
+    AboutPage(const String& ip);
     ~AboutPage();
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
     //[/UserMethods]
 
-    void paint (Graphics& g);
+    void paint(Graphics& g);
     void resized();
-
 
     //==============================================================================
 
-
-private:
+  private:
     //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	The current computer's IP address.
-	String ipAddress;
+    ///	The current computer's IP address.
+    String ipAddress;
 
     //[/UserVariables]
 
@@ -72,12 +68,13 @@ private:
     Label* versionLabel;
     Label* juceVersionLabel;
     Label* ipAddressLabel;
+    HyperlinkButton* kofiLink;
+    HyperlinkButton* paypalLink;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)
-    AboutPage (const AboutPage&);
-    const AboutPage& operator= (const AboutPage&);
+    AboutPage(const AboutPage&);
+    const AboutPage& operator=(const AboutPage&);
 };
 
-
-#endif   // __JUCER_HEADER_ABOUTPAGE_ABOUTPAGE_B72A047D__
+#endif // __JUCER_HEADER_ABOUTPAGE_ABOUTPAGE_B72A047D__

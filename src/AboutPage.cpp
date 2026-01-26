@@ -105,6 +105,14 @@ AboutPage::AboutPage(const String& ip)
     ipAddressLabel->setColour(TextEditor::textColourId, Colours::black);
     ipAddressLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
+    addAndMakeVisible(kofiLink = new HyperlinkButton("Support on Ko-fi", URL("https://ko-fi.com/worriedwalrus")));
+    kofiLink->setTooltip("https://ko-fi.com/worriedwalrus");
+    kofiLink->setButtonText("Support on Ko-fi");
+
+    addAndMakeVisible(paypalLink = new HyperlinkButton("Donate via PayPal", URL("https://paypal.me/worriedwalrus")));
+    paypalLink->setTooltip("https://paypal.me/worriedwalrus");
+    paypalLink->setButtonText("Donate via PayPal");
+
     //[UserPreSize]
 
     String tempstr;
@@ -191,6 +199,8 @@ void AboutPage::resized()
     versionLabel->setBounds(getWidth() - 154, 0, 150, 24);
     juceVersionLabel->setBounds(getWidth() - 154, 16, 150, 24);
     ipAddressLabel->setBounds(16, 192, getWidth() - 16, 24);
+    kofiLink->setBounds(proportionOfWidth(0.5000f) - ((150) / 2), 280, 150, 24);
+    paypalLink->setBounds(proportionOfWidth(0.5000f) - ((150) / 2), 304, 150, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }

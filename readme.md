@@ -117,7 +117,8 @@ If you find Pedalboard3 useful, consider supporting development:
 
 - ⭐ Star this repo
 - 🐛 Report bugs via [Issues](https://github.com/Project12x/Pedalboard3/issues)
-- ☕ [Buy me a coffee](https://ko-fi.com/YOUR_USERNAME) *(coming soon)*
+- ☕ [Buy me a coffee on Ko-fi](https://ko-fi.com/worriedwalrus)
+- 💸 [Support via PayPal](https://paypal.me/worriedwalrus)
 
 ---
 
