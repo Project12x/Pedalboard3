@@ -221,6 +221,15 @@ void StupidWindow::closeButtonPressed()
 }
 
 //------------------------------------------------------------------------------
+void StupidWindow::updateWindowTitle(const String& filename)
+{
+    if (filename.isEmpty())
+        setName("Pedalboard 3");
+    else
+        setName("Pedalboard 3 - " + filename);
+}
+
+//------------------------------------------------------------------------------
 void StupidWindow::loadKeyMappings()
 {
     int i;

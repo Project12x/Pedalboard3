@@ -60,9 +60,9 @@ class App : public JUCEApplication
     ///	Used to show/hide the tray icon.
     void showTrayIcon(bool val);
 
-private :
-      ///	Pointer to our main window.
-      DocumentWindow* win;
+  private:
+    ///	Pointer to our main window.
+    DocumentWindow* win;
     ///	Pointer to our tray icon.
     TrayIcon* trayIcon;
 };
@@ -84,6 +84,8 @@ class StupidWindow : public DocumentWindow
     KeyPressMappingSet* getMappingSet() { return commandManager.getKeyMappings(); };
     ///	Returns the application command manager for the window.
     ApplicationCommandManager* getAppManager() { return &commandManager; };
+    ///	Updates the window title to include the current filename.
+    void updateWindowTitle(const String& filename = String());
 
   private:
     ///	Helper method. Attempts to load the key mappings from their file.

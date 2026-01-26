@@ -366,18 +366,30 @@ MainPanel::~MainPanel()
         delete patches[i];
     //[/Destructor_pre]
 
-    delete patchLabel; patchLabel = nullptr;
-    delete prevPatch; prevPatch = nullptr;
-    delete nextPatch; nextPatch = nullptr;
-    delete patchComboBox; patchComboBox = nullptr;
-    delete viewport; viewport = nullptr;
-    delete cpuSlider; cpuSlider = nullptr;
-    delete cpuLabel; cpuLabel = nullptr;
-    delete playButton; playButton = nullptr;
-    delete rtzButton; rtzButton = nullptr;
-    delete tempoLabel; tempoLabel = nullptr;
-    delete tempoEditor; tempoEditor = nullptr;
-    delete tapTempoButton; tapTempoButton = nullptr;
+    delete patchLabel;
+    patchLabel = nullptr;
+    delete prevPatch;
+    prevPatch = nullptr;
+    delete nextPatch;
+    nextPatch = nullptr;
+    delete patchComboBox;
+    patchComboBox = nullptr;
+    delete viewport;
+    viewport = nullptr;
+    delete cpuSlider;
+    cpuSlider = nullptr;
+    delete cpuLabel;
+    cpuLabel = nullptr;
+    delete playButton;
+    playButton = nullptr;
+    delete rtzButton;
+    rtzButton = nullptr;
+    delete tempoLabel;
+    tempoLabel = nullptr;
+    delete tempoEditor;
+    tempoEditor = nullptr;
+    delete tapTempoButton;
+    tapTempoButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -1478,6 +1490,10 @@ Result MainPanel::loadDocument(const File& file)
                 patchComboBox->addItem(patches[i]->getStringAttribute("name"), i + 1);
             patchComboBox->addItem("<new patch>", patches.size() + 1);
             patchComboBox->setSelectedId(1, true); // deprecated but works
+
+            // Update the window title with the filename
+            if (auto* win = dynamic_cast<StupidWindow*>(getParentComponent()))
+                win->updateWindowTitle(file.getFileName());
         }
     }
 
