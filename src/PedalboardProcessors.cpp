@@ -1491,10 +1491,23 @@ LooperProcessor::LooperProcessor()
 //------------------------------------------------------------------------------
 LooperProcessor::~LooperProcessor()
 {
+    // Stop any playback/recording immediately to prevent audio thread access
+    playing = false;
+    stopPlaying = true;
+    recording = false;
+    stopRecording = true;
+
+    // Cancel any pending async updates to prevent callback after destruction
+    cancelPendingUpdate();
+
+    // Remove from time slice thread FIRST to ensure no more callbacks
+    AudioThumbnailCacheSingleton::getInstance().getTimeSliceThread().removeTimeSliceClient(this);
+
+    // Small delay to let any in-progress audio callbacks complete
+    Thread::sleep(10);
+
     // Saves the file.
     setFile(File());
-
-    AudioThumbnailCacheSingleton::getInstance().getTimeSliceThread().removeTimeSliceClient(this);
 
     removeAllChangeListeners();
     MainTransport::getInstance()->unregisterTransport(this);
