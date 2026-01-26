@@ -901,7 +901,14 @@ bool MainPanel::perform(const InvocationInfo& info)
 
         JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
+
+        // Suspend audio processing before reloading the patch to prevent crashes
+        graphPlayer.setProcessor(nullptr);
+
         switchPatch(patchComboBox->getSelectedId() - 1, false, true);
+
+        // Resume audio processing
+        graphPlayer.setProcessor(&signalPath.getGraph());
 
         std::unique_ptr<XmlElement> audioState = deviceManager.createStateXml(); // JUCE 8: unique_ptr
         if (audioState)
