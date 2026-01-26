@@ -894,17 +894,21 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case OptionsAudio:
     {
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Opening audio settings dialog");
-        AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
-        win.setSize(380, 400);
-
         LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving patch before dialog");
         savePatch();
 
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Showing modal dialog");
-        JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
-                                         ColourScheme::getInstance().colours["Window Background"], true, true);
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed");
+        // Scope for AudioDeviceSelectorComponent - destructor runs at end of this block
+        {
+            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Creating AudioDeviceSelectorComponent");
+            AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
+            win.setSize(380, 400);
+
+            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Showing modal dialog");
+            JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
+                                             ColourScheme::getInstance().colours["Window Background"], true, true);
+            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed, win destructor will run next");
+        }
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: AudioDeviceSelectorComponent destroyed");
 
         // Suspend audio processing before reloading the patch to prevent crashes
         LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Suspending audio");
@@ -926,9 +930,8 @@ bool MainPanel::perform(const InvocationInfo& info)
         {
             SettingsManager::getInstance().setValue("audioDeviceState", audioState->toString());
             SettingsManager::getInstance().save();
-            // delete audioState; // JUCE 8: unique_ptr auto-deleted
         }
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete - exiting case block");
     }
     break;
     case OptionsPluginList:
