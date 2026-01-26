@@ -894,33 +894,33 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case OptionsAudio:
     {
-        Logger::writeToLog("OptionsAudio: Opening audio settings dialog");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Opening audio settings dialog");
         AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
         win.setSize(380, 400);
 
-        Logger::writeToLog("OptionsAudio: Saving patch before dialog");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving patch before dialog");
         savePatch();
 
-        Logger::writeToLog("OptionsAudio: Showing modal dialog");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Showing modal dialog");
         JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
-        Logger::writeToLog("OptionsAudio: Modal dialog closed");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed");
 
         // Suspend audio processing before reloading the patch to prevent crashes
-        Logger::writeToLog("OptionsAudio: Suspending audio (graphPlayer.setProcessor(nullptr))");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Suspending audio");
         graphPlayer.setProcessor(nullptr);
-        Logger::writeToLog("OptionsAudio: Audio suspended");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Audio suspended");
 
-        Logger::writeToLog("OptionsAudio: Calling switchPatch");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Calling switchPatch");
         switchPatch(patchComboBox->getSelectedId() - 1, false, true);
-        Logger::writeToLog("OptionsAudio: switchPatch complete");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: switchPatch complete");
 
         // Resume audio processing
-        Logger::writeToLog("OptionsAudio: Resuming audio");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Resuming audio");
         graphPlayer.setProcessor(&signalPath.getGraph());
-        Logger::writeToLog("OptionsAudio: Audio resumed");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Audio resumed");
 
-        Logger::writeToLog("OptionsAudio: Saving audio device state");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving audio device state");
         std::unique_ptr<XmlElement> audioState = deviceManager.createStateXml(); // JUCE 8: unique_ptr
         if (audioState)
         {
@@ -928,7 +928,7 @@ bool MainPanel::perform(const InvocationInfo& info)
             SettingsManager::getInstance().save();
             // delete audioState; // JUCE 8: unique_ptr auto-deleted
         }
-        Logger::writeToLog("OptionsAudio: Complete");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete");
     }
     break;
     case OptionsPluginList:

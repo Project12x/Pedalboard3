@@ -93,6 +93,7 @@ void LogFile::logEvent(const String& eventType, const String& message)
             events.insert(std::make_pair(timmy.toMilliseconds(), tempEv));
 
             (*logFile) << tempEv.message << newLine;
+            logFile->flush(); // Flush immediately to capture crash logs
         }
         sendChangeMessage();
     }
