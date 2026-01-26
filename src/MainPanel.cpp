@@ -906,32 +906,22 @@ bool MainPanel::perform(const InvocationInfo& info)
             LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Showing modal dialog");
             JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);
-            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed, win destructor will run next");
+            LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Modal dialog closed");
         }
         LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: AudioDeviceSelectorComponent destroyed");
 
-        // Suspend audio processing before reloading the patch to prevent crashes
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Suspending audio");
-        graphPlayer.setProcessor(nullptr);
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Audio suspended");
-
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Calling switchPatch");
-        switchPatch(patchComboBox->getSelectedId() - 1, false, true);
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: switchPatch complete");
-
-        // Resume audio processing
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Resuming audio");
-        graphPlayer.setProcessor(&signalPath.getGraph());
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Audio resumed");
+        // NOTE: We no longer call switchPatch here - the patch is already loaded
+        // and doesn't need to be reloaded just because audio settings changed.
+        // This was causing crashes with some plugins.
 
         LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Saving audio device state");
-        std::unique_ptr<XmlElement> audioState = deviceManager.createStateXml(); // JUCE 8: unique_ptr
+        std::unique_ptr<XmlElement> audioState = deviceManager.createStateXml();
         if (audioState)
         {
             SettingsManager::getInstance().setValue("audioDeviceState", audioState->toString());
             SettingsManager::getInstance().save();
         }
-        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete - exiting case block");
+        LogFile::getInstance().logEvent("DEBUG", "OptionsAudio: Complete");
     }
     break;
     case OptionsPluginList:
