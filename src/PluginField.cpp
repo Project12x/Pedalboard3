@@ -207,19 +207,24 @@ void PluginField::mouseDown(const MouseEvent& e)
         {
             int pluginIndex = signalPath->getNumFilters() - 1;
 
-            signalPath->addFilter(pluginList->getType(pluginList->getIndexChosenByMenu(result)), (double)e.x,
-                                  (double)e.y);
-
-            // Make sure the plugin got created before we add a component for it.
-            if ((signalPath->getNumFilters() - 1) > pluginIndex)
+            // Since we built the menu manually with item IDs = (index + 1),
+            // we get the index by subtracting 1. (getIndexChosenByMenu only works with addToMenu)
+            int typeIndex = result - 1;
+            if (typeIndex >= 0 && typeIndex < pluginList->getNumTypes())
             {
-                pluginIndex = signalPath->getNumFilters() - 1;
+                signalPath->addFilter(&pluginList->getTypes().getReference(typeIndex), (double)e.x, (double)e.y);
 
-                addFilter(pluginIndex);
+                // Make sure the plugin got created before we add a component for it.
+                if ((signalPath->getNumFilters() - 1) > pluginIndex)
+                {
+                    pluginIndex = signalPath->getNumFilters() - 1;
 
-                sendChangeMessage();
+                    addFilter(pluginIndex);
 
-                clearDoubleClickMessage();
+                    sendChangeMessage();
+
+                    clearDoubleClickMessage();
+                }
             }
         }
     }
