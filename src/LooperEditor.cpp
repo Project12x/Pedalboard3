@@ -22,6 +22,7 @@
 //[Headers] You can add your own extra header files here...
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "JuceHelperStuff.h"
 #include "LooperControl.h"
 #include "PedalboardProcessors.h"
@@ -79,14 +80,14 @@ LooperEditor::LooperEditor(LooperProcessor* proc, AudioThumbnail* thumbnail)
     barLengthLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(separatorLabel = new Label("separatorLabel", "/"));
-    separatorLabel->setFont(Font(105.0000f, Font::bold));
+    separatorLabel->setFont(FontManager::getInstance().getMonoFont(105.0f));
     separatorLabel->setJustificationType(Justification::centred);
     separatorLabel->setEditable(false, false, false);
     separatorLabel->setColour(TextEditor::textColourId, Colours::black);
     separatorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(numeratorLabel = new Label("numeratorLabel", "4"));
-    numeratorLabel->setFont(Font(Font::getDefaultSerifFontName(), 105.0000f, Font::bold));
+    numeratorLabel->setFont(FontManager::getInstance().getMonoFont(105.0f));
     numeratorLabel->setJustificationType(Justification::centred);
     numeratorLabel->setEditable(true, true, false);
     numeratorLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -94,7 +95,7 @@ LooperEditor::LooperEditor(LooperProcessor* proc, AudioThumbnail* thumbnail)
     numeratorLabel->addListener(this);
 
     addAndMakeVisible(denominatorLabel = new Label("denominatorLabel", "4"));
-    denominatorLabel->setFont(Font(Font::getDefaultSerifFontName(), 105.0000f, Font::bold));
+    denominatorLabel->setFont(FontManager::getInstance().getMonoFont(105.0f));
     denominatorLabel->setJustificationType(Justification::centred);
     denominatorLabel->setEditable(true, true, false);
     denominatorLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -214,22 +215,38 @@ LooperEditor::~LooperEditor()
 
     //[/Destructor_pre]
 
-    delete fileDisplay; fileDisplay = nullptr;
-    delete filename; filename = nullptr;
-    delete syncButton; syncButton = nullptr;
-    delete stopAfterBarButton; stopAfterBarButton = nullptr;
-    delete playPauseButton; playPauseButton = nullptr;
-    delete rtzButton; rtzButton = nullptr;
-    delete recordButton; recordButton = nullptr;
-    delete autoPlayButton; autoPlayButton = nullptr;
-    delete barLengthLabel; barLengthLabel = nullptr;
-    delete separatorLabel; separatorLabel = nullptr;
-    delete numeratorLabel; numeratorLabel = nullptr;
-    delete denominatorLabel; denominatorLabel = nullptr;
-    delete loopLevelLabel; loopLevelLabel = nullptr;
-    delete loopLevelSlider; loopLevelSlider = nullptr;
-    delete inputLevelLabel; inputLevelLabel = nullptr;
-    delete inputLevelSlider; inputLevelSlider = nullptr;
+    delete fileDisplay;
+    fileDisplay = nullptr;
+    delete filename;
+    filename = nullptr;
+    delete syncButton;
+    syncButton = nullptr;
+    delete stopAfterBarButton;
+    stopAfterBarButton = nullptr;
+    delete playPauseButton;
+    playPauseButton = nullptr;
+    delete rtzButton;
+    rtzButton = nullptr;
+    delete recordButton;
+    recordButton = nullptr;
+    delete autoPlayButton;
+    autoPlayButton = nullptr;
+    delete barLengthLabel;
+    barLengthLabel = nullptr;
+    delete separatorLabel;
+    separatorLabel = nullptr;
+    delete numeratorLabel;
+    numeratorLabel = nullptr;
+    delete denominatorLabel;
+    denominatorLabel = nullptr;
+    delete loopLevelLabel;
+    loopLevelLabel = nullptr;
+    delete loopLevelSlider;
+    loopLevelSlider = nullptr;
+    delete inputLevelLabel;
+    inputLevelLabel = nullptr;
+    delete inputLevelSlider;
+    inputLevelSlider = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]

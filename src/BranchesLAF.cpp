@@ -20,6 +20,7 @@
 #include "BranchesLAF.h"
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "LookAndFeelImages.h"
 
 using namespace std;
@@ -189,14 +190,14 @@ void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOv
 {
     int inc;
 
-    g.setFont(Font(FontOptions().withHeight(15.0f)));
+    g.setFont(FontManager::getInstance().getUIFont(15.0f));
     g.setColour(
         ::ColourScheme::getInstance().colours["Text Colour"].withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 
     const int yIndent = jmin(4, button.proportionOfHeight(0.3f));
     const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    const int fontHeight = roundFloatToInt(Font(FontOptions().withHeight(15.0f)).getHeight() * 0.6f);
+    const int fontHeight = roundFloatToInt(FontManager::getInstance().getUIFont(15.0f).getHeight() * 0.6f);
     const int leftIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
     const int rightIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
 
@@ -489,7 +490,7 @@ void BranchesLAF::drawMenuBarBackground(Graphics& g, int width, int height, bool
 //------------------------------------------------------------------------------
 Font BranchesLAF::getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText)
 {
-    return Font(FontOptions().withHeight(15.0f));
+    return FontManager::getInstance().getUIFont(15.0f);
 }
 
 //------------------------------------------------------------------------------

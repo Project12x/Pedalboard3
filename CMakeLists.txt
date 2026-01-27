@@ -102,6 +102,15 @@ juce_add_gui_app(Pedalboard3
 # Generate JUCE header
 juce_generate_juce_header(Pedalboard3)
 
+# Add custom fonts as binary data
+juce_add_binary_data(Pedalboard3_fonts
+    HEADER_NAME "FontData.h"
+    NAMESPACE FontData
+    SOURCES
+        fonts/SpaceGrotesk-Regular.ttf
+        fonts/JetBrainsMono-Regular.ttf
+)
+
 # Source files - Core
 target_sources(Pedalboard3 PRIVATE
     # Application
@@ -226,6 +235,18 @@ target_sources(Pedalboard3 PRIVATE
     src/LookAndFeelImages.cpp
     src/LookAndFeelImages.h
     
+    # Font Management
+    src/FontManager.cpp
+    src/FontManager.h
+    
+    # Toast Notifications
+    src/ToastOverlay.cpp
+    src/ToastOverlay.h
+    
+    # Icon Management (FontAudio + Lucide)
+    src/IconManager.cpp
+    src/IconManager.h
+    
     # Custom Plugin Formats (disabled temporarily - needs JUCE 8 API updates)
     # TODO: Update NiallsAudioPlugin for JUCE 8 compatibility
     # src/NiallsAudioPlugin.cpp
@@ -233,6 +254,7 @@ target_sources(Pedalboard3 PRIVATE
     # src/NiallsAudioPluginFormat.cpp
     # src/NiallsAudioPluginFormat.h
 )
+
 
 # Compile definitions
 target_compile_definitions(Pedalboard3 PRIVATE
@@ -287,7 +309,11 @@ target_link_libraries(Pedalboard3 PRIVATE
     fmt::fmt
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    
+    # Custom fonts
+    Pedalboard3_fonts
 )
+
 
 # Windows-specific settings
 if(WIN32)

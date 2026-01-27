@@ -23,6 +23,7 @@
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
 #include "FilterGraph.h"
+#include "FontManager.h"
 #include "InternalFilters.h"
 #include "LogFile.h"
 #include "MainTransport.h"
@@ -139,9 +140,26 @@ void PluginField::paint(Graphics& g)
 
     if (displayDoubleClickMessage)
     {
-        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.5f));
-        g.drawText("<double-click to add processor>", 400, 230, 300, 30, Justification(Justification::centredLeft),
-                   false);
+        // Draw a centered, polished empty state hint
+        auto bounds = getLocalBounds();
+        auto centerX = bounds.getCentreX();
+        auto centerY = bounds.getCentreY();
+
+        // Primary instruction text
+        g.setFont(FontManager::getInstance().getUIFont(18.0f));
+        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.6f));
+
+        String hintText = "Double-click to add a plugin";
+        auto textWidth = g.getCurrentFont().getStringWidth(hintText);
+        g.drawText(hintText, centerX - textWidth / 2, centerY - 10, textWidth + 20, 30, Justification::centred, false);
+
+        // Secondary hint
+        g.setFont(FontManager::getInstance().getUIFont(13.0f));
+        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.35f));
+
+        String subHint = "or drag & drop VST/preset files";
+        auto subWidth = g.getCurrentFont().getStringWidth(subHint);
+        g.drawText(subHint, centerX - subWidth / 2, centerY + 18, subWidth + 20, 24, Justification::centred, false);
     }
 }
 
