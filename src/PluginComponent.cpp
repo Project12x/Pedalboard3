@@ -891,24 +891,16 @@ void PluginConnection::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     Colour cableColour = paramCon ? colours["Parameter Connection"] : colours["Audio Connection"];
 
-    // === OUTER GLOW (creates "wire" depth) ===
-    g.setColour(cableColour.withAlpha(0.15f));
-    g.strokePath(drawnCurve, PathStrokeType(14.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    // Draw black outline
+    g.setColour(Colours::black);
+    g.strokePath(drawnCurve, PathStrokeType(1.0f));
 
-    // === BLACK OUTLINE (definition) ===
-    g.setColour(Colours::black.withAlpha(0.5f));
-    g.strokePath(drawnCurve, PathStrokeType(6.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-    // === MAIN CABLE ===
+    // Draw main cable fill
     if (selected)
-        g.setColour(cableColour.brighter(0.5f));
+        g.setColour(cableColour.brighter(0.75f));
     else
         g.setColour(cableColour);
-    g.strokePath(drawnCurve, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-    // === CENTER HIGHLIGHT (makes cable look round/3D) ===
-    g.setColour(cableColour.brighter(0.8f).withAlpha(0.4f));
-    g.strokePath(drawnCurve, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.fillPath(drawnCurve);
 }
 
 //------------------------------------------------------------------------------
