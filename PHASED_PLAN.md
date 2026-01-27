@@ -138,44 +138,47 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 
 ## Phase 5: Pro Features 💰
 
-**Goal:** Compete with Gig Performer, Cantabile
+**Goal:** Launch Pro Edition — Premium UX + killer features
 
-> **Release:** v3.1 Pro — Sell on Steam/itch.io ($15-25)
+> **Release:** v3.1 Pro — Steam ($10), itch.io ($10), Gumroad ($15)
 
-### 5A: Setlist & Performance
+### 5A: Pro Foundation (Launch Requirements)
+| # | Feature | Priority | Notes |
+|---|---------|----------|-------|
+| 5A.1 | **MIDI Learn** | 🔴 HIGH | Click param → move CC → done |
+| 5A.2 | **Chromatic Tuner node** | 🔴 HIGH | Killer differentiator |
+| 5A.3 | **Stage Mode** | 🟡 MEDIUM | Large fonts, high contrast |
+| 5A.4 | **License gating** | 🔴 HIGH | Check for Pro license |
+
+### 5B: Pro UX Polish (Premium Feel) 🎨
+| # | Feature | Priority | Notes |
+|---|---------|----------|-------|
+| 5B.1 | **Plugin node redesign** | 🔴 HIGH | Rounded corners, shadows, glow |
+| 5B.2 | **Curved cable routing** | 🔴 HIGH | Bezier curves, color-coded |
+| 5B.3 | **Cable signal animation** | 🟡 MEDIUM | Subtle pulse when audio flows |
+| 5B.4 | **Inter font** | 🔴 HIGH | Modern, readable (SIL OFL) |
+| 5B.5 | **Lucide icons** | 🔴 HIGH | Consistent iconography (ISC) |
+| 5B.6 | **Hover transitions** | 🟡 MEDIUM | Smooth fade/scale on hover |
+| 5B.7 | **Startup splash** | 🟢 LOW | Branded loading screen |
+| 5B.8 | **Welcome wizard** | 🟡 MEDIUM | First-run audio setup |
+| 5B.9 | **Empty state hints** | 🔴 HIGH | "Double-click to add plugin" |
+| 5B.10 | **Toast notifications** | 🟡 MEDIUM | "Undo: Removed Reverb" |
+| 5B.11 | **Pro badge** | 🟢 LOW | Subtle status indicator |
+
+### 5C: Setlist & Performance
 | # | Feature | From |
 |---|---------|------|
-| 5A.1 | **Setlist management** | Gig Performer |
-| 5A.2 | **Predictive loading** | Gig Performer |
-| 5A.3 | **Song states/variations** | Cantabile |
-| 5A.4 | **Stage Mode** (large UI) | Cantabile |
+| 5C.1 | **Setlist management** | Gig Performer |
+| 5C.2 | **Predictive loading** | Gig Performer |
+| 5C.3 | **Song states/variations** | Cantabile |
 
-### 5B: Input Devices
+### 5D: Input Devices
 | # | Device | Library |
 |---|--------|---------|
-| 5B.1 | Gamepad/joystick | SDL2 |
-| 5B.2 | USB footswitches | hidapi |
-| 5B.3 | Serial port | libserialport |
-| 5B.4 | Stream Deck | hidapi |
-| 5B.5 | OSC controllers | liblo |
-
-### 5C: Live Performance & Built-In Tools
-| # | Feature | Notes |
-|---|---------|-------|
-| 5C.1 | **Chromatic Tuner node** | Built-in, no plugin needed |
-| 5C.2 | **Virtual Keyboard node** | On-screen MIDI keyboard |
-| 5C.3 | **MIDI File Player node** | Play .mid files through chain |
-| 5C.4 | Cue list | Scripted shows |
-| 5C.5 | Backing track player | Audio files |
-| 5C.6 | Wire visualization | Beautiful graphs |
-| 5C.7 | Plugin preset nav | MIDI/OSC next/prev |
-| 5C.8 | **Ableton Link** | Sync with other musicians |
-
-### 5D: Database & Cache
-| # | Library | Purpose |
-|---|---------|---------|
-| 5D.1 | SQLite | Plugin cache |
-| 5D.2 | sqlite_orm | C++ wrapper |
+| 5D.1 | USB footswitches | hidapi |
+| 5D.2 | Gamepad/joystick | SDL2 |
+| 5D.3 | Stream Deck | hidapi |
+| 5D.4 | OSC controllers | liblo |
 
 ### 5E: Advanced Routing
 | # | Feature | Notes |
@@ -184,6 +187,15 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 5E.2 | **Y merger node** | Combine two chains back |
 | 5E.3 | **Wet/dry mix node** | Blend parallel paths |
 | 5E.4 | **Crossfade node** | Smooth transition between A/B |
+
+### 5F: Built-In Tools
+| # | Feature | Notes |
+|---|---------|-------|
+| 5F.1 | **Virtual Keyboard node** | On-screen MIDI keyboard |
+| 5F.2 | **MIDI File Player node** | Play .mid files through chain |
+| 5F.3 | Backing track player | Audio files |
+| 5F.4 | **Ableton Link** | Sync with other musicians |
+
 
 ---
 
