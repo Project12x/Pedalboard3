@@ -155,6 +155,7 @@ void PluginField::mouseDown(const MouseEvent& e)
 
         // Special menu item IDs for actions (above plugin range)
         const int SEARCH_ITEM_ID = 100000;
+        const int MANAGE_FAVORITES_BASE = 200000; // IDs 200000+ are for toggling favorites
 
         // Load favorites and recent from settings
         auto& settings = SettingsManager::getInstance();
@@ -205,6 +206,16 @@ void PluginField::mouseDown(const MouseEvent& e)
 
         // Search option
         menu.addItem(SEARCH_ITEM_ID, CharPointer_UTF8("\xf0\x9f\x94\x8d Search..."));
+
+        // Edit Favorites submenu - shows all plugins with checkmarks
+        PopupMenu editFavoritesMenu;
+        for (int i = 0; i < types.size(); ++i)
+        {
+            const auto& type = types.getReference(i);
+            bool isFavorite = favorites.contains(type.createIdentifierString());
+            editFavoritesMenu.addItem(MANAGE_FAVORITES_BASE + i + 1, type.name, true, isFavorite);
+        }
+        menu.addSubMenu(CharPointer_UTF8("\xe2\x98\x85 Edit Favorites..."), editFavoritesMenu);
 
         if (favoritesMenu.getNumItems() > 0 || recentMenu.getNumItems() > 0)
         {
@@ -292,6 +303,26 @@ void PluginField::mouseDown(const MouseEvent& e)
             {
                 result = 0;
             }
+        }
+
+        // Handle "Edit Favorites" toggle
+        if (result >= MANAGE_FAVORITES_BASE)
+        {
+            int typeIndex = result - MANAGE_FAVORITES_BASE - 1;
+            if (typeIndex >= 0 && typeIndex < types.size())
+            {
+                String pluginId = types.getReference(typeIndex).createIdentifierString();
+                if (favorites.contains(pluginId))
+                {
+                    favorites.removeString(pluginId);
+                }
+                else
+                {
+                    favorites.add(pluginId);
+                }
+                settings.setStringArray("PluginFavorites", favorites);
+            }
+            return; // Don't load a plugin, just updated favorites
         }
 
         if (result > 0 && result < SEARCH_ITEM_ID)
