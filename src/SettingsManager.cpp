@@ -175,3 +175,36 @@ void SettingsManager::setValue(const std::string& key, const juce::XmlElement& x
     }
     save();
 }
+
+juce::StringArray SettingsManager::getStringArray(const std::string& key) const
+{
+    std::lock_guard<std::mutex> lock(settingsMutex);
+    juce::StringArray result;
+
+    if (settingsData.contains(key) && settingsData[key].is_array())
+    {
+        for (const auto& item : settingsData[key])
+        {
+            if (item.is_string())
+            {
+                result.add(juce::String(item.get<std::string>()));
+            }
+        }
+    }
+    return result;
+}
+
+void SettingsManager::setStringArray(const std::string& key, const juce::StringArray& value)
+{
+    {
+        std::lock_guard<std::mutex> lock(settingsMutex);
+        nlohmann::json arr = nlohmann::json::array();
+        for (const auto& str : value)
+        {
+            arr.push_back(str.toStdString());
+        }
+        settingsData[key] = arr;
+        needsSaving = true;
+    }
+    save();
+}
