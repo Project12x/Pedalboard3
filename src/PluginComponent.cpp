@@ -145,25 +145,34 @@ PluginComponent::~PluginComponent()
 void PluginComponent::paint(Graphics& g)
 {
     int i;
-    map<String, Colour>& colours = ColourScheme::getInstance().colours;
+    auto& colours = ColourScheme::getInstance().colours;
+    float w = (float)getWidth();
+    float h = (float)getHeight();
+    const float cornerRadius = 8.0f;
 
-    // Draw slight black outline.
-    g.setColour(Colours::black);
-    g.drawRoundedRectangle(1.0f, 1.0f, (float)getWidth() - 2.0f, (float)getHeight() - 2.0f, 5.0f, 1.0f);
+    // === DROP SHADOW (subtle depth) ===
+    DropShadow shadow(Colour(0x40000000), 8, {3, 3});
+    Path nodePath;
+    nodePath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
+    shadow.drawForPath(g, nodePath);
 
-    // Fill Component background.
-    g.setColour(colours["Plugin Background"]);
-    g.fillRoundedRectangle(2.0f, 2.0f, (float)getWidth() - 4.0f, (float)getHeight() - 4.0f, 5.0f);
+    // === MAIN FILL (gradient for premium feel) ===
+    Colour bgTop = colours["Plugin Background"].brighter(0.08f);
+    Colour bgBottom = colours["Plugin Background"].darker(0.08f);
+    g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBottom, 0, h, false));
+    g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
 
-    // Fill Component outline and text background.
+    // === BORDER (thicker, more defined) ===
     g.setColour(colours["Plugin Border"]);
-    g.drawRoundedRectangle(3.0f, 3.0f, (float)getWidth() - 6.0f, (float)getHeight() - 6.0f, 5.0f, 4.0f);
-    g.fillRoundedRectangle(1.0f, 1.0f, (float)getWidth() - 2.0f, 16.0f, 5.0f);
-    g.fillRect(1.0f, 16.0f, (float)getWidth() - 2.0f, 5.0f);
+    g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, 2.0f);
+
+    // === HEADER BAR (title area) ===
+    g.setColour(colours["Plugin Border"]);
+    g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, 18.0f, cornerRadius);
+    g.fillRect(2.0f, 14.0f, w - 4.0f, 6.0f); // Square off bottom of header
 
     // Draw the plugin name.
     g.setColour(colours["Text Colour"]);
-    // nameText.draw(g);
 
     // Draw the input channels.
     for (i = 0; i < inputText.size(); ++i)
@@ -879,29 +888,27 @@ PluginConnection::~PluginConnection()
 //------------------------------------------------------------------------------
 void PluginConnection::paint(Graphics& g)
 {
-    Colour tempCol;
+    auto& colours = ColourScheme::getInstance().colours;
+    Colour cableColour = paramCon ? colours["Parameter Connection"] : colours["Audio Connection"];
 
-    if (representsAllOutputs)
-    {
-        g.setColour(Colours::red);
-        g.strokePath(drawnCurve, PathStrokeType(4.0f));
-    }
-    else
-    {
-        g.setColour(Colours::black);
-        g.strokePath(drawnCurve, PathStrokeType(1.0f));
-    }
+    // === OUTER GLOW (creates "wire" depth) ===
+    g.setColour(cableColour.withAlpha(0.15f));
+    g.strokePath(drawnCurve, PathStrokeType(14.0f, PathStrokeType::curved, PathStrokeType::rounded));
 
-    if (!paramCon)
-        tempCol = ColourScheme::getInstance().colours["Audio Connection"];
-    else
-        tempCol = ColourScheme::getInstance().colours["Parameter Connection"];
+    // === BLACK OUTLINE (definition) ===
+    g.setColour(Colours::black.withAlpha(0.5f));
+    g.strokePath(drawnCurve, PathStrokeType(6.0f, PathStrokeType::curved, PathStrokeType::rounded));
 
+    // === MAIN CABLE ===
     if (selected)
-        g.setColour(tempCol.brighter(0.75f));
+        g.setColour(cableColour.brighter(0.5f));
     else
-        g.setColour(tempCol);
-    g.fillPath(drawnCurve);
+        g.setColour(cableColour);
+    g.strokePath(drawnCurve, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    // === CENTER HIGHLIGHT (makes cable look round/3D) ===
+    g.setColour(cableColour.brighter(0.8f).withAlpha(0.4f));
+    g.strokePath(drawnCurve, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
 //------------------------------------------------------------------------------
