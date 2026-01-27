@@ -1545,11 +1545,17 @@ void LooperProcessor::setFile(const File& phil)
         threadWriter = 0;
     }
 
-    // So we don't delete a buffer while we're playing to it.
-    while (playing)
+    // Stop playback before modifying buffers (to avoid deadlock)
+    if (playing)
     {
-        Thread::sleep(10);
-    };
+        stopPlaying = true;
+
+        // Wait till the audio thread stops playing.
+        while (playing)
+        {
+            Thread::sleep(10);
+        }
+    }
 
     soundFile = phil;
 
@@ -1560,6 +1566,12 @@ void LooperProcessor::setFile(const File& phil)
         fileReader = AudioFormatManagerSingleton::getInstance().createReaderFor(soundFile);
         fileReaderPos = 0;
         fileReaderBufIndex = 0;
+
+        // Calculate ratio for resampling if file sample rate differs from device rate
+        if (fileReader && currentRate > 0)
+            fileReaderRatio = fileReader->sampleRate / currentRate;
+        else
+            fileReaderRatio = 1.0;
     }
 
     loopLength = 0;
@@ -1740,13 +1752,47 @@ int LooperProcessor::useTimeSlice()
 
             jassert(fileReaderBufIndex < loopBuffer.size());
         }
-        fileReader->read(loopBuffer[fileReaderBufIndex], 0, LoopBufferSize, fileReaderPos, true, true);
+
+        // Calculate how many source samples we need to read
+        int64 sourceSamplesToRead = (int64)std::ceil(LoopBufferSize * fileReaderRatio);
+
+        // Clamp to remaining samples in file
+        int64 remainingInFile = fileReader->lengthInSamples - fileReaderPos;
+        if (sourceSamplesToRead > remainingInFile)
+            sourceSamplesToRead = remainingInFile;
+
+        if (sourceSamplesToRead > 0 && fileReaderRatio != 1.0)
+        {
+            // Need to resample: read into temp buffer, then resample into loop buffer
+            AudioSampleBuffer tempBuffer(2, (int)sourceSamplesToRead);
+            fileReader->read(&tempBuffer, 0, (int)sourceSamplesToRead, fileReaderPos, true, true);
+
+            // Use LagrangeInterpolator for each channel
+            int outputSamples = (int)(sourceSamplesToRead / fileReaderRatio);
+            if (outputSamples > LoopBufferSize)
+                outputSamples = LoopBufferSize;
+
+            LagrangeInterpolator interpolatorL, interpolatorR;
+            interpolatorL.process(fileReaderRatio, tempBuffer.getReadPointer(0),
+                                  loopBuffer[fileReaderBufIndex]->getWritePointer(0), outputSamples);
+            interpolatorR.process(fileReaderRatio, tempBuffer.getReadPointer(1),
+                                  loopBuffer[fileReaderBufIndex]->getWritePointer(1), outputSamples);
+
+            fileReaderPos += sourceSamplesToRead;
+            loopLength += outputSamples;
+        }
+        else if (sourceSamplesToRead > 0)
+        {
+            // No resampling needed (same sample rate)
+            fileReader->read(loopBuffer[fileReaderBufIndex], 0, (int)sourceSamplesToRead, fileReaderPos, true, true);
+            fileReaderPos += sourceSamplesToRead;
+            loopLength += sourceSamplesToRead;
+        }
+
         ++fileReaderBufIndex;
-        fileReaderPos += LoopBufferSize;
 
         if (fileReaderPos >= fileReader->lengthInSamples)
         {
-            loopLength = fileReader->lengthInSamples;
             delete fileReader;
             fileReader = 0;
         }
