@@ -153,66 +153,158 @@ void PluginField::mouseDown(const MouseEvent& e)
         int result = 0;
         PopupMenu menu;
 
-        // Build a custom organized menu:
-        // 1. Built-in processors at top
-        // 2. Categorized VST3 plugins
-        // 3. "All Plugins" flat list at bottom
+        // Special menu item IDs for actions (above plugin range)
+        const int SEARCH_ITEM_ID = 100000;
 
-        // First, add Built-in submenu at the very top
-        PopupMenu builtInMenu;
-        PopupMenu allPluginsMenu;
-        std::map<String, PopupMenu> categoryMenus;
+        // Load favorites and recent from settings
+        auto& settings = SettingsManager::getInstance();
+        StringArray favorites = settings.getStringArray("PluginFavorites");
+        StringArray recentPlugins = settings.getStringArray("RecentPlugins");
 
         // Collect all plugin types
         auto types = pluginList->getTypes();
+
+        // Build lookup map: pluginIdentifier -> index
+        std::map<String, int> identifierToIndex;
+        for (int i = 0; i < types.size(); ++i)
+        {
+            identifierToIndex[types.getReference(i).createIdentifierString()] = i;
+        }
+
+        // ★ Favorites section
+        PopupMenu favoritesMenu;
+        for (const auto& favId : favorites)
+        {
+            auto it = identifierToIndex.find(favId);
+            if (it != identifierToIndex.end())
+            {
+                int idx = it->second;
+                favoritesMenu.addItem(idx + 1, types.getReference(idx).name);
+            }
+        }
+        if (favoritesMenu.getNumItems() > 0)
+        {
+            menu.addSubMenu(CharPointer_UTF8("\xe2\x98\x85 Favorites"), favoritesMenu);
+        }
+
+        // Recent section
+        PopupMenu recentMenu;
+        for (const auto& recentId : recentPlugins)
+        {
+            auto it = identifierToIndex.find(recentId);
+            if (it != identifierToIndex.end())
+            {
+                int idx = it->second;
+                recentMenu.addItem(idx + 1, types.getReference(idx).name);
+            }
+        }
+        if (recentMenu.getNumItems() > 0)
+        {
+            menu.addSubMenu("Recent", recentMenu);
+        }
+
+        // Search option
+        menu.addItem(SEARCH_ITEM_ID, CharPointer_UTF8("\xf0\x9f\x94\x8d Search..."));
+
+        if (favoritesMenu.getNumItems() > 0 || recentMenu.getNumItems() > 0)
+        {
+            menu.addSeparator();
+        }
+
+        // Build category menus
+        PopupMenu builtInMenu;
+        PopupMenu allPluginsMenu;
+        std::map<String, PopupMenu> categoryMenus;
 
         for (int i = 0; i < types.size(); ++i)
         {
             const auto& type = types.getReference(i);
 
-            // Check for internal plugins - add to Pedalboard submenu
             if (type.pluginFormatName == "Internal" || type.category == "Built-in")
             {
                 builtInMenu.addItem(i + 1, type.name);
             }
             else
             {
-                // External plugin - add to category and All Plugins
                 String category = type.category.isNotEmpty() ? type.category : "Uncategorized";
                 categoryMenus[category].addItem(i + 1, type.name);
                 allPluginsMenu.addItem(i + 1, type.name);
             }
         }
 
-        // Add Pedalboard submenu first if it has items
+        // Add Pedalboard submenu
         if (builtInMenu.getNumItems() > 0)
         {
             menu.addSubMenu("Pedalboard", builtInMenu);
             menu.addSeparator();
         }
 
-        // Add category submenus in alphabetical order
+        // Add category submenus
         for (auto& [category, categoryMenu] : categoryMenus)
         {
             menu.addSubMenu(category, categoryMenu);
         }
 
-        // Add separator and "All Plugins" submenu at the end
+        // Add All Plugins submenu
         menu.addSeparator();
         menu.addSubMenu("All Plugins", allPluginsMenu);
 
         result = menu.show();
 
-        if (result > 0)
+        // Handle search action
+        if (result == SEARCH_ITEM_ID)
+        {
+            // Show search dialog
+            AlertWindow searchDialog("Search Plugins", "Type to filter:", AlertWindow::NoIcon);
+            searchDialog.addTextEditor("search", "", "Plugin name:");
+            searchDialog.addButton("Cancel", 0);
+            searchDialog.addButton("OK", 1);
+
+            if (searchDialog.runModalLoop() == 1)
+            {
+                String searchText = searchDialog.getTextEditor("search")->getText().toLowerCase();
+                if (searchText.isNotEmpty())
+                {
+                    // Build filtered menu
+                    PopupMenu searchResults;
+                    for (int i = 0; i < types.size(); ++i)
+                    {
+                        const auto& type = types.getReference(i);
+                        if (type.name.toLowerCase().contains(searchText))
+                        {
+                            searchResults.addItem(i + 1, type.name);
+                        }
+                    }
+
+                    if (searchResults.getNumItems() > 0)
+                    {
+                        result = searchResults.show();
+                    }
+                    else
+                    {
+                        AlertWindow::showMessageBox(AlertWindow::InfoIcon, "No Results",
+                                                    "No plugins found matching \"" + searchText + "\"");
+                        result = 0;
+                    }
+                }
+            }
+            else
+            {
+                result = 0;
+            }
+        }
+
+        if (result > 0 && result < SEARCH_ITEM_ID)
         {
             int pluginIndex = signalPath->getNumFilters() - 1;
 
-            // Since we built the menu manually with item IDs = (index + 1),
-            // we get the index by subtracting 1. (getIndexChosenByMenu only works with addToMenu)
+            // Get the plugin index from menu result
             int typeIndex = result - 1;
-            if (typeIndex >= 0 && typeIndex < pluginList->getNumTypes())
+            if (typeIndex >= 0 && typeIndex < types.size())
             {
-                signalPath->addFilter(&pluginList->getTypes().getReference(typeIndex), (double)e.x, (double)e.y);
+                // Copy the plugin description (don't take reference to temporary from getTypes())
+                PluginDescription pluginType = types.getReference(typeIndex);
+                signalPath->addFilter(&pluginType, (double)e.x, (double)e.y);
 
                 // Make sure the plugin got created before we add a component for it.
                 if ((signalPath->getNumFilters() - 1) > pluginIndex)
@@ -224,6 +316,16 @@ void PluginField::mouseDown(const MouseEvent& e)
                     sendChangeMessage();
 
                     clearDoubleClickMessage();
+
+                    // Update recent plugins list
+                    String pluginId = pluginType.createIdentifierString();
+                    recentPlugins.removeString(pluginId); // Remove if already exists
+                    recentPlugins.insert(0, pluginId);    // Add to front
+                    while (recentPlugins.size() > 8)      // Keep only 8 recent
+                    {
+                        recentPlugins.remove(recentPlugins.size() - 1);
+                    }
+                    settings.setStringArray("RecentPlugins", recentPlugins);
                 }
             }
         }

@@ -64,6 +64,9 @@ class SettingsManager
     /** @brief Get a double value. */
     double getDouble(const std::string& key, double defaultValue = 0.0) const;
 
+    /** @brief Get a string array (stored as JSON array). */
+    juce::StringArray getStringArray(const std::string& key) const;
+
     // --- Setters (auto-save after each call) ---
 
     /** @brief Set a string value. */
@@ -80,6 +83,9 @@ class SettingsManager
 
     /** @brief Set an XML element (stored as string). */
     void setValue(const std::string& key, const juce::XmlElement& xml);
+
+    /** @brief Set a string array (stored as JSON array). */
+    void setStringArray(const std::string& key, const juce::StringArray& value);
 
     /**
      * @brief Initialize the settings system.
