@@ -93,11 +93,15 @@ The executable will be in `build/Pedalboard3_artefacts/Release/`.
 
 ## Roadmap
 
-See [PHASED_PLAN.md](PHASED_PLAN.md) for the development roadmap including:
+### Coming Soon
+- MIDI Learn (one-click parameter mapping)
+- Setlist management
+- Stage mode (large fonts for live use)
 
-- **Phase 4** (Current) – v3.0 Community release
-- **Phase 5** – Setlist management, input device support, stage mode
-- **Phase 6** – Visual polish, cross-platform builds
+### Future
+- Built-in chromatic tuner
+- macOS support
+- CLAP plugin format
 
 ---
 
