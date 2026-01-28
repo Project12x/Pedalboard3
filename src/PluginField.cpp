@@ -64,7 +64,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
         p.fillInPluginDescription(desc);
 
         // Use Raw method to avoid adding to undo history
-        signalPath->addFilterRaw(&desc, 10, 215);
+        signalPath->addFilterRaw(&desc, 50, 400);
     }
 
     // Setup gui.
@@ -80,7 +80,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
         p.fillInPluginDescription(desc);
 
         // Use Raw method to avoid adding to undo history
-        signalPath->addFilterRaw(&desc, 100, 100);
+        signalPath->addFilterRaw(&desc, 50, 350);
 
         // And connect it up to the midi input.
         {
@@ -377,6 +377,175 @@ void PluginField::mouseDown(const MouseEvent& e)
                     settings.setStringArray("RecentPlugins", recentPlugins);
                 }
             }
+        }
+    }
+    else
+    {
+        // Single click on empty canvas - begin panning
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            isPanning = true;
+            panStartMouse = e.getScreenPosition();
+            panStartScroll = viewport->getViewPosition();
+            setMouseCursor(MouseCursor::DraggingHandCursor);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseDrag(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            Point<int> delta = panStartMouse - e.getScreenPosition();
+            Point<int> targetPosition = panStartScroll + delta;
+
+            // Expand canvas if we're trying to pan beyond current bounds
+            int currentWidth = getWidth();
+            int currentHeight = getHeight();
+            int viewWidth = viewport->getViewWidth();
+            int viewHeight = viewport->getViewHeight();
+
+            // Calculate how much we need to expand
+            int neededWidth = targetPosition.x + viewWidth;
+            int neededHeight = targetPosition.y + viewHeight;
+
+            bool sizeChanged = false;
+            if (neededWidth > currentWidth)
+            {
+                currentWidth = neededWidth + 200; // Add some buffer
+                sizeChanged = true;
+            }
+            if (neededHeight > currentHeight)
+            {
+                currentHeight = neededHeight + 200; // Add some buffer
+                sizeChanged = true;
+            }
+
+            if (sizeChanged)
+            {
+                setSize(currentWidth, currentHeight);
+            }
+
+            // Expand canvas upward/leftward if trying to pan past origin
+            if (targetPosition.x < 0)
+            {
+                int expandBy = -targetPosition.x + 100;
+                setSize(getWidth() + expandBy, getHeight());
+                // Move all child components right
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX() + expandBy,
+                                                             getChildComponent(i)->getY());
+                panStartScroll.setX(panStartScroll.x + expandBy);
+                targetPosition.setX(100);
+            }
+            if (targetPosition.y < 0)
+            {
+                int expandBy = -targetPosition.y + 100;
+                setSize(getWidth(), getHeight() + expandBy);
+                // Move all child components down
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX(),
+                                                             getChildComponent(i)->getY() + expandBy);
+                panStartScroll.setY(panStartScroll.y + expandBy);
+                targetPosition.setY(100);
+            }
+
+            viewport->setViewPosition(targetPosition);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseUp(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        isPanning = false;
+        setMouseCursor(MouseCursor::NormalCursor);
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
+{
+    // Zoom with scroll wheel
+    float zoomDelta = wheel.deltaY * 0.1f;
+    float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
+
+    if (newZoom != zoomLevel)
+    {
+        // Get mouse position relative to this component for zoom centering
+        auto mousePos = e.getPosition();
+
+        // Calculate the point we're zooming towards in unscaled coordinates
+        float scaleRatio = newZoom / zoomLevel;
+
+        zoomLevel = newZoom;
+        setTransform(AffineTransform::scale(zoomLevel));
+
+        // Adjust viewport to zoom towards mouse position
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            auto currentPos = viewport->getViewPosition();
+            int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
+            int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
+            viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
+        }
+
+        repaint();
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::fitToScreen()
+{
+    if (auto* viewport = findParentComponentOfClass<Viewport>())
+    {
+        // Find bounding box of all visible nodes
+        Rectangle<int> bounds;
+        bool first = true;
+
+        for (int i = 0; i < getNumChildComponents(); ++i)
+        {
+            if (auto* comp = getChildComponent(i))
+            {
+                if (first)
+                {
+                    bounds = comp->getBounds();
+                    first = false;
+                }
+                else
+                {
+                    bounds = bounds.getUnion(comp->getBounds());
+                }
+            }
+        }
+
+        if (!first && !bounds.isEmpty())
+        {
+            // Add padding
+            bounds = bounds.expanded(50);
+
+            // Calculate zoom to fit
+            float viewWidth = static_cast<float>(viewport->getViewWidth());
+            float viewHeight = static_cast<float>(viewport->getViewHeight());
+            float boundsWidth = static_cast<float>(bounds.getWidth());
+            float boundsHeight = static_cast<float>(bounds.getHeight());
+
+            float zoomToFit = jmin(viewWidth / boundsWidth, viewHeight / boundsHeight);
+            zoomLevel = jlimit(minZoom, maxZoom, zoomToFit);
+
+            setTransform(AffineTransform::scale(zoomLevel));
+
+            // Center the view on the nodes
+            int centeredX = static_cast<int>(bounds.getCentreX() * zoomLevel - viewWidth / 2);
+            int centeredY = static_cast<int>(bounds.getCentreY() * zoomLevel - viewHeight / 2);
+            viewport->setViewPosition(jmax(0, centeredX), jmax(0, centeredY));
+
+            repaint();
         }
     }
 }
@@ -784,7 +953,9 @@ void PluginField::addFilter(int index, bool broadcastChangeMessage)
     {
         node = signalPath->getNode(index).get(); // JUCE 8: Node::Ptr
 
-        if (node->getProcessor()->getName() != "Midi Interceptor")
+        // Skip creating UI for internal/hidden nodes
+        auto processorName = node->getProcessor()->getName();
+        if (processorName != "Midi Interceptor" && processorName != "SafetyLimiter")
         {
             // Make sure the plugin knows about the AudioPlayHead.
             node->getProcessor()->setPlayHead(this);

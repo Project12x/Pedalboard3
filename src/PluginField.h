@@ -26,7 +26,6 @@
 #include <JuceHeader.h>
 #include <map>
 
-
 class Mapping;
 class FilterGraph;
 class PluginConnection;
@@ -60,8 +59,14 @@ class PluginField : public Component,
     ///	Fills in the background.
     void paint(Graphics& g);
 
-    ///	Used to add plugins with a double-click.
-    void mouseDown(const MouseEvent& e);
+    ///	Used to add plugins with a double-click, and initiate panning on single-click.
+    void mouseDown(const MouseEvent& e) override;
+    ///	Used for canvas panning.
+    void mouseDrag(const MouseEvent& e) override;
+    ///	Used to end canvas panning.
+    void mouseUp(const MouseEvent& e) override;
+    ///	Used for zoom with scroll wheel.
+    void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel) override;
 
     ///	So we're informed when PluginComponents are moved around, and can update
     /// our bounds accordingly.
@@ -157,9 +162,9 @@ class PluginField : public Component,
     ///	Used after undo/redo to add/remove PluginComponents as needed.
     void syncWithGraph();
 
-private :
-      ///	Helper method. Clears mappings.
-      void clearMappings();
+  private:
+    ///	Helper method. Clears mappings.
+    void clearMappings();
     ///	Helper method. Handles a single OSC bundle.
     void handleOscBundle(OSC::Bundle* bundle);
     ///	Helper method. Handles a single OSC message.
@@ -208,6 +213,26 @@ private :
 
     ///	Whether to open the mappings window when a param connection is made.
     bool autoMappingsWindow;
+
+    ///	Whether the canvas is currently being panned.
+    bool isPanning = false;
+    ///	Starting mouse position for panning.
+    Point<int> panStartMouse;
+    ///	Starting scroll position for panning.
+    Point<int> panStartScroll;
+
+    ///	Current zoom level (1.0 = 100%).
+    float zoomLevel = 1.0f;
+    ///	Minimum zoom level.
+    static constexpr float minZoom = 0.25f;
+    ///	Maximum zoom level.
+    static constexpr float maxZoom = 3.0f;
+
+  public:
+    ///	Fits all nodes to the visible viewport.
+    void fitToScreen();
+    ///	Returns current zoom level.
+    float getZoomLevel() const { return zoomLevel; }
 };
 
 #endif

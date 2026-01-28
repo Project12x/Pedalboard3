@@ -67,17 +67,17 @@ FilterGraph::FilterGraph()
     if (audioInput)
     {
         // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 100.0f);
     }
 
     if (midiInput)
     {
         // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 250.0f);
     }
 
     // Use Raw method to avoid adding to undo history
-    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
+    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 400.0f, 100.0f);
 
     // Initialize SafetyLimiter for audio protection
     auto limiterProcessor = std::make_unique<SafetyLimiterProcessor>();
@@ -398,17 +398,17 @@ void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut)
 
     if (addAudioIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 100.0f);
     }
 
     if (addMidiIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 250.0f);
     }
 
     if (addAudioOut)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 400.0f, 100.0f);
     }
 
     changed();

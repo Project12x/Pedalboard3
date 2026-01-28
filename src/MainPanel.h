@@ -156,6 +156,9 @@ class MainPanel : public Component,
     ///	Returns the total number of patches.
     int getPatchCount() const;
 
+    /// Helper method to update Stage View state
+    void updateStageView();
+
     ///	Toggles Stage Mode (fullscreen performance view).
     void toggleStageMode();
     ///	Returns true if Stage Mode is active.
@@ -366,6 +369,7 @@ class MainPanel : public Component,
     TextEditor* tempoEditor;
     ArrowButton* tapTempoButton;
     TextButton* organiseButton;
+    TextButton* fitButton;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

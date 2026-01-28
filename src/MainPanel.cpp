@@ -175,6 +175,11 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     organiseButton->setButtonText("Manage");
     organiseButton->addListener(this);
 
+    addAndMakeVisible(fitButton = new TextButton("fitButton"));
+    fitButton->setButtonText("Fit");
+    fitButton->setTooltip("Fit all nodes to screen");
+    fitButton->addListener(this);
+
     //[UserPreSize]
 
     // Logger::setCurrentLogger(this);
@@ -486,6 +491,9 @@ void MainPanel::resized()
     // Center group ends approx width/2 + 50. CPU starts width - 236.
     organiseButton->setBounds(getWidth() - 320, getHeight() - 33, 70, 24);
 
+    // FIT button next to Organise
+    fitButton->setBounds(getWidth() - 390, getHeight() - 33, 50, 24);
+
     //[/UserResized]
 }
 
@@ -523,6 +531,11 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
 
         CallOutBox callout(tempoBox, tapTempoButton->getBounds(), this);
         callout.runModalLoop();
+    }
+    else if (buttonThatWasClicked == fitButton)
+    {
+        if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+            pluginField->fitToScreen();
     }
 
     //[/UserbuttonClicked_Post]
@@ -1208,6 +1221,9 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
             }
             lastTempoTicks = 0;
         }
+
+        // Update Stage View
+        updateStageView();
     }
 }
 
@@ -1574,10 +1590,12 @@ Result MainPanel::loadDocument(const File& file)
             patchComboBox->addItem("<new patch>", patches.size() + 1);
             patchComboBox->setSelectedId(1, true); // deprecated but works
 
-            // Update the window title with the filename
             if (auto* win = dynamic_cast<StupidWindow*>(getParentComponent()))
                 win->updateWindowTitle(file.getFileName());
         }
+
+        // Update Stage View if active
+        updateStageView();
     }
 
     return Result::ok();
@@ -1647,10 +1665,42 @@ void MainPanel::savePatch()
 
     // Save current patch.
     patch = field->getXml();
+    patch = field->getXml();
     patch->setAttribute("name", patchComboBox->getItemText(lastCombo - 1));
+
+    // Update Stage View if open
+    updateStageView();
+
     delete patches[currentPatch];
     patches.set(currentPatch, patch);
 }
+
+//------------------------------------------------------------------------------
+void MainPanel::updateStageView()
+{
+    if (stageView != nullptr)
+    {
+        String currentName = getCurrentPatchName();
+        String nextName = "";
+
+        // Safety check for patching index
+        if (currentPatch >= 0 && currentPatch < patches.size())
+        {
+            // Get current name from array to be sure
+            currentName = patches[currentPatch]->getStringAttribute("name");
+
+            // Get next patch if available
+            if (currentPatch + 1 < patches.size())
+            {
+                nextName = patches[currentPatch + 1]->getStringAttribute("name");
+            }
+        }
+
+        stageView->updatePatchInfo(currentName, nextName, currentPatch, patches.size());
+    }
+}
+
+//------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
 void MainPanel::duplicatePatch(int index)
@@ -1761,7 +1811,7 @@ void MainPanel::toggleStageMode()
         addAndMakeVisible(stageView.get());
         stageView->setBounds(getLocalBounds());
         stageView->setTunerProcessor(activeTuner);
-        stageView->updatePatchInfo(getCurrentPatchName(), getCurrentPatch(), getPatchCount());
+        updateStageView();
         stageView->toFront(true); // Bring to front and grab keyboard focus
         DBG("Stage Mode enabled");
     }
