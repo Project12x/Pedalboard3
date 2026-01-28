@@ -1093,6 +1093,8 @@ void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 
         connection->setSize(10, 12);
         addAndMakeVisible(connection);
+        connection->toFront(false); // Bring dragging connection to front
+        connection->setInterceptsMouseClicks(false, false); // Don't intercept mouse while dragging
         draggingConnection = connection;
 
         sendChangeMessage();
@@ -1109,9 +1111,13 @@ void PluginField::dragConnection(int x, int y)
 
         if (p)
         {
-            if (p->getParameterPin() == draggingConnection->getParameterConnection())
+            const PluginPinComponent* s = draggingConnection->getSource();
+
+            // Snap to pin if: same type (audio/param) AND opposite direction
+            if (p->getParameterPin() == draggingConnection->getParameterConnection() &&
+                p->getDirection() != s->getDirection())
             {
-                Point<int> tempPoint(p->getX() + 5, p->getY() + 6);
+                Point<int> tempPoint(p->getX() + 7, p->getY() + 8);
 
                 tempPoint = getLocalPoint(p->getParentComponent(), tempPoint);
                 draggingConnection->drag(tempPoint.getX(), tempPoint.getY());
@@ -1140,18 +1146,23 @@ void PluginField::releaseConnection(int x, int y)
 
         if (p)
         {
-            if (!p->getDirection())
+            const PluginPinComponent* s = draggingConnection->getSource();
+
+            // Accept connection if source and destination have opposite directions
+            if (p->getDirection() != s->getDirection())
             {
-                // draggingConnection->setDestination(p);
-
-                const PluginPinComponent* s = draggingConnection->getSource();
-                // const PluginPinComponent *d = draggingConnection->getDestination();
-
+                // Check that both pins are same type (audio or parameter)
                 if ((s->getParameterPin() && p->getParameterPin()) || (!s->getParameterPin() && !p->getParameterPin()))
                 {
-                    signalPath->addConnection(AudioProcessorGraph::NodeID(s->getUid()), s->getChannel(),
-                                              AudioProcessorGraph::NodeID(p->getUid()), p->getChannel());
+                    // Determine which pin is output and which is input
+                    const PluginPinComponent* outputPin = s->getDirection() ? s : p;
+                    const PluginPinComponent* inputPin = s->getDirection() ? p : s;
+
+                    // Always connect output -> input
+                    signalPath->addConnection(AudioProcessorGraph::NodeID(outputPin->getUid()), outputPin->getChannel(),
+                                              AudioProcessorGraph::NodeID(inputPin->getUid()), inputPin->getChannel());
                     draggingConnection->setDestination(p);
+                    draggingConnection->setInterceptsMouseClicks(true, true); // Re-enable mouse clicks for finalized connection
 
                     // If we should be connecting all the outputs and inputs of the two
                     // plugins (user holding down shift).
@@ -1174,9 +1185,16 @@ void PluginField::releaseConnection(int x, int y)
                 }
                 else
                 {
+                    // Type mismatch (audio vs parameter)
                     removeChildComponent(draggingConnection);
                     delete draggingConnection;
                 }
+            }
+            else
+            {
+                // Same direction (input-to-input or output-to-output) - reject
+                removeChildComponent(draggingConnection);
+                delete draggingConnection;
             }
         }
         else

@@ -67,6 +67,9 @@ class SafetyLimiterProcessor : public AudioProcessor
         return muteTriggered.compare_exchange_strong(expected, false);
     }
 
+    // Audio activity detection for wire glow
+    bool isAudioActive() const { return audioActive.load(); }
+
   private:
     //==============================================================================
     // Thresholds
@@ -83,6 +86,7 @@ class SafetyLimiterProcessor : public AudioProcessor
     std::atomic<bool> muted{false};
     std::atomic<bool> limiting{false};
     std::atomic<bool> muteTriggered{false};
+    std::atomic<bool> audioActive{false}; // Set when audio is flowing
 
     // Detection counters
     int dangerousGainCounter = 0;

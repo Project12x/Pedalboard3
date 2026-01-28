@@ -91,6 +91,8 @@ class PluginField : public Component,
     void enableMidiInput(bool val);
     ///	Enables/disables the OSC input.
     void enableOscInput(bool val);
+    ///	Returns whether audio input is enabled.
+    bool isAudioInputEnabled() const { return audioInputEnabled; }
 
     ///	Sets whether to automatically open the mappings window or not.
     void setAutoMappingsWindow(bool val);

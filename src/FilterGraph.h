@@ -152,6 +152,9 @@ class FilterGraph : public FileBasedDocument
     /// Returns the SafetyLimiter for audio protection state queries
     SafetyLimiterProcessor* getSafetyLimiter() const { return safetyLimiter; }
 
+    /// Returns true if audio device is active and processing audio
+    bool isAudioPlaying() const { return graph.getSampleRate() > 0; }
+
     int getNumFilters() const;
     const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
     const AudioProcessorGraph::Node::Ptr getNodeForId(const AudioProcessorGraph::NodeID uid) const;

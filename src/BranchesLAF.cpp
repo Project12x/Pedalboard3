@@ -23,6 +23,8 @@
 #include "FontManager.h"
 #include "LookAndFeelImages.h"
 
+#include <melatonin_blur/melatonin_blur.h>
+
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -113,10 +115,6 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
     float cornerRadius = 6.0f;
 
     Rectangle<float> bounds(1.0f, 1.0f, w - 2.0f, h - 2.0f);
-
-    // === Drop shadow (more visible) ===
-    g.setColour(Colour(0x40000000));
-    g.fillRoundedRectangle(bounds.translated(0.0f, 2.0f), cornerRadius);
 
     // === Main fill ===
     Colour fillCol;

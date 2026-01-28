@@ -22,6 +22,7 @@
 
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
+#include "FilterGraph.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "MappingsDialog.h"
@@ -30,6 +31,8 @@
 #include "PresetBar.h"
 #include "SettingsManager.h"
 #include "Vectors.h"
+
+#include <melatonin_blur/melatonin_blur.h>
 
 using namespace std;
 
@@ -153,12 +156,6 @@ void PluginComponent::paint(Graphics& g)
     float w = (float)getWidth();
     float h = (float)getHeight();
     const float cornerRadius = 8.0f;
-
-    // === DROP SHADOW (subtle depth) ===
-    DropShadow shadow(Colour(0x40000000), 8, {3, 3});
-    Path nodePath;
-    nodePath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
-    shadow.drawForPath(g, nodePath);
 
     // === MAIN FILL (gradient for premium feel) ===
     Colour bgTop = colours["Plugin Background"].brighter(0.08f);
@@ -326,22 +323,22 @@ void PluginComponent::labelTextChanged(Label* label)
     {
         Point<int> pinPos;
 
-        pinPos.setXY(getWidth() - 5, y);
+        pinPos.setXY(getWidth() - 6, y);
         outputPins[i]->setTopLeftPosition(pinPos.getX(), pinPos.getY());
 
-        y += 12;
+        y += 18;
     }
 
     for (i = 0; i < paramPins.size(); ++i)
     {
         Point<int> pinPos;
 
-        pinPos.setXY(getWidth() - 5, y);
+        pinPos.setXY(getWidth() - 6, y);
         if (paramPins[i]->getX() > 0)
         {
             paramPins[i]->setTopLeftPosition(pinPos.getX(), pinPos.getY());
 
-            y += 12;
+            y += 18;
         }
     }
 }
@@ -493,7 +490,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     inputWidth = bounds.getWidth();
             }
 
-            y += 13.0f;
+            y += 18.0f;
             ++numInputPins;
         }
 
@@ -514,7 +511,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     inputWidth = bounds.getWidth();
             }
 
-            y += 13.0f;
+            y += 18.0f;
             ++numInputPins;
         }
 
@@ -553,7 +550,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     outputWidth = bounds.getWidth();
             }
 
-            y += 13.0f;
+            y += 18.0f;
             ++numOutputPins;
         }
 
@@ -575,7 +572,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     outputWidth = bounds.getWidth();
             }
 
-            y += 13.0f;
+            y += 18.0f;
             ++numOutputPins;
         }
 
@@ -609,7 +606,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         h = jmax(numInputPins, numOutputPins);
-        h *= 13;
+        h *= 18;
 
         float minH = (float)h + 60.0f;
         if (proc && minH < procH + 52.0f)
@@ -670,13 +667,13 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(false, uid, i, false);
-        pinPos.setXY(-5, y);
+        pinPos.setXY(-8, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         inputPins.add(pin);
 
-        y += 12;
+        y += 18;
     }
 
     if ((plugin->acceptsMidi() || (plugin->getNumInputChannels() > 0) || (plugin->getNumOutputChannels() > 0)) &&
@@ -685,13 +682,13 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(false, uid, AudioProcessorGraph::midiChannelIndex, true);
-        pinPos.setXY(-5, y);
+        pinPos.setXY(-8, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         paramPins.add(pin);
 
-        y += 12;
+        y += 18;
     }
 
     y = 25;
@@ -700,13 +697,13 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(true, uid, i, false);
-        pinPos.setXY(getWidth() - 5, y);
+        pinPos.setXY(getWidth() - 6, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         outputPins.add(pin);
 
-        y += 12;
+        y += 18;
     }
 
     if (plugin->producesMidi() || (plugin->getName() == "OSC Input"))
@@ -714,13 +711,13 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(true, uid, AudioProcessorGraph::midiChannelIndex, true);
-        pinPos.setXY(getWidth() - 5, y);
+        pinPos.setXY(getWidth() - 6, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         paramPins.add(pin);
 
-        y += 12;
+        y += 18;
     }
 }
 
@@ -729,7 +726,7 @@ void PluginComponent::createPins()
 PluginPinComponent::PluginPinComponent(bool dir, uint32 id, int chan, bool param)
     : Component(), direction(dir), uid(id), channel(chan), parameterPin(param)
 {
-    setSize(10, 12);
+    setSize(14, 16);
 }
 
 //------------------------------------------------------------------------------
@@ -754,10 +751,11 @@ void PluginPinComponent::paint(Graphics& g)
 //------------------------------------------------------------------------------
 void PluginPinComponent::mouseDown(const MouseEvent& e)
 {
-    if (direction)
-    {
-        PluginField* field = findParentComponentOfClass<PluginField>();
+    // Allow dragging from both input and output pins (bidirectional)
+    PluginField* field = findParentComponentOfClass<PluginField>();
 
+    if (field)
+    {
         field->addConnection(this, (e.mods.isShiftDown() && !parameterPin));
     }
 }
@@ -890,7 +888,7 @@ PluginConnection::PluginConnection(PluginPinComponent* s, PluginPinComponent* d,
 {
     if (source)
     {
-        Point<int> tempPoint(source->getX() + 5, source->getY() + 6);
+        Point<int> tempPoint(source->getX() + 7, source->getY() + 8);
         PluginField* field = source->findParentComponentOfClass<PluginField>();
 
         tempPoint = field->getLocalPoint(source->getParentComponent(), tempPoint);
@@ -930,23 +928,71 @@ void PluginConnection::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     Colour cableColour = paramCon ? colours["Parameter Connection"] : colours["Audio Connection"];
 
-    // Draw black outline
-    g.setColour(Colours::black);
-    g.strokePath(drawnCurve, PathStrokeType(1.0f));
+    auto bounds = getLocalBounds().toFloat();
 
-    // Draw main cable fill
-    if (selected)
-        g.setColour(cableColour.brighter(0.75f));
-    else
-        g.setColour(cableColour);
+    // === Signal-based glow (DISABLED - low priority, potentially distracting) ===
+    // TODO: Re-enable when true per-connection signal detection is implemented
+    /*
+    bool showGlow = false;
+    if (!paramCon) // Only audio cables get glow
+    {
+        if (auto* pluginField = dynamic_cast<PluginField*>(getParentComponent()))
+        {
+            if (auto* filterGraph = pluginField->getFilterGraph())
+            {
+                showGlow = filterGraph->isAudioPlaying();
+            }
+        }
+    }
+
+    if (showGlow)
+    {
+        for (int i = 3; i >= 1; --i)
+        {
+            float strokeWidth = 8.0f + (i * 3.0f);
+            float alpha = 0.06f / (float)i;
+            g.setColour(cableColour.withAlpha(alpha));
+            g.strokePath(glowPath, PathStrokeType(strokeWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+        }
+    }
+    */
+
+    // === Gradient fill from source to destination (bidirectional) ===
+    Colour startCol = cableColour.brighter(selected ? 0.6f : 0.25f);
+    Colour endCol = cableColour.darker(selected ? 0.0f : 0.15f);
+
+    // Use actual start/end points from the bezier curve for proper bidirectional gradient
+    Point<float> gradStart = glowPath.getBounds().getTopLeft();
+    Point<float> gradEnd = glowPath.getBounds().getBottomRight();
+
+    ColourGradient wireGrad(startCol, gradStart.x, gradStart.y, endCol, gradEnd.x, gradEnd.y, false);
+    g.setGradientFill(wireGrad);
     g.fillPath(drawnCurve);
+
+    // === Thin highlight stroke for depth ===
+    g.setColour(Colours::white.withAlpha(0.12f));
+    g.strokePath(glowPath, PathStrokeType(1.0f, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 
 //------------------------------------------------------------------------------
 void PluginConnection::mouseDown(const MouseEvent& e)
 {
-    selected = !selected;
-    repaint();
+    if (e.mods.isPopupMenu()) // Right-click
+    {
+        // Select this connection and trigger deletion
+        selected = true;
+        PluginField* field = findParentComponentOfClass<PluginField>();
+        if (field)
+        {
+            field->deleteConnection();
+            // Don't touch 'this' after deleteConnection() - we've been deleted!
+        }
+    }
+    else // Left-click
+    {
+        selected = !selected;
+        repaint();
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -971,8 +1017,8 @@ void PluginConnection::changeListenerCallback(ChangeBroadcaster* changedObject)
 
     if (source && destination)
     {
-        Point<int> sourcePoint(source->getX() + 5, source->getY() + 6);
-        Point<int> destPoint(destination->getX() + 5, destination->getY() + 6);
+        Point<int> sourcePoint(source->getX() + 7, source->getY() + 8);
+        Point<int> destPoint(destination->getX() + 7, destination->getY() + 8);
         sourcePoint = field->getLocalPoint(source->getParentComponent(), sourcePoint);
         destPoint = field->getLocalPoint(destination->getParentComponent(), destPoint);
 
@@ -987,7 +1033,7 @@ void PluginConnection::drag(int x, int y)
 
     if (source)
     {
-        Point<int> sourcePoint(source->getX() + 5, source->getY() + 6);
+        Point<int> sourcePoint(source->getX() + 7, source->getY() + 8);
         sourcePoint = field->getLocalPoint(source->getParentComponent(), sourcePoint);
 
         updateBounds(sourcePoint.getX(), sourcePoint.getY(), x, y);
@@ -1005,8 +1051,8 @@ void PluginConnection::setDestination(PluginPinComponent* d)
 
     if (source && destination)
     {
-        Point<int> sourcePoint(source->getX() + 5, source->getY() + 6);
-        Point<int> destPoint(destination->getX() + 5, destination->getY() + 6);
+        Point<int> sourcePoint(source->getX() + 7, source->getY() + 8);
+        Point<int> destPoint(destination->getX() + 7, destination->getY() + 8);
         sourcePoint = field->getLocalPoint(source->getParentComponent(), sourcePoint);
         destPoint = field->getLocalPoint(destination->getParentComponent(), destPoint);
 
@@ -1123,6 +1169,10 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     tempPath.startNewSubPath((float)sX, (float)sY);
     tempPath.cubicTo(((float)width * 0.5f) + jmin(sX, dX), (float)sY, ((float)width * 0.5f) + jmin(sX, dX), (float)dY,
                      (float)dX, (float)dY);
+
+    // Store original bezier for glow rendering
+    glowPath = tempPath;
+
     drawnType.createStrokedPath(drawnCurve, tempPath);
 
     setBounds(left - 5, top - 5, width + 10, height + 10);

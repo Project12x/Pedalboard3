@@ -161,4 +161,17 @@ void SafetyLimiterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer
     }
 
     limiting.store(limitingThisBlock);
+
+    // Audio activity detection for wire glow - check if buffer has meaningful signal
+    float rms = 0.0f;
+    for (int ch = 0; ch < jmin(numChannels, 2); ++ch)
+    {
+        const float* data = buffer.getReadPointer(ch);
+        for (int i = 0; i < numSamples; ++i)
+        {
+            rms += data[i] * data[i];
+        }
+    }
+    rms = std::sqrt(rms / (numSamples * jmin(numChannels, 2)));
+    audioActive.store(rms > 0.0001f); // ~-80dB noise floor
 }
