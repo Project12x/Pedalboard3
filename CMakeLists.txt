@@ -44,6 +44,7 @@ CPMAddPackage(
     OPTIONS "JSON_BuildTests OFF"
 )
 
+
 # ==============================================================================
 # Testing Framework
 # ==============================================================================
@@ -89,6 +90,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add JUCE as a subdirectory
 add_subdirectory(JUCE)
+
+# Melatonin Blur - GPU-accelerated drop shadows and blur effects
+# Must be after JUCE is added, uses FetchContent per official docs
+Include(FetchContent)
+FetchContent_Declare(melatonin_blur
+    GIT_REPOSITORY https://github.com/sudara/melatonin_blur.git
+    GIT_TAG origin/main
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_blur
+)
+FetchContent_MakeAvailable(melatonin_blur)
 
 # Define the application
 juce_add_gui_app(Pedalboard3
@@ -324,6 +335,9 @@ target_link_libraries(Pedalboard3 PRIVATE
     fmt::fmt
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    
+    # UI Effects
+    melatonin_blur
     
     # Custom fonts
     Pedalboard3_fonts

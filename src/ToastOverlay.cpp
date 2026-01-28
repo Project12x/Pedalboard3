@@ -65,11 +65,11 @@ void ToastOverlay::show(const String& message, int durationMs)
 
     setSize(width, height);
 
-    // Position at bottom center of parent
+    // Position at bottom-right corner of parent
     if (auto* parent = getParentComponent())
     {
-        int x = (parent->getWidth() - width) / 2;
-        int y = parent->getHeight() - height - 60;
+        int x = parent->getWidth() - width - 20;   // 20px from right edge
+        int y = parent->getHeight() - height - 60; // 60px from bottom (above footer)
         setBounds(x, y, width, height);
         DBG("ToastOverlay: Showing at " + String(x) + ", " + String(y) + " in parent " + String(parent->getWidth()) +
             "x" + String(parent->getHeight()));
@@ -95,25 +95,43 @@ void ToastOverlay::paint(Graphics& g)
     if (alpha <= 0.0f)
         return;
 
+    auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
+    float cornerRadius = 10.0f;
 
-    // Background with rounded corners and shadow effect
-    auto bgColour = ColourScheme::getInstance().colours["Button Colour"].darker(0.3f).withAlpha(0.95f * alpha);
+    // Create rounded rectangle path for shadow
+    juce::Path toastPath;
+    toastPath.addRoundedRectangle(bounds, cornerRadius);
 
-    // Subtle shadow
-    g.setColour(Colours::black.withAlpha(0.3f * alpha));
-    g.fillRoundedRectangle(bounds.translated(2, 2), 8.0f);
+    // === Melatonin Blur GPU-accelerated drop shadow ===
+    melatonin::DropShadow shadowWithAlpha{Colours::black.withAlpha(0.6f * alpha), 15, {0, 4}};
+    shadowWithAlpha.render(g, toastPath);
 
-    // Main background
-    g.setColour(bgColour);
-    g.fillRoundedRectangle(bounds, 8.0f);
+    // === Main background (gradient) ===
+    Colour bgCol = colours["Window Background"];
+    ColourGradient bgGrad(bgCol.brighter(0.1f).withAlpha(0.97f * alpha), 0.0f, bounds.getY(),
+                          bgCol.darker(0.15f).withAlpha(0.97f * alpha), 0.0f, bounds.getBottom(), false);
+    g.setGradientFill(bgGrad);
+    g.fillRoundedRectangle(bounds, cornerRadius);
 
-    // Border
-    g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.2f * alpha));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.0f);
+    // === Glossy top highlight ===
+    Rectangle<float> glossArea(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight() * 0.45f);
+    ColourGradient glossGrad(Colours::white.withAlpha(0.15f * alpha), 0.0f, glossArea.getY(),
+                             Colours::white.withAlpha(0.0f), 0.0f, glossArea.getBottom(), false);
+    g.setGradientFill(glossGrad);
+    g.fillRoundedRectangle(glossArea.reduced(2.0f, 0.0f), cornerRadius - 1.0f);
 
-    // Text
-    g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(alpha));
+    // === Accent border (glowing) ===
+    Colour accentCol = colours["Audio Connection"];
+    g.setColour(accentCol.withAlpha(0.6f * alpha));
+    g.drawRoundedRectangle(bounds, cornerRadius, 1.5f);
+
+    // Subtle outer glow
+    g.setColour(accentCol.withAlpha(0.2f * alpha));
+    g.drawRoundedRectangle(bounds.expanded(1.0f), cornerRadius + 1.0f, 1.0f);
+
+    // === Text ===
+    g.setColour(colours["Text Colour"].withAlpha(alpha));
     g.setFont(FontManager::getInstance().getUIFont(14.0f));
     g.drawText(currentMessage, bounds, Justification::centred, false);
 }

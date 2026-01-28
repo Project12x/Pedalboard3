@@ -35,7 +35,7 @@ class StageView : public Component, public Button::Listener, public Timer
 
     //==========================================================================
     // Update methods (called by MainPanel)
-    void updatePatchInfo(const String& patchName, int currentIndex, int totalPatches);
+    void updatePatchInfo(const String& patchName, const String& nextPatchName, int currentIndex, int totalPatches);
     void setTunerProcessor(TunerProcessor* tuner);
 
     //==========================================================================
@@ -54,7 +54,9 @@ class StageView : public Component, public Button::Listener, public Timer
     TunerProcessor* tunerProcessor = nullptr;
 
     // Current state
+    // Current state
     String currentPatchName = "No Patch";
+    String nextPatchName = "";
     int currentPatchIndex = 0;
     int totalPatchCount = 0;
 

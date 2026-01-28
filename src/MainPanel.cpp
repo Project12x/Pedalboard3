@@ -37,6 +37,7 @@
 #include "SettingsManager.h"
 #include "StageView.h"
 #include "TapTempoBox.h"
+#include "ToastOverlay.h"
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
 #include "UserPresetWindow.h"
@@ -358,6 +359,9 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     warningBox.reset(new CallOutBox(warningText, patchComboBox->getBounds(), this));
     warningBox->setVisible(false);
 
+    // Add ToastOverlay for premium notifications
+    addChildComponent(&ToastOverlay::getInstance());
+
     // Start timers.
     startTimer(CpuTimer, 100);
     startTimer(MidiAppTimer, 30);
@@ -617,14 +621,8 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
 //------------------------------------------------------------------------------
 void MainPanel::showToast(const String& message)
 {
-    toastBubble = std::make_unique<BubbleMessageComponent>();
-    toastBubble->setAllowedPlacement(BubbleComponent::above);
-    addAndMakeVisible(toastBubble.get());
-    // Position in bottom-right corner
-    Rectangle<int> targetArea(getWidth() - 150, getHeight() - 50, 100, 20);
-    AttributedString text;
-    text.append(message, Font(14.0f), Colours::white);
-    toastBubble->showAt(targetArea, text, 1500);
+    // Use custom ToastOverlay with Melatonin Blur for premium shadows
+    ToastOverlay::getInstance().show(message, 1500);
 }
 
 //------------------------------------------------------------------------------

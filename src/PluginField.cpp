@@ -136,12 +136,35 @@ PluginField::~PluginField()
 //------------------------------------------------------------------------------
 void PluginField::paint(Graphics& g)
 {
-    g.fillAll(ColourScheme::getInstance().colours["Field Background"]);
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat();
+
+    // === Gradient background ===
+    Colour bgCol = colours["Field Background"];
+    ColourGradient bgGrad(bgCol.brighter(0.08f), 0.0f, 0.0f, bgCol.darker(0.15f), 0.0f, bounds.getHeight(), false);
+    g.setGradientFill(bgGrad);
+    g.fillRect(bounds);
+
+    // === Grid pattern ===
+    float gridSize = 30.0f;
+    Colour gridCol = colours["Plugin Border"].withAlpha(0.15f);
+    g.setColour(gridCol);
+
+    // Vertical lines
+    for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
+    {
+        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
+    }
+
+    // Horizontal lines
+    for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
+    {
+        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+    }
 
     if (displayDoubleClickMessage)
     {
         // Draw a centered, polished empty state hint
-        auto bounds = getLocalBounds();
         auto centerX = bounds.getCentreX();
         auto centerY = bounds.getCentreY();
 
@@ -151,7 +174,8 @@ void PluginField::paint(Graphics& g)
 
         String hintText = "Double-click to add a plugin";
         auto textWidth = g.getCurrentFont().getStringWidth(hintText);
-        g.drawText(hintText, centerX - textWidth / 2, centerY - 10, textWidth + 20, 30, Justification::centred, false);
+        g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
+                   Justification::centred, false);
 
         // Secondary hint
         g.setFont(FontManager::getInstance().getUIFont(13.0f));
@@ -159,7 +183,8 @@ void PluginField::paint(Graphics& g)
 
         String subHint = "or drag & drop VST/preset files";
         auto subWidth = g.getCurrentFont().getStringWidth(subHint);
-        g.drawText(subHint, centerX - subWidth / 2, centerY + 18, subWidth + 20, 24, Justification::centred, false);
+        g.drawText(subHint, (int)(centerX - subWidth / 2), (int)(centerY + 18), subWidth + 20, 24,
+                   Justification::centred, false);
     }
 }
 

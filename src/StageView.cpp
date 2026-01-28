@@ -73,11 +73,13 @@ StageView::~StageView()
 }
 
 //==============================================================================
-void StageView::updatePatchInfo(const String& patchName, int currentIndex, int totalPatches)
+void StageView::updatePatchInfo(const String& patchName, const String& nextPatchName, int currentIndex,
+                                int totalPatches)
 {
-    currentPatchName = patchName;
-    currentPatchIndex = currentIndex;
-    totalPatchCount = totalPatches;
+    this->currentPatchName = patchName;
+    this->nextPatchName = nextPatchName;
+    this->currentPatchIndex = currentIndex;
+    this->totalPatchCount = totalPatches;
     repaint();
 }
 
@@ -162,7 +164,22 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     if (displayName.length() > 25)
         displayName = displayName.substring(0, 22) + "...";
 
-    g.drawText(displayName, bounds.reduced(100, 0), Justification::centred);
+    g.drawText(displayName, bounds.reduced(100, 0).withTrimmedBottom(40), Justification::centred);
+
+    // Next Patch Preview
+    if (nextPatchName.isNotEmpty())
+    {
+        g.setColour(Colours::white.withAlpha(0.5f));
+        g.setFont(fonts.getUIFont(32.0f));
+        g.drawText("NEXT: " + nextPatchName, bounds.removeFromBottom(140).withTrimmedBottom(60),
+                   Justification::centredTop);
+    }
+    else
+    {
+        g.setColour(Colours::white.withAlpha(0.3f));
+        g.setFont(fonts.getUIFont(24.0f));
+        g.drawText("(End of Set)", bounds.removeFromBottom(140).withTrimmedBottom(60), Justification::centredTop);
+    }
 
     // Patch position indicator
     if (totalPatchCount > 0)
@@ -170,7 +187,8 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
         g.setColour(Colours::white.withAlpha(0.5f));
         g.setFont(fonts.getMonoFont(24.0f));
         String posStr = String(currentPatchIndex + 1) + " / " + String(totalPatchCount);
-        g.drawText(posStr, bounds.translated(0, 60), Justification::centred);
+        // Positioned slightly lower
+        g.drawText(posStr, bounds.translated(0, 100), Justification::centred);
     }
 }
 
@@ -351,6 +369,18 @@ void StageView::updateAfterPatchChange()
 {
     if (mainPanel != nullptr)
     {
-        updatePatchInfo(mainPanel->getCurrentPatchName(), mainPanel->getCurrentPatch(), mainPanel->getPatchCount());
+        // Fetch next patch name from MainPanel
+        String nextName = "";
+        int nextIndex = mainPanel->getCurrentPatch() + 1;
+        if (nextIndex < mainPanel->getPatchCount())
+        {
+            // We need a way to get the name of a specific patch index
+            // Since MainPanel doesn't expose this yet, we will rely on a new method or fetch it differently
+            // For now, let's assume MainPanel handles the push, but here we are pulling...
+            // Actually, updatePatchInfo is PUSHED by MainPanel.
+            // But this method 'updateAfterPatchChange' is called by StageView itself on key press.
+            // So we need to request an update from MainPanel.
+            mainPanel->updateStageView();
+        }
     }
 }

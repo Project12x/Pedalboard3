@@ -22,8 +22,8 @@
 
 #include "JuceHeader.h"
 
+#include <melatonin_blur/melatonin_blur.h>
 #include <queue>
-
 
 /**
  * A simple toast notification overlay that displays temporary messages.
@@ -59,6 +59,9 @@ class ToastOverlay : public Component, public Timer
     int fadeStepMs = 16; // ~60fps
 
     std::queue<std::pair<String, int>> pendingToasts;
+
+    // Melatonin Blur drop shadow for premium UI
+    melatonin::DropShadow dropShadow{Colours::black, 15, {0, 4}, 0};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToastOverlay)
 };
