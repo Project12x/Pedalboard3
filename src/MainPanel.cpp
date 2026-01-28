@@ -33,8 +33,12 @@
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
 #include "PreferencesDialog.h"
+#include "RoutingProcessors.h"
 #include "SettingsManager.h"
+#include "StageView.h"
 #include "TapTempoBox.h"
+#include "ToneGeneratorProcessor.h"
+#include "TunerProcessor.h"
 #include "UserPresetWindow.h"
 #include "Vectors.h"
 
@@ -167,6 +171,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     addAndMakeVisible(tapTempoButton = new ArrowButton("tapTempoButton", 0.0, Colour(0x40000000)));
     tapTempoButton->setName("tapTempoButton");
 
+    addAndMakeVisible(organiseButton = new TextButton("organiseButton"));
+    organiseButton->setButtonText("Manage");
+    organiseButton->addListener(this);
+
     //[UserPreSize]
 
     // Logger::setCurrentLogger(this);
@@ -189,6 +197,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     playButton->setTooltip("Play (main transport)");
     rtzButton->setTooltip("Return to zero (main transport)");
     tapTempoButton->setTooltip("Tap tempo");
+    organiseButton->setTooltip("Manage Setlist (Reorder/Rename Patches)");
 
     // So the user can't drag the cpu meter.
     cpuSlider->setInterceptsMouseClicks(false, true);
@@ -264,6 +273,22 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         looper.fillInPluginDescription(desc);
         pluginList.addType(desc);
+
+        TunerProcessor tuner;
+        tuner.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        ToneGeneratorProcessor toneGen;
+        toneGen.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        SplitterProcessor splitter;
+        splitter.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MixerProcessor mixer;
+        mixer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);
 
@@ -321,6 +346,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     setSize(1024, 570);
 
     //[Constructor] You can add your own custom stuff here..
+    setWantsKeyboardFocus(true);
 
     // Setup the program change warning.
     // Setup the program change warning.
@@ -390,6 +416,8 @@ MainPanel::~MainPanel()
     tempoEditor = nullptr;
     delete tapTempoButton;
     tapTempoButton = nullptr;
+    delete organiseButton;
+    organiseButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -449,6 +477,14 @@ void MainPanel::resized()
     if (field->getHeight() < (getHeight() - 40))
         y = getHeight() - 40;
     field->setSize(x, y);
+
+    // Keep StageView covering the entire panel
+    if (stageView != nullptr)
+        stageView->setBounds(getLocalBounds());
+
+    // Place Organise button in the gap between Transport (Center) and CPU (Right)
+    // Center group ends approx width/2 + 50. CPU starts width - 236.
+    organiseButton->setBounds(getWidth() - 320, getHeight() - 33, 70, 24);
 
     //[/UserResized]
 }
@@ -566,6 +602,19 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
 // other code here...
 
 //------------------------------------------------------------------------------
+void MainPanel::showToast(const String& message)
+{
+    toastBubble = std::make_unique<BubbleMessageComponent>();
+    toastBubble->setAllowedPlacement(BubbleComponent::above);
+    addAndMakeVisible(toastBubble.get());
+    // Position in bottom-right corner
+    Rectangle<int> targetArea(getWidth() - 150, getHeight() - 50, 100, 20);
+    AttributedString text;
+    text.append(message, Font(14.0f), Colours::white);
+    toastBubble->showAt(targetArea, text, 1500);
+}
+
+//------------------------------------------------------------------------------
 StringArray MainPanel::getMenuBarNames()
 {
     StringArray retval;
@@ -616,6 +665,8 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
         retval.addCommandItem(commandManager, OptionsKeyMappings);
+        retval.addSeparator();
+        retval.addCommandItem(commandManager, ToggleStageMode);
     }
     else if (menuName == "Help")
     {
@@ -665,7 +716,8 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              PatchPrevPatch,
                              TransportPlay,
                              TransportRtz,
-                             TransportTapTempo};
+                             TransportTapTempo,
+                             ToggleStageMode};
     commands.addArray(ids, numElementsInArray(ids));
 }
 
@@ -771,6 +823,10 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
     case TransportTapTempo:
         result.setInfo("Tap Tempo", "Used to set the tempo by 'tapping'.", transportCategory, 0);
         break;
+    case ToggleStageMode:
+        result.setInfo("Toggle Stage Mode", "Fullscreen performance view with large fonts.", optionsCategory, 0);
+        result.addDefaultKeypress(KeyPress::F11Key, ModifierKeys());
+        break;
     }
 }
 
@@ -820,18 +876,22 @@ bool MainPanel::perform(const InvocationInfo& info)
     case FileOpen:
         loadFromUserSpecifiedFile(true);
         field->clearDoubleClickMessage();
+        showToast("Loaded");
         break;
     case FileSave:
         save(true, true);
+        showToast("Saved");
         break;
     case FileSaveAs:
         saveAsInteractive(true);
+        showToast("Saved");
         break;
     case FileSaveAsDefault:
     {
         File defaultFile = JuceHelperStuff::getAppDataFolder().getChildFile("default.pdl");
 
         saveDocument(defaultFile);
+        showToast("Default saved");
     }
     break;
     case FileResetDefault:
@@ -1040,10 +1100,12 @@ bool MainPanel::perform(const InvocationInfo& info)
     case EditUndo:
         signalPath.getUndoManager().undo();
         field->syncWithGraph();
+        showToast("Undone");
         break;
     case EditRedo:
         signalPath.getUndoManager().redo();
         field->syncWithGraph();
+        showToast("Redone");
         break;
     case EditPanic:
     {
@@ -1054,8 +1116,17 @@ bool MainPanel::perform(const InvocationInfo& info)
             midiCollector.addMessageToQueue(MidiMessage::allNotesOff(channel));
             midiCollector.addMessageToQueue(MidiMessage::allSoundOff(channel));
         }
+
+        // Unmute the safety limiter if it was auto-muted
+        if (auto* limiter = signalPath.getSafetyLimiter())
+            limiter->unmute();
+
+        showToast("Panic sent");
     }
     break;
+    case ToggleStageMode:
+        toggleStageMode();
+        break;
     }
     return true;
 }
@@ -1148,6 +1219,15 @@ void MainPanel::timerCallback(int timerId)
     case CpuTimer:
         cpuSlider->setColour(Slider::thumbColourId, ColourScheme::getInstance().colours["CPU Meter Colour"]);
         cpuSlider->setValue(deviceManager.getCpuUsage());
+
+        // Check for safety limiter mute condition
+        if (auto* limiter = signalPath.getSafetyLimiter())
+        {
+            if (limiter->checkAndClearMuteTriggered())
+            {
+                showToast("OUTPUT MUTED - Use Panic to unmute");
+            }
+        }
 
         /*if(programChangePatch != currentPatch)
         {
@@ -1459,6 +1539,7 @@ Result MainPanel::loadDocument(const File& file)
                     {
                         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Audio Device Error",
                                                          "Could not initialise audio settings loaded from .pdl file");
+                        showToast("Audio error!");
                     }
                 }
             }
@@ -1636,6 +1717,77 @@ Drawable* MainPanel::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t 
         retval = Drawable::createFromSVG(*svgData).release(); // JUCE 8: release ownership to match return type
 
     return retval;
+}
+
+//==============================================================================
+// Stage Mode methods
+//==============================================================================
+
+void MainPanel::toggleStageMode()
+{
+    if (stageView != nullptr)
+    {
+        // Exit Stage Mode
+        removeChildComponent(stageView.get());
+        stageView.reset();
+
+        // Disable global tuner
+        deviceManager.removeAudioCallback(&tunerPlayer);
+        tunerPlayer.setProcessor(nullptr);
+
+        activeTuner = nullptr; // Clear reference
+        grabKeyboardFocus();   // Ensure MainPanel gets focus back
+        DBG("Stage Mode disabled");
+    }
+    else
+    {
+        // Enter Stage Mode
+
+        // Ensure global tuner exists
+        if (globalTuner == nullptr)
+            globalTuner = std::make_unique<TunerProcessor>();
+
+        // Configure global tuner for silent monitoring
+        globalTuner->setMuteOutput(true);
+        tunerPlayer.setProcessor(globalTuner.get());
+
+        // Add to device manager to receive input audio independent of graph
+        deviceManager.addAudioCallback(&tunerPlayer);
+
+        activeTuner = globalTuner.get();
+        DBG("Global Tuner activated (parallel monitoring)");
+
+        stageView = std::make_unique<StageView>(this);
+        addAndMakeVisible(stageView.get());
+        stageView->setBounds(getLocalBounds());
+        stageView->setTunerProcessor(activeTuner);
+        stageView->updatePatchInfo(getCurrentPatchName(), getCurrentPatch(), getPatchCount());
+        stageView->toFront(true); // Bring to front and grab keyboard focus
+        DBG("Stage Mode enabled");
+    }
+}
+
+bool MainPanel::keyPressed(const KeyPress& key)
+{
+    // Manually handle F11 if the command manager misses it
+    if (key == KeyPress::F11Key)
+    {
+        toggleStageMode();
+        return true;
+    }
+    return false;
+}
+
+String MainPanel::getCurrentPatchName() const
+{
+    if (patchComboBox != nullptr)
+        return patchComboBox->getText();
+    return "No Patch";
+}
+
+int MainPanel::getPatchCount() const
+{
+    return patches.size();
 }
 
 //[/MiscUserCode]

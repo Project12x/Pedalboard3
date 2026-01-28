@@ -22,7 +22,6 @@
 #include "ColourScheme.h"
 #include "FontManager.h"
 
-
 //------------------------------------------------------------------------------
 ToastOverlay& ToastOverlay::getInstance()
 {
@@ -72,9 +71,21 @@ void ToastOverlay::show(const String& message, int durationMs)
         int x = (parent->getWidth() - width) / 2;
         int y = parent->getHeight() - height - 60;
         setBounds(x, y, width, height);
+        DBG("ToastOverlay: Showing at " + String(x) + ", " + String(y) + " in parent " + String(parent->getWidth()) +
+            "x" + String(parent->getHeight()));
+    }
+    else
+    {
+        // Fallback: use desktop bounds
+        auto desktopBounds = Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
+        int x = (desktopBounds.getWidth() - width) / 2;
+        int y = desktopBounds.getHeight() - height - 100;
+        setBounds(x, y, width, height);
+        DBG("ToastOverlay: No parent, using desktop position " + String(x) + ", " + String(y));
     }
 
     setVisible(true);
+    toFront(false);
     fadeIn();
 }
 

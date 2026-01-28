@@ -79,6 +79,18 @@ FilterGraph::FilterGraph()
     // Use Raw method to avoid adding to undo history
     addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
 
+    // Initialize SafetyLimiter for audio protection
+    auto limiterProcessor = std::make_unique<SafetyLimiterProcessor>();
+    safetyLimiter = limiterProcessor.get(); // Keep raw pointer for state queries
+    auto safetyNode = graph.addNode(std::move(limiterProcessor), AudioProcessorGraph::NodeID(0xFFFFFF));
+    if (safetyNode)
+    {
+        safetyLimiterNodeId = safetyNode->nodeID;
+        // Position off-screen (not visible to user)
+        safetyNode->properties.set("x", -100.0);
+        safetyNode->properties.set("y", -100.0);
+    }
+
     setChangedFlag(false);
 }
 

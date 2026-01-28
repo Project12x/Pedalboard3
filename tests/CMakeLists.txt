@@ -4,6 +4,7 @@
 # Add test executable
 add_executable(Pedalboard3_Tests
     smoke_test.cpp
+    tone_generator_test.cpp
 )
 
 # Link Catch2 and project dependencies needed for testing

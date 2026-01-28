@@ -32,6 +32,8 @@
 #include <JuceHeader.h>
 
 class PluginListWindow;
+class StageView;
+class TunerProcessor;
 //[/Headers]
 
 //==============================================================================
@@ -96,6 +98,7 @@ class MainPanel : public Component,
     void textEditorTextChanged(TextEditor& editor);
     ///	Used to update the tempo.
     void textEditorReturnKeyPressed(TextEditor& editor);
+    bool keyPressed(const KeyPress& key) override;
 
     ///	Used to accept dragged .pdl files.
     bool isInterestedInFileDrag(const StringArray& files);
@@ -148,6 +151,17 @@ class MainPanel : public Component,
     void switchPatchFromProgramChange(int newPatch);
     ///	Returns the index of the current patch.
     int getCurrentPatch() const { return patchComboBox->getSelectedId() - 1; };
+    ///	Returns the name of the current patch.
+    String getCurrentPatchName() const;
+    ///	Returns the total number of patches.
+    int getPatchCount() const;
+
+    ///	Toggles Stage Mode (fullscreen performance view).
+    void toggleStageMode();
+    ///	Returns true if Stage Mode is active.
+    bool isStageMode() const { return stageView != nullptr; };
+    ///	Returns the application command manager for invoking commands.
+    ApplicationCommandManager* getApplicationCommandManager() const { return commandManager; };
 
     ///	Returns the PluginField's MidiMappingManager.
     MidiMappingManager* getMidiMappingManager()
@@ -192,7 +206,8 @@ class MainPanel : public Component,
         HelpLog,
         EditUndo,
         EditRedo,
-        EditPanic
+        EditPanic,
+        ToggleStageMode
     };
 
     //[/UserMethods]
@@ -205,18 +220,17 @@ class MainPanel : public Component,
 
     //==============================================================================
 
+  private:
+    //[UserVariables]   -- You can add your own custom variables in this
+    // section.
 
-      private :
-      //[UserVariables]   -- You can add your own custom variables in this
-      // section.
-
-      ///	Helper method. Switches patches.
-      /*!
-              \param newPatch Index of the new patch to load.
-              \param savePrev Saves the current patch in the process.
-              \param reloadPatch Reloads the current patch.
-       */
-      void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
+    ///	Helper method. Switches patches.
+    /*!
+            \param newPatch Index of the new patch to load.
+            \param savePrev Saves the current patch in the process.
+            \param reloadPatch Reloads the current patch.
+     */
+    void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
 
     ///	Helper method to load an SVG file from a binary chunk of data.
     Drawable* loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes);
@@ -253,6 +267,16 @@ class MainPanel : public Component,
 
     ///	Window to display/edit the list of possible plugins.
     PluginListWindow* listWindow;
+
+    ///	Stage Mode overlay (fullscreen performance view).
+    std::unique_ptr<StageView> stageView;
+    ///	Pointer to active TunerProcessor for Stage Mode integration.
+    TunerProcessor* activeTuner = nullptr;
+
+    /// Dedicated player for the global tuner (bypasses signal chain)
+    AudioProcessorPlayer tunerPlayer;
+    /// The global tuner processor
+    std::unique_ptr<TunerProcessor> globalTuner;
 
     ///	The currently-loaded patches.
     Array<XmlElement*> patches;
@@ -322,6 +346,10 @@ class MainPanel : public Component,
     /// the limits of the patch list.
     std::unique_ptr<CallOutBox> warningBox;
 
+    /// Toast notification using JUCE's BubbleMessageComponent
+    std::unique_ptr<BubbleMessageComponent> toastBubble;
+    void showToast(const String& message);
+
     //[/UserVariables]
 
     //==============================================================================
@@ -337,6 +365,7 @@ class MainPanel : public Component,
     Label* tempoLabel;
     TextEditor* tempoEditor;
     ArrowButton* tapTempoButton;
+    TextButton* organiseButton;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

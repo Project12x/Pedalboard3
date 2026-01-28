@@ -142,6 +142,21 @@ target_sources(Pedalboard3 PRIVATE
     src/PedalboardProcessors.h
     src/PedalboardProcessorEditors.cpp
     src/PedalboardProcessorEditors.h
+    src/SafetyLimiter.cpp
+    src/SafetyLimiter.h
+    src/TunerProcessor.cpp
+    src/TunerProcessor.h
+    src/TunerControl.cpp
+    src/TunerControl.h
+    src/ToneGeneratorProcessor.cpp
+    src/ToneGeneratorProcessor.h
+    src/ToneGeneratorControl.cpp
+    src/ToneGeneratorControl.h
+    src/StageView.cpp
+    src/StageView.cpp
+    src/StageView.h
+    src/RoutingProcessors.cpp
+    src/RoutingProcessors.h
     
     # MIDI Handling
     src/MidiMappingManager.cpp

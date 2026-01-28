@@ -139,7 +139,7 @@ AboutPage::AboutPage(const String& ip)
 
     //[/UserPreSize]
 
-    setSize(400, 280);
+    setSize(400, 340);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -168,6 +168,10 @@ AboutPage::~AboutPage()
     juceVersionLabel = nullptr;
     delete ipAddressLabel;
     ipAddressLabel = nullptr;
+    delete kofiLink;
+    kofiLink = nullptr;
+    delete paypalLink;
+    paypalLink = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]

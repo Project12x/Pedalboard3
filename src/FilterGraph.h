@@ -33,6 +33,7 @@
 #define __JUCE_FILTERGRAPH_JUCEHEADER__
 
 #include "OscMappingManager.h"
+#include "SafetyLimiter.h"
 
 #include <JuceHeader.h>
 
@@ -64,8 +65,8 @@ class FilterConnection
 
     //==============================================================================
 
-
-      private : FilterGraph& owner;
+  private:
+    FilterGraph& owner;
 
     const FilterConnection& operator=(const FilterConnection&);
 };
@@ -148,6 +149,9 @@ class FilterGraph : public FileBasedDocument
     /// Returns the UndoManager for undo/redo operations
     juce::UndoManager& getUndoManager() { return undoManager; }
 
+    /// Returns the SafetyLimiter for audio protection state queries
+    SafetyLimiterProcessor* getSafetyLimiter() const { return safetyLimiter; }
+
     int getNumFilters() const;
     const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
     const AudioProcessorGraph::Node::Ptr getNodeForId(const AudioProcessorGraph::NodeID uid) const;
@@ -216,15 +220,18 @@ class FilterGraph : public FileBasedDocument
 
     //==============================================================================
 
+  private:
+    // friend class FilterGraphPlayer;
+    // ReferenceCountedArray <FilterInGraph> filters;
+    // OwnedArray <FilterConnection> connections;
 
-      private :
-      // friend class FilterGraphPlayer;
-      // ReferenceCountedArray <FilterInGraph> filters;
-      // OwnedArray <FilterConnection> connections;
-
-      AudioProcessorGraph graph;
+    AudioProcessorGraph graph;
     AudioProcessorPlayer player;
     juce::UndoManager undoManager;
+
+    // Audio safety protection (always active before output)
+    SafetyLimiterProcessor* safetyLimiter = nullptr; // Owned by graph
+    AudioProcessorGraph::NodeID safetyLimiterNodeId;
 
     uint32 lastUID;
     uint32 getNextUID() throw();

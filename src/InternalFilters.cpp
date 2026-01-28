@@ -35,7 +35,9 @@
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
 #include "PedalboardProcessors.h"
-
+#include "RoutingProcessors.h"
+#include "ToneGeneratorProcessor.h"
+#include "TunerProcessor.h"
 
 //==============================================================================
 InternalPluginFormat::InternalPluginFormat()
@@ -111,6 +113,30 @@ InternalPluginFormat::InternalPluginFormat()
         p.fillInPluginDescription(looperProcDesc);
         looperProcDesc.category = "Built-in";
     }
+
+    {
+        TunerProcessor p;
+        p.fillInPluginDescription(tunerProcDesc);
+        tunerProcDesc.category = "Built-in";
+    }
+
+    {
+        ToneGeneratorProcessor p;
+        p.fillInPluginDescription(toneGenProcDesc);
+        toneGenProcDesc.category = "Built-in";
+    }
+
+    {
+        SplitterProcessor p;
+        p.fillInPluginDescription(splitterProcDesc);
+        splitterProcDesc.category = "Routing";
+    }
+
+    {
+        MixerProcessor p;
+        p.fillInPluginDescription(mixerProcDesc);
+        mixerProcDesc.category = "Routing";
+    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -166,6 +192,22 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new LooperProcessor();
     }
+    else if (desc.name == tunerProcDesc.name)
+    {
+        return new TunerProcessor();
+    }
+    else if (desc.name == toneGenProcDesc.name)
+    {
+        return new ToneGeneratorProcessor();
+    }
+    else if (desc.name == splitterProcDesc.name)
+    {
+        return new SplitterProcessor();
+    }
+    else if (desc.name == mixerProcDesc.name)
+    {
+        return new MixerProcessor();
+    }
 
     return 0;
 }
@@ -198,6 +240,14 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &metronomeProcDesc;
     case looperProcFilter:
         return &looperProcDesc;
+    case tunerProcFilter:
+        return &tunerProcDesc;
+    case toneGenProcFilter:
+        return &toneGenProcDesc;
+    case splitterProcFilter:
+        return &splitterProcDesc;
+    case mixerProcFilter:
+        return &mixerProcDesc;
     default:
         return 0;
     }

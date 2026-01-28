@@ -64,6 +64,10 @@ class InternalPluginFormat : public AudioPluginFormat
         recorderProcFilter,
         metronomeProcFilter,
         looperProcFilter,
+        tunerProcFilter,
+        toneGenProcFilter,
+        splitterProcFilter,
+        mixerProcFilter,
 
         endOfFilterTypes
     };
@@ -119,6 +123,10 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription recorderProcDesc;
     PluginDescription metronomeProcDesc;
     PluginDescription looperProcDesc;
+    PluginDescription tunerProcDesc;
+    PluginDescription toneGenProcDesc;
+    PluginDescription splitterProcDesc;
+    PluginDescription mixerProcDesc;
 };
 
 #endif

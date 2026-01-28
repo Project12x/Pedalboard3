@@ -40,7 +40,7 @@ class NiallsGenericEditor : public GenericAudioProcessorEditor
   public:
     ///	Constructor.
     NiallsGenericEditor(AudioProcessor* const owner)
-        : GenericAudioProcessorEditor(owner) {
+        : GenericAudioProcessorEditor(*owner) {
 
           };
 
@@ -91,15 +91,19 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         // non-existent close button.
         titleLabel->setBounds(5, 0, getWidth() - 17, 20);
 
-        editButton = new TextButton("e", "Open plugin editor");
-        editButton->setBounds(10, getHeight() - 30, 20, 20);
-        editButton->addListener(this);
-        addAndMakeVisible(editButton);
+        // Skip edit/mappings buttons for Tuner (no external editor, no mappable params)
+        if (pluginName != "Tuner")
+        {
+            editButton = new TextButton("e", "Open plugin editor");
+            editButton->setBounds(10, getHeight() - 30, 20, 20);
+            editButton->addListener(this);
+            addAndMakeVisible(editButton);
 
-        mappingsButton = new TextButton("m", "Open mappings editor");
-        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
-        mappingsButton->addListener(this);
-        addAndMakeVisible(mappingsButton);
+            mappingsButton = new TextButton("m", "Open mappings editor");
+            mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+            mappingsButton->addListener(this);
+            addAndMakeVisible(mappingsButton);
+        }
 
         bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
         bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
@@ -452,7 +456,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     inputText.clear();
     outputText.clear();
 
-    if (!proc)
+    bool showLabels = (!proc) || (pluginName == "Splitter") || (pluginName == "Mixer");
+
+    if (showLabels)
     {
         // Determine plugin input channel name bounds.
         y = 35.0f;
@@ -573,10 +579,26 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             ++numOutputPins;
         }
 
-        if (nameWidth > (inputWidth + outputWidth + 30.0f))
+        float contentW = inputWidth + outputWidth + 30.0f;
+        float procW = 0.0f;
+        float procH = 0.0f;
+
+        if (proc)
+        {
+            Point<int> compSize = proc->getSize();
+            // Ensure inputs and outputs fit on sides of the control
+            procW = inputWidth + compSize.getX() + outputWidth + 20.0f;
+            procH = (float)compSize.getY();
+
+            // Minimal check
+            if (procW < compSize.getX() + 24.0f)
+                procW = compSize.getX() + 24.0f;
+        }
+
+        if (nameWidth > jmax(contentW, procW))
             w = (int)(nameWidth + 12.0f);
         else
-            w = (int)(inputWidth + outputWidth + 30.0f);
+            w = (int)jmax(contentW, procW);
 
         // Shift output texts to where they should be.
         {
@@ -589,13 +611,30 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         h = jmax(numInputPins, numOutputPins);
         h *= 13;
 
+        float minH = (float)h + 60.0f;
+        if (proc && minH < procH + 52.0f)
+            minH = procH + 52.0f;
+
         if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
-            h += 60;
+            h = (int)minH;
+        }
+        else if (proc) // Wait, Audio Input doesn't have proc usually?
+            h = (int)minH;
+
+        // Original logic for Input/Output nodes used + 60 in the block, so that's preserved.
+        // Wait, original: if (pluginName != ...) h += 60; else h += 34; (lines 596-602)
+        // I should preserve that.
+
+        if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
+            (pluginName != "OSC Input"))
+        {
+            // h is pin height * 13
+            h = jmax((int)minH, h + 60);
         }
         else
-            h += 34;
+            h = jmax((int)minH, h + 34);
     }
     else
     {
