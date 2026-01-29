@@ -40,6 +40,7 @@
 #include "UndoActions.h"
 
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 using namespace std;
 
@@ -89,6 +90,18 @@ FilterGraph::FilterGraph()
         // Position off-screen (not visible to user)
         safetyNode->properties.set("x", -100.0);
         safetyNode->properties.set("y", -100.0);
+    }
+
+    // Initialize CrossfadeMixer for glitch-free patch switching
+    auto crossfadeProcessor = std::make_unique<CrossfadeMixerProcessor>();
+    crossfadeMixer = crossfadeProcessor.get(); // Keep raw pointer for crossfade control
+    auto crossfadeNode = graph.addNode(std::move(crossfadeProcessor), AudioProcessorGraph::NodeID(0xFFFFFE));
+    if (crossfadeNode)
+    {
+        crossfadeMixerNodeId = crossfadeNode->nodeID;
+        // Position off-screen (not visible to user)
+        crossfadeNode->properties.set("x", -100.0);
+        crossfadeNode->properties.set("y", -150.0);
     }
 
     setChangedFlag(false);
@@ -536,9 +549,23 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
             break;
     }
 
+    int uid = xml.getIntAttribute("uid");
+    spdlog::debug("[createNodeFromXml] Creating node uid={} plugin={}", uid, pd.name.toStdString());
+
     // JUCE 8: createPluginInstance (not createPluginInstanceSync)
     tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(pd, 44100.0, 512, errorMessage);
+
+    // Configure stereo bus layout for VST3 plugins (same as addFilterRaw)
+    if (tempInstance)
+    {
+        AudioProcessor::BusesLayout stereoLayout;
+        stereoLayout.inputBuses.add(AudioChannelSet::stereo());
+        stereoLayout.outputBuses.add(AudioChannelSet::stereo());
+
+        if (tempInstance->checkBusesLayoutSupported(stereoLayout))
+            tempInstance->setBusesLayout(stereoLayout);
+    }
 
     std::unique_ptr<AudioProcessor> instancePtr;
     if (tempInstance)
@@ -554,11 +581,22 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     }
 
     if (!instancePtr)
+    {
+        spdlog::error("[createNodeFromXml] FAILED to create plugin uid={} name={} error={}", uid, pd.name.toStdString(),
+                      errorMessage.toStdString());
         return;
+    }
 
     // JUCE 8: addNode takes unique_ptr and NodeID
-    AudioProcessorGraph::Node::Ptr node(
-        graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(xml.getIntAttribute("uid"))));
+    AudioProcessorGraph::Node::Ptr node(graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(uid)));
+
+    if (!node)
+    {
+        spdlog::error("[createNodeFromXml] addNode returned null for uid={}", uid);
+        return;
+    }
+
+    spdlog::debug("[createNodeFromXml] SUCCESS node uid={} actual_uid={}", uid, (int)node->nodeID.uid);
 
     const XmlElement* const state = xml.getChildByName("STATE");
 
@@ -610,6 +648,7 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
         xml->addChildElement(e);
     }
 
+    spdlog::info("[FilterGraph::createXml] Saved {} nodes and {} connections", graph.getNumNodes(), connections.size());
     return xml;
 }
 
@@ -617,18 +656,38 @@ void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscMa
 {
     clear(false, false, false);
 
+    int nodeCount = 0;
     forEachXmlChildElementWithTagName(xml, e, "FILTER")
     {
         createNodeFromXml(*e, oscManager);
         changed();
+        nodeCount++;
     }
 
+    int connectionCount = 0;
     forEachXmlChildElementWithTagName(xml, e2, "CONNECTION")
     {
-        addConnection(
-            AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("srcFilter")), e2->getIntAttribute("srcChannel"),
-            AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("dstFilter")), e2->getIntAttribute("dstChannel"));
+        auto srcFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("srcFilter"));
+        auto srcChannel = e2->getIntAttribute("srcChannel");
+        auto dstFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("dstFilter"));
+        auto dstChannel = e2->getIntAttribute("dstChannel");
+
+        spdlog::debug("[restoreFromXml] Adding connection: src={}/{} -> dst={}/{}", (int)srcFilter.uid, srcChannel,
+                      (int)dstFilter.uid, dstChannel);
+
+        // Use addConnectionRaw to bypass undo manager during restore
+        bool success = addConnectionRaw(srcFilter, srcChannel, dstFilter, dstChannel);
+        spdlog::debug("[restoreFromXml] Connection add result: {}", success ? "SUCCESS" : "FAILED");
+
+        connectionCount++;
     }
 
+    spdlog::info("[FilterGraph::restoreFromXml] Loaded {} nodes, {} connections from XML", nodeCount, connectionCount);
+
+    auto beforeRemove = graph.getConnections().size();
     graph.removeIllegalConnections();
+    auto afterRemove = graph.getConnections().size();
+
+    spdlog::info("[FilterGraph::restoreFromXml] After removeIllegalConnections: {} -> {} connections", beforeRemove,
+                 afterRemove);
 }

@@ -633,8 +633,8 @@ bool PluginField::isInterestedInFileDrag(const StringArray& files)
         }
 #endif
         // If they're sound files.
-        else if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
-                 files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
+        if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
+            files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
         {
             retval = true;
             break;
@@ -663,8 +663,8 @@ void PluginField::filesDropped(const StringArray& files, int x, int y)
             pluginsInArray = true;
 #endif
         // If they're sound files.
-        else if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
-                 files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
+        if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
+            files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
         {
             soundsInArray = true;
         }
@@ -1093,7 +1093,7 @@ void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 
         connection->setSize(10, 12);
         addAndMakeVisible(connection);
-        connection->toFront(false); // Bring dragging connection to front
+        connection->toFront(false);                         // Bring dragging connection to front
         connection->setInterceptsMouseClicks(false, false); // Don't intercept mouse while dragging
         draggingConnection = connection;
 
@@ -1162,7 +1162,8 @@ void PluginField::releaseConnection(int x, int y)
                     signalPath->addConnection(AudioProcessorGraph::NodeID(outputPin->getUid()), outputPin->getChannel(),
                                               AudioProcessorGraph::NodeID(inputPin->getUid()), inputPin->getChannel());
                     draggingConnection->setDestination(p);
-                    draggingConnection->setInterceptsMouseClicks(true, true); // Re-enable mouse clicks for finalized connection
+                    draggingConnection->setInterceptsMouseClicks(
+                        true, true); // Re-enable mouse clicks for finalized connection
 
                     // If we should be connecting all the outputs and inputs of the two
                     // plugins (user holding down shift).
@@ -1465,6 +1466,24 @@ void PluginField::loadFromXml(XmlElement* patch)
     int i, j;
     Array<uint32> paramConnections;
 
+    // === GLITCH-FREE PATCH SWITCHING ===
+    // Start crossfade out before making any changes
+    auto* crossfader = signalPath->getCrossfadeMixer();
+    if (crossfader != nullptr)
+    {
+        crossfader->startFadeOut(100); // 100ms fade out
+
+        // Wait for fade to complete (blocking, but short)
+        // This ensures audio is silent before we destroy plugins
+        int maxWaitMs = 150; // Slightly longer than fade time for safety
+        int waited = 0;
+        while (crossfader->isFading() && waited < maxWaitMs)
+        {
+            Thread::sleep(5);
+            waited += 5;
+        }
+    }
+
     // Delete all the filter and connection components.
     {
         // If we don't do this, the connections will try to contact their pins,
@@ -1497,6 +1516,13 @@ void PluginField::loadFromXml(XmlElement* patch)
     }
     else
         signalPath->clear(audioInputEnabled, midiInputEnabled);
+
+    // === FADE BACK IN ===
+    // Start crossfade in after loading is complete
+    if (crossfader != nullptr)
+    {
+        crossfader->startFadeIn(100); // 100ms fade in
+    }
 
     // Add the filter components.
     for (i = 0; i < signalPath->getNumFilters(); ++i)

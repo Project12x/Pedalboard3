@@ -32,10 +32,12 @@
 #ifndef __JUCE_FILTERGRAPH_JUCEHEADER__
 #define __JUCE_FILTERGRAPH_JUCEHEADER__
 
+#include "CrossfadeMixer.h"
 #include "OscMappingManager.h"
 #include "SafetyLimiter.h"
 
 #include <JuceHeader.h>
+
 
 using juce::uint32;
 
@@ -155,6 +157,9 @@ class FilterGraph : public FileBasedDocument
     /// Returns true if audio device is active and processing audio
     bool isAudioPlaying() const { return graph.getSampleRate() > 0; }
 
+    /// Returns the CrossfadeMixer for glitch-free patch switching
+    CrossfadeMixerProcessor* getCrossfadeMixer() const { return crossfadeMixer; }
+
     int getNumFilters() const;
     const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
     const AudioProcessorGraph::Node::Ptr getNodeForId(const AudioProcessorGraph::NodeID uid) const;
@@ -235,6 +240,10 @@ class FilterGraph : public FileBasedDocument
     // Audio safety protection (always active before output)
     SafetyLimiterProcessor* safetyLimiter = nullptr; // Owned by graph
     AudioProcessorGraph::NodeID safetyLimiterNodeId;
+
+    // Crossfade mixer for glitch-free patch switching
+    CrossfadeMixerProcessor* crossfadeMixer = nullptr; // Owned by graph
+    AudioProcessorGraph::NodeID crossfadeMixerNodeId;
 
     uint32 lastUID;
     uint32 getNextUID() throw();
