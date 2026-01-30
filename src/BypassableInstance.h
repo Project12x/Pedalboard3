@@ -91,6 +91,15 @@ class BypassableInstance : public AudioPluginInstance
         return bus && bus->getCurrentLayout().size() >= 2;
     }
 
+    // Bus forwarding for wrapped plugin - CRITICAL for VSTi audio pins
+    // NOTE: AudioProcessor::getBusCount/getBus/getTotalNumChannels are NOT virtual!
+    // Callers MUST use getPlugin() to access the wrapped plugin's actual bus state,
+    // or use these explicit helper methods.
+    int getWrappedBusCount(bool isInput) const { return plugin->getBusCount(isInput); }
+    AudioProcessor::Bus* getWrappedBus(bool isInput, int busIndex) { return plugin->getBus(isInput, busIndex); }
+    int getWrappedTotalNumInputChannels() const { return plugin->getTotalNumInputChannels(); }
+    int getWrappedTotalNumOutputChannels() const { return plugin->getTotalNumOutputChannels(); }
+
     ///	Returns the length of the plugin's tail.
     double getTailLengthSeconds() const { return plugin->getTailLengthSeconds(); };
     ///	Returns true if the plugin wants MIDI input.

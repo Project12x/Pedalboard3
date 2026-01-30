@@ -148,6 +148,23 @@ void FilterGraph::addFilter(AudioPluginInstance* plugin, double x, double y)
     {
         String errorMessage;
 
+        // Log bus state BEFORE enableAllBuses
+        spdlog::debug(
+            "[addFilter] Plugin '{}' BEFORE enableAllBuses: inputBuses={}, outputBuses={}, totalIn={}, totalOut={}",
+            plugin->getName().toStdString(), plugin->getBusCount(true), plugin->getBusCount(false),
+            plugin->getTotalNumInputChannels(), plugin->getTotalNumOutputChannels());
+
+        // VST3 instruments may have disabled output buses by default (confirmed by Carla source).
+        // Enable all buses before wrapping to ensure output pins are visible.
+        plugin->enableAllBuses();
+
+        // Log bus state AFTER enableAllBuses
+        spdlog::debug(
+            "[addFilter] Plugin '{}' AFTER enableAllBuses: inputBuses={}, outputBuses={}, totalIn={}, totalOut={}",
+            plugin->getName().toStdString(), plugin->getBusCount(true), plugin->getBusCount(false),
+            plugin->getTotalNumInputChannels(), plugin->getTotalNumOutputChannels());
+        spdlog::default_logger()->flush();
+
         // JUCE 8: addNode takes unique_ptr
         auto instance = std::make_unique<BypassableInstance>(plugin);
 
@@ -556,15 +573,11 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(pd, 44100.0, 512, errorMessage);
 
-    // Configure stereo bus layout for VST3 plugins (same as addFilterRaw)
+    // VST3 instruments may have disabled output buses by default (confirmed by Carla source).
+    // Enable all buses to ensure output pins are visible for synths.
     if (tempInstance)
     {
-        AudioProcessor::BusesLayout stereoLayout;
-        stereoLayout.inputBuses.add(AudioChannelSet::stereo());
-        stereoLayout.outputBuses.add(AudioChannelSet::stereo());
-
-        if (tempInstance->checkBusesLayoutSupported(stereoLayout))
-            tempInstance->setBusesLayout(stereoLayout);
+        tempInstance->enableAllBuses();
     }
 
     std::unique_ptr<AudioProcessor> instancePtr;

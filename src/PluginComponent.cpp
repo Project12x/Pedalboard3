@@ -37,6 +37,62 @@
 using namespace std;
 
 //------------------------------------------------------------------------------
+// Helper functions to count channels by iterating buses (Element-style pattern)
+// This is safer than deprecated getNumInputChannels()/getNumOutputChannels()
+// and works correctly with VST3 instruments that may have complex bus layouts.
+// Falls back to getTotalNumInputChannels/getTotalNumOutputChannels for
+// processors that don't use buses (like internal PedalboardProcessors).
+//
+// CRITICAL: Must unwrap BypassableInstance wrapper to get real plugin's buses!
+// AudioProcessor::getBusCount/getBus/getTotalNumChannels are NOT virtual,
+// so calling these on BypassableInstance returns the wrapper's empty bus state.
+//------------------------------------------------------------------------------
+namespace
+{
+// Get the actual plugin - unwrap BypassableInstance if present
+AudioProcessor* getUnwrappedProcessor(AudioProcessor* proc)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getPlugin();
+    return proc;
+}
+
+int countInputChannelsFromBuses(AudioProcessor* proc)
+{
+    // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
+    AudioProcessor* realProc = getUnwrappedProcessor(proc);
+
+    int totalChannels = 0;
+    for (int busIdx = 0; busIdx < realProc->getBusCount(true); ++busIdx)
+    {
+        if (auto* bus = realProc->getBus(true, busIdx))
+            totalChannels += bus->getNumberOfChannels();
+    }
+    // Fallback for processors without bus configuration (internal processors)
+    if (totalChannels == 0)
+        totalChannels = realProc->getTotalNumInputChannels();
+    return totalChannels;
+}
+
+int countOutputChannelsFromBuses(AudioProcessor* proc)
+{
+    // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
+    AudioProcessor* realProc = getUnwrappedProcessor(proc);
+
+    int totalChannels = 0;
+    for (int busIdx = 0; busIdx < realProc->getBusCount(false); ++busIdx)
+    {
+        if (auto* bus = realProc->getBus(false, busIdx))
+            totalChannels += bus->getNumberOfChannels();
+    }
+    // Fallback for processors without bus configuration (internal processors)
+    if (totalChannels == 0)
+        totalChannels = realProc->getTotalNumOutputChannels();
+    return totalChannels;
+}
+} // namespace
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 class NiallsGenericEditor : public GenericAudioProcessorEditor
 {
@@ -461,7 +517,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         y = 35.0f;
         tempFont.setHeight(12.0f);
         tempFont.setStyleFlags(Font::plain);
-        for (i = 0; i < plugin->getNumInputChannels(); ++i)
+        for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
         {
             if (!ignorePinNames)
             {
@@ -495,7 +551,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add input parameter/midi name.
-        if ((plugin->acceptsMidi() || (plugin->getNumInputChannels() > 0) || (plugin->getNumOutputChannels() > 0)) &&
+        if ((plugin->acceptsMidi() || (countInputChannelsFromBuses(plugin) > 0) ||
+             (countOutputChannelsFromBuses(plugin) > 0)) &&
             ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
         {
             // if(!ignorePinNames)
@@ -517,7 +574,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
         // Determine plugin output channel name bounds.
         y = 35.0f;
-        for (i = 0; i < plugin->getNumOutputChannels(); ++i)
+        for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
         {
             if (!ignorePinNames)
             {
@@ -662,7 +719,7 @@ void PluginComponent::createPins()
     const uint32 uid = node->nodeID.uid;
 
     y = 25;
-    for (i = 0; i < plugin->getNumInputChannels(); ++i)
+    for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
 
@@ -676,7 +733,8 @@ void PluginComponent::createPins()
         y += 18;
     }
 
-    if ((plugin->acceptsMidi() || (plugin->getNumInputChannels() > 0) || (plugin->getNumOutputChannels() > 0)) &&
+    if ((plugin->acceptsMidi() || (countInputChannelsFromBuses(plugin) > 0) ||
+         (countOutputChannelsFromBuses(plugin) > 0)) &&
         ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
     {
         Point<int> pinPos;
@@ -692,7 +750,7 @@ void PluginComponent::createPins()
     }
 
     y = 25;
-    for (i = 0; i < plugin->getNumOutputChannels(); ++i)
+    for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
 
