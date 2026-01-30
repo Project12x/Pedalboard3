@@ -26,7 +26,6 @@
 #include <JuceHeader.h>
 #include <map>
 
-
 class PresetBar;
 class PluginEditorWindow;
 class PluginPinComponent;
@@ -147,6 +146,9 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
     OwnedArray<GlyphArrangement> inputText;
     ///	Used to draw the names of the output channels.
     OwnedArray<GlyphArrangement> outputText;
+    ///	Channel names for color-coded rendering.
+    StringArray inputNames;
+    StringArray outputNames;
 
     ///	Keeps track of the positions of the input pins.
     Array<PluginPinComponent*> inputPins;

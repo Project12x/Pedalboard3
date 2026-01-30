@@ -80,7 +80,9 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     MidiBuffer tempMidi;
     MidiBuffer::Iterator it(midiMessages);
 
+    // Real-time safety: verify pre-allocated buffer is large enough (no allocation here)
     jassert(buffer.getNumChannels() <= tempBuffer.getNumChannels());
+    jassert(buffer.getNumSamples() <= tempBuffer.getNumSamples());
 
     // Pass on any MIDI messages received via OSC.
     midiCollector.removeNextBlockOfMessages(tempMidi, buffer.getNumSamples());
@@ -97,7 +99,8 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         }
     }
 
-    tempBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);
+    // Note: tempBuffer was pre-allocated in prepareToPlay() with 2x capacity
+    // No setSize() call here to avoid potential real-time allocation
 
     // Fill out our temporary buffer correctly.
     for (i = 0; i < buffer.getNumChannels(); ++i)

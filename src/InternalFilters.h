@@ -68,6 +68,13 @@ class InternalPluginFormat : public AudioPluginFormat
         toneGenProcFilter,
         splitterProcFilter,
         mixerProcFilter,
+        irLoaderProcFilter,
+        midiTransposeProcFilter,
+        midiRechannelizeProcFilter,
+        keyboardSplitProcFilter,
+        notesProcFilter,
+        labelProcFilter,
+        midiFilePlayerProcFilter,
 
         endOfFilterTypes
     };
@@ -127,6 +134,13 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription toneGenProcDesc;
     PluginDescription splitterProcDesc;
     PluginDescription mixerProcDesc;
+    PluginDescription irLoaderProcDesc;
+    PluginDescription midiTransposeProcDesc;
+    PluginDescription midiRechannelizeProcDesc;
+    PluginDescription keyboardSplitProcDesc;
+    PluginDescription notesProcDesc;
+    PluginDescription labelProcDesc;
+    PluginDescription midiFilePlayerProcDesc;
 };
 
 #endif

@@ -32,7 +32,12 @@
 #include "InternalFilters.h"
 
 #include "FilterGraph.h"
+#include "IRLoaderProcessor.h"
+#include "LabelProcessor.h"
+#include "MidiFilePlayer.h"
 #include "MidiMappingManager.h"
+#include "MidiUtilityProcessors.h"
+#include "NotesProcessor.h"
 #include "OscMappingManager.h"
 #include "PedalboardProcessors.h"
 #include "RoutingProcessors.h"
@@ -137,6 +142,48 @@ InternalPluginFormat::InternalPluginFormat()
         p.fillInPluginDescription(mixerProcDesc);
         mixerProcDesc.category = "Routing";
     }
+
+    {
+        IRLoaderProcessor p;
+        p.fillInPluginDescription(irLoaderProcDesc);
+        irLoaderProcDesc.category = "Effects";
+    }
+
+    {
+        MidiTransposeProcessor p;
+        p.fillInPluginDescription(midiTransposeProcDesc);
+        midiTransposeProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        MidiRechannelizeProcessor p;
+        p.fillInPluginDescription(midiRechannelizeProcDesc);
+        midiRechannelizeProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        KeyboardSplitProcessor p;
+        p.fillInPluginDescription(keyboardSplitProcDesc);
+        keyboardSplitProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        NotesProcessor p;
+        p.fillInPluginDescription(notesProcDesc);
+        notesProcDesc.category = "Built-in";
+    }
+
+    {
+        LabelProcessor p;
+        p.fillInPluginDescription(labelProcDesc);
+        labelProcDesc.category = "Built-in";
+    }
+
+    {
+        MidiFilePlayerProcessor p;
+        p.fillInPluginDescription(midiFilePlayerProcDesc);
+        midiFilePlayerProcDesc.category = "Built-in";
+    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -208,6 +255,34 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new MixerProcessor();
     }
+    else if (desc.name == irLoaderProcDesc.name)
+    {
+        return new IRLoaderProcessor();
+    }
+    else if (desc.name == midiTransposeProcDesc.name)
+    {
+        return new MidiTransposeProcessor();
+    }
+    else if (desc.name == midiRechannelizeProcDesc.name)
+    {
+        return new MidiRechannelizeProcessor();
+    }
+    else if (desc.name == keyboardSplitProcDesc.name)
+    {
+        return new KeyboardSplitProcessor();
+    }
+    else if (desc.name == notesProcDesc.name)
+    {
+        return new NotesProcessor();
+    }
+    else if (desc.name == labelProcDesc.name)
+    {
+        return new LabelProcessor();
+    }
+    else if (desc.name == midiFilePlayerProcDesc.name)
+    {
+        return new MidiFilePlayerProcessor();
+    }
 
     return 0;
 }
@@ -248,6 +323,20 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &splitterProcDesc;
     case mixerProcFilter:
         return &mixerProcDesc;
+    case irLoaderProcFilter:
+        return &irLoaderProcDesc;
+    case midiTransposeProcFilter:
+        return &midiTransposeProcDesc;
+    case midiRechannelizeProcFilter:
+        return &midiRechannelizeProcDesc;
+    case keyboardSplitProcFilter:
+        return &keyboardSplitProcDesc;
+    case notesProcFilter:
+        return &notesProcDesc;
+    case labelProcFilter:
+        return &labelProcDesc;
+    case midiFilePlayerProcFilter:
+        return &midiFilePlayerProcDesc;
     default:
         return 0;
     }

@@ -26,9 +26,12 @@
 #include "AudioSingletons.h"
 #include "ColourSchemeEditor.h"
 #include "Images.h"
+#include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
+#include "MidiFilePlayer.h"
+#include "NotesProcessor.h"
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
@@ -294,6 +297,18 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         MixerProcessor mixer;
         mixer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        NotesProcessor notes;
+        notes.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        LabelProcessor label;
+        label.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiFilePlayerProcessor midiFilePlayer;
+        midiFilePlayer.fillInPluginDescription(desc);
         pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);

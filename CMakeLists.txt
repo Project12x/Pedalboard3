@@ -44,6 +44,14 @@ CPMAddPackage(
     OPTIONS "JSON_BuildTests OFF"
 )
 
+# md4c - C Markdown Parser
+CPMAddPackage(
+    NAME md4c
+    GITHUB_REPOSITORY mity/md4c
+    GIT_TAG release-0.5.2
+    OPTIONS "MD4C_USE_UTF8 ON"
+)
+
 
 # ==============================================================================
 # Testing Framework
@@ -141,6 +149,8 @@ target_sources(Pedalboard3 PRIVATE
     src/BypassableInstance.h
     src/InternalFilters.cpp
     src/InternalFilters.h
+    src/PluginPoolManager.cpp
+    src/PluginPoolManager.h
     
     # Plugin Components
     src/PluginComponent.cpp
@@ -155,6 +165,8 @@ target_sources(Pedalboard3 PRIVATE
     src/PedalboardProcessorEditors.h
     src/SafetyLimiter.cpp
     src/SafetyLimiter.h
+    src/CrossfadeMixer.cpp
+    src/CrossfadeMixer.h
     src/TunerProcessor.cpp
     src/TunerProcessor.h
     src/TunerControl.cpp
@@ -168,6 +180,33 @@ target_sources(Pedalboard3 PRIVATE
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
+    src/IRLoaderProcessor.cpp
+    src/IRLoaderProcessor.h
+    src/IRLoaderControl.cpp
+    src/IRLoaderControl.h
+    src/MidiUtilityProcessors.cpp
+    src/MidiUtilityProcessors.h
+    src/MidiUtilityControls.cpp
+    
+    # Notes Node
+    src/NotesProcessor.cpp
+    src/NotesProcessor.h
+    src/NotesControl.cpp
+    src/NotesControl.h
+    src/MarkdownTokeniser.cpp
+    src/MarkdownTokeniser.h
+    
+    # Label Node
+    src/LabelProcessor.cpp
+    src/LabelProcessor.h
+    src/LabelControl.cpp
+    src/LabelControl.h
+    
+    # MIDI File Player
+    src/MidiFilePlayer.cpp
+    src/MidiFilePlayer.h
+    src/MidiFilePlayerControl.cpp
+    src/MidiFilePlayerControl.h
     
     # MIDI Handling
     src/MidiMappingManager.cpp
@@ -311,6 +350,10 @@ target_compile_definitions(Pedalboard3 PRIVATE
     JUCE_STRICT_REFCOUNTEDPOINTER=1
 )
 
+target_include_directories(Pedalboard3 PRIVATE
+    ${md4c_SOURCE_DIR}/src
+)
+
 # Link JUCE modules
 target_link_libraries(Pedalboard3 PRIVATE
     juce::juce_audio_basics
@@ -321,6 +364,7 @@ target_link_libraries(Pedalboard3 PRIVATE
     juce::juce_core
     juce::juce_cryptography
     juce::juce_data_structures
+    juce::juce_dsp
     juce::juce_events
     juce::juce_graphics
     juce::juce_gui_basics
@@ -334,7 +378,9 @@ target_link_libraries(Pedalboard3 PRIVATE
     # Modern C++ libraries
     fmt::fmt
     spdlog::spdlog
+    spdlog::spdlog
     nlohmann_json::nlohmann_json
+    md4c
     
     # UI Effects
     melatonin_blur

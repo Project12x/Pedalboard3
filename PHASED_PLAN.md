@@ -147,10 +147,36 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | # | Feature | Effort | Status |
 |---|---------|--------|--------|
 | 5A.1 | **MIDI Learn** | 1 day | ✅ Done |
-| 5A.2 | **Notes Node** | 1-2 days | ⏳ Planned |
-| 5A.3 | **Talkback Mode** | 1 day | ⏳ Planned |
-| 5A.4 | **Placeholder Nodes** | 2-3 days | ⏳ Planned |
-| 5A.5 | **Full-Screen Lyrics** | 1-2 days | ⏳ Planned |
+| 5A.2 | **Notes Node** | 1-2 days | ✅ Done |
+| 5A.3 | **Label Node** | 1 day | ✅ Done |
+| 5A.4 | **Talkback Mode** | 1 day | ⏳ Planned |
+| 5A.5 | **Placeholder Nodes** | 2-3 days | ⏳ Planned |
+| 5A.6 | **Full-Screen Lyrics** | 1-2 days | ⏳ Planned |
+
+### 5A-B: Visual Nodes 📊 (Canvas Enhancement)
+
+> **Target:** Visualization and annotation features for premium UX
+> **Why:** Differentiates from competitors, enhances live performance workflow
+
+#### Audio Visualizers (pass-through audio)
+| # | Feature | Effort | Status | Notes |
+|---|---------|--------|--------|-------|
+| 5A-B.1 | **Oscilloscope** | 2-3 days | ⏳ Planned | Real-time waveform, stereo overlay, trigger modes |
+| 5A-B.2 | **Spectrum Analyzer** | 3-4 days | ⏳ Planned | FFT-based frequency bars/curve, EQ visualization |
+
+#### Purely Visual Nodes (no audio I/O)
+| # | Feature | Effort | Status | Notes |
+|---|---------|--------|--------|-------|
+| 5A-B.3 | **Image Node** | 1-2 days | ⏳ Planned | Display custom logos/images on canvas |
+| 5A-B.4 | **Clock/Timer** | 1-2 days | ⏳ Planned | Current time, setlist timer, countdown |
+| 5A-B.5 | **Lyrics Sheet** | 3-5 days | ⏳ Planned | Color-coded lyrics, full-screen stage mode, markdown support |
+| 5A-B.6 | **3D Visualization** | 5+ days | ⏳ Planned | OpenGL-based audio reactive 3D visuals |
+
+**Implementation Pattern (established):**
+- `*Processor`: Inherits PedalboardProcessor, implements `getControls()`, set `numInputChannels=0, numOutputChannels=0` for visual-only
+- `*Control`: Inherits Component, renders UI
+- Skip `BypassableInstance` wrapping in FilterGraph.cpp
+- Add to `PluginComponent.cpp` button skip lists
 
 ### 5B: Glitch-Free Switching (Week 3-4) — THE Killer Feature
 | # | Feature | Status | Notes |
