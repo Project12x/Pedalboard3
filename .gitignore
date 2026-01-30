@@ -18,6 +18,7 @@ cmake-build-*/
 *.suo
 *.user
 *.log
+build_log*.txt
 
 # CMake generated
 CMakeCache.txt
@@ -50,12 +51,25 @@ apply_juce8_fixes.ps1
 fix_brancheslaf.ps1
 build_output.txt
 
+# Working documents (not part of release)
+*_SPRINT.md
+*_MARKETING.md
+*_REPORT.md
+GPL_CODE_REFERENCE.md
+Implementing*.md
+
+# AI tool directories
+.claude/
+
 # OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# JUCE specific
+# JUCE specific (note: JUCE/ is a submodule, intentionally tracked)
 Builds/
 JuceLibraryCode/
 *.jucer.bak
+
+# Local archives
+releases/
