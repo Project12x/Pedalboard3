@@ -4,39 +4,69 @@ description: Update CHANGELOG.md after completing work
 
 # Changelog Update Workflow
 
-After completing a feature, fix, or significant change, update the project's CHANGELOG.md.
+Update the project's CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
+
+## Keep a Changelog Format
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- New features
+
+### Changed
+- Changes to existing functionality
+
+### Deprecated
+- Soon-to-be removed features
+
+### Removed
+- Removed features
+
+### Fixed
+- Bug fixes
+
+### Security
+- Security fixes
+
+## [1.0.0] - YYYY-MM-DD
+
+### Added
+- Initial release features
+```
 
 ## Steps
 
-1. **Locate or create CHANGELOG.md** in the project root
-   - If none exists, create one following [Keep a Changelog](https://keepachangelog.com/) format
+1. **Locate or create CHANGELOG.md** in the project root using the format above
 
-2. **Find the unreleased/development section** at the top of the changelog
-   - Common names: `[Unreleased]`, `[Development]`, `[Next]`, or the current dev version like `[X.Y.Z-dev]`
-   - If no such section exists, create one below the header
+2. **Add entries to `[Unreleased]`** under the appropriate category:
+   - `Added` – New features
+   - `Changed` – Changes to existing functionality  
+   - `Deprecated` – Soon-to-be removed features
+   - `Removed` – Removed features
+   - `Fixed` – Bug fixes
+   - `Security` – Vulnerability fixes
 
-3. **Add entry under the appropriate category:**
-   - `### Added` – New features or capabilities
-   - `### Changed` – Changes to existing functionality
-   - `### Fixed` – Bug fixes
-   - `### Removed` – Removed features
-   - `### Deprecated` – Soon-to-be removed features
-   - `### Security` – Security fixes
+3. **Entry format:**
+   - Start with **bold component name** if applicable
+   - Keep entries concise but descriptive
+   - Use past tense ("Added", "Fixed", not "Add", "Fix")
 
-4. **Write a concise entry:**
-   - Start with **bold feature/component name** if applicable
-   - Include brief description of what changed
-   - For bug fixes, optionally add root cause synopsis
+4. **For releases:** Move `[Unreleased]` content to new version section with date
 
-5. **For significant bug fixes**, consider adding to a Technical Fixes Reference section with:
-   - Symptom
-   - Root cause
-   - Solution summary
-   - Files changed
+## Guiding Principles (from keepachangelog.com)
 
-## Example Entry
-
-```markdown
-### Fixed
-- **VSTi Audio Output Pins** – Root cause: wrapper class hid real plugin's bus state. Solution: unwrap before querying buses.
-```
+- Changelogs are for **humans**, not machines
+- Every version should have an entry
+- Group by type of change
+- Versions should be linkable
+- Latest version comes first
+- Release date for each version
+- Mention if you follow Semantic Versioning
