@@ -33,6 +33,7 @@
 #include "Vectors.h"
 
 #include <melatonin_blur/melatonin_blur.h>
+#include <spdlog/spdlog.h>
 
 using namespace std;
 
@@ -207,6 +208,10 @@ PluginComponent::~PluginComponent()
 //------------------------------------------------------------------------------
 void PluginComponent::paint(Graphics& g)
 {
+    // Temp debug logging
+    spdlog::debug("[PluginComponent::paint] Starting paint for: {}", pluginName.toStdString());
+    spdlog::default_logger()->flush();
+
     int i;
     auto& colours = ColourScheme::getInstance().colours;
     float w = (float)getWidth();
@@ -238,6 +243,9 @@ void PluginComponent::paint(Graphics& g)
     // Draw the output channels.
     for (i = 0; i < outputText.size(); ++i)
         outputText[i]->draw(g);
+
+    spdlog::debug("[PluginComponent::paint] Paint complete for: {}", pluginName.toStdString());
+    spdlog::default_logger()->flush();
 }
 
 //------------------------------------------------------------------------------
@@ -795,15 +803,47 @@ void PluginPinComponent::paint(Graphics& g)
 {
     const float w = (float)getWidth() - 2;
     const float h = (float)getHeight() - 2;
+    const float cx = 1.0f + w * 0.5f;
+    const float cy = 1.0f + h * 0.5f;
+    const float radius = jmin(w, h) * 0.5f;
 
-    g.setColour(Colours::black);
-    g.drawEllipse(1, 1, w, h, 1.0f);
+    // Get base color
+    Colour baseColour = parameterPin ? ColourScheme::getInstance().colours["Parameter Connection"]
+                                     : ColourScheme::getInstance().colours["Audio Connection"];
 
-    if (!parameterPin)
-        g.setColour(ColourScheme::getInstance().colours["Audio Connection"]);
-    else
-        g.setColour(ColourScheme::getInstance().colours["Parameter Connection"]);
+    // === 3D Gradient sphere effect ===
+    ColourGradient sphereGrad(baseColour.brighter(0.4f), cx - radius * 0.3f, cy - radius * 0.3f,
+                              baseColour.darker(0.3f), cx + radius * 0.5f, cy + radius * 0.5f, true);
+    g.setGradientFill(sphereGrad);
     g.fillEllipse(1, 1, w, h);
+
+    // === Highlight for gloss effect ===
+    g.setColour(Colours::white.withAlpha(0.25f));
+    g.fillEllipse(cx - radius * 0.5f, cy - radius * 0.6f, radius * 0.6f, radius * 0.4f);
+
+    // === Border ===
+    g.setColour(baseColour.darker(0.5f));
+    g.drawEllipse(1, 1, w, h, 1.5f);
+
+    // === Direction indicator (chevron) ===
+    Path chevron;
+    const float chevronSize = radius * 0.5f;
+    g.setColour(Colours::white.withAlpha(0.8f));
+
+    if (direction) // Output pin - chevron points right (→)
+    {
+        chevron.startNewSubPath(cx - chevronSize * 0.3f, cy - chevronSize * 0.6f);
+        chevron.lineTo(cx + chevronSize * 0.5f, cy);
+        chevron.lineTo(cx - chevronSize * 0.3f, cy + chevronSize * 0.6f);
+    }
+    else // Input pin - chevron points left (←)
+    {
+        chevron.startNewSubPath(cx + chevronSize * 0.3f, cy - chevronSize * 0.6f);
+        chevron.lineTo(cx - chevronSize * 0.5f, cy);
+        chevron.lineTo(cx + chevronSize * 0.3f, cy + chevronSize * 0.6f);
+    }
+
+    g.strokePath(chevron, PathStrokeType(1.5f, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 
 //------------------------------------------------------------------------------

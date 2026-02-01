@@ -37,10 +37,13 @@
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
 #include "SettingsManager.h"
+#include "SubGraphProcessor.h"
 #include "UndoActions.h"
 
+#include <chrono>
 #include <iostream>
 #include <spdlog/spdlog.h>
+#include <thread>
 
 using namespace std;
 
@@ -137,8 +140,14 @@ void FilterGraph::addFilter(const PluginDescription* desc, double x, double y)
 {
     if (desc != nullptr)
     {
+        spdlog::debug("[FilterGraph::addFilter] About to call undoManager.perform for: {}", desc->name.toStdString());
+        spdlog::default_logger()->flush();
+
         undoManager.beginNewTransaction();
         undoManager.perform(new AddPluginAction(*this, *desc, x, y));
+
+        spdlog::debug("[FilterGraph::addFilter] undoManager.perform returned successfully");
+        spdlog::default_logger()->flush();
     }
 }
 
@@ -308,9 +317,18 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
     if (desc == nullptr)
         return AudioProcessorGraph::NodeID();
 
+    spdlog::debug("[addFilterRaw] Adding plugin: {} (identifier: {})", desc->name.toStdString(),
+                  desc->fileOrIdentifier.toStdString());
+    spdlog::default_logger()->flush();
+
     String errorMessage;
     auto tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(*desc, 44100.0, 512, errorMessage);
+
+    spdlog::debug("[addFilterRaw] createPluginInstance returned: {}", tempInstance ? "valid" : "null");
+    if (!tempInstance)
+        spdlog::error("[addFilterRaw] Error: {}", errorMessage.toStdString());
+    spdlog::default_logger()->flush();
 
     if (tempInstance)
     {
@@ -320,30 +338,124 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
 
         if (tempInstance->checkBusesLayoutSupported(stereoLayout))
             tempInstance->setBusesLayout(stereoLayout);
+
+        spdlog::debug("[addFilterRaw] Plugin channels: in={}, out={}", tempInstance->getTotalNumInputChannels(),
+                      tempInstance->getTotalNumOutputChannels());
+        spdlog::default_logger()->flush();
     }
 
     std::unique_ptr<AudioProcessor> instance;
     if (tempInstance)
     {
+        spdlog::debug("[addFilterRaw] Checking if plugin needs wrapping...");
+        spdlog::default_logger()->flush();
+
         if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
+            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
+            dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
+        {
+            spdlog::debug("[addFilterRaw] Using plugin directly (no BypassableInstance wrapper)");
             instance = std::move(tempInstance);
+        }
         else
+        {
+            spdlog::debug("[addFilterRaw] Wrapping in BypassableInstance");
             instance = std::make_unique<BypassableInstance>(tempInstance.release());
+        }
+        spdlog::debug("[addFilterRaw] Wrapping complete");
+        spdlog::default_logger()->flush();
     }
 
     AudioProcessorGraph::Node::Ptr node;
     if (instance)
-        node = graph.addNode(std::move(instance));
+    {
+        spdlog::debug("[addFilterRaw] Adding to graph...");
+        spdlog::default_logger()->flush();
+
+        // CRITICAL: Lock the audio callback to prevent race with audio thread
+        // This ensures the node is fully added before audio processing resumes
+        {
+            const juce::ScopedLock sl(graph.getCallbackLock());
+            node = graph.addNode(std::move(instance));
+        }
+
+        spdlog::debug("[addFilterRaw] addNode returned: {}", node ? "valid" : "null");
+        spdlog::default_logger()->flush();
+    }
 
     if (node != nullptr)
     {
+        spdlog::debug("[addFilterRaw] Setting node properties...");
+        spdlog::default_logger()->flush();
         node->properties.set("x", x);
+        spdlog::debug("[addFilterRaw] Set x property");
+        spdlog::default_logger()->flush();
         node->properties.set("y", y);
-        changed();
-        return node->nodeID;
+        spdlog::debug("[addFilterRaw] Set y property, checking processor type...");
+        spdlog::default_logger()->flush();
+
+        // Check processor before dynamic_cast
+        AudioProcessor* proc = node->getProcessor();
+        spdlog::debug("[addFilterRaw] Got processor pointer: {}", proc ? "valid" : "null");
+        spdlog::default_logger()->flush();
+
+        // TEMPORARY TEST: Skip changed() for SubGraphProcessor to isolate crash
+        bool isSubGraph = (proc != nullptr) && (dynamic_cast<SubGraphProcessor*>(proc) != nullptr);
+        spdlog::debug("[addFilterRaw] isSubGraph = {}", isSubGraph);
+        spdlog::default_logger()->flush();
+
+        // Debug: Add delay to see if crash is immediate or async
+        spdlog::debug("[addFilterRaw] About to enter if block...");
+        spdlog::default_logger()->flush();
+
+        if (isSubGraph)
+        {
+            spdlog::debug("[addFilterRaw] Inside if block for SubGraphProcessor");
+            spdlog::default_logger()->flush();
+
+            // Add explicit delay to see if crash is async
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            spdlog::debug("[addFilterRaw] After 50ms delay - still alive");
+            spdlog::default_logger()->flush();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            spdlog::debug("[addFilterRaw] After 100ms total - still alive, skipping changed()");
+            spdlog::default_logger()->flush();
+        }
+        else
+        {
+            spdlog::debug("[addFilterRaw] Properties set, calling changed()...");
+            spdlog::default_logger()->flush();
+            try
+            {
+                changed();
+                spdlog::debug("[addFilterRaw] changed() completed successfully");
+            }
+            catch (const std::exception& e)
+            {
+                spdlog::error("[addFilterRaw] Exception in changed(): {}", e.what());
+                spdlog::default_logger()->flush();
+            }
+            catch (...)
+            {
+                spdlog::error("[addFilterRaw] Unknown exception in changed()");
+                spdlog::default_logger()->flush();
+            }
+        }
+        spdlog::debug("[addFilterRaw] All branches complete, about to access node->nodeID");
+        spdlog::default_logger()->flush();
+
+        spdlog::debug("[addFilterRaw] node pointer: {}", node ? "valid" : "null");
+        spdlog::default_logger()->flush();
+
+        auto nodeId = node->nodeID;
+        spdlog::debug("[addFilterRaw] Successfully added node with ID: {}", nodeId.uid);
+        spdlog::default_logger()->flush();
+
+        return nodeId;
     }
 
+    spdlog::error("[addFilterRaw] Failed to add plugin to graph");
     return AudioProcessorGraph::NodeID();
 }
 
@@ -506,11 +618,58 @@ void FilterGraph::setLastDocumentOpened(const File& file)
 //==============================================================================
 static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscMappingManager& oscManager)
 {
+    spdlog::debug("[createNodeXml] Processing node: {}", node->getProcessor()->getName().toStdString());
+    spdlog::default_logger()->flush();
+
+    // Check if this is a SubGraphProcessor (Effect Rack) - needs special handling
+    // SubGraphProcessor is NOT an AudioPluginInstance, so we handle it separately
+    SubGraphProcessor* subGraph = dynamic_cast<SubGraphProcessor*>(node->getProcessor());
+    if (subGraph != nullptr)
+    {
+        spdlog::debug("[createNodeXml] Found SubGraphProcessor, creating XML");
+        spdlog::default_logger()->flush();
+
+        XmlElement* e = new XmlElement("FILTER");
+        e->setAttribute("uid", (int)node->nodeID.uid);
+        e->setAttribute("x", (double)node->properties.getWithDefault("x", 0.0));
+        e->setAttribute("y", (double)node->properties.getWithDefault("y", 0.0));
+        e->setAttribute("uiLastX", (int)node->properties.getWithDefault("uiLastX", 0.0));
+        e->setAttribute("uiLastY", (int)node->properties.getWithDefault("uiLastY", 0.0));
+        e->setAttribute("windowOpen", (bool)node->properties.getWithDefault("windowOpen", false));
+        e->setAttribute("program", 0);
+
+        // Create plugin description for SubGraphProcessor
+        PluginDescription pd;
+        pd.name = subGraph->getName();
+        pd.pluginFormatName = "Internal";
+        pd.fileOrIdentifier = "Internal:SubGraph";
+        pd.uniqueId = 0;
+        pd.isInstrument = false;
+        pd.numInputChannels = subGraph->getTotalNumInputChannels();
+        pd.numOutputChannels = subGraph->getTotalNumOutputChannels();
+
+        e->addChildElement(pd.createXml().release());
+
+        // Save SubGraphProcessor state
+        XmlElement* state = new XmlElement("STATE");
+        MemoryBlock m;
+        subGraph->getStateInformation(m);
+        state->addTextElement(m.toBase64Encoding());
+        e->addChildElement(state);
+
+        spdlog::debug("[createNodeXml] SubGraphProcessor XML created successfully");
+        spdlog::default_logger()->flush();
+        return e;
+    }
+
     AudioPluginInstance* plugin = dynamic_cast<AudioPluginInstance*>(node->getProcessor());
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(plugin);
 
     if (plugin == nullptr)
     {
+        spdlog::error("[createNodeXml] ERROR: plugin is nullptr for: {}",
+                      node->getProcessor()->getName().toStdString());
+        spdlog::default_logger()->flush();
         jassertfalse;
         return nullptr;
     }

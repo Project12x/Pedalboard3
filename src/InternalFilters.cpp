@@ -41,6 +41,7 @@
 #include "OscMappingManager.h"
 #include "PedalboardProcessors.h"
 #include "RoutingProcessors.h"
+#include "SubGraphProcessor.h"
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
 
@@ -134,13 +135,13 @@ InternalPluginFormat::InternalPluginFormat()
     {
         SplitterProcessor p;
         p.fillInPluginDescription(splitterProcDesc);
-        splitterProcDesc.category = "Routing";
+        splitterProcDesc.category = "Built-in";
     }
 
     {
         MixerProcessor p;
         p.fillInPluginDescription(mixerProcDesc);
-        mixerProcDesc.category = "Routing";
+        mixerProcDesc.category = "Built-in";
     }
 
     {
@@ -183,6 +184,12 @@ InternalPluginFormat::InternalPluginFormat()
         MidiFilePlayerProcessor p;
         p.fillInPluginDescription(midiFilePlayerProcDesc);
         midiFilePlayerProcDesc.category = "Built-in";
+    }
+
+    {
+        SubGraphProcessor p;
+        p.fillInPluginDescription(subGraphProcDesc);
+        subGraphProcDesc.category = "Built-in";
     }
 }
 
@@ -283,6 +290,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new MidiFilePlayerProcessor();
     }
+    else if (desc.name == subGraphProcDesc.name)
+    {
+        return new SubGraphProcessor();
+    }
 
     return 0;
 }
@@ -337,6 +348,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &labelProcDesc;
     case midiFilePlayerProcFilter:
         return &midiFilePlayerProcDesc;
+    case subGraphProcFilter:
+        return &subGraphProcDesc;
     default:
         return 0;
     }
@@ -346,4 +359,19 @@ void InternalPluginFormat::getAllTypes(OwnedArray<PluginDescription>& results)
 {
     for (int i = 0; i < (int)endOfFilterTypes; ++i)
         results.add(new PluginDescription(*getDescriptionFor((InternalFilterType)i)));
+}
+
+void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& results)
+{
+    // Only include processors that users can add from the plugin menu
+    // Excludes: audioInputFilter, audioOutputFilter, midiInputFilter, midiInterceptorFilter, oscInputFilter
+    static const InternalFilterType userFacingTypes[] = {
+        levelProcFilter,         filePlayerProcFilter,       outputToggleProcFilter,  vuMeterProcFilter,
+        recorderProcFilter,      metronomeProcFilter,        looperProcFilter,        tunerProcFilter,
+        toneGenProcFilter,       splitterProcFilter,         mixerProcFilter,         irLoaderProcFilter,
+        midiTransposeProcFilter, midiRechannelizeProcFilter, keyboardSplitProcFilter, notesProcFilter,
+        labelProcFilter,         midiFilePlayerProcFilter,   subGraphProcFilter};
+
+    for (auto type : userFacingTypes)
+        results.add(new PluginDescription(*getDescriptionFor(type)));
 }

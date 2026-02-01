@@ -75,6 +75,7 @@ class InternalPluginFormat : public AudioPluginFormat
         notesProcFilter,
         labelProcFilter,
         midiFilePlayerProcFilter,
+        subGraphProcFilter,
 
         endOfFilterTypes
     };
@@ -82,6 +83,9 @@ class InternalPluginFormat : public AudioPluginFormat
     const PluginDescription* getDescriptionFor(const InternalFilterType type);
 
     void getAllTypes(OwnedArray<PluginDescription>& results);
+
+    /// Returns only user-facing internal plugins (excludes Audio I/O, MIDI Input, etc.)
+    void getUserFacingTypes(OwnedArray<PluginDescription>& results);
 
     bool canScanForPlugins() const { return false; };
 
@@ -141,6 +145,7 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription notesProcDesc;
     PluginDescription labelProcDesc;
     PluginDescription midiFilePlayerProcDesc;
+    PluginDescription subGraphProcDesc;
 };
 
 #endif

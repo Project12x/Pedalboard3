@@ -38,7 +38,6 @@
 
 #include <JuceHeader.h>
 
-
 using juce::uint32;
 
 class FilterInGraph;
@@ -159,6 +158,12 @@ class FilterGraph : public FileBasedDocument
 
     /// Returns the CrossfadeMixer for glitch-free patch switching
     CrossfadeMixerProcessor* getCrossfadeMixer() const { return crossfadeMixer; }
+
+    /// Returns true if node is hidden infrastructure (SafetyLimiter, CrossfadeMixer)
+    bool isHiddenInfrastructureNode(AudioProcessorGraph::NodeID nodeId) const
+    {
+        return nodeId.uid == 0xFFFFFF || nodeId.uid == 0xFFFFFE;
+    }
 
     int getNumFilters() const;
     const AudioProcessorGraph::Node::Ptr getNode(const int index) const;

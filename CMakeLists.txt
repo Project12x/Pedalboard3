@@ -11,6 +11,11 @@ project(Pedalboard3
     LANGUAGES CXX
 )
 
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FS")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /FS")
+endif()
+
 # ==============================================================================
 # CPM.cmake - Dependency Manager
 # ==============================================================================
@@ -207,6 +212,12 @@ target_sources(Pedalboard3 PRIVATE
     src/MidiFilePlayer.h
     src/MidiFilePlayerControl.cpp
     src/MidiFilePlayerControl.h
+    
+    # Sub-Graph / Effect Rack
+    src/SubGraphProcessor.cpp
+    src/SubGraphProcessor.h
+    src/SubGraphEditorComponent.cpp
+    src/SubGraphEditorComponent.h
     
     # MIDI Handling
     src/MidiMappingManager.cpp
