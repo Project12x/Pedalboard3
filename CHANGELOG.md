@@ -8,13 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Effect Rack (SubGraphProcessor)** – Nested plugin hosting within a single node
+  - `SubGraphProcessor` wraps internal `AudioProcessorGraph`
+  - `SubGraphEditorComponent` provides rack editor UI
+  - Available via right-click → Pedalboard → Effect Rack
+
 ### Fixed
+- **Effect Rack Crash** – Root cause: `setSize()` in constructor triggered `resized()` before child components existed. Fix: call `setSize()` LAST in constructors.
+- **SubGraphProcessor XML Serialization** – Special handling in `createNodeXml()` since SubGraphProcessor is not `AudioPluginInstance`
+- **BypassableInstance Exclusion** – SubGraphProcessor excluded from bypass wrapper to prevent bus layout issues
 - **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state (JUCE's bus methods are NOT virtual). Solution: Unwrap wrapper before querying buses and call `enableAllBuses()` before wrapping.
 - **Mixer Node Pins Missing** – Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
 
 ### Technical
 - Added `getUnwrappedProcessor()` pattern for safe bus queries through wrapper classes
 - Debug logging for bus state during plugin loading (retained for development)
+- Documented critical JUCE pattern: `setSize()` must be called LAST in component constructors
+- Windows crash dump analysis workflow documented in ARCHITECTURE.md
 
 ---
 

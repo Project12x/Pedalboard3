@@ -6,6 +6,9 @@ add_executable(Pedalboard3_Tests
     smoke_test.cpp
     tone_generator_test.cpp
     plugin_pool_manager_test.cpp
+    subgraph_test.cpp
+    integration_test.cpp
+    audio_component_test.cpp
 )
 
 # Link Catch2 and project dependencies needed for testing

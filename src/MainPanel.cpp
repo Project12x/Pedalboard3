@@ -316,6 +316,9 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     pluginList.sort(KnownPluginList::sortAlphabetically,
                     true); // JUCE 8: sort takes 2 args
 
+    // Register plugin list singleton for SubGraph editors to access
+    KnownPluginListSingleton::setInstance(&pluginList);
+
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     deviceManager.addAudioCallback(&graphPlayer);

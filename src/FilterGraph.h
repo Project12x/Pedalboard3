@@ -33,6 +33,7 @@
 #define __JUCE_FILTERGRAPH_JUCEHEADER__
 
 #include "CrossfadeMixer.h"
+#include "IFilterGraph.h"
 #include "OscMappingManager.h"
 #include "SafetyLimiter.h"
 
@@ -137,7 +138,7 @@ private:
 /**
     A collection of filters and some connections between them.
 */
-class FilterGraph : public FileBasedDocument
+class FilterGraph : public IFilterGraph, public FileBasedDocument
 {
   public:
     //==============================================================================
@@ -145,10 +146,10 @@ class FilterGraph : public FileBasedDocument
     ~FilterGraph();
 
     //==============================================================================
-    AudioProcessorGraph& getGraph() throw() { return graph; }
+    AudioProcessorGraph& getGraph() override { return graph; }
 
     /// Returns the UndoManager for undo/redo operations
-    juce::UndoManager& getUndoManager() { return undoManager; }
+    juce::UndoManager& getUndoManager() override { return undoManager; }
 
     /// Returns the SafetyLimiter for audio protection state queries
     SafetyLimiterProcessor* getSafetyLimiter() const { return safetyLimiter; }
@@ -160,33 +161,33 @@ class FilterGraph : public FileBasedDocument
     CrossfadeMixerProcessor* getCrossfadeMixer() const { return crossfadeMixer; }
 
     /// Returns true if node is hidden infrastructure (SafetyLimiter, CrossfadeMixer)
-    bool isHiddenInfrastructureNode(AudioProcessorGraph::NodeID nodeId) const
+    bool isHiddenInfrastructureNode(AudioProcessorGraph::NodeID nodeId) const override
     {
         return nodeId.uid == 0xFFFFFF || nodeId.uid == 0xFFFFFE;
     }
 
-    int getNumFilters() const;
-    const AudioProcessorGraph::Node::Ptr getNode(const int index) const;
-    const AudioProcessorGraph::Node::Ptr getNodeForId(const AudioProcessorGraph::NodeID uid) const;
+    int getNumFilters() const override;
+    AudioProcessorGraph::Node::Ptr getNode(int index) const override;
+    AudioProcessorGraph::Node::Ptr getNodeForId(AudioProcessorGraph::NodeID uid) const override;
 
     //==============================================================================
     // Undoable operations - use these from UI code
-    void addFilter(const PluginDescription* desc, double x, double y);
+    void addFilter(const PluginDescription* desc, double x, double y) override;
     void addFilter(AudioPluginInstance* plugin, double x, double y);
-    void removeFilter(const AudioProcessorGraph::NodeID filterUID);
+    void removeFilter(const AudioProcessorGraph::NodeID filterUID) override;
     bool addConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
-                       AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+                       AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) override;
     void removeConnection(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
-                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) override;
 
     //==============================================================================
     // Raw operations - used internally by UndoableActions (no undo tracking)
-    AudioProcessorGraph::NodeID addFilterRaw(const PluginDescription* desc, double x, double y);
-    void removeFilterRaw(const AudioProcessorGraph::NodeID filterUID);
+    AudioProcessorGraph::NodeID addFilterRaw(const PluginDescription* desc, double x, double y) override;
+    void removeFilterRaw(const AudioProcessorGraph::NodeID filterUID) override;
     bool addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
-                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+                          AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) override;
     void removeConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
-                             AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel);
+                             AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) override;
 
     //==============================================================================
     // Plugin description helper for undo
@@ -194,20 +195,20 @@ class FilterGraph : public FileBasedDocument
     std::vector<AudioProcessorGraph::Connection> getConnectionsForNode(AudioProcessorGraph::NodeID nodeId) const;
 
     //==============================================================================
-    void disconnectFilter(const AudioProcessorGraph::NodeID filterUID);
+    void disconnectFilter(const AudioProcessorGraph::NodeID filterUID) override;
     void removeIllegalConnections();
 
-    void setNodePosition(const int nodeId, double x, double y);
-    void getNodePosition(const int nodeId, double& x, double& y) const;
+    void setNodePosition(int nodeId, double x, double y) override;
+    void getNodePosition(int nodeId, double& x, double& y) const override;
 
     //==============================================================================
     /// @brief JUCE 8: Connection API uses std::vector
-    std::vector<AudioProcessorGraph::Connection> getConnections() const;
+    std::vector<AudioProcessorGraph::Connection> getConnections() const override;
 
     const AudioProcessorGraph::Connection* getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID,
                                                                 int sourceFilterChannel,
                                                                 AudioProcessorGraph::NodeID destFilterUID,
-                                                                int destFilterChannel) const;
+                                                                int destFilterChannel) const override;
 
     bool canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                     AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const;

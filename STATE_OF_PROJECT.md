@@ -4,23 +4,51 @@
 
 ---
 
-## Current Focus: Phase 4 - Plugin Management
+## Current Focus: Effect Rack Stabilization
 
-**Status:** ✅ Phase 3 Complete  
-**Last Updated:** 2026-01-25
+**Status:** ✅ Crash Fixed, Functionality Placeholder  
+**Last Updated:** 2026-02-01
 
-### Recent Wins (Phase 3)
+### Recent Wins (Feb 2026)
+
+- ✅ **Effect Rack Crash Fix** - Root cause: `setSize()` in constructor triggered `resized()` before child components existed
+- ✅ SubGraphProcessor implemented (nested AudioProcessorGraph)
+- ✅ SubGraphEditorComponent UI with canvas and viewport
+- ✅ XML serialization for Effect Racks in patches
+- ✅ Effect Rack appears in Pedalboard menu
+- ✅ Documented critical JUCE pattern: call `setSize()` LAST in constructors
+
+### Previous Wins (Phase 3)
 
 - ✅ VST3 plugin format enabled and working
 - ✅ Settings migrated to JSON (`SettingsManager`)
 - ✅ UI visibility fixed (dark theme, high contrast text)
-- ✅ VST3 I/O bus layouts enforced (stereo)
 - ✅ 5 built-in themes: Midnight, Daylight, Synthwave, Deep Ocean, Forest
-- ✅ Theme switching with live LookAndFeel refresh
-- ✅ Delete confirmation for custom presets
-- ✅ **JUCE 8 LookAndFeel fixes** (setColour before setFont order)
-- ✅ LogDisplay background now uses ColourScheme
-- ✅ ToggleButton text colors added to BranchesLAF
+- ✅ JUCE 8 LookAndFeel fixes (setColour before setFont order)
+
+---
+
+## Effect Rack Status
+
+| Component | Status |
+|-----------|--------|
+| SubGraphProcessor | ✅ Stable |
+| SubGraphEditorComponent | ✅ Stable (crash fixed) |
+| Add plugins in rack | ⏳ Not implemented |
+| Connection management | ⏳ Not implemented |
+| State persistence | ⏳ Not implemented |
+
+**Key Files:**
+- `src/SubGraphProcessor.cpp/h`
+- `src/SubGraphEditorComponent.cpp/h`
+
+---
+
+## Debugging Lessons Learned
+
+1. **Windows crash dumps**: `%LOCALAPPDATA%\CrashDumps\` - open in VS debugger
+2. **spdlog logging**: `%APPDATA%\Pedalboard3\debug.log` - use `flush()` before crash points
+3. **Critical JUCE gotcha**: `setSize()` triggers `resized()` immediately
 
 ---
 
@@ -41,18 +69,6 @@
 
 ---
 
-## Key Files Modified (Phase 3)
-
-| File | Changes |
-|------|---------|
-| `SettingsManager.h/cpp` | **NEW** - JSON-based settings |
-| `ColourScheme.h/cpp` | Built-in theme presets |
-| `BranchesLAF.h/cpp` | `refreshColours()`, JUCE 8 `override` keywords, ToggleButton colors |
-| `ColourSchemeEditor.cpp` | Theme dropdown, delete protection |
-| `FilterGraph.cpp` | VST3 stereo I/O enforcement |
-
----
-
 ## Settings System
 
 **Location:** `%APPDATA%\Pedalboard3\settings.json`  
@@ -62,9 +78,10 @@
 
 ## Next Steps
 
-1. **Phase 4:** Plugin Management (better scanning, organize, favorites)
-2. **Phase 5:** Deferred features (zoom, snap-to-grid, libremidi)
-3. Remove deprecated `PropertiesSingleton` code
+1. **Effect Rack Functionality** - Add plugin picker, connection management
+2. **Cleanup** - Remove debug logging from PluginComponent, PluginField, FilterGraph
+3. **Phase 4:** Plugin Management (better scanning, organize, favorites)
+4. Remove deprecated `PropertiesSingleton` code
 
 ---
 
@@ -76,9 +93,10 @@
 | Plugin Scanning | ✅ Working |
 | Settings Persistence | ✅ JSON |
 | Theme System | ✅ Complete |
+| Effect Rack | ⚠️ Crash fixed, functionality placeholder |
 | MIDI Mapping | ⚠️ Legacy (works) |
 | OSC Mapping | ⚠️ Legacy (works) |
 
 ---
 
-*Last updated: 2026-01-25*
+*Last updated: 2026-02-01*

@@ -197,4 +197,110 @@ cmake --build build --config Release
 
 ---
 
-*Last updated: 2026-01-25*
+## Effect Rack Architecture (NEW - Feb 2026)
+
+The Effect Rack feature allows nesting plugins within a single node using `SubGraphProcessor`.
+
+### SubGraphProcessor
+
+Wraps an internal `AudioProcessorGraph` to enable recursive plugin hosting.
+
+```cpp
+class SubGraphProcessor : public AudioPluginInstance {
+    AudioProcessorGraph internalGraph;  // Nested graph
+    AudioProcessorGraph::Node::Ptr rackAudioInput;   // Internal I/O
+    AudioProcessorGraph::Node::Ptr rackAudioOutput;
+    AudioProcessorGraph::Node::Ptr rackMidiInput;
+    String rackName;
+};
+```
+
+**Key Files:**
+- `SubGraphProcessor.cpp/h` - The processor wrapping internal graph
+- `SubGraphEditorComponent.cpp/h` - Rack editor UI (canvas, nodes, viewport)
+
+### Integration Points
+
+| Location | Modification |
+|----------|-------------|
+| `InternalFilters.cpp` | Registers Effect Rack via `SubGraphInternalPlugin` |
+| `FilterGraph.cpp` | Special XML serialization for SubGraphProcessor |
+| `FilterGraph.cpp` | **Excludes** SubGraphProcessor from `BypassableInstance` wrapping |
+
+### SubGraphProcessor is NOT an AudioPluginInstance
+
+SubGraphProcessor inherits from `AudioPluginInstance` but its internal I/O nodes are just `AudioProcessor`. Code that casts to `AudioPluginInstance*` will fail for these nodes. Handle explicitly:
+
+```cpp
+SubGraphProcessor* subGraph = dynamic_cast<SubGraphProcessor*>(processor);
+if (subGraph != nullptr) {
+    // Special handling - it's a rack, not a normal plugin
+}
+```
+
+---
+
+## Critical JUCE Patterns
+
+### setSize() MUST Be Called LAST in Constructors
+
+`setSize()` immediately triggers `resized()`. If child components aren't created yet, null pointer crash.
+
+```cpp
+// ❌ WRONG - crashes!
+MyComponent::MyComponent() {
+    setSize(800, 600);           // Triggers resized() NOW
+    button = make_unique<TextButton>();  // Not created yet!
+}
+
+// ✅ CORRECT
+MyComponent::MyComponent() {
+    button = make_unique<TextButton>();
+    addAndMakeVisible(*button);
+    setSize(800, 600);           // Call LAST
+}
+```
+
+### Viewport Cleanup in Destructors
+
+Always detach Viewport's content before destruction:
+
+```cpp
+~MyEditor() {
+    viewport->setViewedComponent(nullptr, false);
+}
+```
+
+### CallbackLock for Graph Iteration
+
+When iterating graph nodes from UI thread while audio may be processing:
+
+```cpp
+const ScopedLock sl(graph.getCallbackLock());
+for (int i = 0; i < graph.getNumNodes(); ++i) { ... }
+```
+
+---
+
+## Debugging
+
+### Windows Crash Dumps
+
+Location: `%LOCALAPPDATA%\CrashDumps\`
+
+When app crashes, Windows creates `.dmp` files. Open in Visual Studio → "Debug with Native Only" for stack trace.
+
+### Logging
+
+Uses `spdlog` → `%APPDATA%\Pedalboard3\debug.log`
+
+```cpp
+#include <spdlog/spdlog.h>
+spdlog::debug("[FunctionName] Message: {}", value);
+spdlog::default_logger()->flush();  // Force write before crash
+```
+
+---
+
+*Last updated: 2026-02-01*
+

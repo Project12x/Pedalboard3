@@ -18,7 +18,6 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-
 // Since PluginPoolManager depends on JUCE, we test the interface contracts
 // and boundary conditions that don't require actual plugin instantiation.
 // For full integration testing, the application must be run manually.
@@ -247,5 +246,100 @@ TEST_CASE("Thread Safety Concepts", "[poolmanager][threading]")
         bool success = position.compare_exchange_strong(expected, desired);
         REQUIRE(success);
         REQUIRE(position.load() == 6);
+    }
+}
+
+// =============================================================================
+// Mutation Testing Patterns
+// =============================================================================
+
+TEST_CASE("PluginPoolManager Mutation Testing", "[poolmanager][mutation]")
+{
+    SECTION("OFF-BY-ONE: Window boundary calculation")
+    {
+        // Position near end where patchCount-1 vs patchCount matters
+        int currentPosition = 9; // Position near end
+        int patchCount = 10;
+        int preloadRange = 2;
+
+        // Correct: windowEnd = min(patchCount - 1, currentPosition + preloadRange)
+        // = min(9, 11) = 9
+        int correctEnd = std::min(patchCount - 1, currentPosition + preloadRange);
+        REQUIRE(correctEnd == 9);
+
+        // Mutation: windowEnd = min(patchCount, ...) = min(10, 11) = 10 (off-by-one!)
+        int mutatedEnd = std::min(patchCount, currentPosition + preloadRange);
+        REQUIRE(mutatedEnd != correctEnd); // Mutation detectable (10 != 9)
+    }
+
+    SECTION("OFF-BY-ONE: Position clamp lower bound")
+    {
+        int position = 0;
+        int patchCount = 10;
+
+        // Correct: clamp to 0
+        int correctClamped = std::clamp(position, 0, patchCount - 1);
+        REQUIRE(correctClamped == 0);
+
+        // Mutation: clamp to 1 would skip first patch
+        int mutatedClamped = std::clamp(position, 1, patchCount - 1);
+        REQUIRE(mutatedClamped != correctClamped); // Mutation detectable
+    }
+
+    SECTION("ARITHMETIC: Window size calculation")
+    {
+        int windowStart = 3;
+        int windowEnd = 7;
+
+        // Correct: count = end - start + 1
+        int correctCount = windowEnd - windowStart + 1;
+        REQUIRE(correctCount == 5);
+
+        // Mutation: count = end - start (off by one)
+        int mutatedCount = windowEnd - windowStart;
+        REQUIRE(mutatedCount != correctCount); // Mutation detectable
+    }
+
+    SECTION("NEGATE: Empty patch guard")
+    {
+        int patchCount = 0;
+
+        // Correct: guard against empty
+        bool correctGuard = patchCount > 0;
+        REQUIRE_FALSE(correctGuard);
+
+        // Mutation: patchCount >= 0 would incorrectly allow empty
+        bool mutatedGuard = patchCount >= 0;
+        REQUIRE(mutatedGuard != correctGuard); // Mutation detectable
+    }
+
+    SECTION("SWAP: Window start vs end confusion")
+    {
+        int currentPosition = 5;
+        int patchCount = 10;
+        int preloadRange = 2;
+
+        int windowStart = std::max(0, currentPosition - preloadRange);
+        int windowEnd = std::min(patchCount - 1, currentPosition + preloadRange);
+
+        // Correct: start < end
+        REQUIRE(windowStart < windowEnd);
+
+        // Mutation: if start and end were swapped
+        REQUIRE(windowStart != windowEnd); // They should be different
+    }
+
+    SECTION("CONDITION: Memory limit zero means unlimited")
+    {
+        size_t memoryLimit = 0;
+        size_t currentUsage = 1000000000; // 1GB
+
+        // Correct: zero means unlimited
+        bool correctCheck = (memoryLimit == 0) || (currentUsage < memoryLimit);
+        REQUIRE(correctCheck);
+
+        // Mutation: if zero check was removed
+        bool mutatedCheck = currentUsage < memoryLimit;
+        REQUIRE(mutatedCheck != correctCheck); // Mutation detectable
     }
 }

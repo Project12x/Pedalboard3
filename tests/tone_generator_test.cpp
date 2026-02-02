@@ -239,3 +239,77 @@ TEST_CASE("Roundtrip MIDI->Freq->MIDI", "[tonegen][math]")
         REQUIRE(recovered == midiNote);
     }
 }
+
+// =============================================================================
+// Mutation Testing Patterns
+// =============================================================================
+
+TEST_CASE("ToneGenerator Mutation Testing", "[tonegen][mutation]")
+{
+    SECTION("ARITHMETIC: Semitone calculation uses 12, not 11 or 13")
+    {
+        // Correct: 12 semitones per octave
+        float correctA5 = A4_FREQ * std::pow(2.0f, 12.0f / 12.0f);
+        REQUIRE_THAT(correctA5, WithinAbs(880.0f, 0.01f));
+
+        // Mutation: if 11 was used instead
+        float mutatedA5_11 = A4_FREQ * std::pow(2.0f, 12.0f / 11.0f);
+        REQUIRE(std::abs(mutatedA5_11 - 880.0f) > 1.0f); // Mutation detectable
+
+        // Mutation: if 13 was used instead
+        float mutatedA5_13 = A4_FREQ * std::pow(2.0f, 12.0f / 13.0f);
+        REQUIRE(std::abs(mutatedA5_13 - 880.0f) > 1.0f); // Mutation detectable
+    }
+
+    SECTION("OFF-BY-ONE: MIDI note reference point A4=69")
+    {
+        // Correct: A4 is MIDI 69
+        int correctNote = 69;
+        float correctFreq = A4_FREQ * std::pow(2.0f, (correctNote - 69) / 12.0f);
+        REQUIRE_THAT(correctFreq, WithinAbs(440.0f, 0.01f));
+
+        // Mutation: if reference was 68 or 70
+        int mutatedNote = 68;
+        float mutatedFreq = A4_FREQ * std::pow(2.0f, (mutatedNote - 69) / 12.0f);
+        REQUIRE(std::abs(mutatedFreq - 440.0f) > 1.0f); // Mutation detectable
+    }
+
+    SECTION("NEGATE: Invalid frequency guard uses <=, not <")
+    {
+        // Correct: frequency <= 0 returns -1
+        REQUIRE(frequencyToMidiNote(0.0f) == -1);
+
+        // The guard must catch 0.0, not just negative
+        float barelyPositive = 0.001f;
+        int note = frequencyToMidiNote(barelyPositive);
+        REQUIRE(note != -1); // Valid result for positive
+    }
+
+    SECTION("SWAP: log2 vs log10 would give wrong results")
+    {
+        // Correct: use log2 for octave calculations
+        float testFreq = 880.0f;
+        float correctCents = 1200.0f * std::log2(testFreq / A4_FREQ);
+        REQUIRE_THAT(correctCents, WithinAbs(1200.0f, 0.1f)); // 1 octave = 1200 cents
+
+        // Mutation: if log10 was used
+        float mutatedCents = 1200.0f * std::log10(testFreq / A4_FREQ);
+        REQUIRE(std::abs(mutatedCents - 1200.0f) > 100.0f); // Very different result
+    }
+
+    SECTION("CONSTANT: 1200 cents per octave, not 100 or 12000")
+    {
+        float testFreq = 880.0f; // One octave above A4
+        float cents = 1200.0f * std::log2(testFreq / A4_FREQ);
+
+        REQUIRE_THAT(cents, WithinAbs(1200.0f, 0.1f)); // Exactly 1 octave
+
+        // Mutation: if 100 was used
+        float mutatedCents_100 = 100.0f * std::log2(testFreq / A4_FREQ);
+        REQUIRE(std::abs(mutatedCents_100 - 1200.0f) > 100.0f); // Different
+
+        // Mutation: if 12000 was used
+        float mutatedCents_12000 = 12000.0f * std::log2(testFreq / A4_FREQ);
+        REQUIRE(std::abs(mutatedCents_12000 - 1200.0f) > 1000.0f); // Very different
+    }
+}

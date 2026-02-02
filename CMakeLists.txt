@@ -214,8 +214,11 @@ target_sources(Pedalboard3 PRIVATE
     src/MidiFilePlayerControl.h
     
     # Sub-Graph / Effect Rack
+    src/IFilterGraph.h
     src/SubGraphProcessor.cpp
     src/SubGraphProcessor.h
+    src/SubGraphFilterGraph.cpp
+    src/SubGraphFilterGraph.h
     src/SubGraphEditorComponent.cpp
     src/SubGraphEditorComponent.h
     

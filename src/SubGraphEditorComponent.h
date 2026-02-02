@@ -41,10 +41,22 @@ class RackNodeComponent : public juce::Component, public juce::ChangeBroadcaster
     int getNumInputPins() const;
     int getNumOutputPins() const;
 
+    // Context menu action flags
+    bool isDeleteRequested() const { return deleteRequested; }
+    bool isDisconnectRequested() const { return disconnectRequested; }
+    void clearActionFlags()
+    {
+        deleteRequested = false;
+        disconnectRequested = false;
+    }
+    bool isIO() const { return isIONode; }
+
   private:
     juce::AudioProcessorGraph::Node::Ptr nodePtr;
     bool isIONode;
     juce::Point<int> dragStart;
+    bool deleteRequested = false;
+    bool disconnectRequested = false;
 
     static constexpr int PIN_SIZE = 10;
     static constexpr int PIN_SPACING = 18;
@@ -73,6 +85,8 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener
     void paint(juce::Graphics& g) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
@@ -84,10 +98,23 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener
   private:
     void drawConnections(juce::Graphics& g);
     void drawBackPanelConnections(juce::Graphics& g);
+    void drawDraggingConnection(juce::Graphics& g);
+
+    // Pin hit detection
+    RackNodeComponent* findNodeAt(juce::Point<int> pos);
+    bool hitTestInputPin(RackNodeComponent* node, juce::Point<int> pos, int& pinIndex);
+    bool hitTestOutputPin(RackNodeComponent* node, juce::Point<int> pos, int& pinIndex);
 
     SubGraphProcessor& subGraph;
     juce::OwnedArray<RackNodeComponent> nodeComponents;
     ViewMode viewMode = ViewMode::Front;
+
+    // Connection dragging state
+    bool isDraggingConnection = false;
+    bool draggingFromOutput = true; // true = from output, false = from input
+    juce::AudioProcessorGraph::NodeID dragSourceNodeId;
+    int dragSourceChannel = -1;
+    juce::Point<int> dragEndPos;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SubGraphCanvas)
 };
@@ -118,6 +145,8 @@ class SubGraphEditorComponent : public juce::AudioProcessorEditor, public juce::
     std::unique_ptr<juce::Label> titleLabel;
 
     static constexpr int TOOLBAR_HEIGHT = 40;
+
+    void showPluginMenu();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SubGraphEditorComponent)
 };
