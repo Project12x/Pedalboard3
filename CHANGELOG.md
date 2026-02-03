@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Cable Wiring/Deletion Tests** – Comprehensive headless test coverage for Effect Rack connections
   - 3 new test cases: wiring creation, connection removal, mutation testing
   - 59 assertions covering stereo, chaining, self-connection rejection, iterator stability
+- **FilterGraph Unit Tests** – Phase 6B testing expansion
+  - 6 test cases: node management, connection management, position, infrastructure detection
+  - 71 assertions covering add/remove/query operations and mutation testing
+
 
 
 ### Fixed

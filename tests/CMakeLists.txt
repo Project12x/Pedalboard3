@@ -9,7 +9,9 @@ add_executable(Pedalboard3_Tests
     subgraph_test.cpp
     integration_test.cpp
     audio_component_test.cpp
+    filtergraph_test.cpp
 )
+
 
 # Link Catch2 and project dependencies needed for testing
 target_link_libraries(Pedalboard3_Tests PRIVATE
