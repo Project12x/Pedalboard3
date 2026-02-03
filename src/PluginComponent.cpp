@@ -352,7 +352,8 @@ void PluginComponent::buttonClicked(Button* button)
     }
 
     std::cerr << "[buttonClicked] Button addr=" << button << ", edit=" << editButton << ", delete=" << deleteButton
-              << ", pluginWindow=" << pluginWindow << "\n"
+              << ", bypass=" << bypassButton << ", mappings=" << mappingsButton << ", pluginWindow=" << pluginWindow
+              << "\n"
               << std::flush;
 
     if ((button == editButton) && !pluginWindow)
@@ -362,15 +363,17 @@ void PluginComponent::buttonClicked(Button* button)
                       node->getProcessor()->getName().toStdString());
         AudioProcessorEditor* editor;
 
-        std::cerr << "[buttonClicked] Calling createEditorIfNeeded()\n" << std::flush;
-        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditorIfNeeded()");
-        editor = node->getProcessor()->createEditorIfNeeded();
-        std::cerr << "[buttonClicked] createEditorIfNeeded() returned: " << (editor ? "valid" : "nullptr") << "\n"
+        // Use createEditor() directly rather than createEditorIfNeeded() because
+        // JUCE caches the editor pointer and returns nullptr if the previous editor
+        // was deleted but the cached pointer isn't cleared.
+        std::cerr << "[buttonClicked] Calling createEditor()\n" << std::flush;
+        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditor()");
+        editor = node->getProcessor()->createEditor();
+        std::cerr << "[buttonClicked] createEditor() returned: " << (editor ? "valid" : "nullptr") << "\n"
                   << std::flush;
-        spdlog::debug("[PluginComponent::buttonClicked] createEditorIfNeeded() returned: {}",
-                      (editor ? "valid" : "nullptr"));
+        spdlog::debug("[PluginComponent::buttonClicked] createEditor() returned: {}", (editor ? "valid" : "nullptr"));
 
-        // Create generic ui.
+        // Create generic ui if processor doesn't provide its own editor
         if (!editor)
         {
             std::cerr << "[buttonClicked] Creating NiallsGenericEditor\n" << std::flush;
@@ -395,13 +398,23 @@ void PluginComponent::buttonClicked(Button* button)
     }
 
     else if (button == mappingsButton)
+    {
+        std::cerr << "[buttonClicked] MAPPINGS button clicked\n" << std::flush;
         openMappingsWindow();
+    }
     else if (button == bypassButton)
     {
+        std::cerr << "[buttonClicked] BYPASS button clicked\n" << std::flush;
         BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
+        std::cerr << "[buttonClicked] Bypassable cast=" << bypassable
+                  << ", toggleState=" << bypassButton->getToggleState() << "\n"
+                  << std::flush;
 
         if (bypassable)
+        {
             bypassable->setBypass(bypassButton->getToggleState());
+            std::cerr << "[buttonClicked] Bypass set to " << bypassButton->getToggleState() << "\n" << std::flush;
+        }
     }
     else if (button == deleteButton)
     {
@@ -1226,11 +1239,21 @@ void PluginConnection::mouseDown(const MouseEvent& e)
     {
         // Select this connection and trigger deletion
         selected = true;
-        PluginField* field = findParentComponentOfClass<PluginField>();
-        if (field)
+
+        // Try PluginField first (main canvas)
+        if (PluginField* field = findParentComponentOfClass<PluginField>())
         {
             field->deleteConnection();
             // Don't touch 'this' after deleteConnection() - we've been deleted!
+            return;
+        }
+
+        // Fallback to SubGraphCanvas (Effect Rack)
+        if (SubGraphCanvas* canvas = findParentComponentOfClass<SubGraphCanvas>())
+        {
+            canvas->deleteConnection(this);
+            // Don't touch 'this' after deleteConnection() - we've been deleted!
+            return;
         }
     }
     else // Left-click

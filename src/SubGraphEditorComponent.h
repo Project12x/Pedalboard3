@@ -37,6 +37,7 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener, publ
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 

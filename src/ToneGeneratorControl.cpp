@@ -43,7 +43,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     frequencySlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
     frequencySlider->setRange(20.0, 2000.0, 0.1);
     frequencySlider->setSkewFactorFromMidPoint(440.0);
-    frequencySlider->setValue(440.0);
+    frequencySlider->setValue(processor->getFrequency(), dontSendNotification);
     frequencySlider->addListener(this);
     frequencySlider->setTextValueSuffix(" Hz");
     addAndMakeVisible(frequencySlider.get());
@@ -51,7 +51,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Detune slider
     detuneSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
     detuneSlider->setRange(-100.0, 100.0, 0.1);
-    detuneSlider->setValue(0.0);
+    detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
     detuneSlider->setTextValueSuffix(" ¢");
     addAndMakeVisible(detuneSlider.get());
@@ -95,7 +95,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Amplitude slider
     amplitudeSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
     amplitudeSlider->setRange(0.0, 1.0, 0.01);
-    amplitudeSlider->setValue(0.5);
+    amplitudeSlider->setValue(processor->getAmplitude(), dontSendNotification);
     amplitudeSlider->addListener(this);
     addAndMakeVisible(amplitudeSlider.get());
 

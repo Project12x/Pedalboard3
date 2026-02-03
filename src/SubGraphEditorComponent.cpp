@@ -477,9 +477,58 @@ void SubGraphCanvas::addConnection(AudioProcessorGraph::NodeID srcId, int srcCha
 
 void SubGraphCanvas::deleteConnection(PluginConnection* connection)
 {
-    // Remove from graph then rebuild
-    rebuildGraph();
+    if (!connection)
+        return;
+
+    const PluginPinComponent* source = connection->getSource();
+    const PluginPinComponent* dest = connection->getDestination();
+
+    if (source && dest)
+    {
+        spdlog::debug("[SubGraphCanvas::deleteConnection] Removing connection from {} to {}", source->getUid(),
+                      dest->getUid());
+
+        // Remove from the internal graph
+        subGraph.getInternalGraph().removeConnection(
+            {{AudioProcessorGraph::NodeID(source->getUid()), source->getChannel()},
+             {AudioProcessorGraph::NodeID(dest->getUid()), dest->getChannel()}});
+    }
+
+    // Remove and delete the visual component
+    removeChildComponent(connection);
+
+    // Find and remove from connectionComponents array
+    for (int i = connectionComponents.size() - 1; i >= 0; --i)
+    {
+        if (connectionComponents[i] == connection)
+        {
+            connectionComponents.remove(i);
+            break;
+        }
+    }
+
     sendChangeMessage();
+}
+
+bool SubGraphCanvas::keyPressed(const KeyPress& key)
+{
+    // Delete selected connections on Delete or Backspace
+    if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey)
+    {
+        spdlog::debug("[SubGraphCanvas::keyPressed] Delete key pressed");
+
+        // Iterate in reverse since we're deleting
+        for (int i = connectionComponents.size() - 1; i >= 0; --i)
+        {
+            if (connectionComponents[i]->getSelected())
+            {
+                spdlog::debug("[SubGraphCanvas::keyPressed] Deleting selected connection {}", i);
+                deleteConnection(connectionComponents[i]);
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 void SubGraphCanvas::rebuildGraph()
@@ -514,9 +563,69 @@ void SubGraphCanvas::rebuildGraph()
         addFilter(i);
     }
 
-    // Rebuild connections (would need PluginConnection API - simplified for now)
-    // The full implementation would iterate graph.getConnections() and create
-    // PluginConnection components for each
+    // Rebuild connections from graph state
+    // Copy connections to avoid iterator invalidation issues with JUCE's ReferenceCountedArray
+    std::vector<AudioProcessorGraph::Connection> connectionsCopy;
+    for (const auto& conn : graph.getConnections())
+    {
+        connectionsCopy.push_back(conn);
+    }
+
+    spdlog::debug("[SubGraphCanvas::rebuildGraph] Rebuilding {} connections", (int)connectionsCopy.size());
+
+    for (const auto& conn : connectionsCopy)
+    {
+        // Find source and destination pins
+        PluginPinComponent* sourcePin = nullptr;
+        PluginPinComponent* destPin = nullptr;
+
+        for (auto* comp : filterComponents)
+        {
+            // Check if this component is the source node
+            if (comp->getNode() && comp->getNode()->nodeID == conn.source.nodeID)
+            {
+                // Bounds check before accessing pin
+                if (conn.source.channelIndex >= 0 && conn.source.channelIndex < comp->getNumOutputPins())
+                {
+                    sourcePin = comp->getOutputPin(conn.source.channelIndex);
+                }
+                else
+                {
+                    spdlog::warn("[SubGraphCanvas::rebuildGraph] Source channel {} out of range (0-{})",
+                                 conn.source.channelIndex, comp->getNumOutputPins() - 1);
+                }
+            }
+            // Check if this component is the destination node
+            if (comp->getNode() && comp->getNode()->nodeID == conn.destination.nodeID)
+            {
+                // Bounds check before accessing pin
+                if (conn.destination.channelIndex >= 0 && conn.destination.channelIndex < comp->getNumInputPins())
+                {
+                    destPin = comp->getInputPin(conn.destination.channelIndex);
+                }
+                else
+                {
+                    spdlog::warn("[SubGraphCanvas::rebuildGraph] Dest channel {} out of range (0-{})",
+                                 conn.destination.channelIndex, comp->getNumInputPins() - 1);
+                }
+            }
+        }
+
+        if (sourcePin && destPin)
+        {
+            auto* connection = new PluginConnection(sourcePin, destPin, false);
+            addAndMakeVisible(connection);
+            connectionComponents.add(connection);
+            spdlog::debug("[SubGraphCanvas::rebuildGraph] Restored connection {}:{} -> {}:{}", conn.source.nodeID.uid,
+                          conn.source.channelIndex, conn.destination.nodeID.uid, conn.destination.channelIndex);
+        }
+        else
+        {
+            spdlog::warn("[SubGraphCanvas::rebuildGraph] Could not find pins for connection {}:{} -> {}:{}",
+                         conn.source.nodeID.uid, conn.source.channelIndex, conn.destination.nodeID.uid,
+                         conn.destination.channelIndex);
+        }
+    }
 
     spdlog::debug("[SubGraphCanvas::rebuildGraph] Complete");
     repaint();

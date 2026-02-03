@@ -7,19 +7,25 @@
 ## Current Focus: Effect Rack GUI Stabilization
 
 **Status:** ✅ Functional - Core Features Working  
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-03
 
 ### Current Session Status
 
 Effect Rack editor is now functional:
 - ✅ Editor opens and closes without crash
+- ✅ Editor can be reopened multiple times without crash
 - ✅ Nodes visible (Audio Input, Output, MIDI Input)
 - ✅ Can load external VST3/AU plugins into rack
+- ✅ ToneGenerator sliders restore correctly when editor reopened
 - ⚠️ Pin-to-pin connection wiring not yet implemented
-- ⚠️ Internal node editors (Tone Generator) show generic UI
 
 ### Previous Wins (Feb 2026)
 
+- ✅ **Effect Rack Re-entry Fixed** - Editor can now be reopened multiple times:
+  - Switched to fresh editor creation each time
+  - Pin bounds checking prevents out-of-range access
+  - Fixed iterator invalidation when rebuilding graph
+- ✅ **ToneGenerator State Restoration** - Sliders read from processor state, not defaults
 - ✅ **Effect Rack Crash Fixes** - Three bugs resolved:
   - `resized()` timing: viewport/canvas had zero bounds before components existed
   - Double-delete in `SubGraphCanvas` destructor: OwnedArray already manages lifetime
@@ -85,10 +91,10 @@ Effect Rack editor is now functional:
 
 ## Next Steps
 
-1. **Verify SubGraph build compiles** - Current rewrite untested
-2. **Test SubGraph UI** - Double-click plugin menu, panning, zoom
+1. **Implement cable wiring** - Pin-to-pin connection in SubGraph editor
+2. **Test full SubGraph workflow** - Add/remove plugins, save/load racks
 3. **Cleanup** - Remove debug logging from various files
 
 ---
 
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-03*

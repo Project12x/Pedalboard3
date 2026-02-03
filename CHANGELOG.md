@@ -21,6 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `resized()` timing: viewport/canvas had zero bounds because `setSize()` triggered `resized()` before components existed. Fix: explicit `resized()` call at end of constructor.
   - Double-delete in `SubGraphCanvas` destructor: removed redundant `deleteAllChildren()` since `OwnedArray` manages component lifetime.
   - Null pointer in `PluginPinComponent`: added null checks when parent is `SubGraphCanvas` (not `PluginField`).
+- **SubGraph Editor Re-entry Crash** – Fixed crash when reopening Effect Rack editor:
+  - Switched from `createEditorIfNeeded()` to `createEditor()` to ensure fresh editor instance on each open.
+  - Added pin bounds checking before `getInputPin`/`getOutputPin` calls in `rebuildGraph()` to prevent out-of-range access.
+  - Fixed iterator invalidation in `rebuildGraph()` by copying connections to `std::vector` before iterating.
+- **ToneGenerator State Restoration** – Fixed sliders resetting to defaults when reopening editor:
+  - Constructor now reads frequency, detune, and amplitude from processor instead of hardcoded values.
 - **SubGraphProcessor XML Serialization** – Special handling in `createNodeXml()` since SubGraphProcessor is not `AudioPluginInstance`
 - **BypassableInstance Exclusion** – SubGraphProcessor excluded from bypass wrapper to prevent bus layout issues
 - **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state. Solution: Unwrap wrapper before querying buses.
