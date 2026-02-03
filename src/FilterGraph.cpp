@@ -121,17 +121,17 @@ uint32 FilterGraph::getNextUID() throw()
 }
 
 //==============================================================================
-int FilterGraph::getNumFilters() const throw()
+int FilterGraph::getNumFilters() const
 {
     return graph.getNumNodes();
 }
 
-const AudioProcessorGraph::Node::Ptr FilterGraph::getNode(const int index) const throw()
+AudioProcessorGraph::Node::Ptr FilterGraph::getNode(int index) const
 {
     return graph.getNode(index);
 }
 
-const AudioProcessorGraph::Node::Ptr FilterGraph::getNodeForId(const AudioProcessorGraph::NodeID uid) const throw()
+AudioProcessorGraph::Node::Ptr FilterGraph::getNodeForId(AudioProcessorGraph::NodeID uid) const
 {
     return graph.getNodeForId(uid);
 }

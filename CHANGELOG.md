@@ -11,15 +11,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Effect Rack (SubGraphProcessor)** – Nested plugin hosting within a single node
   - `SubGraphProcessor` wraps internal `AudioProcessorGraph`
-  - `SubGraphEditorComponent` provides rack editor UI
+  - `SubGraphEditorComponent` provides rack editor UI with viewport/canvas
   - Available via right-click → Pedalboard → Effect Rack
+  - Can load external VST3/AU plugins into the rack
+  - Double-click canvas to add plugins (same menu as main PluginField)
 
 ### Fixed
-- **Effect Rack Crash** – Root cause: `setSize()` in constructor triggered `resized()` before child components existed. Fix: call `setSize()` LAST in constructors.
+- **Effect Rack Editor Crash** – Multiple crash fixes:
+  - `resized()` timing: viewport/canvas had zero bounds because `setSize()` triggered `resized()` before components existed. Fix: explicit `resized()` call at end of constructor.
+  - Double-delete in `SubGraphCanvas` destructor: removed redundant `deleteAllChildren()` since `OwnedArray` manages component lifetime.
+  - Null pointer in `PluginPinComponent`: added null checks when parent is `SubGraphCanvas` (not `PluginField`).
 - **SubGraphProcessor XML Serialization** – Special handling in `createNodeXml()` since SubGraphProcessor is not `AudioPluginInstance`
 - **BypassableInstance Exclusion** – SubGraphProcessor excluded from bypass wrapper to prevent bus layout issues
-- **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state (JUCE's bus methods are NOT virtual). Solution: Unwrap wrapper before querying buses and call `enableAllBuses()` before wrapping.
+- **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state. Solution: Unwrap wrapper before querying buses.
 - **Mixer Node Pins Missing** – Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
+
+### Known Issues
+- **Effect Rack Connections** – Pin-to-pin wiring not yet functional (no crash, just ignored)
+- **Internal Node Editors** – Special nodes (Tone Generator, etc.) may show generic UI
 
 ### Technical
 - Added `getUnwrappedProcessor()` pattern for safe bus queries through wrapper classes
@@ -28,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Windows crash dump analysis workflow documented in ARCHITECTURE.md
 
 ---
+
 
 ## [3.1.0-dev] - 2026-01-30
 

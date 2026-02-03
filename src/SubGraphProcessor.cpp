@@ -152,7 +152,7 @@ void SubGraphProcessor::fillInPluginDescription(juce::PluginDescription& descrip
 //==============================================================================
 juce::AudioProcessorEditor* SubGraphProcessor::createEditor()
 {
-    // Graph is already initialized in constructor - just create editor
+    // Minimal test - just setSize in constructor
     return new SubGraphEditorComponent(*this);
 }
 

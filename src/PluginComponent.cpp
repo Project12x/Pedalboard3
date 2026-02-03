@@ -314,30 +314,53 @@ void PluginComponent::mouseDrag(const MouseEvent& e)
 void PluginComponent::mouseUp(const MouseEvent& e)
 {
     beingDragged = false;
+    if (pluginWindow)
+        node->properties.set("windowOpen", false);
 }
 
 //------------------------------------------------------------------------------
 void PluginComponent::buttonClicked(Button* button)
 {
+    std::cerr << "[buttonClicked] Enter for button\n" << std::flush;
     if ((button == editButton) && !pluginWindow)
     {
+        std::cerr << "[buttonClicked] Edit button for: " << node->getProcessor()->getName() << "\n" << std::flush;
+        spdlog::debug("[PluginComponent::buttonClicked] Edit button clicked for: {}",
+                      node->getProcessor()->getName().toStdString());
         AudioProcessorEditor* editor;
 
+        std::cerr << "[buttonClicked] Calling createEditorIfNeeded()\n" << std::flush;
+        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditorIfNeeded()");
         editor = node->getProcessor()->createEditorIfNeeded();
+        std::cerr << "[buttonClicked] createEditorIfNeeded() returned: " << (editor ? "valid" : "nullptr") << "\n"
+                  << std::flush;
+        spdlog::debug("[PluginComponent::buttonClicked] createEditorIfNeeded() returned: {}",
+                      (editor ? "valid" : "nullptr"));
 
         // Create generic ui.
         if (!editor)
+        {
+            std::cerr << "[buttonClicked] Creating NiallsGenericEditor\n" << std::flush;
+            spdlog::debug("[PluginComponent::buttonClicked] Creating NiallsGenericEditor");
             editor = new NiallsGenericEditor(node->getProcessor());
+        }
 
         if (editor)
         {
+            std::cerr << "[buttonClicked] Creating PluginEditorWindow\n" << std::flush;
+            spdlog::debug("[PluginComponent::buttonClicked] Setting editor name and creating window");
             editor->setName(node->getProcessor()->getName());
             pluginWindow = new PluginEditorWindow(editor, this);
+            std::cerr << "[buttonClicked] PluginEditorWindow created\n" << std::flush;
+            spdlog::debug("[PluginComponent::buttonClicked] PluginEditorWindow created");
         }
 
         if (pluginWindow)
             node->properties.set("windowOpen", true);
+        std::cerr << "[buttonClicked] Complete\n" << std::flush;
+        spdlog::debug("[PluginComponent::buttonClicked] Edit button handler complete");
     }
+
     else if (button == mappingsButton)
         openMappingsWindow();
     else if (button == bypassButton)
@@ -856,16 +879,20 @@ void PluginPinComponent::mouseDown(const MouseEvent& e)
     {
         field->addConnection(this, (e.mods.isShiftDown() && !parameterPin));
     }
+    // TODO: Add SubGraphCanvas support for connections
 }
 
 //------------------------------------------------------------------------------
 void PluginPinComponent::mouseDrag(const MouseEvent& e)
 {
     PluginField* field = findParentComponentOfClass<PluginField>();
-    MouseEvent e2 = e.getEventRelativeTo(field);
 
-    // field->dragConnection(e2.x+5, e2.y+6);
-    field->dragConnection(e2.x - 5, e2.y);
+    if (field)
+    {
+        MouseEvent e2 = e.getEventRelativeTo(field);
+        field->dragConnection(e2.x - 5, e2.y);
+    }
+    // TODO: Add SubGraphCanvas support for connections
 }
 
 //------------------------------------------------------------------------------
@@ -874,9 +901,13 @@ void PluginPinComponent::mouseUp(const MouseEvent& e)
     if (e.mods.testFlags(ModifierKeys::leftButtonModifier))
     {
         PluginField* field = findParentComponentOfClass<PluginField>();
-        MouseEvent e2 = e.getEventRelativeTo(field);
 
-        field->releaseConnection(e2.x, e2.y);
+        if (field)
+        {
+            MouseEvent e2 = e.getEventRelativeTo(field);
+            field->releaseConnection(e2.x, e2.y);
+        }
+        // TODO: Add SubGraphCanvas support for connections
     }
 }
 

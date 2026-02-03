@@ -4,8 +4,9 @@
     SubGraphEditorComponent.h
 
     Editor component for editing sub-graph/rack contents.
-    Displays the internal AudioProcessorGraph of a SubGraphProcessor,
-    showing nodes and connections with a Reason-style front/back toggle.
+    This is a simplified version of PluginField that reuses the same
+    PluginComponent, PluginPinComponent, and PluginConnection classes.
+    Differentiated by a cyan/teal color hue instead of the main purple theme.
 
   ==============================================================================
 */
@@ -15,71 +16,18 @@
 #include <JuceHeader.h>
 
 class SubGraphProcessor;
+class PluginComponent;
+class PluginConnection;
 
 //==============================================================================
 /**
-    Simple node component for displaying a processor in the sub-graph editor.
+    Canvas for displaying and editing the rack's internal graph.
+    Mirrors PluginField's architecture but uses a different color scheme.
 */
-class RackNodeComponent : public juce::Component, public juce::ChangeBroadcaster
+class SubGraphCanvas : public juce::Component, public juce::ChangeListener, public juce::ChangeBroadcaster
 {
   public:
-    RackNodeComponent(juce::AudioProcessorGraph::Node::Ptr node, bool isIONode = false);
-    ~RackNodeComponent() override = default;
-
-    void paint(juce::Graphics& g) override;
-    void resized() override;
-
-    void mouseDown(const juce::MouseEvent& e) override;
-    void mouseDrag(const juce::MouseEvent& e) override;
-
-    juce::AudioProcessorGraph::NodeID getNodeId() const { return nodePtr->nodeID; }
-    juce::AudioProcessorGraph::Node::Ptr getNode() const { return nodePtr; }
-
-    // Pin positions for connection drawing
-    juce::Point<int> getInputPinPosition(int channel) const;
-    juce::Point<int> getOutputPinPosition(int channel) const;
-    int getNumInputPins() const;
-    int getNumOutputPins() const;
-
-    // Context menu action flags
-    bool isDeleteRequested() const { return deleteRequested; }
-    bool isDisconnectRequested() const { return disconnectRequested; }
-    void clearActionFlags()
-    {
-        deleteRequested = false;
-        disconnectRequested = false;
-    }
-    bool isIO() const { return isIONode; }
-
-  private:
-    juce::AudioProcessorGraph::Node::Ptr nodePtr;
-    bool isIONode;
-    juce::Point<int> dragStart;
-    bool deleteRequested = false;
-    bool disconnectRequested = false;
-
-    static constexpr int PIN_SIZE = 10;
-    static constexpr int PIN_SPACING = 18;
-    static constexpr int HEADER_HEIGHT = 24;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RackNodeComponent)
-};
-
-//==============================================================================
-/**
-    Main canvas for displaying and editing the rack's internal graph.
-    Supports front (controls) and back (cable routing) views.
-*/
-class SubGraphCanvas : public juce::Component, public juce::ChangeListener
-{
-  public:
-    enum class ViewMode
-    {
-        Front, // Plugin/control view
-        Back   // Cable routing view (Reason-style)
-    };
-
-    SubGraphCanvas(SubGraphProcessor& processor);
+    SubGraphCanvas(SubGraphProcessor& processor, juce::KnownPluginList* pluginList);
     ~SubGraphCanvas() override;
 
     void paint(juce::Graphics& g) override;
@@ -87,34 +35,47 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
-    void setViewMode(ViewMode mode);
-    ViewMode getViewMode() const { return viewMode; }
+    // Node/connection management (mirrors PluginField)
+    void addFilter(int filterIndex);
+    void deleteFilter(juce::AudioProcessorGraph::Node* node);
+    void addConnection(juce::AudioProcessorGraph::NodeID srcId, int srcChannel,
+                       juce::AudioProcessorGraph::NodeID destId, int destChannel);
+    void deleteConnection(PluginConnection* connection);
+    void rebuildGraph();
 
-    void rebuildNodes();
+    // Pin/connection helpers
+    juce::Component* getPinAt(int x, int y);
+    void clearDoubleClickMessage()
+    {
+        displayDoubleClickMessage = false;
+        repaint();
+    }
 
   private:
-    void drawConnections(juce::Graphics& g);
-    void drawBackPanelConnections(juce::Graphics& g);
-    void drawDraggingConnection(juce::Graphics& g);
-
-    // Pin hit detection
-    RackNodeComponent* findNodeAt(juce::Point<int> pos);
-    bool hitTestInputPin(RackNodeComponent* node, juce::Point<int> pos, int& pinIndex);
-    bool hitTestOutputPin(RackNodeComponent* node, juce::Point<int> pos, int& pinIndex);
-
     SubGraphProcessor& subGraph;
-    juce::OwnedArray<RackNodeComponent> nodeComponents;
-    ViewMode viewMode = ViewMode::Front;
+    juce::KnownPluginList* pluginList;
 
-    // Connection dragging state
-    bool isDraggingConnection = false;
-    bool draggingFromOutput = true; // true = from output, false = from input
-    juce::AudioProcessorGraph::NodeID dragSourceNodeId;
-    int dragSourceChannel = -1;
-    juce::Point<int> dragEndPos;
+    juce::OwnedArray<PluginComponent> filterComponents;
+    juce::OwnedArray<PluginConnection> connectionComponents;
+
+    // Graph expansion/panning
+    bool isPanning = false;
+    juce::Point<int> panStartMouse;
+    juce::Point<int> panStartScroll;
+
+    // Zoom
+    float zoomLevel = 1.0f;
+    static constexpr float minZoom = 0.25f;
+    static constexpr float maxZoom = 2.0f;
+
+    // Dragging connection
+    PluginConnection* draggingConnection = nullptr;
+
+    bool displayDoubleClickMessage = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SubGraphCanvas)
 };
@@ -122,9 +83,9 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener
 //==============================================================================
 /**
     Editor window/component for the SubGraphProcessor.
-    Shows toolbar with view mode toggle and the rack canvas.
+    Shows toolbar and the canvas.
 */
-class SubGraphEditorComponent : public juce::AudioProcessorEditor, public juce::Button::Listener
+class SubGraphEditorComponent : public juce::AudioProcessorEditor
 {
   public:
     SubGraphEditorComponent(SubGraphProcessor& processor);
@@ -133,20 +94,14 @@ class SubGraphEditorComponent : public juce::AudioProcessorEditor, public juce::
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    void buttonClicked(juce::Button* button) override;
-
   private:
     SubGraphProcessor& subGraphProcessor;
 
     std::unique_ptr<juce::Viewport> viewport;
     std::unique_ptr<SubGraphCanvas> canvas;
-    std::unique_ptr<juce::TextButton> frontBackButton;
-    std::unique_ptr<juce::TextButton> addPluginButton;
     std::unique_ptr<juce::Label> titleLabel;
 
-    static constexpr int TOOLBAR_HEIGHT = 40;
-
-    void showPluginMenu();
+    static constexpr int TOOLBAR_HEIGHT = 32;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SubGraphEditorComponent)
 };

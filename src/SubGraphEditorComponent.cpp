@@ -3,505 +3,610 @@
 
     SubGraphEditorComponent.cpp
 
-    Implementation of the rack editor component.
+    Implementation of the SubGraph editor, mirroring PluginField's architecture
+    but with a different color hue for visual differentiation.
 
   ==============================================================================
 */
 
 #include "SubGraphEditorComponent.h"
 
+#include "AudioSingletons.h"
+#include "ColourScheme.h"
+#include "FontManager.h"
+#include "InternalFilters.h"
+#include "PluginComponent.h"
+#include "SettingsManager.h"
 #include "SubGraphProcessor.h"
 
+#include <map>
 #include <spdlog/spdlog.h>
 
 using namespace juce;
 
 //==============================================================================
-// RackNodeComponent
+// SubGraphCanvas - mirrors PluginField but for subgraphs
 //==============================================================================
 
-RackNodeComponent::RackNodeComponent(juce::AudioProcessorGraph::Node::Ptr node, bool isIO)
-    : nodePtr(node), isIONode(isIO)
+SubGraphCanvas::SubGraphCanvas(SubGraphProcessor& processor, KnownPluginList* list)
+    : subGraph(processor), pluginList(list)
 {
-    setSize(140, 80);
-}
+    spdlog::debug("[SubGraphCanvas] Constructor starting");
+    setSize(2000, 1500);
+    setWantsKeyboardFocus(true);
 
-void RackNodeComponent::paint(Graphics& g)
-{
-    auto bounds = getLocalBounds().toFloat();
-
-    // Safety check
-    if (!nodePtr || !nodePtr->getProcessor())
-    {
-        g.setColour(Colour(0xFF4A4A4A));
-        g.fillRoundedRectangle(bounds, 4.0f);
-        g.setColour(Colours::red);
-        g.drawText("Invalid Node", bounds, Justification::centred, true);
-        return;
-    }
-
-    // Background
-    if (isIONode)
-    {
-        // I/O nodes have a different look
-        g.setColour(Colour(0xFF2A3A4A));
-    }
-    else
-    {
-        g.setColour(Colour(0xFF3A3A4A));
-    }
-    g.fillRoundedRectangle(bounds, 4.0f);
-
-    // Border
-    g.setColour(Colour(0xFF5A6A7A));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 4.0f, 1.0f);
-
-    // Header bar
-    auto headerBounds = bounds.removeFromTop(HEADER_HEIGHT);
-    g.setColour(Colour(0xFF4A5A6A));
-    g.fillRoundedRectangle(headerBounds.reduced(1.0f), 3.0f);
-
-    // Title
-    g.setColour(Colours::white);
-    g.setFont(Font(FontOptions(13.0f).withStyle("Bold")));
-    String name = nodePtr->getProcessor()->getName();
-    g.drawText(name, headerBounds.reduced(4.0f, 0.0f), Justification::centredLeft, true);
-
-    // Draw input pins (left side)
-    int numInputs = getNumInputPins();
-    for (int i = 0; i < numInputs; ++i)
-    {
-        auto pinPos = getInputPinPosition(i);
-        g.setColour(i >= nodePtr->getProcessor()->getTotalNumInputChannels() ? Colour(0xFFAA6688) // MIDI pin
-                                                                             : Colour(0xFF6688AA));
-        g.fillEllipse(pinPos.x - PIN_SIZE / 2, pinPos.y - PIN_SIZE / 2, PIN_SIZE, PIN_SIZE);
-    }
-
-    // Draw output pins (right side)
-    int numOutputs = getNumOutputPins();
-    for (int i = 0; i < numOutputs; ++i)
-    {
-        auto pinPos = getOutputPinPosition(i);
-        g.setColour(i >= nodePtr->getProcessor()->getTotalNumOutputChannels() ? Colour(0xFFAA6688) // MIDI pin
-                                                                              : Colour(0xFF88AA66));
-        g.fillEllipse(pinPos.x - PIN_SIZE / 2, pinPos.y - PIN_SIZE / 2, PIN_SIZE, PIN_SIZE);
-    }
-}
-
-void RackNodeComponent::resized()
-{
-    // Nothing to resize internally
-}
-
-void RackNodeComponent::mouseDown(const MouseEvent& e)
-{
-    dragStart = e.getPosition();
-    toFront(true);
-}
-
-void RackNodeComponent::mouseDrag(const MouseEvent& e)
-{
-    if (!nodePtr)
-        return;
-
-    auto parentPos = e.getEventRelativeTo(getParentComponent()).getPosition();
-    auto newPos = parentPos - dragStart;
-
-    // Clamp to canvas bounds
-    newPos.x = std::max(0, newPos.x);
-    newPos.y = std::max(0, newPos.y);
-
-    setTopLeftPosition(newPos);
-
-    // Update node properties for persistence
-    nodePtr->properties.set("x", (double)newPos.x);
-    nodePtr->properties.set("y", (double)newPos.y);
-
-    sendChangeMessage();
-}
-
-Point<int> RackNodeComponent::getInputPinPosition(int channel) const
-{
-    int yOffset = HEADER_HEIGHT + 10 + channel * PIN_SPACING;
-    return Point<int>(0, yOffset);
-}
-
-Point<int> RackNodeComponent::getOutputPinPosition(int channel) const
-{
-    int yOffset = HEADER_HEIGHT + 10 + channel * PIN_SPACING;
-    return Point<int>(getWidth(), yOffset);
-}
-
-int RackNodeComponent::getNumInputPins() const
-{
-    if (!nodePtr || !nodePtr->getProcessor())
-        return 0;
-    auto* proc = nodePtr->getProcessor();
-    return proc->getTotalNumInputChannels() + (proc->acceptsMidi() ? 1 : 0);
-}
-
-int RackNodeComponent::getNumOutputPins() const
-{
-    if (!nodePtr || !nodePtr->getProcessor())
-        return 0;
-    auto* proc = nodePtr->getProcessor();
-    return proc->getTotalNumOutputChannels() + (proc->producesMidi() ? 1 : 0);
-}
-
-//==============================================================================
-// SubGraphCanvas
-//==============================================================================
-
-SubGraphCanvas::SubGraphCanvas(SubGraphProcessor& processor) : subGraph(processor)
-{
-    spdlog::debug("[SubGraphCanvas] Constructor called");
-    setSize(800, 600);
-
-    // Register as listener to graph changes (Element-style / Standard JUCE)
-    subGraph.getInternalGraph().addChangeListener(this);
-
-    rebuildNodes();
-    spdlog::debug("[SubGraphCanvas] Constructor finished");
+    // Build initial components from any existing nodes
+    spdlog::debug("[SubGraphCanvas] About to call rebuildGraph()");
+    rebuildGraph();
+    spdlog::debug("[SubGraphCanvas] Constructor complete");
 }
 
 SubGraphCanvas::~SubGraphCanvas()
 {
-    // CRITICAL: Remove ourselves from the graph's listener list to prevent use-after-free
-    subGraph.getInternalGraph().removeChangeListener(this);
-
-    for (auto* node : nodeComponents)
-        node->removeChangeListener(this);
+    // OwnedArray members (filterComponents, connectionComponents) will
+    // automatically delete their contents when this object is destroyed.
+    // Do NOT call deleteAllChildren() as it would double-delete.
 }
 
 void SubGraphCanvas::paint(Graphics& g)
 {
-    // Background with grid
-    if (viewMode == ViewMode::Front)
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat();
+
+    // === SubGraph uses cyan/teal hue instead of purple ===
+    Colour bgBase = colours["Field Background"];
+    // Shift hue towards cyan (approximately 180 degrees from purple)
+    Colour bgCol = bgBase.withHue(0.5f); // Cyan hue
+
+    ColourGradient bgGrad(bgCol.brighter(0.08f), 0.0f, 0.0f, bgCol.darker(0.15f), 0.0f, bounds.getHeight(), false);
+    g.setGradientFill(bgGrad);
+    g.fillRect(bounds);
+
+    // === Grid pattern ===
+    float gridSize = 30.0f;
+    Colour gridCol = Colour(0xFF00AAAA).withAlpha(0.15f); // Cyan grid
+    g.setColour(gridCol);
+
+    for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
+        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
+    for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
+        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+
+    if (displayDoubleClickMessage)
     {
-        g.fillAll(Colour(0xFF282830));
+        auto centerX = bounds.getCentreX();
+        auto centerY = bounds.getCentreY();
 
-        // Subtle grid
-        g.setColour(Colour(0xFF333340));
-        for (int x = 0; x < getWidth(); x += 20)
-            g.drawVerticalLine(x, 0.0f, (float)getHeight());
-        for (int y = 0; y < getHeight(); y += 20)
-            g.drawHorizontalLine(y, 0.0f, (float)getWidth());
+        g.setFont(FontManager::getInstance().getUIFont(18.0f));
+        g.setColour(Colour(0xFF00CCCC).withAlpha(0.6f)); // Cyan text
+
+        String hintText = "Double-click to add a plugin";
+        auto textWidth = g.getCurrentFont().getStringWidth(hintText);
+        g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
+                   Justification::centred, false);
+
+        g.setFont(FontManager::getInstance().getUIFont(13.0f));
+        g.setColour(Colour(0xFF00AAAA).withAlpha(0.35f));
+
+        String subHint = "This is an Effect Rack sub-graph";
+        auto subWidth = g.getCurrentFont().getStringWidth(subHint);
+        g.drawText(subHint, (int)(centerX - subWidth / 2), (int)(centerY + 18), subWidth + 20, 24,
+                   Justification::centred, false);
     }
-    else
-    {
-        // Back view - Reason-style darker background
-        g.fillAll(Colour(0xFF1A1A20));
-
-        // More prominent grid for cable routing
-        g.setColour(Colour(0xFF2A2A30));
-        for (int x = 0; x < getWidth(); x += 40)
-            g.drawVerticalLine(x, 0.0f, (float)getHeight());
-        for (int y = 0; y < getHeight(); y += 40)
-            g.drawHorizontalLine(y, 0.0f, (float)getWidth());
-    }
-
-    // Draw connections
-    if (viewMode == ViewMode::Back)
-        drawBackPanelConnections(g);
-    else
-        drawConnections(g);
 }
 
 void SubGraphCanvas::resized()
 {
-    // Nothing to do - nodes position themselves
+    // Components position themselves
 }
 
 void SubGraphCanvas::mouseDown(const MouseEvent& e)
 {
-    if (e.mods.isRightButtonDown())
+    if (e.getNumberOfClicks() == 2)
     {
-        // TODO: Show add plugin menu
+        // Double-click: show plugin menu (mirrors PluginField exactly)
         PopupMenu menu;
-        menu.addItem(1, "Add Plugin...");
+
+        const int SEARCH_ITEM_ID = 100000;
+        const int MANAGE_FAVORITES_BASE = 200000;
+
+        auto& settings = SettingsManager::getInstance();
+        StringArray favorites = settings.getStringArray("PluginFavorites");
+        StringArray recentPlugins = settings.getStringArray("RecentPlugins");
+
+        // Get all plugin types
+        auto types = pluginList->getTypes();
+
+        // Add Effect Rack for nested racks
+        InternalPluginFormat internalFormat;
+        types.add(*internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
+
+        // Build lookup map
+        std::map<String, int> identifierToIndex;
+        for (int i = 0; i < types.size(); ++i)
+            identifierToIndex[types.getReference(i).createIdentifierString()] = i;
+
+        // Favorites section
+        PopupMenu favoritesMenu;
+        for (const auto& favId : favorites)
+        {
+            auto it = identifierToIndex.find(favId);
+            if (it != identifierToIndex.end())
+            {
+                int idx = it->second;
+                favoritesMenu.addItem(idx + 1, types.getReference(idx).name);
+            }
+        }
+        if (favoritesMenu.getNumItems() > 0)
+            menu.addSubMenu(CharPointer_UTF8("\xe2\x98\x85 Favorites"), favoritesMenu);
+
+        // Recent section
+        PopupMenu recentMenu;
+        for (const auto& recentId : recentPlugins)
+        {
+            auto it = identifierToIndex.find(recentId);
+            if (it != identifierToIndex.end())
+            {
+                int idx = it->second;
+                recentMenu.addItem(idx + 1, types.getReference(idx).name);
+            }
+        }
+        if (recentMenu.getNumItems() > 0)
+            menu.addSubMenu("Recent", recentMenu);
+
+        // Search option
+        menu.addItem(SEARCH_ITEM_ID, CharPointer_UTF8("\xf0\x9f\x94\x8d Search..."));
+
+        // Edit Favorites
+        PopupMenu editFavoritesMenu;
+        for (int i = 0; i < types.size(); ++i)
+        {
+            const auto& type = types.getReference(i);
+            bool isFavorite = favorites.contains(type.createIdentifierString());
+            editFavoritesMenu.addItem(MANAGE_FAVORITES_BASE + i + 1, type.name, true, isFavorite);
+        }
+        menu.addSubMenu(CharPointer_UTF8("\xe2\x98\x85 Edit Favorites..."), editFavoritesMenu);
+
+        if (favoritesMenu.getNumItems() > 0 || recentMenu.getNumItems() > 0)
+            menu.addSeparator();
+
+        // Category menus
+        PopupMenu builtInMenu;
+        PopupMenu allPluginsMenu;
+        std::map<String, PopupMenu> categoryMenus;
+
+        for (int i = 0; i < types.size(); ++i)
+        {
+            const auto& type = types.getReference(i);
+
+            if (type.pluginFormatName == "Internal" || type.category == "Built-in")
+                builtInMenu.addItem(i + 1, type.name);
+            else
+            {
+                String category = type.category.isNotEmpty() ? type.category : "Uncategorized";
+                categoryMenus[category].addItem(i + 1, type.name);
+                allPluginsMenu.addItem(i + 1, type.name);
+            }
+        }
+
+        if (builtInMenu.getNumItems() > 0)
+        {
+            menu.addSubMenu("Pedalboard", builtInMenu);
+            menu.addSeparator();
+        }
+
+        for (auto& [category, categoryMenu] : categoryMenus)
+            menu.addSubMenu(category, categoryMenu);
+
         menu.addSeparator();
-        menu.addItem(2, "Front View", true, viewMode == ViewMode::Front);
-        menu.addItem(3, "Back View (Cables)", true, viewMode == ViewMode::Back);
+        menu.addSubMenu("All Plugins", allPluginsMenu);
 
         int result = menu.show();
-        if (result == 2)
-            setViewMode(ViewMode::Front);
-        else if (result == 3)
-            setViewMode(ViewMode::Back);
+
+        // Handle search
+        if (result == SEARCH_ITEM_ID)
+        {
+            AlertWindow searchDialog("Search Plugins", "Type to filter:", AlertWindow::NoIcon);
+            searchDialog.addTextEditor("search", "", "Plugin name:");
+            searchDialog.addButton("Cancel", 0);
+            searchDialog.addButton("OK", 1);
+
+            if (searchDialog.runModalLoop() == 1)
+            {
+                String searchText = searchDialog.getTextEditor("search")->getText().toLowerCase();
+                if (searchText.isNotEmpty())
+                {
+                    PopupMenu searchResults;
+                    for (int i = 0; i < types.size(); ++i)
+                    {
+                        const auto& type = types.getReference(i);
+                        if (type.name.toLowerCase().contains(searchText))
+                            searchResults.addItem(i + 1, type.name);
+                    }
+
+                    if (searchResults.getNumItems() > 0)
+                        result = searchResults.show();
+                    else
+                    {
+                        AlertWindow::showMessageBox(AlertWindow::InfoIcon, "No Results",
+                                                    "No plugins found matching \"" + searchText + "\"");
+                        result = 0;
+                    }
+                }
+            }
+            else
+                result = 0;
+        }
+
+        // Handle favorite toggle
+        if (result >= MANAGE_FAVORITES_BASE)
+        {
+            int typeIndex = result - MANAGE_FAVORITES_BASE - 1;
+            if (typeIndex >= 0 && typeIndex < types.size())
+            {
+                String pluginId = types.getReference(typeIndex).createIdentifierString();
+                if (favorites.contains(pluginId))
+                    favorites.removeString(pluginId);
+                else
+                    favorites.add(pluginId);
+                settings.setStringArray("PluginFavorites", favorites);
+            }
+            return;
+        }
+
+        // Handle plugin selection
+        if (result > 0 && result < SEARCH_ITEM_ID)
+        {
+            int typeIndex = result - 1;
+            if (typeIndex >= 0 && typeIndex < types.size())
+            {
+                PluginDescription pluginType = types.getReference(typeIndex);
+                spdlog::info("[SubGraphCanvas] Loading plugin: {}", pluginType.name.toStdString());
+
+                // Add to the subgraph's internal graph
+                String errorMessage;
+                auto instance = AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(
+                    pluginType, 44100.0, 512, errorMessage);
+
+                if (instance)
+                {
+                    auto& graph = subGraph.getInternalGraph();
+                    auto node = graph.addNode(std::move(instance));
+                    if (node)
+                    {
+                        node->properties.set("x", (double)e.x);
+                        node->properties.set("y", (double)e.y);
+                        addFilter(graph.getNumNodes() - 1);
+                        sendChangeMessage();
+                        clearDoubleClickMessage();
+
+                        // Update recent plugins
+                        String pluginId = pluginType.createIdentifierString();
+                        recentPlugins.removeString(pluginId);
+                        recentPlugins.insert(0, pluginId);
+                        while (recentPlugins.size() > 8)
+                            recentPlugins.remove(recentPlugins.size() - 1);
+                        settings.setStringArray("RecentPlugins", recentPlugins);
+                    }
+                }
+                else
+                {
+                    spdlog::error("[SubGraphCanvas] Failed to load plugin: {}", errorMessage.toStdString());
+                }
+            }
+        }
+    }
+    else
+    {
+        // Single click: begin panning
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            isPanning = true;
+            panStartMouse = e.getScreenPosition();
+            panStartScroll = viewport->getViewPosition();
+            setMouseCursor(MouseCursor::DraggingHandCursor);
+        }
+    }
+}
+
+void SubGraphCanvas::mouseDrag(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            Point<int> delta = panStartMouse - e.getScreenPosition();
+            Point<int> targetPosition = panStartScroll + delta;
+
+            // Expand canvas if needed
+            int currentWidth = getWidth();
+            int currentHeight = getHeight();
+            int viewWidth = viewport->getViewWidth();
+            int viewHeight = viewport->getViewHeight();
+
+            int neededWidth = targetPosition.x + viewWidth;
+            int neededHeight = targetPosition.y + viewHeight;
+
+            bool sizeChanged = false;
+            if (neededWidth > currentWidth)
+            {
+                currentWidth = neededWidth + 200;
+                sizeChanged = true;
+            }
+            if (neededHeight > currentHeight)
+            {
+                currentHeight = neededHeight + 200;
+                sizeChanged = true;
+            }
+
+            if (sizeChanged)
+                setSize(currentWidth, currentHeight);
+
+            // Handle negative scroll (expand canvas leftward/upward)
+            if (targetPosition.x < 0)
+            {
+                int expandBy = -targetPosition.x + 100;
+                setSize(getWidth() + expandBy, getHeight());
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX() + expandBy,
+                                                             getChildComponent(i)->getY());
+                panStartScroll.setX(panStartScroll.x + expandBy);
+                targetPosition.setX(100);
+            }
+            if (targetPosition.y < 0)
+            {
+                int expandBy = -targetPosition.y + 100;
+                setSize(getWidth(), getHeight() + expandBy);
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX(),
+                                                             getChildComponent(i)->getY() + expandBy);
+                panStartScroll.setY(panStartScroll.y + expandBy);
+                targetPosition.setY(100);
+            }
+
+            viewport->setViewPosition(targetPosition);
+        }
+    }
+}
+
+void SubGraphCanvas::mouseUp(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        isPanning = false;
+        setMouseCursor(MouseCursor::NormalCursor);
+    }
+}
+
+void SubGraphCanvas::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
+{
+    float zoomDelta = wheel.deltaY * 0.1f;
+    float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
+
+    if (newZoom != zoomLevel)
+    {
+        auto mousePos = e.getPosition();
+        float scaleRatio = newZoom / zoomLevel;
+
+        zoomLevel = newZoom;
+        setTransform(AffineTransform::scale(zoomLevel));
+
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            auto currentPos = viewport->getViewPosition();
+            int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
+            int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
+            viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
+        }
+
+        repaint();
     }
 }
 
 void SubGraphCanvas::changeListenerCallback(ChangeBroadcaster* source)
 {
-    repaint(); // Redraw connections when nodes move
+    if (auto* pluginComp = dynamic_cast<PluginComponent*>(source))
+    {
+        Point<int> fieldSize(getWidth(), getHeight());
+        Point<int> pluginPos = pluginComp->getPosition();
+        Point<int> pluginSize(pluginComp->getWidth(), pluginComp->getHeight());
+
+        if ((pluginPos.getX() + pluginSize.getX()) > fieldSize.getX())
+            fieldSize.setX((pluginPos.getX() + pluginSize.getX()));
+        if ((pluginPos.getY() + pluginSize.getY()) > fieldSize.getY())
+            fieldSize.setY((pluginPos.getY() + pluginSize.getY()));
+
+        setSize(fieldSize.getX(), fieldSize.getY());
+        repaint();
+    }
 }
 
-void SubGraphCanvas::setViewMode(ViewMode mode)
+void SubGraphCanvas::addFilter(int filterIndex)
 {
-    viewMode = mode;
+    auto& graph = subGraph.getInternalGraph();
+    spdlog::debug("[SubGraphCanvas::addFilter] filterIndex={}, numNodes={}", filterIndex, graph.getNumNodes());
+    if (filterIndex >= 0 && filterIndex < graph.getNumNodes())
+    {
+        auto node = graph.getNode(filterIndex);
+        if (node)
+        {
+            spdlog::debug("[SubGraphCanvas::addFilter] Creating PluginComponent for node: {}",
+                          node->getProcessor()->getName().toStdString());
+            auto* comp = new PluginComponent(node.get());
+            spdlog::debug("[SubGraphCanvas::addFilter] PluginComponent created, adding change listener");
+
+            // Position from node properties (mirroring PluginField)
+            int x = node->properties.getWithDefault("x", 50);
+            int y = node->properties.getWithDefault("y", 50 + filterIndex * 110);
+            comp->setTopLeftPosition(x, y);
+
+            comp->addChangeListener(this);
+            addAndMakeVisible(comp);
+            filterComponents.add(comp);
+            spdlog::debug("[SubGraphCanvas::addFilter] Complete for index {} at ({}, {})", filterIndex, x, y);
+        }
+    }
+}
+
+void SubGraphCanvas::deleteFilter(AudioProcessorGraph::Node* node)
+{
+    // Find and remove the component
+    for (int i = filterComponents.size() - 1; i >= 0; --i)
+    {
+        if (filterComponents[i]->getNode() == node)
+        {
+            filterComponents[i]->removeChangeListener(this);
+            removeChildComponent(filterComponents[i]);
+            filterComponents.remove(i);
+            break;
+        }
+    }
+
+    // Remove from the graph
+    subGraph.getInternalGraph().removeNode(node->nodeID);
+    sendChangeMessage();
+}
+
+void SubGraphCanvas::addConnection(AudioProcessorGraph::NodeID srcId, int srcChannel,
+                                   AudioProcessorGraph::NodeID destId, int destChannel)
+{
+    subGraph.getInternalGraph().addConnection({{srcId, srcChannel}, {destId, destChannel}});
+    rebuildGraph(); // Refresh all connections
+    sendChangeMessage();
+}
+
+void SubGraphCanvas::deleteConnection(PluginConnection* connection)
+{
+    // Remove from graph then rebuild
+    rebuildGraph();
+    sendChangeMessage();
+}
+
+void SubGraphCanvas::rebuildGraph()
+{
+    spdlog::debug("[SubGraphCanvas::rebuildGraph] Starting");
+
+    // Clear existing connections
+    for (int i = getNumChildComponents() - 1; i >= 0; --i)
+    {
+        if (auto* conn = dynamic_cast<PluginConnection*>(getChildComponent(i)))
+        {
+            removeChildComponent(conn);
+            delete conn;
+        }
+    }
+    connectionComponents.clear();
+
+    // Clear and rebuild filter components
+    for (auto* comp : filterComponents)
+    {
+        comp->removeChangeListener(this);
+        removeChildComponent(comp);
+    }
+    filterComponents.clear();
+
+    // Rebuild from current graph state
+    auto& graph = subGraph.getInternalGraph();
+    spdlog::debug("[SubGraphCanvas::rebuildGraph] Graph has {} nodes", graph.getNumNodes());
+    for (int i = 0; i < graph.getNumNodes(); ++i)
+    {
+        spdlog::debug("[SubGraphCanvas::rebuildGraph] Adding filter {}", i);
+        addFilter(i);
+    }
+
+    // Rebuild connections (would need PluginConnection API - simplified for now)
+    // The full implementation would iterate graph.getConnections() and create
+    // PluginConnection components for each
+
+    spdlog::debug("[SubGraphCanvas::rebuildGraph] Complete");
     repaint();
 }
 
-// Replace rebuildNodes with corrected version that logs and uses correct constructor
-void SubGraphCanvas::rebuildNodes()
+Component* SubGraphCanvas::getPinAt(int x, int y)
 {
-    spdlog::debug("[SubGraphCanvas] rebuildNodes started");
-
-    // Remove existing listeners
-    for (auto* node : nodeComponents)
-        node->removeChangeListener(this);
-
-    // Clear the OwnedArray first (deletes components)
-    // This automatically removes them from parent as well via Component destructor
-    nodeComponents.clear();
-
-    // Ensure UI is clear (should be empty already, but safe to call)
-    removeAllChildren();
-
-    auto& graph = subGraph.getInternalGraph();
-    // CRITICAL: Protect against concurrent access during audio processing
-    const juce::ScopedLock sl(graph.getCallbackLock());
-
-    int numNodes = graph.getNumNodes();
-    spdlog::debug("[SubGraphCanvas] Internal graph has {} nodes", numNodes);
-
-    for (int i = 0; i < numNodes; ++i)
+    for (auto* comp : filterComponents)
     {
-        auto node = graph.getNode(i);
-        if (!node)
+        // Check input pins
+        for (int i = 0; i < comp->getNumInputPins(); ++i)
         {
-            spdlog::warn("[SubGraphCanvas] Null node at index {}", i);
-            continue;
+            auto* pin = comp->getInputPin(i);
+            if (pin && pin->getBounds().contains(x - comp->getX(), y - comp->getY()))
+                return pin;
         }
-
-        spdlog::debug("[SubGraphCanvas] Processing node uid={} type={}", node->nodeID.uid,
-                      node->getProcessor() ? node->getProcessor()->getName().toStdString() : "NULL");
-
-        if (node->getProcessor() == nullptr)
+        // Check output pins
+        for (int i = 0; i < comp->getNumOutputPins(); ++i)
         {
-            spdlog::error("[SubGraphCanvas] Node uid={} has null processor!", node->nodeID.uid);
-            continue;
-        }
-
-        // Check if this is an I/O node
-        bool isIO =
-            (node->nodeID == subGraph.getRackAudioInputNodeId() ||
-             node->nodeID == subGraph.getRackAudioOutputNodeId() || node->nodeID == subGraph.getRackMidiInputNodeId());
-
-        auto* comp = new RackNodeComponent(node, isIO);
-
-        // Position from node properties
-        double x = node->properties.getWithDefault("x", 100.0);
-        double y = node->properties.getWithDefault("y", 100.0);
-
-        spdlog::debug("[SubGraphCanvas] Placing node at {}, {}", x, y);
-        comp->setTopLeftPosition((int)x, (int)y);
-
-        comp->addChangeListener(this);
-        addAndMakeVisible(comp);
-        nodeComponents.add(comp);
-    }
-    spdlog::debug("[SubGraphCanvas] rebuildNodes finished, created {} nodes", nodeComponents.size());
-}
-
-void SubGraphCanvas::drawConnections(Graphics& g)
-{
-    auto& graph = subGraph.getInternalGraph();
-
-    g.setColour(Colour(0xFF5588BB));
-
-    for (const auto& conn : graph.getConnections())
-    {
-        // Find source and dest components
-        RackNodeComponent* srcComp = nullptr;
-        RackNodeComponent* dstComp = nullptr;
-
-        for (auto* node : nodeComponents)
-        {
-            if (node->getNodeId() == conn.source.nodeID)
-                srcComp = node;
-            if (node->getNodeId() == conn.destination.nodeID)
-                dstComp = node;
-        }
-
-        if (srcComp && dstComp)
-        {
-            auto srcPos = srcComp->getOutputPinPosition(conn.source.channelIndex);
-            auto dstPos = dstComp->getInputPinPosition(conn.destination.channelIndex);
-
-            // Convert to canvas coordinates
-            srcPos = srcComp->getPosition() + srcPos;
-            dstPos = dstComp->getPosition() + dstPos;
-
-            // MIDI connections in a different color
-            if (conn.source.channelIndex == juce::AudioProcessorGraph::midiChannelIndex)
-                g.setColour(Colour(0xFFAA6688));
-            else
-                g.setColour(Colour(0xFF5588BB));
-
-            // Draw bezier curve
-            Path cable;
-            cable.startNewSubPath(srcPos.toFloat());
-            float ctrlOffset = std::abs(dstPos.x - srcPos.x) * 0.5f;
-            cable.cubicTo(srcPos.x + ctrlOffset, srcPos.y, dstPos.x - ctrlOffset, dstPos.y, dstPos.x, dstPos.y);
-
-            g.strokePath(cable, PathStrokeType(2.0f));
+            auto* pin = comp->getOutputPin(i);
+            if (pin && pin->getBounds().contains(x - comp->getX(), y - comp->getY()))
+                return pin;
         }
     }
-}
-
-void SubGraphCanvas::drawBackPanelConnections(Graphics& g)
-{
-    // Back view: thicker, more colorful cables like Reason
-    auto& graph = subGraph.getInternalGraph();
-
-    for (const auto& conn : graph.getConnections())
-    {
-        RackNodeComponent* srcComp = nullptr;
-        RackNodeComponent* dstComp = nullptr;
-
-        for (auto* node : nodeComponents)
-        {
-            if (node->getNodeId() == conn.source.nodeID)
-                srcComp = node;
-            if (node->getNodeId() == conn.destination.nodeID)
-                dstComp = node;
-        }
-
-        if (srcComp && dstComp)
-        {
-            auto srcPos = srcComp->getOutputPinPosition(conn.source.channelIndex);
-            auto dstPos = dstComp->getInputPinPosition(conn.destination.channelIndex);
-
-            srcPos = srcComp->getPosition() + srcPos;
-            dstPos = dstComp->getPosition() + dstPos;
-
-            // Color coding by channel
-            Colour cableColour;
-            if (conn.source.channelIndex == juce::AudioProcessorGraph::midiChannelIndex)
-                cableColour = Colour(0xFFDD6699); // Pink for MIDI
-            else if (conn.source.channelIndex == 0)
-                cableColour = Colour(0xFFDD8844); // Orange for left
-            else if (conn.source.channelIndex == 1)
-                cableColour = Colour(0xFF44AADD); // Blue for right
-            else
-                cableColour = Colour(0xFF88BB44); // Green for others
-
-            // Draw shadow
-            g.setColour(Colours::black.withAlpha(0.3f));
-            Path shadow;
-            shadow.startNewSubPath(srcPos.x + 2, srcPos.y + 3);
-            float ctrlOffset = std::abs(dstPos.x - srcPos.x) * 0.4f;
-            shadow.cubicTo(srcPos.x + ctrlOffset + 2, srcPos.y + 3, dstPos.x - ctrlOffset + 2, dstPos.y + 3,
-                           dstPos.x + 2, dstPos.y + 3);
-            g.strokePath(shadow, PathStrokeType(5.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-            // Draw cable
-            g.setColour(cableColour);
-            Path cable;
-            cable.startNewSubPath(srcPos.toFloat());
-            cable.cubicTo(srcPos.x + ctrlOffset, srcPos.y, dstPos.x - ctrlOffset, dstPos.y, dstPos.x, dstPos.y);
-            g.strokePath(cable, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-            // Highlight
-            g.setColour(cableColour.brighter(0.3f));
-            g.strokePath(cable, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
-        }
-    }
+    return nullptr;
 }
 
 //==============================================================================
-// SubGraphEditorComponent
+// SubGraphEditorComponent - the editor window
 //==============================================================================
 
 SubGraphEditorComponent::SubGraphEditorComponent(SubGraphProcessor& processor)
     : AudioProcessorEditor(processor), subGraphProcessor(processor)
 {
-    spdlog::debug("[SubGraphEditor] Creating editor for rack: {}", processor.getRackName().toStdString());
+    spdlog::debug("[SubGraphEditorComponent] Constructor starting for: {}", processor.getName().toStdString());
+    setSize(700, 500);
 
     // Title label
-    titleLabel = std::make_unique<Label>("title", processor.getRackName());
-    titleLabel->setFont(Font(FontOptions(18.0f).withStyle("Bold")));
-    titleLabel->setColour(Label::textColourId, Colours::white);
-    titleLabel->setEditable(true);
-    titleLabel->onTextChange = [this]() { subGraphProcessor.setRackName(titleLabel->getText()); };
-    addAndMakeVisible(*titleLabel);
-
-    // Front/Back toggle button
-    frontBackButton = std::make_unique<TextButton>("Front");
-    frontBackButton->addListener(this);
-    addAndMakeVisible(*frontBackButton);
-
-    // Add plugin button
-    addPluginButton = std::make_unique<TextButton>("+ Add");
-    addPluginButton->addListener(this);
-    addAndMakeVisible(*addPluginButton);
+    titleLabel = std::make_unique<Label>("title", "Effect Rack: " + processor.getName());
+    titleLabel->setFont(FontManager::getInstance().getUIFont(16.0f));
+    titleLabel->setColour(Label::textColourId, Colour(0xFF00DDDD)); // Cyan title
+    addAndMakeVisible(titleLabel.get());
 
     // Canvas in viewport
-    canvas = std::make_unique<SubGraphCanvas>(processor);
+    canvas = std::make_unique<SubGraphCanvas>(processor, KnownPluginListSingleton::getInstance());
     viewport = std::make_unique<Viewport>();
     viewport->setViewedComponent(canvas.get(), false);
     viewport->setScrollBarsShown(true, true);
-    addAndMakeVisible(*viewport);
+    addAndMakeVisible(viewport.get());
 
-    // Set size LAST - this triggers resized() which needs all components to exist
-    setSize(800, 600);
+    // Ensure layout is done after all children are created
+    resized();
+
+    spdlog::info("[SubGraphEditor] Created editor for: {}", processor.getName().toStdString());
 }
 
-SubGraphEditorComponent::~SubGraphEditorComponent()
-{
-    spdlog::debug("[SubGraphEditor] Destroying editor");
-    if (viewport)
-        viewport->setViewedComponent(nullptr, false);
-}
+SubGraphEditorComponent::~SubGraphEditorComponent() {}
 
 void SubGraphEditorComponent::paint(Graphics& g)
 {
-    // Toolbar background
-    g.setColour(Colour(0xFF3A3A45));
-    g.fillRect(0, 0, getWidth(), TOOLBAR_HEIGHT);
+    // Toolbar background with cyan accent
+    auto toolbar = getLocalBounds().removeFromTop(TOOLBAR_HEIGHT);
+    g.setColour(Colour(0xFF1A2A2A)); // Dark teal
+    g.fillRect(toolbar);
 
-    // Toolbar bottom border
-    g.setColour(Colour(0xFF5A5A65));
-    g.drawHorizontalLine(TOOLBAR_HEIGHT - 1, 0.0f, (float)getWidth());
+    // Subtle bottom border
+    g.setColour(Colour(0xFF00AAAA).withAlpha(0.3f));
+    g.drawLine(0, TOOLBAR_HEIGHT - 1, getWidth(), TOOLBAR_HEIGHT - 1, 1.0f);
 }
 
 void SubGraphEditorComponent::resized()
 {
+    spdlog::debug("[SubGraphEditorComponent::resized] Called, size={}x{}", getWidth(), getHeight());
     auto bounds = getLocalBounds();
     auto toolbar = bounds.removeFromTop(TOOLBAR_HEIGHT);
 
-    // Toolbar layout
     toolbar = toolbar.reduced(8, 4);
-    titleLabel->setBounds(toolbar.removeFromLeft(200));
-    toolbar.removeFromLeft(10);
-    frontBackButton->setBounds(toolbar.removeFromLeft(80));
-    toolbar.removeFromLeft(10);
-    addPluginButton->setBounds(toolbar.removeFromLeft(80));
+    if (titleLabel)
+        titleLabel->setBounds(toolbar);
 
-    // Canvas viewport
-    viewport->setBounds(bounds);
-}
-
-void SubGraphEditorComponent::buttonClicked(Button* button)
-{
-    if (button == frontBackButton.get())
+    if (viewport)
     {
-        auto currentMode = canvas->getViewMode();
-        if (currentMode == SubGraphCanvas::ViewMode::Front)
-        {
-            canvas->setViewMode(SubGraphCanvas::ViewMode::Back);
-            frontBackButton->setButtonText("Back");
-        }
-        else
-        {
-            canvas->setViewMode(SubGraphCanvas::ViewMode::Front);
-            frontBackButton->setButtonText("Front");
-        }
+        viewport->setBounds(bounds);
+        spdlog::debug("[SubGraphEditorComponent::resized] Viewport bounds={}x{} at ({},{})", viewport->getWidth(),
+                      viewport->getHeight(), viewport->getX(), viewport->getY());
     }
-    else if (button == addPluginButton.get())
+
+    if (canvas)
     {
-        // TODO: Show plugin selection menu
-        spdlog::debug("[SubGraphEditor] Add plugin button clicked");
+        spdlog::debug("[SubGraphEditorComponent::resized] Canvas size={}x{}, numChildren={}", canvas->getWidth(),
+                      canvas->getHeight(), canvas->getNumChildComponents());
     }
 }
