@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **BypassableInstance Exclusion** – SubGraphProcessor excluded from bypass wrapper to prevent bus layout issues
 - **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state. Solution: Unwrap wrapper before querying buses.
 - **Mixer Node Pins Missing** – Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
+- **Cable Connection Invisible Collision** – Fixed cable dragging backwards (output→input) causing collision with invisible object at origin. Root cause: `PluginConnection::updateBounds` could set negative bounds. Fix: clamp bounds to non-negative using `jmax(0, left - 5)`.
 
 ### Known Issues
 - **Effect Rack Connections** – Pin-to-pin wiring not yet functional (no crash, just ignored)

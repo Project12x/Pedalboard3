@@ -1446,5 +1446,9 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
 
     drawnType.createStrokedPath(drawnCurve, tempPath);
 
-    setBounds(left - 5, top - 5, width + 10, height + 10);
+    // Clamp bounds to non-negative values to prevent invisible collision at origin
+    // when dragging backwards (output to input direction)
+    int boundX = jmax(0, left - 5);
+    int boundY = jmax(0, top - 5);
+    setBounds(boundX, boundY, width + 10, height + 10);
 }
