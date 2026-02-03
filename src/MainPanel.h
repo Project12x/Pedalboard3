@@ -235,9 +235,6 @@ class MainPanel : public Component,
      */
     void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
 
-    ///	Helper method to load an SVG file from a binary chunk of data.
-    Drawable* loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes);
-
     ///	The IDs of the three timers.
     enum
     {

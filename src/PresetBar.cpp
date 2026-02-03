@@ -22,6 +22,7 @@
 //[Headers] You can add your own extra header files here...
 
 #include "ColourScheme.h"
+#include "JuceHelperStuff.h"
 #include "PluginComponent.h"
 #include "PresetManager.h"
 #include "Vectors.h"
@@ -61,8 +62,10 @@ PresetBar::PresetBar(PluginComponent* comp) : presetsComboBox(0), presetsLabel(0
     AudioProcessor* proc;
 
     Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
-    auto saveImage = loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize);
-    auto openImage = loadSVGFromMemory(Vectors::openbutton_svg, Vectors::openbutton_svgSize);
+    std::unique_ptr<Drawable> saveImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize));
+    std::unique_ptr<Drawable> openImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::openbutton_svg, Vectors::openbutton_svgSize));
 
     component = comp;
     proc = component->getNode()->getProcessor();
@@ -272,16 +275,6 @@ void PresetBar::fillOutComboBox()
 
     for (i = 0; i < userPresets.size(); ++i, ++j)
         presetsComboBox->addItem(userPresets[i], j);
-}
-
-//------------------------------------------------------------------------------
-std::unique_ptr<Drawable> PresetBar::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
-{
-    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-    XmlDocument doc(memBlock.toString());
-    std::unique_ptr<XmlElement> svgData(doc.getDocumentElement()); // JUCE 8: unique_ptr
-
-    return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
 }
 
 //[/MiscUserCode]

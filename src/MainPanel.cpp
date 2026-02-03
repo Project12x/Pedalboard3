@@ -26,6 +26,7 @@
 #include "AudioSingletons.h"
 #include "ColourSchemeEditor.h"
 #include "Images.h"
+#include "JuceHelperStuff.h"
 #include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
@@ -48,6 +49,7 @@
 
 #include <iostream>
 #include <sstream>
+
 
 using namespace std;
 //[/Headers]
@@ -214,14 +216,15 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     // Setup the DrawableButton images.
     // Setup the DrawableButton images.
-    playImage.reset(loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
-    pauseImage.reset(loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
+    playImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
+    pauseImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
     playButton->setImages(playImage.get());
     playButton->setColour(DrawableButton::backgroundColourId, buttonCol);
     playButton->setColour(DrawableButton::backgroundOnColourId, buttonCol);
     playButton->addListener(this);
 
-    std::unique_ptr<Drawable> rtzImage(loadSVGFromMemory(Vectors::rtzbutton_svg, Vectors::rtzbutton_svgSize));
+    std::unique_ptr<Drawable> rtzImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::rtzbutton_svg, Vectors::rtzbutton_svgSize));
     rtzButton->setImages(rtzImage.get());
     rtzButton->setColour(DrawableButton::backgroundColourId, buttonCol);
     rtzButton->setColour(DrawableButton::backgroundOnColourId, buttonCol);
@@ -1769,21 +1772,6 @@ void MainPanel::switchPatchFromProgramChange(int newPatch)
         outFile.write(temp.getAddress(), temp.length());
         outFile.write(endline.toUTF8().getAddress(), endline.toUTF8().length());
 }*/
-
-//------------------------------------------------------------------------------
-Drawable* MainPanel::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
-{
-    Drawable* retval = nullptr;
-
-    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-    XmlDocument doc(memBlock.toString());
-    std::unique_ptr<XmlElement> svgData = doc.getDocumentElement(); // JUCE 8: unique_ptr
-
-    if (svgData != nullptr)
-        retval = Drawable::createFromSVG(*svgData).release(); // JUCE 8: release ownership to match return type
-
-    return retval;
-}
 
 //==============================================================================
 // Stage Mode methods

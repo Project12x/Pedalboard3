@@ -23,6 +23,7 @@
 
 #include "ColourScheme.h"
 #include "FontManager.h"
+#include "JuceHelperStuff.h"
 #include "PedalboardProcessors.h"
 #include "Vectors.h"
 
@@ -95,8 +96,8 @@ MetronomeControl::MetronomeControl(MetronomeProcessor* proc, bool editors)
 
     String tempstr;
 
-    playImage = loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize);
-    pauseImage = loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize);
+    playImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
+    pauseImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
     playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
     playPauseButton->setColour(DrawableButton::backgroundColourId,
                                ColourScheme::getInstance().colours["Button Colour"]);
@@ -315,16 +316,6 @@ void MetronomeControl::changeListenerCallback(ChangeBroadcaster* source)
         denominatorLabel->setText(tempstr, dontSendNotification);
         syncButton->setToggleState(processor->getParameter(MetronomeProcessor::SyncToMainTransport) > 0.5f, false);
     }
-}
-
-//------------------------------------------------------------------------------
-std::unique_ptr<Drawable> MetronomeControl::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
-{
-    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-    XmlDocument doc(memBlock.toString());
-    std::unique_ptr<XmlElement> svgData(doc.getDocumentElement()); // JUCE 8
-
-    return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
 }
 
 //[/MiscUserCode]

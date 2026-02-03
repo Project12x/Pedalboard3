@@ -1,0 +1,40 @@
+[buttonClicked] Enter for button
+[buttonClicked] Button addr=0000012AC41604D0, edit=0000012AC41604D0, delete=0000012AC4189B30, bypass=0000012AC41890C0, mappings=0000012AB71B5B30, pluginWindow=0000000000000000
+[buttonClicked] Edit button for: New Rack
+[buttonClicked] Calling createEditor()
+[buttonClicked] createEditor() returned: valid
+[buttonClicked] Creating PluginEditorWindow
+[buttonClicked] PluginEditorWindow created
+[buttonClicked] Complete
+[closeButtonPressed] START, component=0000012AC421B170
+[closeButtonPressed] Calling setWindow(0)
+[closeButtonPressed] setWindow(0) done
+[closeButtonPressed] About to delete this
+[~PluginEditorWindow] START, component=0000012AC421B170
+[~PluginEditorWindow] Calling setWindow(0)
+[~PluginEditorWindow] DONE
+[~EditorWrapper] START, editor=0000012AB6F05950, presetBar=0000012AC40A1360
+[~EditorWrapper] Removing editor from children
+[~EditorWrapper] Editor removed
+[~EditorWrapper] Deleting presetBar
+[~EditorWrapper] DONE
+[buttonClicked] Enter for button
+[buttonClicked] Button addr=0000012AC41604D0, edit=0000012AC41604D0, delete=0000012AC4189B30, bypass=0000012AC41890C0, mappings=0000012AB71B5B30, pluginWindow=0000000000000000
+[buttonClicked] Edit button for: New Rack
+[buttonClicked] Calling createEditor()
+[buttonClicked] createEditor() returned: valid
+[buttonClicked] Creating PluginEditorWindow
+[buttonClicked] PluginEditorWindow created
+[buttonClicked] Complete
+[closeButtonPressed] START, component=0000012AC421B170
+[closeButtonPressed] Calling setWindow(0)
+[closeButtonPressed] setWindow(0) done
+[closeButtonPressed] About to delete this
+[~PluginEditorWindow] START, component=0000012AC421B170
+[~PluginEditorWindow] Calling setWindow(0)
+[~PluginEditorWindow] DONE
+[~EditorWrapper] START, editor=0000012AB6F05B40, presetBar=0000012AC40A0C60
+[~EditorWrapper] Removing editor from children
+[~EditorWrapper] Editor removed
+[~EditorWrapper] Deleting presetBar
+[~EditorWrapper] DONE

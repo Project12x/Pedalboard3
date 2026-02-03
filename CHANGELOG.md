@@ -28,8 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - MIDI mapping: CC-to-parameter, min/max ranges
   - 10 mutation test cases covering boundaries, returns, conditions
 
-
-
+### Refactored
+- **loadSVGFromMemory Consolidation** – Removed duplicate implementations from `PresetBar`, `MetronomeControl`, `MainPanel`, and `ColourSchemeEditor`. All classes now use global `JuceHelperStuff::loadSVGFromMemory()`.
 
 ### Fixed
 - **Effect Rack Editor Crash** – Multiple crash fixes:

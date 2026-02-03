@@ -69,9 +69,12 @@ ColourSchemeEditor::ColourSchemeEditor()
     //[UserPreSize]
 
     Colour tempCol = ColourScheme::getInstance().colours["Button Colour"];
-    auto newImage = loadSVGFromMemory(Vectors::newbutton_svg, Vectors::newbutton_svgSize);
-    auto saveImage = loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize);
-    auto deleteImage = loadSVGFromMemory(Vectors::deletebutton_svg, Vectors::deletebutton_svgSize);
+    std::unique_ptr<Drawable> newImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::newbutton_svg, Vectors::newbutton_svgSize));
+    std::unique_ptr<Drawable> saveImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::savebutton_svg, Vectors::savebutton_svgSize));
+    std::unique_ptr<Drawable> deleteImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::deletebutton_svg, Vectors::deletebutton_svgSize));
 
     newButton->setImages(newImage.get()); // JUCE 8: Use .get()
     newButton->setColour(DrawableButton::backgroundColourId, tempCol);
@@ -142,12 +145,18 @@ ColourSchemeEditor::~ColourSchemeEditor()
 
     //[/Destructor_pre]
 
-    delete colourEditor; colourEditor = nullptr;
-    delete colourSelector; colourSelector = nullptr;
-    delete presetSelector; presetSelector = nullptr;
-    delete deleteButton; deleteButton = nullptr;
-    delete saveButton; saveButton = nullptr;
-    delete newButton; newButton = nullptr;
+    delete colourEditor;
+    colourEditor = nullptr;
+    delete colourSelector;
+    colourSelector = nullptr;
+    delete presetSelector;
+    presetSelector = nullptr;
+    delete deleteButton;
+    deleteButton = nullptr;
+    delete saveButton;
+    saveButton = nullptr;
+    delete newButton;
+    newButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
@@ -384,16 +393,6 @@ void ColourSchemeEditor::changeListenerCallback(ChangeBroadcaster* source)
             }
         }
     }
-}
-
-//------------------------------------------------------------------------------
-std::unique_ptr<Drawable> ColourSchemeEditor::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
-{
-    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-    XmlDocument doc(memBlock.toString());
-    std::unique_ptr<XmlElement> svgData(doc.getDocumentElement()); // JUCE 8: unique_ptr
-
-    return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
 }
 
 //[/MiscUserCode]
