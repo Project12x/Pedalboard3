@@ -96,6 +96,14 @@ class MidiFilePlayerProcessor : public PedalboardProcessor, public ChangeBroadca
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return true; }
 
+    /// Accept layouts with no audio input, stereo output (for signal chain routing)
+    bool isBusesLayoutSupported(const BusesLayout& layouts) const override
+    {
+        // No audio input, but allow stereo output for signal chain routing
+        return layouts.getMainInputChannelSet().isDisabled() &&
+               layouts.getMainOutputChannelSet() == AudioChannelSet::stereo();
+    }
+
     AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 

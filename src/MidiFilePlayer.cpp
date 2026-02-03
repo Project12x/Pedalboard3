@@ -23,10 +23,10 @@
 
 #include <spdlog/spdlog.h>
 
-
 //------------------------------------------------------------------------------
 MidiFilePlayerProcessor::MidiFilePlayerProcessor()
 {
+    // Note: Bus layout is handled by isBusesLayoutSupported() returning false for audio buses
     spdlog::info("[MidiFilePlayer] Created");
 }
 

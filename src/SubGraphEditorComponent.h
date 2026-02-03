@@ -18,6 +18,7 @@
 class SubGraphProcessor;
 class PluginComponent;
 class PluginConnection;
+class PluginPinComponent;
 
 //==============================================================================
 /**
@@ -46,6 +47,11 @@ class SubGraphCanvas : public juce::Component, public juce::ChangeListener, publ
                        juce::AudioProcessorGraph::NodeID destId, int destChannel);
     void deleteConnection(PluginConnection* connection);
     void rebuildGraph();
+
+    // Pin-based connection wiring (mirrors PluginField)
+    void addConnection(PluginPinComponent* source, bool connectAll);
+    void dragConnection(int x, int y);
+    void releaseConnection(int x, int y);
 
     // Pin/connection helpers
     juce::Component* getPinAt(int x, int y);

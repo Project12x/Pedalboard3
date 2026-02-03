@@ -30,6 +30,7 @@
 #include "PluginField.h"
 #include "PresetBar.h"
 #include "SettingsManager.h"
+#include "SubGraphEditorComponent.h"
 #include "Vectors.h"
 
 #include <melatonin_blur/melatonin_blur.h>
@@ -117,10 +118,17 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
       dragX(0), dragY(0)
 {
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
-    PedalboardProcessor* proc = 0;
+    PedalboardProcessor* proc = nullptr;
 
+    // Try to get PedalboardProcessor from BypassableInstance wrapper (main canvas)
     if (bypassable)
         proc = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin());
+    // Fall back to direct cast (SubGraph canvas, no wrapper)
+    if (!proc)
+        proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
+
+    spdlog::debug("[PluginComponent] Node: {}, bypassable={}, proc={}", node->getProcessor()->getName().toStdString(),
+                  bypassable != nullptr, proc != nullptr);
 
     pluginName = node->getProcessor()->getName();
 
@@ -186,8 +194,16 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         Component* comp = proc->getControls();
         Point<int> compSize = proc->getSize();
 
+        spdlog::debug("[PluginComponent] proc valid, getControls()={}, getSize()={}x{}", comp != nullptr,
+                      compSize.getX(), compSize.getY());
+
         tempint = (getWidth() / 2) - (compSize.getX() / 2);
         comp->setTopLeftPosition(tempint, 24);
+        comp->setSize(compSize.getX(), compSize.getY()); // Ensure size is set explicitly
+
+        spdlog::debug("[PluginComponent] Control positioned: x={}, y=24, PluginComponent size={}x{}", tempint,
+                      getWidth(), getHeight());
+
         addAndMakeVisible(comp);
     }
 
@@ -322,6 +338,23 @@ void PluginComponent::mouseUp(const MouseEvent& e)
 void PluginComponent::buttonClicked(Button* button)
 {
     std::cerr << "[buttonClicked] Enter for button\n" << std::flush;
+
+    // Safety: Verify button pointers are valid before comparing
+    if (!button)
+    {
+        std::cerr << "[buttonClicked] ERROR: button is null!\n" << std::flush;
+        return;
+    }
+    if (!node || !node->getProcessor())
+    {
+        std::cerr << "[buttonClicked] ERROR: node or processor is null!\n" << std::flush;
+        return;
+    }
+
+    std::cerr << "[buttonClicked] Button addr=" << button << ", edit=" << editButton << ", delete=" << deleteButton
+              << ", pluginWindow=" << pluginWindow << "\n"
+              << std::flush;
+
     if ((button == editButton) && !pluginWindow)
     {
         std::cerr << "[buttonClicked] Edit button for: " << node->getProcessor()->getName() << "\n" << std::flush;
@@ -372,17 +405,40 @@ void PluginComponent::buttonClicked(Button* button)
     }
     else if (button == deleteButton)
     {
+        std::cerr << "[buttonClicked] DELETE button clicked\n" << std::flush;
         PluginField* parent = dynamic_cast<PluginField*>(getParentComponent());
+        std::cerr << "[buttonClicked] parent PluginField=" << parent << "\n" << std::flush;
 
         if (pluginWindow)
+        {
+            std::cerr << "[buttonClicked] Closing pluginWindow\n" << std::flush;
             pluginWindow->closeButtonPressed();
+            std::cerr << "[buttonClicked] pluginWindow closed\n" << std::flush;
+        }
 
         if (parent)
+        {
+            std::cerr << "[buttonClicked] Calling parent->deleteFilter()\n" << std::flush;
             parent->deleteFilter(node);
-        // else
-        //????
-
-        delete this;
+            std::cerr << "[buttonClicked] parent->deleteFilter() done\n" << std::flush;
+            // PluginField doesn't own us via OwnedArray, so we need to delete ourselves
+            std::cerr << "[buttonClicked] About to delete this (PluginComponent)\n" << std::flush;
+            delete this;
+        }
+        else if (auto* canvas = dynamic_cast<SubGraphCanvas*>(getParentComponent()))
+        {
+            std::cerr << "[buttonClicked] SubGraphCanvas found, calling deleteFilter()\n" << std::flush;
+            canvas->deleteFilter(node);
+            // SubGraphCanvas::deleteFilter() already deleted 'this' via OwnedArray.remove()
+            // DO NOT call delete this here - it would be a double-delete!
+            std::cerr << "[buttonClicked] SubGraphCanvas::deleteFilter() done, returning (already deleted)\n"
+                      << std::flush;
+            return; // 'this' is already deleted, return immediately
+        }
+        else
+        {
+            std::cerr << "[buttonClicked] ERROR: No parent found to delete from!\n" << std::flush;
+        }
     }
 }
 
@@ -394,8 +450,9 @@ void PluginComponent::labelTextChanged(Label* label)
 
     pluginName = label->getText();
 
-    /// @note JUCE 8: NodeID is now a struct, use .uid for integer value
-    parent->updateProcessorName(node->nodeID.uid, pluginName);
+    // Update processor name in main canvas (SubGraphCanvas doesn't track names)
+    if (parent)
+        parent->updateProcessorName(node->nodeID.uid, pluginName);
 
     // Reset the Component's size/layout.
     determineSize(true);
@@ -440,10 +497,13 @@ void PluginComponent::setUserName(const String& val)
 void PluginComponent::setWindow(PluginEditorWindow* val)
 {
     pluginWindow = val;
-    if (pluginWindow)
-        node->properties.set("windowOpen", true);
-    else
-        node->properties.set("windowOpen", false);
+    if (node)
+    {
+        if (pluginWindow)
+            node->properties.set("windowOpen", true);
+        else
+            node->properties.set("windowOpen", false);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -462,8 +522,13 @@ void PluginComponent::saveWindowState()
 //------------------------------------------------------------------------------
 void PluginComponent::openMappingsWindow()
 {
-    String tempstr;
     PluginField* parent = dynamic_cast<PluginField*>(getParentComponent());
+
+    // Mappings are only supported in main PluginField canvas
+    if (!parent)
+        return;
+
+    String tempstr;
     MappingsDialog dlg(parent->getMidiManager(), parent->getOscManager(), node,
                        /// @note JUCE 8: NodeID is now a struct, use .uid for integer value
                        parent->getMappingsForPlugin(node->nodeID.uid), parent);
@@ -511,14 +576,21 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     float y = 15.0f;
     int numInputPins = 0;
     int numOutputPins = 0;
-    PedalboardProcessor* proc = 0;
+    PedalboardProcessor* proc = nullptr;
     Font tempFont(14.0f, Font::bold);
     AudioProcessor* plugin = node->getProcessor();
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(plugin);
     bool ignorePinNames = SettingsManager::getInstance().getBool("IgnorePinNames", false);
 
+    // Try to get PedalboardProcessor from BypassableInstance wrapper (main canvas)
     if (bypassable)
         proc = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin());
+    // Fall back to direct cast (SubGraph canvas, no wrapper)
+    if (!proc)
+        proc = dynamic_cast<PedalboardProcessor*>(plugin);
+
+    spdlog::debug("[determineSize] Node: {}, bypassable={}, proc={}", pluginName.toStdString(), bypassable != nullptr,
+                  proc != nullptr);
 
     nameText.clear();
 
@@ -879,7 +951,10 @@ void PluginPinComponent::mouseDown(const MouseEvent& e)
     {
         field->addConnection(this, (e.mods.isShiftDown() && !parameterPin));
     }
-    // TODO: Add SubGraphCanvas support for connections
+    else if (auto* canvas = findParentComponentOfClass<SubGraphCanvas>())
+    {
+        canvas->addConnection(this, (e.mods.isShiftDown() && !parameterPin));
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -892,7 +967,11 @@ void PluginPinComponent::mouseDrag(const MouseEvent& e)
         MouseEvent e2 = e.getEventRelativeTo(field);
         field->dragConnection(e2.x - 5, e2.y);
     }
-    // TODO: Add SubGraphCanvas support for connections
+    else if (auto* canvas = findParentComponentOfClass<SubGraphCanvas>())
+    {
+        MouseEvent e2 = e.getEventRelativeTo(canvas);
+        canvas->dragConnection(e2.x - 5, e2.y);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -907,7 +986,11 @@ void PluginPinComponent::mouseUp(const MouseEvent& e)
             MouseEvent e2 = e.getEventRelativeTo(field);
             field->releaseConnection(e2.x, e2.y);
         }
-        // TODO: Add SubGraphCanvas support for connections
+        else if (auto* canvas = findParentComponentOfClass<SubGraphCanvas>())
+        {
+            MouseEvent e2 = e.getEventRelativeTo(canvas);
+            canvas->releaseConnection(e2.x, e2.y);
+        }
     }
 }
 
@@ -955,15 +1038,31 @@ PluginEditorWindow::PluginEditorWindow(AudioProcessorEditor* editor, PluginCompo
 //------------------------------------------------------------------------------
 PluginEditorWindow::~PluginEditorWindow()
 {
-    component->getNode()->properties.set("uiLastX", getX());
-    component->getNode()->properties.set("uiLastY", getY());
+    std::cerr << "[~PluginEditorWindow] START, component=" << component << "\n" << std::flush;
+    if (component && component->getNode())
+    {
+        component->getNode()->properties.set("uiLastX", getX());
+        component->getNode()->properties.set("uiLastY", getY());
+        // Clear the pluginWindow reference so the edit button works again
+        std::cerr << "[~PluginEditorWindow] Calling setWindow(0)\n" << std::flush;
+        component->setWindow(0);
+    }
+    std::cerr << "[~PluginEditorWindow] DONE\n" << std::flush;
 }
 
 //------------------------------------------------------------------------------
 void PluginEditorWindow::closeButtonPressed()
 {
-    component->setWindow(0);
+    std::cerr << "[closeButtonPressed] START, component=" << component << "\n" << std::flush;
+    if (component)
+    {
+        std::cerr << "[closeButtonPressed] Calling setWindow(0)\n" << std::flush;
+        component->setWindow(0);
+        std::cerr << "[closeButtonPressed] setWindow(0) done\n" << std::flush;
+    }
+    std::cerr << "[closeButtonPressed] About to delete this\n" << std::flush;
     delete this;
+    // Note: No code after delete this - object is destroyed
 }
 
 //------------------------------------------------------------------------------
@@ -988,7 +1087,18 @@ PluginEditorWindow::EditorWrapper::EditorWrapper(AudioProcessorEditor* ed, Plugi
 //------------------------------------------------------------------------------
 PluginEditorWindow::EditorWrapper::~EditorWrapper()
 {
-    deleteAllChildren();
+    std::cerr << "[~EditorWrapper] START, editor=" << editor << ", presetBar=" << presetBar << "\n" << std::flush;
+    // Don't deleteAllChildren() - that would double-delete the editor
+    // which is owned by the processor. Only delete presetBar which we created.
+    if (editor)
+    {
+        std::cerr << "[~EditorWrapper] Removing editor from children\n" << std::flush;
+        removeChildComponent(editor); // Detach but don't delete
+        std::cerr << "[~EditorWrapper] Editor removed\n" << std::flush;
+    }
+    std::cerr << "[~EditorWrapper] Deleting presetBar\n" << std::flush;
+    delete presetBar;
+    std::cerr << "[~EditorWrapper] DONE\n" << std::flush;
 }
 
 //------------------------------------------------------------------------------
@@ -1018,9 +1128,15 @@ PluginConnection::PluginConnection(PluginPinComponent* s, PluginPinComponent* d,
     if (source)
     {
         Point<int> tempPoint(source->getX() + 7, source->getY() + 8);
-        PluginField* field = source->findParentComponentOfClass<PluginField>();
 
-        tempPoint = field->getLocalPoint(source->getParentComponent(), tempPoint);
+        // Find the parent canvas (either PluginField or SubGraphCanvas)
+        Component* parentCanvas = source->findParentComponentOfClass<PluginField>();
+        if (!parentCanvas)
+            parentCanvas = source->findParentComponentOfClass<SubGraphCanvas>();
+
+        if (parentCanvas)
+            tempPoint = parentCanvas->getLocalPoint(source->getParentComponent(), tempPoint);
+
         setTopLeftPosition(tempPoint.getX(), tempPoint.getY());
 
         ((PluginComponent*)source->getParentComponent())->addChangeListener(this);
@@ -1172,18 +1288,21 @@ void PluginConnection::drag(int x, int y)
 //------------------------------------------------------------------------------
 void PluginConnection::setDestination(PluginPinComponent* d)
 {
-    PluginField* field = source->findParentComponentOfClass<PluginField>();
+    // Find the parent canvas (either PluginField or SubGraphCanvas)
+    Component* parentCanvas = source->findParentComponentOfClass<PluginField>();
+    if (!parentCanvas)
+        parentCanvas = source->findParentComponentOfClass<SubGraphCanvas>();
 
     destination = d;
     if (destination)
         ((PluginComponent*)destination->getParentComponent())->addChangeListener(this);
 
-    if (source && destination)
+    if (source && destination && parentCanvas)
     {
         Point<int> sourcePoint(source->getX() + 7, source->getY() + 8);
         Point<int> destPoint(destination->getX() + 7, destination->getY() + 8);
-        sourcePoint = field->getLocalPoint(source->getParentComponent(), sourcePoint);
-        destPoint = field->getLocalPoint(destination->getParentComponent(), destPoint);
+        sourcePoint = parentCanvas->getLocalPoint(source->getParentComponent(), sourcePoint);
+        destPoint = parentCanvas->getLocalPoint(destination->getParentComponent(), destPoint);
 
         if (destPoint.getX() > sourcePoint.getX())
             updateBounds(sourcePoint.getX(), sourcePoint.getY(), destPoint.getX(), destPoint.getY());
