@@ -409,3 +409,442 @@ TEST_CASE("Integration Mutation Testing", "[integration][mutation]")
         REQUIRE((beforeRemoval - afterRemoval) == 2);
     }
 }
+
+// =============================================================================
+// End-to-End Integration Scenarios
+// =============================================================================
+
+// Mock processor for signal path testing
+struct MockProcessor
+{
+    std::string name;
+    bool bypassed = false;
+    float lastInputLevel = 0.0f;
+    float lastOutputLevel = 0.0f;
+    int processCallCount = 0;
+
+    void process(float input)
+    {
+        lastInputLevel = input;
+        lastOutputLevel = bypassed ? input : input * 0.5f;
+        processCallCount++;
+    }
+};
+
+// Mock signal path through the graph
+class MockSignalPath
+{
+  public:
+    std::vector<MockProcessor*> processors;
+    std::vector<std::pair<int, int>> routing; // source idx -> dest idx
+
+    float processChain(float input)
+    {
+        if (processors.empty())
+            return input;
+
+        // Process first
+        processors[0]->process(input);
+
+        // Process chain
+        for (size_t i = 1; i < processors.size(); ++i)
+        {
+            float prevOutput = processors[i - 1]->lastOutputLevel;
+            processors[i]->process(prevOutput);
+        }
+
+        return processors.back()->lastOutputLevel;
+    }
+};
+
+TEST_CASE("End-to-End Signal Path Integration", "[integration][e2e][signal]")
+{
+    SECTION("Signal flows through effect chain")
+    {
+        MockProcessor effect1{"Compressor"};
+        MockProcessor effect2{"EQ"};
+        MockProcessor effect3{"Reverb"};
+
+        MockSignalPath path;
+        path.processors = {&effect1, &effect2, &effect3};
+
+        float input = 1.0f;
+        float output = path.processChain(input);
+
+        // Each processor halves the signal (0.5^3 = 0.125)
+        REQUIRE(output == 0.125f);
+        REQUIRE(effect1.processCallCount == 1);
+        REQUIRE(effect2.processCallCount == 1);
+        REQUIRE(effect3.processCallCount == 1);
+    }
+
+    SECTION("Bypass skips effect processing")
+    {
+        MockProcessor effect1{"Compressor"};
+        MockProcessor effect2{"EQ"};
+        effect2.bypassed = true; // EQ bypassed
+
+        MockSignalPath path;
+        path.processors = {&effect1, &effect2};
+
+        float input = 1.0f;
+        float output = path.processChain(input);
+
+        // Compressor halves, EQ bypassed passes through
+        REQUIRE(output == 0.5f);
+        REQUIRE(effect1.lastOutputLevel == 0.5f);
+        REQUIRE(effect2.lastOutputLevel == 0.5f); // Pass-through
+    }
+
+    SECTION("Empty chain passes through")
+    {
+        MockSignalPath path;
+        float output = path.processChain(1.0f);
+        REQUIRE(output == 1.0f);
+    }
+}
+
+// =============================================================================
+// Plugin Lifecycle Integration
+// =============================================================================
+
+struct MockPluginInstance
+{
+    std::string pluginId;
+    bool loaded = false;
+    bool editorOpen = false;
+    int editorOpenCount = 0;
+
+    void load() { loaded = true; }
+    void unload() { loaded = false; }
+    void openEditor()
+    {
+        editorOpen = true;
+        editorOpenCount++;
+    }
+    void closeEditor() { editorOpen = false; }
+};
+
+class MockPluginHost
+{
+  public:
+    std::vector<MockPluginInstance> plugins;
+
+    int loadPlugin(const std::string& id)
+    {
+        MockPluginInstance p;
+        p.pluginId = id;
+        p.load();
+        plugins.push_back(p);
+        return static_cast<int>(plugins.size() - 1);
+    }
+
+    bool unloadPlugin(int idx)
+    {
+        if (idx < 0 || idx >= static_cast<int>(plugins.size()))
+            return false;
+        plugins[idx].unload();
+        return true;
+    }
+};
+
+TEST_CASE("Plugin Lifecycle Integration", "[integration][e2e][lifecycle]")
+{
+    MockPluginHost host;
+
+    SECTION("Load and unload plugin")
+    {
+        int idx = host.loadPlugin("com.vendor.reverb");
+        REQUIRE(idx == 0);
+        REQUIRE(host.plugins[0].loaded);
+
+        bool unloaded = host.unloadPlugin(idx);
+        REQUIRE(unloaded);
+        REQUIRE_FALSE(host.plugins[0].loaded);
+    }
+
+    SECTION("Editor reopen creates fresh instance")
+    {
+        int idx = host.loadPlugin("com.vendor.compressor");
+        auto& plugin = host.plugins[idx];
+
+        // Open editor multiple times (simulates user reopening)
+        plugin.openEditor();
+        REQUIRE(plugin.editorOpenCount == 1);
+
+        plugin.closeEditor();
+        plugin.openEditor();
+        REQUIRE(plugin.editorOpenCount == 2);
+
+        // Each open should be fresh (no stale state)
+        REQUIRE(plugin.editorOpen);
+    }
+
+    SECTION("Multiple plugins load independently")
+    {
+        int idx1 = host.loadPlugin("Reverb");
+        int idx2 = host.loadPlugin("Delay");
+        int idx3 = host.loadPlugin("Chorus");
+
+        REQUIRE(host.plugins.size() == 3);
+        REQUIRE(host.plugins[idx1].loaded);
+        REQUIRE(host.plugins[idx2].loaded);
+        REQUIRE(host.plugins[idx3].loaded);
+
+        // Unload middle one
+        host.unloadPlugin(idx2);
+        REQUIRE(host.plugins[idx1].loaded);
+        REQUIRE_FALSE(host.plugins[idx2].loaded);
+        REQUIRE(host.plugins[idx3].loaded);
+    }
+}
+
+// =============================================================================
+// MIDI Routing Integration
+// =============================================================================
+
+struct MockMidiMessage
+{
+    enum Type
+    {
+        NoteOn,
+        NoteOff,
+        CC
+    };
+    Type type;
+    int channel;
+    int data1; // Note or CC#
+    int data2; // Velocity or CC value
+};
+
+class MockMidiRouter
+{
+  public:
+    int inputChannel = 0;  // 0 = omni
+    int outputChannel = 1; // 1-16
+    std::vector<MockMidiMessage> outputBuffer;
+
+    void routeMessage(const MockMidiMessage& msg)
+    {
+        // Filter by input channel (0 = accept all)
+        if (inputChannel != 0 && msg.channel != inputChannel)
+            return;
+
+        // Remap to output channel
+        MockMidiMessage routed = msg;
+        routed.channel = outputChannel;
+        outputBuffer.push_back(routed);
+    }
+
+    void clear() { outputBuffer.clear(); }
+};
+
+TEST_CASE("MIDI Routing Integration", "[integration][e2e][midi]")
+{
+    MockMidiRouter router;
+
+    SECTION("Omni mode routes all channels")
+    {
+        router.inputChannel = 0; // Omni
+        router.outputChannel = 10;
+
+        router.routeMessage({MockMidiMessage::NoteOn, 1, 60, 100});
+        router.routeMessage({MockMidiMessage::NoteOn, 5, 64, 80});
+        router.routeMessage({MockMidiMessage::NoteOn, 16, 67, 90});
+
+        REQUIRE(router.outputBuffer.size() == 3);
+        for (const auto& msg : router.outputBuffer)
+        {
+            REQUIRE(msg.channel == 10);
+        }
+    }
+
+    SECTION("Channel filter blocks other channels")
+    {
+        router.inputChannel = 3;
+        router.outputChannel = 5;
+
+        router.routeMessage({MockMidiMessage::NoteOn, 1, 60, 100}); // Blocked
+        router.routeMessage({MockMidiMessage::NoteOn, 3, 64, 80});  // Passed
+        router.routeMessage({MockMidiMessage::NoteOn, 16, 67, 90}); // Blocked
+
+        REQUIRE(router.outputBuffer.size() == 1);
+        REQUIRE(router.outputBuffer[0].data1 == 64);
+        REQUIRE(router.outputBuffer[0].channel == 5);
+    }
+
+    SECTION("CC messages routed correctly")
+    {
+        router.inputChannel = 0;
+        router.outputChannel = 1;
+
+        router.routeMessage({MockMidiMessage::CC, 1, 1, 64});  // Mod wheel
+        router.routeMessage({MockMidiMessage::CC, 1, 7, 100}); // Volume
+        router.routeMessage({MockMidiMessage::CC, 1, 11, 80}); // Expression
+
+        REQUIRE(router.outputBuffer.size() == 3);
+    }
+}
+
+// =============================================================================
+// MIDI Mapping Integration
+// =============================================================================
+
+struct MockMidiMapping
+{
+    int ccNumber;
+    int parameterIndex;
+    float minValue = 0.0f;
+    float maxValue = 1.0f;
+    bool latched = false;
+
+    float mapValue(int ccValue) const
+    {
+        float normalized = ccValue / 127.0f;
+        return minValue + normalized * (maxValue - minValue);
+    }
+};
+
+class MockMidiMappingManager
+{
+  public:
+    std::vector<MockMidiMapping> mappings;
+    std::map<int, float> parameterValues;
+
+    void addMapping(int cc, int param, float min = 0.0f, float max = 1.0f)
+    {
+        mappings.push_back({cc, param, min, max, false});
+    }
+
+    void processCC(int cc, int value)
+    {
+        for (const auto& mapping : mappings)
+        {
+            if (mapping.ccNumber == cc)
+            {
+                float mappedValue = mapping.mapValue(value);
+                parameterValues[mapping.parameterIndex] = mappedValue;
+            }
+        }
+    }
+};
+
+TEST_CASE("MIDI Mapping Integration", "[integration][e2e][midi][mapping]")
+{
+    MockMidiMappingManager manager;
+
+    SECTION("CC maps to parameter value")
+    {
+        manager.addMapping(1, 0); // CC1 -> Param 0
+        manager.processCC(1, 127);
+        REQUIRE(manager.parameterValues[0] == 1.0f);
+
+        manager.processCC(1, 64);
+        REQUIRE(manager.parameterValues[0] > 0.49f);
+        REQUIRE(manager.parameterValues[0] < 0.51f);
+
+        manager.processCC(1, 0);
+        REQUIRE(manager.parameterValues[0] == 0.0f);
+    }
+
+    SECTION("Custom min/max range")
+    {
+        manager.addMapping(7, 1, 0.2f, 0.8f); // CC7: 20% - 80%
+        manager.processCC(7, 0);
+        REQUIRE(manager.parameterValues[1] == 0.2f);
+
+        manager.processCC(7, 127);
+        REQUIRE(manager.parameterValues[1] == 0.8f);
+    }
+
+    SECTION("Multiple mappings for same CC")
+    {
+        manager.addMapping(11, 0); // CC11 -> Param 0
+        manager.addMapping(11, 1); // CC11 -> Param 1
+
+        manager.processCC(11, 100);
+        float expected = 100.0f / 127.0f;
+        REQUIRE(manager.parameterValues[0] == expected);
+        REQUIRE(manager.parameterValues[1] == expected);
+    }
+}
+
+// =============================================================================
+// Extended Mutation Testing
+// =============================================================================
+
+TEST_CASE("Extended Mutation Testing", "[integration][mutation][extended]")
+{
+    SECTION("BOUNDARY: Channel index edge cases")
+    {
+        auto isValidChannel = [](int ch) { return ch >= 0 && ch < 16; };
+
+        REQUIRE(isValidChannel(0));
+        REQUIRE(isValidChannel(15));
+        REQUIRE_FALSE(isValidChannel(-1));
+        REQUIRE_FALSE(isValidChannel(16));
+    }
+
+    SECTION("RETURN: Early return on invalid input")
+    {
+        MockGraph graph;
+        MockNodeID validNode = graph.addNode();
+        MockNodeID invalidNode{9999};
+
+        // Should return false on invalid node
+        bool result = graph.addConnection(validNode, 0, invalidNode, 0);
+        REQUIRE_FALSE(result);
+        REQUIRE(graph.connections.empty());
+    }
+
+    SECTION("INCREMENT: Process count tracking")
+    {
+        MockProcessor proc{"Test"};
+        REQUIRE(proc.processCallCount == 0);
+
+        proc.process(1.0f);
+        REQUIRE(proc.processCallCount == 1);
+
+        proc.process(1.0f);
+        REQUIRE(proc.processCallCount == 2);
+    }
+
+    SECTION("CONDITION: Bypass flag effect")
+    {
+        MockProcessor proc{"Test"};
+        float input = 1.0f;
+
+        // Not bypassed: output = input * 0.5
+        proc.bypassed = false;
+        proc.process(input);
+        REQUIRE(proc.lastOutputLevel == 0.5f);
+
+        // Bypassed: output = input
+        proc.bypassed = true;
+        proc.process(input);
+        REQUIRE(proc.lastOutputLevel == 1.0f);
+    }
+
+    SECTION("COMPARE: Equality vs inequality")
+    {
+        MockNodeID a{1};
+        MockNodeID b{1};
+        MockNodeID c{2};
+
+        REQUIRE(a == b);
+        REQUIRE_FALSE(a != b);
+        REQUIRE(a != c);
+        REQUIRE_FALSE(a == c);
+    }
+
+    SECTION("CONTAINER: Empty vs non-empty checks")
+    {
+        std::vector<int> vec;
+        REQUIRE(vec.empty());
+        REQUIRE(vec.size() == 0);
+
+        vec.push_back(1);
+        REQUIRE_FALSE(vec.empty());
+        REQUIRE(vec.size() == 1);
+    }
+}

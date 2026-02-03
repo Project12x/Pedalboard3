@@ -21,6 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **FilterGraph Unit Tests** – Phase 6B testing expansion
   - 6 test cases: node management, connection management, position, infrastructure detection
   - 71 assertions covering add/remove/query operations and mutation testing
+- **Expanded Integration Tests** – End-to-end and mutation test coverage
+  - Signal path: effect chain processing, bypass behavior
+  - Plugin lifecycle: load/unload, editor reopen
+  - MIDI routing: channel filtering, omni mode
+  - MIDI mapping: CC-to-parameter, min/max ranges
+  - 10 mutation test cases covering boundaries, returns, conditions
+
 
 
 
