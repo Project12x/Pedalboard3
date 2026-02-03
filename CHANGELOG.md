@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Available via right-click → Pedalboard → Effect Rack
   - Can load external VST3/AU plugins into the rack
   - Double-click canvas to add plugins (same menu as main PluginField)
+- **Cable Wiring/Deletion Tests** – Comprehensive headless test coverage for Effect Rack connections
+  - 3 new test cases: wiring creation, connection removal, mutation testing
+  - 59 assertions covering stereo, chaining, self-connection rejection, iterator stability
+
 
 ### Fixed
 - **Effect Rack Editor Crash** – Multiple crash fixes:

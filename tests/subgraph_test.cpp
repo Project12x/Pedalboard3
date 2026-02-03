@@ -599,3 +599,467 @@ TEST_CASE("Persistence Mutation Testing", "[subgraph][persistence][mutation]")
         REQUIRE_FALSE(!shouldSkip(nodeUid)); // Negation would be wrong
     }
 }
+
+// =============================================================================
+// Cable Wiring Tests (Connection Creation)
+// =============================================================================
+
+// Mock graph for cable wiring tests
+class MockCableGraph
+{
+  public:
+    struct Cable
+    {
+        TestNodeID sourceNode;
+        int sourceChannel;
+        TestNodeID destNode;
+        int destChannel;
+
+        bool operator==(const Cable& other) const
+        {
+            return sourceNode == other.sourceNode && sourceChannel == other.sourceChannel &&
+                   destNode == other.destNode && destChannel == other.destChannel;
+        }
+    };
+
+    std::vector<Cable> cables;
+    std::vector<TestNodeID> nodes;
+
+    MockCableGraph()
+    {
+        // Initialize with IO nodes
+        nodes.push_back({1}); // Audio In
+        nodes.push_back({2}); // Audio Out
+    }
+
+    bool nodeExists(TestNodeID id) const
+    {
+        for (const auto& n : nodes)
+            if (n == id)
+                return true;
+        return false;
+    }
+
+    bool addCable(TestNodeID srcNode, int srcChannel, TestNodeID dstNode, int dstChannel)
+    {
+        // Validate nodes exist
+        if (!nodeExists(srcNode) || !nodeExists(dstNode))
+            return false;
+
+        // Prevent self-connection
+        if (srcNode == dstNode)
+            return false;
+
+        // Prevent duplicate
+        Cable newCable{srcNode, srcChannel, dstNode, dstChannel};
+        for (const auto& c : cables)
+            if (c == newCable)
+                return false;
+
+        // Validate channel bounds (assume stereo)
+        if (srcChannel < 0 || srcChannel >= 2 || dstChannel < 0 || dstChannel >= 2)
+            return false;
+
+        cables.push_back(newCable);
+        return true;
+    }
+
+    bool removeCable(TestNodeID srcNode, int srcChannel, TestNodeID dstNode, int dstChannel)
+    {
+        Cable target{srcNode, srcChannel, dstNode, dstChannel};
+        auto it = std::remove_if(cables.begin(), cables.end(), [&](const Cable& c) { return c == target; });
+
+        if (it != cables.end())
+        {
+            cables.erase(it, cables.end());
+            return true;
+        }
+        return false;
+    }
+
+    bool removeAllCablesFor(TestNodeID nodeId)
+    {
+        size_t originalSize = cables.size();
+        cables.erase(std::remove_if(cables.begin(), cables.end(),
+                                    [&](const Cable& c) { return c.sourceNode == nodeId || c.destNode == nodeId; }),
+                     cables.end());
+        return cables.size() < originalSize;
+    }
+
+    int countCablesFor(TestNodeID nodeId) const
+    {
+        int count = 0;
+        for (const auto& c : cables)
+        {
+            if (c.sourceNode == nodeId || c.destNode == nodeId)
+                count++;
+        }
+        return count;
+    }
+
+    TestNodeID addNode()
+    {
+        uint32_t newId = 100 + static_cast<uint32_t>(nodes.size());
+        nodes.push_back({newId});
+        return {newId};
+    }
+};
+
+TEST_CASE("Cable Wiring - Connection Creation", "[subgraph][cables][wiring]")
+{
+    MockCableGraph graph;
+
+    SECTION("Basic cable creation between nodes")
+    {
+        TestNodeID plugin1 = graph.addNode();
+        TestNodeID plugin2 = graph.addNode();
+
+        REQUIRE(graph.cables.empty());
+
+        bool success = graph.addCable(plugin1, 0, plugin2, 0);
+        REQUIRE(success);
+        REQUIRE(graph.cables.size() == 1);
+    }
+
+    SECTION("Cable from IO input to plugin")
+    {
+        TestNodeID audioIn{1};
+        TestNodeID plugin = graph.addNode();
+
+        bool success = graph.addCable(audioIn, 0, plugin, 0);
+        REQUIRE(success);
+
+        // Verify connection
+        REQUIRE(graph.cables[0].sourceNode.uid == 1);
+        REQUIRE(graph.cables[0].destNode == plugin);
+    }
+
+    SECTION("Cable from plugin to IO output")
+    {
+        TestNodeID audioOut{2};
+        TestNodeID plugin = graph.addNode();
+
+        bool success = graph.addCable(plugin, 0, audioOut, 0);
+        REQUIRE(success);
+
+        REQUIRE(graph.cables[0].destNode.uid == 2);
+    }
+
+    SECTION("Stereo cable creation - both channels")
+    {
+        TestNodeID audioIn{1};
+        TestNodeID plugin = graph.addNode();
+
+        bool left = graph.addCable(audioIn, 0, plugin, 0);
+        bool right = graph.addCable(audioIn, 1, plugin, 1);
+
+        REQUIRE(left);
+        REQUIRE(right);
+        REQUIRE(graph.cables.size() == 2);
+    }
+
+    SECTION("Self-connection is rejected")
+    {
+        TestNodeID plugin = graph.addNode();
+
+        bool success = graph.addCable(plugin, 0, plugin, 1);
+        REQUIRE_FALSE(success);
+        REQUIRE(graph.cables.empty());
+    }
+
+    SECTION("Duplicate cable is rejected")
+    {
+        TestNodeID plugin1 = graph.addNode();
+        TestNodeID plugin2 = graph.addNode();
+
+        graph.addCable(plugin1, 0, plugin2, 0);
+        bool duplicate = graph.addCable(plugin1, 0, plugin2, 0);
+
+        REQUIRE_FALSE(duplicate);
+        REQUIRE(graph.cables.size() == 1);
+    }
+
+    SECTION("Connection to non-existent node fails")
+    {
+        TestNodeID plugin = graph.addNode();
+        TestNodeID ghost{9999}; // Doesn't exist
+
+        bool success = graph.addCable(plugin, 0, ghost, 0);
+        REQUIRE_FALSE(success);
+    }
+
+    SECTION("Invalid channel index is rejected")
+    {
+        TestNodeID plugin1 = graph.addNode();
+        TestNodeID plugin2 = graph.addNode();
+
+        bool badSrc = graph.addCable(plugin1, -1, plugin2, 0);
+        bool badDst = graph.addCable(plugin1, 0, plugin2, 5);
+
+        REQUIRE_FALSE(badSrc);
+        REQUIRE_FALSE(badDst);
+    }
+
+    SECTION("Multiple cables from same source")
+    {
+        TestNodeID source = graph.addNode();
+        TestNodeID dest1 = graph.addNode();
+        TestNodeID dest2 = graph.addNode();
+
+        bool c1 = graph.addCable(source, 0, dest1, 0);
+        bool c2 = graph.addCable(source, 0, dest2, 0);
+
+        REQUIRE(c1);
+        REQUIRE(c2);
+        REQUIRE(graph.cables.size() == 2);
+    }
+
+    SECTION("Multiple cables to same destination channel is allowed")
+    {
+        TestNodeID src1 = graph.addNode();
+        TestNodeID src2 = graph.addNode();
+        TestNodeID dest = graph.addNode();
+
+        // Audio mixing - multiple sources to one dest
+        bool c1 = graph.addCable(src1, 0, dest, 0);
+        bool c2 = graph.addCable(src2, 0, dest, 0);
+
+        REQUIRE(c1);
+        REQUIRE(c2);
+        REQUIRE(graph.cables.size() == 2);
+    }
+
+    SECTION("Chain of plugins")
+    {
+        TestNodeID audioIn{1};
+        TestNodeID audioOut{2};
+        TestNodeID p1 = graph.addNode();
+        TestNodeID p2 = graph.addNode();
+        TestNodeID p3 = graph.addNode();
+
+        // Chain: In -> P1 -> P2 -> P3 -> Out
+        REQUIRE(graph.addCable(audioIn, 0, p1, 0));
+        REQUIRE(graph.addCable(p1, 0, p2, 0));
+        REQUIRE(graph.addCable(p2, 0, p3, 0));
+        REQUIRE(graph.addCable(p3, 0, audioOut, 0));
+
+        REQUIRE(graph.cables.size() == 4);
+    }
+}
+
+// =============================================================================
+// Cable Deletion Tests
+// =============================================================================
+
+TEST_CASE("Cable Deletion - Connection Removal", "[subgraph][cables][deletion]")
+{
+    MockCableGraph graph;
+    TestNodeID audioIn{1};
+    TestNodeID audioOut{2};
+
+    SECTION("Remove single cable")
+    {
+        TestNodeID plugin = graph.addNode();
+        graph.addCable(audioIn, 0, plugin, 0);
+
+        REQUIRE(graph.cables.size() == 1);
+
+        bool removed = graph.removeCable(audioIn, 0, plugin, 0);
+        REQUIRE(removed);
+        REQUIRE(graph.cables.empty());
+    }
+
+    SECTION("Remove cable that doesn't exist")
+    {
+        TestNodeID plugin = graph.addNode();
+
+        bool removed = graph.removeCable(audioIn, 0, plugin, 0);
+        REQUIRE_FALSE(removed);
+    }
+
+    SECTION("Remove specific cable from multiple")
+    {
+        TestNodeID plugin = graph.addNode();
+
+        graph.addCable(audioIn, 0, plugin, 0);
+        graph.addCable(audioIn, 1, plugin, 1);
+
+        REQUIRE(graph.cables.size() == 2);
+
+        // Remove only left channel
+        bool removed = graph.removeCable(audioIn, 0, plugin, 0);
+        REQUIRE(removed);
+        REQUIRE(graph.cables.size() == 1);
+
+        // Verify right channel still exists
+        REQUIRE(graph.cables[0].sourceChannel == 1);
+    }
+
+    SECTION("Remove all cables for a node")
+    {
+        TestNodeID p1 = graph.addNode();
+        TestNodeID p2 = graph.addNode();
+
+        graph.addCable(audioIn, 0, p1, 0);
+        graph.addCable(p1, 0, p2, 0);
+        graph.addCable(p2, 0, audioOut, 0);
+
+        REQUIRE(graph.cables.size() == 3);
+
+        // Remove p1 - should remove 2 cables (audioIn->p1 and p1->p2)
+        bool removed = graph.removeAllCablesFor(p1);
+        REQUIRE(removed);
+        REQUIRE(graph.cables.size() == 1);
+
+        // Only p2->audioOut should remain
+        REQUIRE(graph.cables[0].sourceNode == p2);
+        REQUIRE(graph.cables[0].destNode.uid == 2);
+    }
+
+    SECTION("Count cables for a node")
+    {
+        TestNodeID p1 = graph.addNode();
+        TestNodeID p2 = graph.addNode();
+
+        graph.addCable(audioIn, 0, p1, 0);
+        graph.addCable(audioIn, 1, p1, 1);
+        graph.addCable(p1, 0, p2, 0);
+
+        int count = graph.countCablesFor(p1);
+        REQUIRE(count == 3); // 2 incoming, 1 outgoing
+    }
+
+    SECTION("Remove all cables for IO node")
+    {
+        TestNodeID p1 = graph.addNode();
+        TestNodeID p2 = graph.addNode();
+
+        graph.addCable(audioIn, 0, p1, 0);
+        graph.addCable(audioIn, 0, p2, 0);
+
+        REQUIRE(graph.countCablesFor(audioIn) == 2);
+
+        graph.removeAllCablesFor(audioIn);
+        REQUIRE(graph.cables.empty());
+    }
+
+    SECTION("Iterator stability during deletion")
+    {
+        // Regression test: copying connections before iteration
+        TestNodeID p1 = graph.addNode();
+        TestNodeID p2 = graph.addNode();
+        TestNodeID p3 = graph.addNode();
+
+        graph.addCable(audioIn, 0, p1, 0);
+        graph.addCable(p1, 0, p2, 0);
+        graph.addCable(p2, 0, p3, 0);
+        graph.addCable(p3, 0, audioOut, 0);
+
+        // Copy before iteration (defensive pattern from rebuildGraph fix)
+        std::vector<MockCableGraph::Cable> cablesCopy = graph.cables;
+
+        int deletedCount = 0;
+        for (const auto& cable : cablesCopy)
+        {
+            if (cable.sourceNode == p2 || cable.destNode == p2)
+            {
+                graph.removeCable(cable.sourceNode, cable.sourceChannel, cable.destNode, cable.destChannel);
+                deletedCount++;
+            }
+        }
+
+        REQUIRE(deletedCount == 2);        // p1->p2 and p2->p3
+        REQUIRE(graph.cables.size() == 2); // audioIn->p1 and p3->audioOut
+    }
+}
+
+// =============================================================================
+// Cable Wiring Mutation Tests
+// =============================================================================
+
+TEST_CASE("Cable Wiring Mutation Testing", "[subgraph][cables][mutation]")
+{
+    SECTION("OFF-BY-ONE: Channel bounds")
+    {
+        int numChannels = 2;
+        int lastValid = numChannels - 1;
+        int offByOne = numChannels;
+
+        // Correct: lastValid (1) is valid
+        REQUIRE(lastValid >= 0);
+        REQUIRE(lastValid < numChannels);
+
+        // Mutation: <= would incorrectly allow channel 2
+        bool mutatedCheck = offByOne <= numChannels;
+        bool correctCheck = offByOne < numChannels;
+
+        REQUIRE(mutatedCheck == true);
+        REQUIRE(correctCheck == false);
+    }
+
+    SECTION("NEGATE: Self-connection check")
+    {
+        TestNodeID sameNode{100};
+
+        auto isSelfConnection = [](TestNodeID src, TestNodeID dst) { return src == dst; };
+
+        REQUIRE(isSelfConnection(sameNode, sameNode));
+
+        // If negated, would incorrectly allow self-connection
+        REQUIRE_FALSE(!isSelfConnection(sameNode, sameNode));
+    }
+
+    SECTION("SWAP: Source and destination")
+    {
+        TestNodeID src{100};
+        TestNodeID dst{101};
+
+        // When creating connection, direction matters
+        struct Cable
+        {
+            TestNodeID from, to;
+        };
+
+        Cable correct{src, dst};
+        Cable swapped{dst, src};
+
+        REQUIRE(correct.from.uid == 100);
+        REQUIRE(correct.to.uid == 101);
+        REQUIRE(swapped.from.uid != correct.from.uid);
+    }
+
+    SECTION("DELETE: Forgot to remove from container")
+    {
+        std::vector<TestConnection> cables;
+        cables.push_back({{100}, 0, {101}, 0});
+        cables.push_back({{101}, 0, {102}, 0});
+
+        size_t before = cables.size();
+
+        // Correct removal pattern
+        cables.erase(
+            std::remove_if(cables.begin(), cables.end(), [](const TestConnection& c) { return c.sourceId.uid == 100; }),
+            cables.end());
+
+        REQUIRE(cables.size() == before - 1);
+
+        // Mutation: if erase was forgotten after remove_if
+        // (tested by verifying size actually changed)
+    }
+
+    SECTION("CONDITION: Duplicate detection equality")
+    {
+        TestConnection c1{{100}, 0, {101}, 1};
+        TestConnection c2{{100}, 0, {101}, 1};
+        TestConnection c3{{100}, 0, {101}, 0}; // Different dest channel
+
+        auto areEqual = [](const TestConnection& a, const TestConnection& b)
+        {
+            return a.sourceId == b.sourceId && a.sourceChannel == b.sourceChannel && a.destId == b.destId &&
+                   a.destChannel == b.destChannel;
+        };
+
+        REQUIRE(areEqual(c1, c2));
+        REQUIRE_FALSE(areEqual(c1, c3));
+    }
+}

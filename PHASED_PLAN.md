@@ -743,6 +743,28 @@ Plugin Scan
 
 ---
 
+### 5Q: Effect Rack (SubGraph) 🧱 ✅ COMPLETE
+
+> **Target:** Power users who need complex routing within a single node
+> **Status:** Functional — Core editor stabilized
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 5Q.1 | **SubGraphProcessor** | ✅ Done | Nested AudioProcessorGraph within a node |
+| 5Q.2 | **SubGraphEditorComponent** | ✅ Done | Viewport + canvas editor |
+| 5Q.3 | **Editor re-entry** | ✅ Done | Fresh editor on each open (createEditor pattern) |
+| 5Q.4 | **Pin bounds checking** | ✅ Done | Prevent out-of-range access in rebuildGraph |
+| 5Q.5 | **Internal plugin state restore** | ✅ Done | ToneGenerator reads from processor |
+| 5Q.6 | **Cable wiring** | ✅ Done | Pin-to-pin connections in SubGraph |
+| 5Q.7 | **Delete nodes/cables** | ✅ Done | Keyboard shortcuts + menu actions |
+
+**Key Files:**
+- `src/SubGraphProcessor.cpp/h`
+- `src/SubGraphEditorComponent.cpp/h`
+- `src/ToneGeneratorControl.cpp`
+
+---
+
 ## Phase 6: Stability & Polish
 
 **Goal:** Production-ready quality with premium UI/UX
