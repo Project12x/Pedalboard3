@@ -10,6 +10,7 @@ add_executable(Pedalboard3_Tests
     integration_test.cpp
     audio_component_test.cpp
     filtergraph_test.cpp
+    protection_test.cpp
 )
 
 
