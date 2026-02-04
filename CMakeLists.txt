@@ -287,6 +287,10 @@ target_sources(Pedalboard3 PRIVATE
     # Utilities
     src/SettingsManager.cpp
     src/SettingsManager.h
+    src/PluginBlacklist.cpp
+    src/PluginBlacklist.h
+    src/CrashProtection.cpp
+    src/CrashProtection.h
     src/JuceHelperStuff.cpp
     src/JuceHelperStuff.h
     src/LogDisplay.cpp

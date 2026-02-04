@@ -24,6 +24,7 @@
 #include "App.h"
 #include "AudioSingletons.h"
 #include "ColourScheme.h"
+#include "CrashProtection.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "LogFile.h"
@@ -65,6 +66,10 @@ void App::initialise(const String& commandLine)
     {
         // Silently fail if we can't create log file
     }
+
+    // Start crash protection watchdog
+    CrashProtection::getInstance().startWatchdog(15000); // 15 second timeout
+    spdlog::info("Crash protection watchdog started");
 
 #ifndef __APPLE__
     useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon");
@@ -110,6 +115,9 @@ void App::shutdown()
 #endif
 
     MainTransport::deleteInstance();
+
+    // Stop crash protection watchdog
+    CrashProtection::getInstance().stopWatchdog();
 }
 
 //------------------------------------------------------------------------------
