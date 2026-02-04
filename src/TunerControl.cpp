@@ -173,20 +173,6 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
     float bottomY = bounds.getBottom() + 10; // Reduced offset to raise meter
     float meterRadius = jmin(bounds.getWidth() * 0.38f, bounds.getHeight() * 0.95f);
 
-    // Arc background
-    Path arcBg;
-    arcBg.addCentredArc(centreX, bottomY, meterRadius + 2, meterRadius + 2, 0, degreesToRadians(-140.0f),
-                        degreesToRadians(-40.0f), true);
-    g.setColour(colours["Plugin Border"].darker(0.2f));
-    g.strokePath(arcBg, PathStrokeType(8.0f));
-
-    // Inner arc
-    Path arcFg;
-    arcFg.addCentredArc(centreX, bottomY, meterRadius, meterRadius, 0, degreesToRadians(-140.0f),
-                        degreesToRadians(-40.0f), true);
-    g.setColour(colours["Plugin Border"]);
-    g.strokePath(arcFg, PathStrokeType(4.0f));
-
     // Tick marks with color zones
     for (int i = -5; i <= 5; ++i)
     {

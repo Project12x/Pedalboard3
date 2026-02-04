@@ -37,6 +37,7 @@
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
+#include "PluginPoolManager.h"
 #include "PreferencesDialog.h"
 #include "RoutingProcessors.h"
 #include "SettingsManager.h"
@@ -661,6 +662,28 @@ void MainPanel::showToast(const String& message)
 }
 
 //------------------------------------------------------------------------------
+void MainPanel::refreshPluginPoolDefinitions()
+{
+    auto& pool = PluginPoolManager::getInstance();
+    pool.clear();
+
+    for (int i = 0; i < patches.size(); ++i)
+    {
+        if (patches[i] != nullptr)
+            pool.addPatchDefinition(i, std::make_unique<XmlElement>(*patches[i]));
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::updatePluginPoolDefinition(int patchIndex, const XmlElement* patch)
+{
+    if (patch == nullptr || patchIndex < 0)
+        return;
+
+    PluginPoolManager::getInstance().addPatchDefinition(patchIndex, std::make_unique<XmlElement>(*patch));
+}
+
+//------------------------------------------------------------------------------
 StringArray MainPanel::getMenuBarNames()
 {
     StringArray retval;
@@ -909,6 +932,9 @@ bool MainPanel::perform(const InvocationInfo& info)
             patchComboBox->setSelectedId(1, true);
             currentPatch = 0;
 
+            refreshPluginPoolDefinitions();
+            PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
+
             changed();
 
             int temp;
@@ -974,6 +1000,8 @@ bool MainPanel::perform(const InvocationInfo& info)
             JuceHelperStuff::showModalDialog("Patch Organiser", &patchOrganiser, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);
         }
+        refreshPluginPoolDefinitions();
+        PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
         break;
     case EditUserPresetManagement:
         // Open the preset window.
@@ -1223,6 +1251,7 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
             {
                 delete patches[currentPatch];
                 patches.set(currentPatch, patch);
+                updatePluginPoolDefinition(currentPatch, patch);
             }
 
             // Load new patch if it exists.
@@ -1258,6 +1287,8 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
         // Update Stage View
         updateStageView();
     }
+
+    PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
 }
 
 //------------------------------------------------------------------------------
@@ -1614,6 +1645,8 @@ Result MainPanel::loadDocument(const File& file)
             // Delete root.
             // delete root; // JUCE 8: unique_ptr auto-deleted
 
+            refreshPluginPoolDefinitions();
+
             // Load the current patch.
             switchPatch(0, false);
 
@@ -1648,6 +1681,7 @@ Result MainPanel::saveDocument(const File& file)
 
         delete patches[currentPatch];
         patches.set(currentPatch, patch);
+        updatePluginPoolDefinition(currentPatch, patch);
     }
 
     for (i = 0; i < patches.size(); ++i)
@@ -1684,6 +1718,8 @@ void MainPanel::addPatch(XmlElement* patch)
 {
     patches.add(patch);
 
+    updatePluginPoolDefinition(patches.size() - 1, patch);
+
     patchComboBox->changeItemText(patchComboBox->getNumItems(), patch->getStringAttribute("name"));
     patchComboBox->addItem("<new patch>", patchComboBox->getNumItems() + 1);
 
@@ -1706,6 +1742,8 @@ void MainPanel::savePatch()
 
     delete patches[currentPatch];
     patches.set(currentPatch, patch);
+
+    updatePluginPoolDefinition(currentPatch, patch);
 }
 
 //------------------------------------------------------------------------------
@@ -1756,6 +1794,8 @@ void MainPanel::duplicatePatch(int index)
     patch = new XmlElement(*patches[index]);
     patch->setAttribute("name", tempstr);
     patches.set(patches.size(), patch);
+
+    updatePluginPoolDefinition(patches.size() - 1, patch);
 
     changed();
 }

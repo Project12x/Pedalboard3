@@ -94,6 +94,11 @@ class SubGraphProcessor : public juce::AudioPluginInstance
     juce::XmlElement* createRackXml() const;
     void restoreFromRackXml(const juce::XmlElement& xml);
 
+    // Fixed internal I/O node UIDs (stable across saves)
+    static constexpr uint32 rackAudioInUid = 1;
+    static constexpr uint32 rackAudioOutUid = 2;
+    static constexpr uint32 rackMidiInUid = 3;
+
     //==============================================================================
     juce::AudioProcessorGraph internalGraph;
     juce::String rackName = "New Rack";

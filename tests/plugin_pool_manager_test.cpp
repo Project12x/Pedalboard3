@@ -16,7 +16,10 @@
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/spdlog.h>
+#include <memory>
 #include <string>
+
+#include "../src/PluginPoolManager.h"
 
 // Since PluginPoolManager depends on JUCE, we test the interface contracts
 // and boundary conditions that don't require actual plugin instantiation.
@@ -247,6 +250,76 @@ TEST_CASE("Thread Safety Concepts", "[poolmanager][threading]")
         REQUIRE(success);
         REQUIRE(position.load() == 6);
     }
+}
+
+TEST_CASE("PluginPoolManager Extracts Nested Rack Plugins", "[poolmanager][rack]")
+{
+    // Build an external plugin in the main graph
+    juce::PluginDescription externalDesc;
+    externalDesc.name = "ExternalFX";
+    externalDesc.pluginFormatName = "VST3";
+    externalDesc.fileOrIdentifier = "ExternalFX.vst3";
+    externalDesc.uniqueId = 1001;
+
+    auto externalXml = externalDesc.createXml();
+    auto externalFilter = std::make_unique<juce::XmlElement>("FILTER");
+    externalFilter->addChildElement(externalXml.release());
+
+    // Build a plugin inside a rack
+    juce::PluginDescription rackPluginDesc;
+    rackPluginDesc.name = "RackFX";
+    rackPluginDesc.pluginFormatName = "VST3";
+    rackPluginDesc.fileOrIdentifier = "RackFX.vst3";
+    rackPluginDesc.uniqueId = 2002;
+
+    auto rackPluginXml = rackPluginDesc.createXml();
+    auto rackFilter = std::make_unique<juce::XmlElement>("FILTER");
+    rackFilter->addChildElement(rackPluginXml.release());
+
+    auto rackXml = std::make_unique<juce::XmlElement>("RACK");
+    rackXml->addChildElement(rackFilter.release());
+
+    juce::MemoryBlock rackState;
+    juce::copyXmlToBinary(*rackXml, rackState);
+
+    auto rackStateElem = std::make_unique<juce::XmlElement>("STATE");
+    rackStateElem->addTextElement(rackState.toBase64Encoding());
+
+    // Create the rack node in the main graph
+    juce::PluginDescription rackDesc;
+    rackDesc.name = "Effect Rack";
+    rackDesc.pluginFormatName = "Internal";
+    rackDesc.fileOrIdentifier = "Internal:SubGraph";
+    rackDesc.uniqueId = 0;
+
+    auto rackDescXml = rackDesc.createXml();
+    auto rackFilterMain = std::make_unique<juce::XmlElement>("FILTER");
+    rackFilterMain->addChildElement(rackDescXml.release());
+    rackFilterMain->addChildElement(rackStateElem.release());
+
+    auto graphXml = std::make_unique<juce::XmlElement>("FILTERGRAPH");
+    graphXml->addChildElement(externalFilter.release());
+    graphXml->addChildElement(rackFilterMain.release());
+
+    auto patchXml = std::make_unique<juce::XmlElement>("Patch");
+    patchXml->addChildElement(graphXml.release());
+
+    auto result = PluginPoolManager::extractPluginsFromPatchForTest(patchXml.get());
+
+    REQUIRE(result.size() == 2);
+
+    bool hasExternal = false;
+    bool hasRack = false;
+    for (const auto& desc : result)
+    {
+        if (desc.name == "ExternalFX" && desc.pluginFormatName == "VST3")
+            hasExternal = true;
+        if (desc.name == "RackFX" && desc.pluginFormatName == "VST3")
+            hasRack = true;
+    }
+
+    REQUIRE(hasExternal);
+    REQUIRE(hasRack);
 }
 
 // =============================================================================

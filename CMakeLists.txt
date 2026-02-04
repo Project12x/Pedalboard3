@@ -164,9 +164,20 @@ target_sources(Pedalboard3 PRIVATE
     src/PluginField.h
     
     # Internal Processors
-    src/PedalboardProcessors.cpp
+    src/LevelProcessor.cpp
+    src/FilePlayerProcessor.cpp
+    src/OutputToggleProcessor.cpp
+    src/VuMeterProcessor.cpp
+    src/RecorderProcessor.cpp
+    src/MetronomeProcessor.cpp
+    src/LooperProcessor.cpp
     src/PedalboardProcessors.h
-    src/PedalboardProcessorEditors.cpp
+    src/LevelEditors.cpp
+    src/FilePlayerEditor.cpp
+    src/OutputToggleEditors.cpp
+    src/VuMeterEditors.cpp
+    src/AudioRecorderEditor.cpp
+    src/MetronomeEditor.cpp
     src/PedalboardProcessorEditors.h
     src/SafetyLimiter.cpp
     src/SafetyLimiter.h

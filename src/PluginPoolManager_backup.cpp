@@ -1,4 +1,4 @@
-//  PluginPoolManager.cpp - Implementation of sliding window plugin pool.
+﻿//  PluginPoolManager.cpp - Implementation of sliding window plugin pool.
 //  ----------------------------------------------------------------------------
 //  This file is part of Pedalboard3, an audio plugin host.
 //  Copyright (c) 2024-2026 Antigravity.
@@ -28,7 +28,7 @@ namespace
 {
 bool shouldPoolPlugin(const PluginDescription& desc)
 {
-    // Skip internal plugins (Audio I/O, etc.) and AudioUnits for now.
+    // Skip internal plugins (Audio I/O, etc.) and AudioUnits for now
     return desc.pluginFormatName != "Internal" && desc.pluginFormatName != "AudioUnit";
 }
 
@@ -565,3 +565,4 @@ String PluginPoolManager::createPluginIdentifier(const PluginDescription& desc)
     // Create unique identifier: format + name + uid
     return desc.pluginFormatName + "|" + desc.name + "|" + String(desc.uniqueId);
 }
+

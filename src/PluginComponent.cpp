@@ -1483,18 +1483,32 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
 
     getPoints(sX, sY, dX, dY);
 
-    tempPath.startNewSubPath((float)sX, (float)sY);
-    tempPath.cubicTo(((float)width * 0.5f) + jmin(sX, dX), (float)sY, ((float)width * 0.5f) + jmin(sX, dX), (float)dY,
-                     (float)dX, (float)dY);
+    // Calculate the ideal bounds (with padding)
+    int idealX = left - 5;
+    int idealY = top - 5;
 
-    // Store original bezier for glow rendering
+    // Clamp to non-negative to avoid JUCE's negative coordinate issues
+    int boundX = jmax(0, idealX);
+    int boundY = jmax(0, idealY);
+
+    // Calculate offset: how much we had to shift the bounds
+    float offsetX = (float)(idealX - boundX); // Will be negative or zero
+    float offsetY = (float)(idealY - boundY);
+
+    // Build path in LOCAL component coordinates by subtracting component position
+    float localSX = (float)sX - boundX;
+    float localSY = (float)sY - boundY;
+    float localDX = (float)dX - boundX;
+    float localDY = (float)dY - boundY;
+
+    tempPath.startNewSubPath(localSX, localSY);
+    tempPath.cubicTo(((float)width * 0.5f) + jmin(localSX, localDX), localSY,
+                     ((float)width * 0.5f) + jmin(localSX, localDX), localDY, localDX, localDY);
+
+    // Store bezier for glow rendering (now in local coords)
     glowPath = tempPath;
 
     drawnType.createStrokedPath(drawnCurve, tempPath);
 
-    // Clamp bounds to non-negative values to prevent invisible collision at origin
-    // when dragging backwards (output to input direction)
-    int boundX = jmax(0, left - 5);
-    int boundY = jmax(0, top - 5);
     setBounds(boundX, boundY, width + 10, height + 10);
 }

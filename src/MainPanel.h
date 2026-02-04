@@ -158,6 +158,10 @@ class MainPanel : public Component,
 
     /// Helper method to update Stage View state
     void updateStageView();
+    /// Refreshes plugin pool definitions to match the current patch list.
+    void refreshPluginPoolDefinitions();
+    /// Updates a single patch definition in the plugin pool.
+    void updatePluginPoolDefinition(int patchIndex, const XmlElement* patch);
 
     ///	Toggles Stage Mode (fullscreen performance view).
     void toggleStageMode();

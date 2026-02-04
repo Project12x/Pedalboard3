@@ -10,6 +10,8 @@
 
 #include "SubGraphProcessor.h"
 
+#include "AudioSingletons.h"
+#include "BypassableInstance.h"
 #include "SubGraphEditorComponent.h"
 
 #include <spdlog/spdlog.h>
@@ -56,7 +58,7 @@ void SubGraphProcessor::initializeInternalGraph()
         juce::AudioProcessorGraph::AudioGraphIOProcessor::midiInputNode);
 
     // Add to internal graph and store node IDs
-    if (auto node = internalGraph.addNode(std::move(audioIn)))
+    if (auto node = internalGraph.addNode(std::move(audioIn), juce::AudioProcessorGraph::NodeID(rackAudioInUid)))
     {
         rackAudioInNode = node->nodeID;
         node->properties.set("x", 50.0);
@@ -64,7 +66,7 @@ void SubGraphProcessor::initializeInternalGraph()
         spdlog::debug("[SubGraphProcessor] Created rack audio input node: {}", rackAudioInNode.uid);
     }
 
-    if (auto node = internalGraph.addNode(std::move(audioOut)))
+    if (auto node = internalGraph.addNode(std::move(audioOut), juce::AudioProcessorGraph::NodeID(rackAudioOutUid)))
     {
         rackAudioOutNode = node->nodeID;
         node->properties.set("x", 400.0);
@@ -72,7 +74,7 @@ void SubGraphProcessor::initializeInternalGraph()
         spdlog::debug("[SubGraphProcessor] Created rack audio output node: {}", rackAudioOutNode.uid);
     }
 
-    if (auto node = internalGraph.addNode(std::move(midiIn)))
+    if (auto node = internalGraph.addNode(std::move(midiIn), juce::AudioProcessorGraph::NodeID(rackMidiInUid)))
     {
         rackMidiInNode = node->nodeID;
         node->properties.set("x", 50.0);
@@ -312,8 +314,8 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
 
         // Create plugin instance
         juce::String errorMessage;
-        auto instance = juce::AudioPluginFormatManager().createPluginInstance(pd, currentSampleRate, currentBlockSize,
-                                                                              errorMessage);
+        auto instance = AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(
+            pd, currentSampleRate, currentBlockSize, errorMessage);
 
         if (!instance)
         {
@@ -321,6 +323,13 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
                           errorMessage.toStdString());
             continue;
         }
+
+        // Mirror SubGraphFilterGraph::addFilterRaw stereo layout setup
+        juce::AudioProcessor::BusesLayout stereoLayout;
+        stereoLayout.inputBuses.add(juce::AudioChannelSet::stereo());
+        stereoLayout.outputBuses.add(juce::AudioChannelSet::stereo());
+        if (instance->checkBusesLayoutSupported(stereoLayout))
+            instance->setBusesLayout(stereoLayout);
 
         // Restore state
         if (auto* stateXml = filterXml->getChildByName("STATE"))
@@ -330,8 +339,20 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
             instance->setStateInformation(state.getData(), (int)state.getSize());
         }
 
+        // Wrap for bypass support (mirrors SubGraphFilterGraph::addFilterRaw)
+        std::unique_ptr<juce::AudioProcessor> processor;
+        if (dynamic_cast<juce::AudioProcessorGraph::AudioGraphIOProcessor*>(instance.get()) ||
+            dynamic_cast<SubGraphProcessor*>(instance.get()))
+        {
+            processor = std::move(instance);
+        }
+        else
+        {
+            processor = std::make_unique<BypassableInstance>(instance.release());
+        }
+
         // Add to graph
-        if (auto node = internalGraph.addNode(std::move(instance)))
+        if (auto node = internalGraph.addNode(std::move(processor)))
         {
             node->properties.set("x", x);
             node->properties.set("y", y);
@@ -357,9 +378,9 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
         // Handle I/O nodes specially (they have fixed UIDs in saves)
         if (srcIt != uidToNodeId.end())
             srcNode = srcIt->second;
-        else if (srcUid == 1) // Convention: 1 = audio in
+        else if (srcUid == rackAudioInUid) // Convention: 1 = audio in
             srcNode = rackAudioInNode;
-        else if (srcUid == 3) // Convention: 3 = MIDI in
+        else if (srcUid == rackMidiInUid) // Convention: 3 = MIDI in
             srcNode = rackMidiInNode;
         else
         {
@@ -369,7 +390,7 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
 
         if (dstIt != uidToNodeId.end())
             dstNode = dstIt->second;
-        else if (dstUid == 2) // Convention: 2 = audio out
+        else if (dstUid == rackAudioOutUid) // Convention: 2 = audio out
             dstNode = rackAudioOutNode;
         else
         {

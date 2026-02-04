@@ -11,6 +11,8 @@ add_executable(Pedalboard3_Tests
     audio_component_test.cpp
     filtergraph_test.cpp
     protection_test.cpp
+    ../src/PluginPoolManager.cpp
+    ../src/AudioSingletons.cpp
 )
 
 
@@ -19,10 +21,23 @@ target_link_libraries(Pedalboard3_Tests PRIVATE
     Catch2::Catch2WithMain
     fmt::fmt
     spdlog::spdlog
+    juce::juce_audio_processors
+)
+
+# Add JUCE include directories for test target
+target_include_directories(Pedalboard3_Tests PRIVATE
+    $<TARGET_PROPERTY:Pedalboard3,JUCE_GENERATED_SOURCES_DIRECTORY>
+    ${CMAKE_SOURCE_DIR}/JUCE/modules
 )
 
 # Enable C++17
 target_compile_features(Pedalboard3_Tests PRIVATE cxx_std_17)
+
+target_compile_definitions(Pedalboard3_Tests PRIVATE
+    PEDALBOARD3_TESTS
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+)
 
 # Register tests with CTest
 include(Catch)

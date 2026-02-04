@@ -100,6 +100,10 @@ class PluginPoolManager : private Thread
     /// Call this for each patch in the setlist.
     void addPatchDefinition(int patchIndex, std::unique_ptr<XmlElement> patchXml);
 
+    /// Removes a patch definition and its associated plugin requirements.
+    /// Call this when a patch is deleted from the setlist.
+    void removePatchDefinition(int patchIndex);
+
     /// Gets the number of known patch definitions.
     int getNumPatches() const { return static_cast<int>(patchDefinitions.size()); }
 
@@ -155,6 +159,14 @@ class PluginPoolManager : private Thread
 
     /// Parse plugin descriptions from patch XML.
     std::vector<PluginDescription> extractPluginsFromPatch(const XmlElement* patchXml);
+
+#if defined(PEDALBOARD3_TESTS)
+  public:
+    /// Test-only helper to exercise patch plugin extraction.
+    static std::vector<PluginDescription> extractPluginsFromPatchForTest(const XmlElement* patchXml);
+
+  private:
+#endif
 
     /// Release plugins that are outside the current window.
     void releaseUnusedPlugins();
