@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - MIDI routing: channel filtering, omni mode
   - MIDI mapping: CC-to-parameter, min/max ranges
   - 10 mutation test cases covering boundaries, returns, conditions
+- **Plugin Protection Infrastructure** – Crash resilience for plugin operations
+  - `PluginBlacklist` – Thread-safe singleton for blocking problematic plugins with SettingsManager persistence
+  - `CrashProtection` – SEH exception wrappers (Windows), watchdog thread (15s timeout), auto-save triggers, crash context logging
 
 ### Refactored
 - **loadSVGFromMemory Consolidation** – Removed duplicate implementations from `PresetBar`, `MetronomeControl`, `MainPanel`, and `ColourSchemeEditor`. All classes now use global `JuceHelperStuff::loadSVGFromMemory()`.
