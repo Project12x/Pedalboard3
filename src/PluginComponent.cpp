@@ -22,6 +22,7 @@
 
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
+#include "CrashProtection.h"
 #include "FilterGraph.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
@@ -35,6 +36,7 @@
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
+
 
 using namespace std;
 
@@ -361,22 +363,31 @@ void PluginComponent::buttonClicked(Button* button)
         std::cerr << "[buttonClicked] Edit button for: " << node->getProcessor()->getName() << "\n" << std::flush;
         spdlog::debug("[PluginComponent::buttonClicked] Edit button clicked for: {}",
                       node->getProcessor()->getName().toStdString());
-        AudioProcessorEditor* editor;
+        AudioProcessorEditor* editor = nullptr;
+        juce::String pluginName = node->getProcessor()->getName();
 
         // Use createEditor() directly rather than createEditorIfNeeded() because
         // JUCE caches the editor pointer and returns nullptr if the previous editor
         // was deleted but the cached pointer isn't cleared.
-        std::cerr << "[buttonClicked] Calling createEditor()\n" << std::flush;
-        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditor()");
-        editor = node->getProcessor()->createEditor();
-        std::cerr << "[buttonClicked] createEditor() returned: " << (editor ? "valid" : "nullptr") << "\n"
-                  << std::flush;
+        // Wrap in crash protection to catch SEH exceptions from misbehaving plugins
+        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditor() with crash protection");
+
+        bool editorCreated = CrashProtection::getInstance().executeWithProtection(
+            [&]() { editor = node->getProcessor()->createEditor(); }, "createEditor", pluginName);
+
+        if (!editorCreated)
+        {
+            spdlog::error("[PluginComponent::buttonClicked] createEditor() failed with exception for: {}",
+                          pluginName.toStdString());
+            // Could show error dialog or add to blacklist here
+            return;
+        }
+
         spdlog::debug("[PluginComponent::buttonClicked] createEditor() returned: {}", (editor ? "valid" : "nullptr"));
 
         // Create generic ui if processor doesn't provide its own editor
         if (!editor)
         {
-            std::cerr << "[buttonClicked] Creating NiallsGenericEditor\n" << std::flush;
             spdlog::debug("[PluginComponent::buttonClicked] Creating NiallsGenericEditor");
             editor = new NiallsGenericEditor(node->getProcessor());
         }

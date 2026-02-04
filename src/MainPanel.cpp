@@ -25,6 +25,7 @@
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
 #include "ColourSchemeEditor.h"
+#include "CrashProtection.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "LabelProcessor.h"
@@ -49,7 +50,6 @@
 
 #include <iostream>
 #include <sstream>
-
 
 using namespace std;
 //[/Headers]
@@ -394,6 +394,20 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         if (defaultPatch.existsAsFile())
             commandManager->invokeDirectly(FileNew, true);
     }
+
+    // Set up crash protection auto-save callback
+    CrashProtection::getInstance().setAutoSaveCallback(
+        [this]()
+        {
+            // Save current patch state before risky plugin operations
+            if (hasChangedSinceSaved())
+            {
+                savePatch();
+                spdlog::debug("[MainPanel] Auto-save triggered by crash protection");
+            }
+        });
+
+    spdlog::info("[MainPanel] Crash protection auto-save callback registered");
     //[/Constructor]
 }
 
