@@ -71,6 +71,9 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
 
     ///	Opens the mappings window.
     void openMappingsWindow();
+    ///	Opens the plugin's editor.
+    ///	@param forceGeneric If true, opens the generic parameter editor instead of the plugin's custom UI.
+    void openPluginEditor(bool forceGeneric = false);
 
     ///	Returns the node attached to this component.
     AudioProcessorGraph::Node* getNode() const { return node; };

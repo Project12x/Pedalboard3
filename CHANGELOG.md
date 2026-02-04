@@ -30,24 +30,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Plugin Protection Infrastructure** – Crash resilience for plugin operations
   - `PluginBlacklist` – Thread-safe singleton for blocking problematic plugins with SettingsManager persistence
   - `CrashProtection` – SEH exception wrappers (Windows), watchdog thread (15s timeout), auto-save triggers, crash context logging
+- **Generic Editor Context Menu** – Right-click Edit button to choose:
+  - "Open Custom Editor" – Plugin's native GUI
+  - "Open Generic Editor" – Internal parameter view (NiallsGenericEditor)
 
 ### Refactored
 - **loadSVGFromMemory Consolidation** – Removed duplicate implementations from `PresetBar`, `MetronomeControl`, `MainPanel`, and `ColourSchemeEditor`. All classes now use global `JuceHelperStuff::loadSVGFromMemory()`.
+- **Plugin Editor Creation** – Extracted `openPluginEditor(bool forceGeneric)` helper for cleaner code reuse
 
 ### Fixed
+- **Plugin Editor Reopen Bug** – Fixed custom GUI not reopening after closing:
+  - `EditorWrapper` destructor was removing but not deleting editor, causing memory leak
+  - Plugin's cached editor pointer prevented new custom GUI creation
+  - Now correctly deletes editor, allowing fresh instance on next open
 - **Effect Rack Editor Crash** – Multiple crash fixes:
   - `resized()` timing: viewport/canvas had zero bounds because `setSize()` triggered `resized()` before components existed. Fix: explicit `resized()` call at end of constructor.
   - Double-delete in `SubGraphCanvas` destructor: removed redundant `deleteAllChildren()` since `OwnedArray` manages component lifetime.
   - Null pointer in `PluginPinComponent`: added null checks when parent is `SubGraphCanvas` (not `PluginField`).
-- **SubGraph Editor Re-entry Crash** – Fixed crash when reopening Effect Rack editor:
-  - Switched from `createEditorIfNeeded()` to `createEditor()` to ensure fresh editor instance on each open.
-  - Added pin bounds checking before `getInputPin`/`getOutputPin` calls in `rebuildGraph()` to prevent out-of-range access.
-  - Fixed iterator invalidation in `rebuildGraph()` by copying connections to `std::vector` before iterating.
-- **ToneGenerator State Restoration** – Fixed sliders resetting to defaults when reopening editor:
-  - Constructor now reads frequency, detune, and amplitude from processor instead of hardcoded values.
-- **SubGraphProcessor XML Serialization** – Special handling in `createNodeXml()` since SubGraphProcessor is not `AudioPluginInstance`
-- **BypassableInstance Exclusion** – SubGraphProcessor excluded from bypass wrapper to prevent bus layout issues
-- **VSTi Audio Output Pins Not Displaying** – Root cause: `BypassableInstance` wrapper hid real plugin's bus state. Solution: Unwrap wrapper before querying buses.
 - **Mixer Node Pins Missing** – Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
 - **Cable Connection Invisible Collision** – Fixed cable dragging backwards (output→input) causing collision with invisible object at origin. Root cause: `PluginConnection::updateBounds` could set negative bounds. Fix: clamp bounds to non-negative using `jmax(0, left - 5)`.
 

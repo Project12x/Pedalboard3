@@ -37,7 +37,6 @@
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
 
-
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -164,9 +163,11 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         // Skip edit/mappings buttons for Tuner (no external editor, no mappable params)
         if (pluginName != "Tuner")
         {
-            editButton = new TextButton("e", "Open plugin editor");
+            editButton = new TextButton("e", "Open plugin editor (right-click for options)");
             editButton->setBounds(10, getHeight() - 30, 20, 20);
             editButton->addListener(this);
+            // Add mouse listener for right-click context menu
+            editButton->addMouseListener(this, false);
             addAndMakeVisible(editButton);
 
             mappingsButton = new TextButton("m", "Open mappings editor");
@@ -284,6 +285,29 @@ void PluginComponent::timerUpdate()
 //------------------------------------------------------------------------------
 void PluginComponent::mouseDown(const MouseEvent& e)
 {
+    // Handle right-click on the edit button to show context menu
+    if (e.originalComponent == editButton && e.mods.isPopupMenu() && !pluginWindow)
+    {
+        PopupMenu menu;
+        menu.addItem(1, "Open Custom Editor", node->getProcessor()->hasEditor());
+        menu.addItem(2, "Open Generic Editor");
+
+        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(editButton),
+                           [this](int result)
+                           {
+                               if (result == 1)
+                                   openPluginEditor(false); // Custom editor
+                               else if (result == 2)
+                                   openPluginEditor(true); // Generic editor
+                           });
+        return;
+    }
+
+    // Ignore all other events from the edit button - let the Button::Listener handle left-clicks
+    if (e.originalComponent == editButton)
+        return;
+
+    // Title bar drag logic (only for events on PluginComponent itself)
     if (e.y < 21)
     {
         if (e.getNumberOfClicks() == 2)
@@ -337,6 +361,56 @@ void PluginComponent::mouseUp(const MouseEvent& e)
 }
 
 //------------------------------------------------------------------------------
+void PluginComponent::openPluginEditor(bool forceGeneric)
+{
+    if (pluginWindow)
+        return; // Already open
+
+    if (!node || !node->getProcessor())
+    {
+        spdlog::error("[PluginComponent::openPluginEditor] node or processor is null");
+        return;
+    }
+
+    AudioProcessorEditor* editor = nullptr;
+    juce::String pluginName = node->getProcessor()->getName();
+
+    spdlog::debug("[PluginComponent::openPluginEditor] Opening editor for: {}, forceGeneric={}",
+                  pluginName.toStdString(), forceGeneric);
+
+    // Try custom editor unless user explicitly requested generic
+    if (!forceGeneric && node->getProcessor()->hasEditor())
+    {
+        // Wrap in crash protection to catch SEH exceptions from misbehaving plugins
+        bool editorCreated = CrashProtection::getInstance().executeWithProtection(
+            [&]() { editor = node->getProcessor()->createEditor(); }, "createEditor", pluginName);
+
+        if (!editorCreated)
+        {
+            spdlog::error("[PluginComponent::openPluginEditor] createEditor() failed with exception for: {}",
+                          pluginName.toStdString());
+            return;
+        }
+    }
+
+    // Use generic editor if: forced, custom failed, or plugin has no editor
+    if (!editor)
+    {
+        spdlog::debug("[PluginComponent::openPluginEditor] Creating NiallsGenericEditor");
+        editor = new NiallsGenericEditor(node->getProcessor());
+    }
+
+    if (editor)
+    {
+        spdlog::debug("[PluginComponent::openPluginEditor] Creating PluginEditorWindow");
+        editor->setName(pluginName);
+        pluginWindow = new PluginEditorWindow(editor, this);
+        node->properties.set("windowOpen", true);
+        spdlog::debug("[PluginComponent::openPluginEditor] Editor window created");
+    }
+}
+
+//------------------------------------------------------------------------------
 void PluginComponent::buttonClicked(Button* button)
 {
     std::cerr << "[buttonClicked] Enter for button\n" << std::flush;
@@ -360,52 +434,9 @@ void PluginComponent::buttonClicked(Button* button)
 
     if ((button == editButton) && !pluginWindow)
     {
-        std::cerr << "[buttonClicked] Edit button for: " << node->getProcessor()->getName() << "\n" << std::flush;
-        spdlog::debug("[PluginComponent::buttonClicked] Edit button clicked for: {}",
-                      node->getProcessor()->getName().toStdString());
-        AudioProcessorEditor* editor = nullptr;
-        juce::String pluginName = node->getProcessor()->getName();
-
-        // Use createEditor() directly rather than createEditorIfNeeded() because
-        // JUCE caches the editor pointer and returns nullptr if the previous editor
-        // was deleted but the cached pointer isn't cleared.
-        // Wrap in crash protection to catch SEH exceptions from misbehaving plugins
-        spdlog::debug("[PluginComponent::buttonClicked] Calling createEditor() with crash protection");
-
-        bool editorCreated = CrashProtection::getInstance().executeWithProtection(
-            [&]() { editor = node->getProcessor()->createEditor(); }, "createEditor", pluginName);
-
-        if (!editorCreated)
-        {
-            spdlog::error("[PluginComponent::buttonClicked] createEditor() failed with exception for: {}",
-                          pluginName.toStdString());
-            // Could show error dialog or add to blacklist here
-            return;
-        }
-
-        spdlog::debug("[PluginComponent::buttonClicked] createEditor() returned: {}", (editor ? "valid" : "nullptr"));
-
-        // Create generic ui if processor doesn't provide its own editor
-        if (!editor)
-        {
-            spdlog::debug("[PluginComponent::buttonClicked] Creating NiallsGenericEditor");
-            editor = new NiallsGenericEditor(node->getProcessor());
-        }
-
-        if (editor)
-        {
-            std::cerr << "[buttonClicked] Creating PluginEditorWindow\n" << std::flush;
-            spdlog::debug("[PluginComponent::buttonClicked] Setting editor name and creating window");
-            editor->setName(node->getProcessor()->getName());
-            pluginWindow = new PluginEditorWindow(editor, this);
-            std::cerr << "[buttonClicked] PluginEditorWindow created\n" << std::flush;
-            spdlog::debug("[PluginComponent::buttonClicked] PluginEditorWindow created");
-        }
-
-        if (pluginWindow)
-            node->properties.set("windowOpen", true);
+        std::cerr << "[buttonClicked] Edit button - opening custom editor\n" << std::flush;
+        openPluginEditor(false); // Default to custom editor on left-click
         std::cerr << "[buttonClicked] Complete\n" << std::flush;
-        spdlog::debug("[PluginComponent::buttonClicked] Edit button handler complete");
     }
 
     else if (button == mappingsButton)
@@ -1112,16 +1143,20 @@ PluginEditorWindow::EditorWrapper::EditorWrapper(AudioProcessorEditor* ed, Plugi
 PluginEditorWindow::EditorWrapper::~EditorWrapper()
 {
     std::cerr << "[~EditorWrapper] START, editor=" << editor << ", presetBar=" << presetBar << "\n" << std::flush;
-    // Don't deleteAllChildren() - that would double-delete the editor
-    // which is owned by the processor. Only delete presetBar which we created.
+    // Since we use createEditor() (not createEditorIfNeeded()), the caller owns
+    // the editor and must delete it. The old comment was incorrect - we MUST delete
+    // the editor here, otherwise the plugin won't be able to create a new one.
     if (editor)
     {
-        std::cerr << "[~EditorWrapper] Removing editor from children\n" << std::flush;
-        removeChildComponent(editor); // Detach but don't delete
-        std::cerr << "[~EditorWrapper] Editor removed\n" << std::flush;
+        std::cerr << "[~EditorWrapper] Removing and deleting editor\n" << std::flush;
+        removeChildComponent(editor);
+        delete editor;
+        editor = nullptr;
+        std::cerr << "[~EditorWrapper] Editor deleted\n" << std::flush;
     }
     std::cerr << "[~EditorWrapper] Deleting presetBar\n" << std::flush;
     delete presetBar;
+    presetBar = nullptr;
     std::cerr << "[~EditorWrapper] DONE\n" << std::flush;
 }
 
