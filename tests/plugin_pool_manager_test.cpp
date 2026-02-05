@@ -12,14 +12,15 @@
  * that requires full JUCE/audio initialization.
  */
 
+#include "../src/PluginPoolManager.h"
+
 #include <algorithm>
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
-#include <spdlog/spdlog.h>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include <string>
 
-#include "../src/PluginPoolManager.h"
 
 // Since PluginPoolManager depends on JUCE, we test the interface contracts
 // and boundary conditions that don't require actual plugin instantiation.
@@ -280,7 +281,7 @@ TEST_CASE("PluginPoolManager Extracts Nested Rack Plugins", "[poolmanager][rack]
     rackXml->addChildElement(rackFilter.release());
 
     juce::MemoryBlock rackState;
-    juce::copyXmlToBinary(*rackXml, rackState);
+    juce::AudioProcessor::copyXmlToBinary(*rackXml, rackState);
 
     auto rackStateElem = std::make_unique<juce::XmlElement>("STATE");
     rackStateElem->addTextElement(rackState.toBase64Encoding());

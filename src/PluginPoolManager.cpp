@@ -54,7 +54,7 @@ void extractPluginsFromRackState(const XmlElement& filterElem, std::vector<Plugi
     if (!state.fromBase64Encoding(stateElem->getAllSubText()))
         return;
 
-    auto rackXml = juce::getXmlFromBinary(state.getData(), (int)state.getSize());
+    auto rackXml = juce::AudioProcessor::getXmlFromBinary(state.getData(), (int)state.getSize());
     if (!rackXml || !rackXml->hasTagName("RACK"))
         return;
 
