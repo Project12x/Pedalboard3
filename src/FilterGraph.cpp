@@ -399,51 +399,24 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
         spdlog::debug("[addFilterRaw] Got processor pointer: {}", proc ? "valid" : "null");
         spdlog::default_logger()->flush();
 
-        // TEMPORARY TEST: Skip changed() for SubGraphProcessor to isolate crash
-        bool isSubGraph = (proc != nullptr) && (dynamic_cast<SubGraphProcessor*>(proc) != nullptr);
-        spdlog::debug("[addFilterRaw] isSubGraph = {}", isSubGraph);
+        // Notify listeners that graph changed - creates UI components
+        spdlog::debug("[addFilterRaw] Properties set, calling changed()...");
         spdlog::default_logger()->flush();
-
-        // Debug: Add delay to see if crash is immediate or async
-        spdlog::debug("[addFilterRaw] About to enter if block...");
-        spdlog::default_logger()->flush();
-
-        if (isSubGraph)
+        try
         {
-            spdlog::debug("[addFilterRaw] Inside if block for SubGraphProcessor");
-            spdlog::default_logger()->flush();
-
-            // Add explicit delay to see if crash is async
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            spdlog::debug("[addFilterRaw] After 50ms delay - still alive");
-            spdlog::default_logger()->flush();
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            spdlog::debug("[addFilterRaw] After 100ms total - still alive, skipping changed()");
+            changed();
+            spdlog::debug("[addFilterRaw] changed() completed successfully");
+        }
+        catch (const std::exception& e)
+        {
+            spdlog::error("[addFilterRaw] Exception in changed(): {}", e.what());
             spdlog::default_logger()->flush();
         }
-        else
+        catch (...)
         {
-            spdlog::debug("[addFilterRaw] Properties set, calling changed()...");
+            spdlog::error("[addFilterRaw] Unknown exception in changed()");
             spdlog::default_logger()->flush();
-            try
-            {
-                changed();
-                spdlog::debug("[addFilterRaw] changed() completed successfully");
-            }
-            catch (const std::exception& e)
-            {
-                spdlog::error("[addFilterRaw] Exception in changed(): {}", e.what());
-                spdlog::default_logger()->flush();
-            }
-            catch (...)
-            {
-                spdlog::error("[addFilterRaw] Unknown exception in changed()");
-                spdlog::default_logger()->flush();
-            }
         }
-        spdlog::debug("[addFilterRaw] All branches complete, about to access node->nodeID");
-        spdlog::default_logger()->flush();
 
         spdlog::debug("[addFilterRaw] node pointer: {}", node ? "valid" : "null");
         spdlog::default_logger()->flush();
@@ -640,7 +613,7 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
 
         // Create plugin description for SubGraphProcessor
         PluginDescription pd;
-        pd.name = subGraph->getName();
+        pd.name = "Effect Rack"; // Must match InternalPluginFormat::subGraphProcDesc.name for restore
         pd.pluginFormatName = "Internal";
         pd.fileOrIdentifier = "Internal:SubGraph";
         pd.uniqueId = 0;
@@ -743,7 +716,8 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     if (tempInstance)
     {
         if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
+            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
+            dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
             instancePtr = std::move(tempInstance);
         else
         {

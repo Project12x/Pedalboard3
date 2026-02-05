@@ -970,14 +970,28 @@ void PluginField::enableOscInput(bool val)
     }
     else
     {
-        OscInput p;
-        PluginDescription desc;
+        // Check if OSC Input already exists (e.g., from loaded patch)
+        bool oscExists = false;
+        for (int j = 0; j < signalPath->getNumFilters(); ++j)
+        {
+            if (signalPath->getNode(j)->getProcessor()->getName() == "OSC Input")
+            {
+                oscExists = true;
+                break;
+            }
+        }
 
-        p.fillInPluginDescription(desc);
+        if (!oscExists)
+        {
+            OscInput p;
+            PluginDescription desc;
 
-        signalPath->addFilter(&desc, 10, 215);
+            p.fillInPluginDescription(desc);
 
-        addFilter(signalPath->getNumFilters() - 1);
+            signalPath->addFilter(&desc, 10, 215);
+
+            addFilter(signalPath->getNumFilters() - 1);
+        }
     }
 }
 
@@ -1882,6 +1896,9 @@ void PluginField::loadFromXml(XmlElement* patch)
 
     moveConnectionsBehind();
     repaint();
+
+    // Auto-fit view to show all nodes after patch load
+    fitToScreen();
 }
 
 //------------------------------------------------------------------------------
@@ -1924,7 +1941,7 @@ void PluginField::clear()
 
         p.fillInPluginDescription(desc);
 
-        signalPath->addFilter(&desc, 10, 215);
+        signalPath->addFilter(&desc, 50, 400);
     }
 
     // Setup gui.

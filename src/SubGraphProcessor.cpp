@@ -281,6 +281,11 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
     // Reinitialize with fresh I/O nodes
     initializeInternalGraph();
 
+    // Clear the default passthrough connections - we'll load saved connections instead
+    auto connections = internalGraph.getConnections();
+    for (const auto& conn : connections)
+        internalGraph.removeConnection(conn);
+
     // Map old UIDs to new node IDs for connection restoration
     std::map<int, juce::AudioProcessorGraph::NodeID> uidToNodeId;
 
