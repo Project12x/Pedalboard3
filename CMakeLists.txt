@@ -160,6 +160,7 @@ target_sources(Pedalboard3 PRIVATE
     # Plugin Components
     src/PluginComponent.cpp
     src/PluginComponent.h
+    src/PluginConnection.cpp
     src/PluginField.cpp
     src/PluginFieldPersistence.cpp
     src/PluginField.h
