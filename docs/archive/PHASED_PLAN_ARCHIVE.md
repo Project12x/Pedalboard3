@@ -131,8 +131,8 @@ A roadmap for modernizing Pedalboard3 into **Pedalboard3** - a modern VST3/CLAP 
 | 4C.3 | Create CHANGELOG.md | ✅ Done |
 | 4C.4 | Code hygiene cleanup | ✅ Done |
 | 4C.5 | Email draft to Niall | ✅ Done |
-| 4C.6 | Set up donations | ⏳ Planned |
-| 4C.7 | Draft announcement | ⏳ Planned |
+| 4C.6 | Set up donations | ✅ Done |
+| 4C.7 | Draft announcement | ✅ Done |
 
 ---
 
@@ -806,17 +806,17 @@ Plugin Scan
 | 6B.7 | **Watchdog thread** | ✅ Done | Hang detection (15s) |
 | 6B.8 | **FilterGraph blacklist integration** | ✅ Done | Blocks bad plugins at load |
 | 6B.9 | **BlacklistWindow UI** | ✅ Done | Options → Plugin Blacklist |
-| 6B.10 | **Timeout logic** | ⏳ Planned | Kill hung scans |
-| 6B.11 | **Out-of-process scanner** | ⏳ Planned | Crash isolation |
+| 6B.10 | **Timeout logic** | ✅ Done | Kill hung scans |
+| 6B.11 | **Out-of-process scanner** | ✅ Done | Crash isolation |
 
 ### 6C: Bug Fixes (Legacy)
-| # | Issue |
-|---|-------|
-| 6C.1 | Connection drawing backwards |
-| 6C.2 | Patch Organiser sync |
-| 6C.3 | AudioRecorder MIDI trigger |
-| 6C.4 | Start minimized |
-| 6C.5 | Home key mapping |
+| # | Issue | Status |
+|---|-------|--------|
+| 6C.1 | Connection drawing backwards | ✅ Done |
+| 6C.2 | Patch Organiser sync | ⏳ Planned |
+| 6C.3 | AudioRecorder MIDI trigger | ⏳ Planned |
+| 6C.4 | Start minimized | ⏳ Planned |
+| 6C.5 | Home key mapping | ⏳ Planned |
 
 ### 6D: Code Refactoring
 | # | Task | Notes |
