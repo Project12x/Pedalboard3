@@ -306,6 +306,11 @@ target_sources(Pedalboard3 PRIVATE
     src/BlacklistWindow.h
     src/CrashProtection.cpp
     src/CrashProtection.h
+    src/PluginScannerIPC.h
+    src/PluginScannerClient.cpp
+    src/PluginScannerClient.h
+    src/SafePluginScanner.cpp
+    src/SafePluginScanner.h
     src/JuceHelperStuff.cpp
     src/JuceHelperStuff.h
     src/LogDisplay.cpp
@@ -440,6 +445,52 @@ add_custom_command(TARGET Pedalboard3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
         "$<TARGET_FILE_DIR:Pedalboard3>/documentation"
+)
+
+# ==============================================================================
+# Out-of-Process Plugin Scanner
+# ==============================================================================
+juce_add_console_app(Pedalboard3Scanner
+    PRODUCT_NAME "Pedalboard3Scanner"
+    COMPANY_NAME "Pedalboard3 Project"
+)
+
+# Generate JUCE header for scanner
+juce_generate_juce_header(Pedalboard3Scanner)
+
+target_sources(Pedalboard3Scanner PRIVATE
+    src/scanner/PluginScannerMain.cpp
+    src/PluginScannerIPC.h
+)
+
+target_compile_definitions(Pedalboard3Scanner PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_VST3=1
+    JUCE_PLUGINHOST_VST=0
+    JUCE_PLUGINHOST_AU=0
+    JUCE_PLUGINHOST_LADSPA=0
+)
+
+target_link_libraries(Pedalboard3Scanner PRIVATE
+    juce::juce_audio_basics
+    juce::juce_audio_devices
+    juce::juce_audio_formats
+    juce::juce_audio_processors
+    juce::juce_audio_utils
+    juce::juce_core
+    juce::juce_data_structures
+    juce::juce_events
+    juce::juce_gui_basics
+    juce::juce_graphics
+    juce::juce_recommended_config_flags
+)
+
+# Copy scanner to same directory as main app
+add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "$<TARGET_FILE:Pedalboard3Scanner>"
+        "$<TARGET_FILE_DIR:Pedalboard3>/"
 )
 
 # ==============================================================================

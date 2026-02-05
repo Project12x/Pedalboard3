@@ -10,12 +10,15 @@
 
 #include "CrashProtection.h"
 
+#include "PluginBlacklist.h"
+
+#include <condition_variable>
+#include <mutex>
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
     #include <excpt.h>
     #include <windows.h>
-
 #endif
 
 //------------------------------------------------------------------------------
@@ -303,4 +306,116 @@ void CrashProtection::writeCrashContext()
 
     // Force flush
     spdlog::default_logger()->flush();
+}
+
+//------------------------------------------------------------------------------
+TimedOperationResult CrashProtection::executeWithTimeout(std::function<void()> operation,
+                                                         const juce::String& operationName, int timeoutMs,
+                                                         const juce::String& pluginPath)
+{
+    setCurrentOperation(operationName, pluginPath);
+
+    spdlog::debug("[CrashProtection] Starting timed operation: {} (timeout: {}ms)", operationName.toStdString(),
+                  timeoutMs);
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool completed = false;
+    bool success = false;
+    std::exception_ptr exceptionPtr = nullptr;
+
+    // Run operation in a separate thread
+    std::thread worker([&]() {
+        try
+        {
+            operation();
+            success = true;
+        }
+        catch (...)
+        {
+            exceptionPtr = std::current_exception();
+            success = false;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            completed = true;
+        }
+        cv.notify_one();
+    });
+
+    // Wait for completion or timeout
+    TimedOperationResult result;
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        if (cv.wait_for(lock, std::chrono::milliseconds(timeoutMs), [&] { return completed; }))
+        {
+            // Operation completed
+            if (success)
+            {
+                result = TimedOperationResult::Success;
+                spdlog::debug("[CrashProtection] Timed operation completed successfully: {}",
+                              operationName.toStdString());
+            }
+            else
+            {
+                result = TimedOperationResult::Exception;
+                spdlog::error("[CrashProtection] Timed operation threw exception: {}", operationName.toStdString());
+                writeCrashContext();
+            }
+        }
+        else
+        {
+            // Timeout occurred
+            result = TimedOperationResult::Timeout;
+            spdlog::error("[CrashProtection] TIMEOUT: Operation exceeded {}ms: {}", timeoutMs,
+                          operationName.toStdString());
+            writeCrashContext();
+
+            // Auto-blacklist the plugin if path provided
+            if (pluginPath.isNotEmpty())
+            {
+                spdlog::warn("[CrashProtection] Auto-blacklisting plugin due to timeout: {}", pluginPath.toStdString());
+                PluginBlacklist::getInstance().addToBlacklist(pluginPath);
+            }
+        }
+    }
+
+    // Detach the worker thread - it may still be running if we timed out
+    // This is intentional: we can't safely terminate the thread, but we can
+    // continue execution. The thread will eventually complete or the process
+    // will exit.
+    if (worker.joinable())
+    {
+        if (result == TimedOperationResult::Timeout)
+        {
+            // Detach hung thread - we can't wait for it
+            worker.detach();
+            spdlog::warn("[CrashProtection] Detached hung worker thread for: {}", operationName.toStdString());
+        }
+        else
+        {
+            worker.join();
+        }
+    }
+
+    clearCurrentOperation();
+    return result;
+}
+
+//------------------------------------------------------------------------------
+TimedOperationResult CrashProtection::executeWithProtectionAndTimeout(std::function<void()> operation,
+                                                                      const juce::String& operationName, int timeoutMs,
+                                                                      const juce::String& pluginPath)
+{
+    // Wrap the operation with SEH protection, then apply timeout
+    auto protectedOp = [this, &operation, &operationName, &pluginPath]() {
+        bool success = executeWithProtection(operation, operationName, pluginPath);
+        if (!success)
+        {
+            throw std::runtime_error("SEH exception caught");
+        }
+    };
+
+    return executeWithTimeout(protectedOp, operationName, timeoutMs, pluginPath);
 }

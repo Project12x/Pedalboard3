@@ -29,6 +29,7 @@
 #include "CrashProtection.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
+#include "SafePluginScanner.h"
 #include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
@@ -67,7 +68,7 @@ File MainPanel::lastDocument = File();
 class PluginListWindow : public DocumentWindow
 {
   public:
-    PluginListWindow(KnownPluginList& knownPluginList, MainPanel* p)
+    PluginListWindow(KnownPluginList& knownPluginList, MainPanel* p, bool useSafeScanner = true)
         : DocumentWindow("Available Plugins", Colour(0xffeeece1),
                          DocumentWindow::minimiseButton | DocumentWindow::closeButton),
           panel(p)
@@ -75,16 +76,24 @@ class PluginListWindow : public DocumentWindow
         const File deadMansPedalFile(
             SettingsManager::getInstance().getUserDataDirectory().getChildFile("RecentlyCrashedPluginsList"));
 
-        setContentOwned(new PluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
-                                                deadMansPedalFile, nullptr),
-                        true);
+        if (useSafeScanner)
+        {
+            // Use our safe scanner with out-of-process support
+            setContentOwned(new SafePluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
+                                                        deadMansPedalFile, nullptr),
+                            true);
+        }
+        else
+        {
+            // Fall back to JUCE's built-in scanner
+            setContentOwned(new PluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
+                                                    deadMansPedalFile, nullptr),
+                            true);
+        }
 
         setResizable(true, false);
-        // setResizeLimits(300, 400, 800, 1500);
-        // setTopLeftPosition(60, 60);
-        centreWithSize(300, 400);
+        centreWithSize(500, 500);  // Slightly larger for better UX
         setUsingNativeTitleBar(true);
-        // setDropShadowEnabled(false);
         getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 
         restoreWindowStateFromString(SettingsManager::getInstance().getString("listWindowPos"));

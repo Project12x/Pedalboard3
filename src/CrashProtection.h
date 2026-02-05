@@ -19,6 +19,15 @@
 #include <thread>
 
 
+/// Result of a timed operation
+enum class TimedOperationResult
+{
+    Success,      ///< Operation completed successfully
+    Exception,    ///< Operation threw an exception (SEH or C++)
+    Timeout,      ///< Operation exceeded timeout
+    Cancelled     ///< Operation was cancelled
+};
+
 /**
  * @class CrashProtection
  * @brief Provides defensive crash protection for risky plugin operations.
@@ -27,6 +36,7 @@
  * - SEH wrappers for catching hardware exceptions on Windows
  * - Auto-save triggers before risky operations
  * - Watchdog thread to detect UI hangs
+ * - Timeout protection for hung operations
  * - Crash state logging for diagnostics
  */
 class CrashProtection
@@ -44,6 +54,31 @@ class CrashProtection
      */
     bool executeWithProtection(std::function<void()> operation, const juce::String& operationName,
                                const juce::String& pluginName = {});
+
+    /**
+     * @brief Execute a function with timeout protection.
+     * Runs the operation in a separate thread and waits for completion or timeout.
+     * @param operation The function to execute
+     * @param operationName Name for logging
+     * @param timeoutMs Timeout in milliseconds
+     * @param pluginPath Optional plugin path for auto-blacklisting on timeout
+     * @return TimedOperationResult indicating success, timeout, or exception
+     */
+    TimedOperationResult executeWithTimeout(std::function<void()> operation, const juce::String& operationName,
+                                            int timeoutMs, const juce::String& pluginPath = {});
+
+    /**
+     * @brief Execute a function with both SEH protection and timeout.
+     * Combines SEH wrapping with timeout protection for maximum safety.
+     * @param operation The function to execute
+     * @param operationName Name for logging
+     * @param timeoutMs Timeout in milliseconds
+     * @param pluginPath Optional plugin path for auto-blacklisting
+     * @return TimedOperationResult indicating the outcome
+     */
+    TimedOperationResult executeWithProtectionAndTimeout(std::function<void()> operation,
+                                                         const juce::String& operationName, int timeoutMs,
+                                                         const juce::String& pluginPath = {});
 
     /**
      * @brief Set the current operation context for crash logs.
@@ -126,6 +161,11 @@ class CrashProtection
     std::atomic<std::chrono::steady_clock::time_point> lastPing;
     std::thread watchdogThread;
     int watchdogTimeoutMs = 10000;
+
+    // Timeout operation state
+    std::atomic<bool> timeoutOperationRunning{false};
+    std::atomic<bool> timeoutOperationComplete{false};
+    std::atomic<bool> timeoutOperationSuccess{false};
 };
 
 /**
