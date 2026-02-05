@@ -24,6 +24,7 @@
 #include "App.h"
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
+#include "BlacklistWindow.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
 #include "Images.h"
@@ -730,6 +731,7 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
     {
         retval.addCommandItem(commandManager, OptionsAudio);
         retval.addCommandItem(commandManager, OptionsPluginList);
+        retval.addCommandItem(commandManager, OptionsPluginBlacklist);
         retval.addCommandItem(commandManager, OptionsPreferences);
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
@@ -786,7 +788,8 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              TransportPlay,
                              TransportRtz,
                              TransportTapTempo,
-                             ToggleStageMode};
+                             ToggleStageMode,
+                             OptionsPluginBlacklist};
     commands.addArray(ids, numElementsInArray(ids));
 }
 
@@ -895,6 +898,9 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
     case ToggleStageMode:
         result.setInfo("Toggle Stage Mode", "Fullscreen performance view with large fonts.", optionsCategory, 0);
         result.addDefaultKeypress(KeyPress::F11Key, ModifierKeys());
+        break;
+    case OptionsPluginBlacklist:
+        result.setInfo("Plugin Blacklist", "Manage blacklisted plugins that will not be loaded.", optionsCategory, 0);
         break;
     }
 }
@@ -1200,6 +1206,9 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case ToggleStageMode:
         toggleStageMode();
+        break;
+    case OptionsPluginBlacklist:
+        BlacklistWindow::showWindow();
         break;
     }
     return true;

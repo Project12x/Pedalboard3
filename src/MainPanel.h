@@ -214,7 +214,8 @@ class MainPanel : public Component,
         EditUndo,
         EditRedo,
         EditPanic,
-        ToggleStageMode
+        ToggleStageMode,
+        OptionsPluginBlacklist
     };
 
     //[/UserMethods]

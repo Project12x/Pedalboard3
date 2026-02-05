@@ -302,6 +302,8 @@ target_sources(Pedalboard3 PRIVATE
     src/SettingsManager.h
     src/PluginBlacklist.cpp
     src/PluginBlacklist.h
+    src/BlacklistWindow.cpp
+    src/BlacklistWindow.h
     src/CrashProtection.cpp
     src/CrashProtection.h
     src/JuceHelperStuff.cpp
