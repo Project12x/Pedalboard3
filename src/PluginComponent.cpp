@@ -1455,60 +1455,40 @@ void PluginConnection::getPoints(int& sX, int& sY, int& dX, int& dY)
 //------------------------------------------------------------------------------
 void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
 {
-    int left, top, width, height;
+    // JUCE AudioPluginHost pattern:
+    // 1. Calculate bounds from raw parent coordinates (allow negative)
+    // 2. Set bounds
+    // 3. Build path by subtracting getPosition() for local coords
 
+    // Calculate bounding rectangle with 5px padding (JUCE uses 4, we use 5 for thicker cables)
+    auto p1 = Point<float>((float)sX, (float)sY);
+    auto p2 = Point<float>((float)dX, (float)dY);
+
+    auto newBounds = Rectangle<float>(p1, p2).expanded(5.0f).getSmallestIntegerContainer();
+
+    // Set bounds - JUCE allows negative component positions
+    setBounds(newBounds);
+
+    // Convert to local coordinates by subtracting component position
+    // This is the key JUCE pattern: p -= getPosition().toFloat()
+    auto pos = getPosition().toFloat();
+    p1 -= pos;
+    p2 -= pos;
+
+    // Build the bezier curve in local coordinates
+    // Using JUCE's vertical curve style: control points at 0.33 and 0.66 of height
     Path tempPath;
-    PathStrokeType drawnType(9.0f, PathStrokeType::mitered, PathStrokeType::rounded);
+    tempPath.startNewSubPath(p1);
 
-    if (sX < dX)
-    {
-        left = sX;
-        width = dX - sX;
-    }
-    else
-    {
-        left = dX;
-        width = sX - dX;
-    }
-    if (sY < dY)
-    {
-        top = sY;
-        height = dY - sY;
-    }
-    else
-    {
-        top = dY;
-        height = sY - dY;
-    }
+    // Horizontal bezier (our existing style) - control points at half width
+    float halfWidth = std::abs(p2.x - p1.x) * 0.5f;
+    float minX = jmin(p1.x, p2.x);
+    tempPath.cubicTo(minX + halfWidth, p1.y, minX + halfWidth, p2.y, p2.x, p2.y);
 
-    getPoints(sX, sY, dX, dY);
-
-    // Calculate the ideal bounds (with padding)
-    int idealX = left - 5;
-    int idealY = top - 5;
-
-    // Clamp to non-negative to avoid JUCE's negative coordinate issues
-    int boundX = jmax(0, idealX);
-    int boundY = jmax(0, idealY);
-
-    // Calculate offset: how much we had to shift the bounds
-    float offsetX = (float)(idealX - boundX); // Will be negative or zero
-    float offsetY = (float)(idealY - boundY);
-
-    // Build path in LOCAL component coordinates by subtracting component position
-    float localSX = (float)sX - boundX;
-    float localSY = (float)sY - boundY;
-    float localDX = (float)dX - boundX;
-    float localDY = (float)dY - boundY;
-
-    tempPath.startNewSubPath(localSX, localSY);
-    tempPath.cubicTo(((float)width * 0.5f) + jmin(localSX, localDX), localSY,
-                     ((float)width * 0.5f) + jmin(localSX, localDX), localDY, localDX, localDY);
-
-    // Store bezier for glow rendering (now in local coords)
+    // Store for glow rendering
     glowPath = tempPath;
 
+    // Create stroked path for hit testing and rendering
+    PathStrokeType drawnType(9.0f, PathStrokeType::mitered, PathStrokeType::rounded);
     drawnType.createStrokedPath(drawnCurve, tempPath);
-
-    setBounds(boundX, boundY, width + 10, height + 10);
 }
