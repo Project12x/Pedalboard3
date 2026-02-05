@@ -161,6 +161,7 @@ target_sources(Pedalboard3 PRIVATE
     src/PluginComponent.cpp
     src/PluginComponent.h
     src/PluginField.cpp
+    src/PluginFieldPersistence.cpp
     src/PluginField.h
     
     # Internal Processors
