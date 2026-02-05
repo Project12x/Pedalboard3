@@ -36,6 +36,7 @@
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
+#include "PluginBlacklist.h"
 #include "SettingsManager.h"
 #include "SubGraphProcessor.h"
 #include "UndoActions.h"
@@ -316,6 +317,15 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
 {
     if (desc == nullptr)
         return AudioProcessorGraph::NodeID();
+
+    // Check if plugin is blacklisted
+    auto& blacklist = PluginBlacklist::getInstance();
+    if (blacklist.isBlacklisted(desc->fileOrIdentifier) || blacklist.isBlacklistedById(desc->createIdentifierString()))
+    {
+        spdlog::warn("[addFilterRaw] Plugin is blacklisted, refusing to load: {} ({})", desc->name.toStdString(),
+                     desc->fileOrIdentifier.toStdString());
+        return AudioProcessorGraph::NodeID();
+    }
 
     spdlog::debug("[addFilterRaw] Adding plugin: {} (identifier: {})", desc->name.toStdString(),
                   desc->fileOrIdentifier.toStdString());

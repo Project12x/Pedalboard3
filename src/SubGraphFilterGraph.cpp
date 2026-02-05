@@ -12,6 +12,7 @@
 
 #include "AudioSingletons.h"
 #include "BypassableInstance.h"
+#include "PluginBlacklist.h"
 #include "SubGraphProcessor.h"
 
 #include <spdlog/spdlog.h>
@@ -19,9 +20,7 @@
 using namespace juce;
 
 //==============================================================================
-SubGraphFilterGraph::SubGraphFilterGraph(SubGraphProcessor& owner) : processor(owner)
-{
-}
+SubGraphFilterGraph::SubGraphFilterGraph(SubGraphProcessor& owner) : processor(owner) {}
 
 SubGraphFilterGraph::~SubGraphFilterGraph() = default;
 
@@ -71,6 +70,14 @@ AudioProcessorGraph::NodeID SubGraphFilterGraph::addFilterRaw(const PluginDescri
     if (desc == nullptr)
         return AudioProcessorGraph::NodeID();
 
+    // Check if plugin is blacklisted
+    auto& blacklist = PluginBlacklist::getInstance();
+    if (blacklist.isBlacklisted(desc->fileOrIdentifier) || blacklist.isBlacklistedById(desc->createIdentifierString()))
+    {
+        spdlog::warn("[SubGraphFilterGraph::addFilterRaw] Plugin is blacklisted: {} ({})", desc->name.toStdString(),
+                     desc->fileOrIdentifier.toStdString());
+        return AudioProcessorGraph::NodeID();
+    }
 
     String errorMessage;
     auto tempInstance =
