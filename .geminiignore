@@ -2,10 +2,12 @@
 JUCE/extras/
 JUCE/modules/*/native/
 JUCE/examples/
+JuceLibraryCode/
 
 # Build artifacts
 build/
 out/
+release/
 cmake-build-*/
 
 # Dependencies
