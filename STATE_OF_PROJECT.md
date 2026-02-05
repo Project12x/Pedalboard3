@@ -6,26 +6,31 @@
 
 ## Current Focus: Phase 6 - Stability & Polish
 
-**Status:** 🚀 Starting Phase 6  
-**Last Updated:** 2026-02-03
+**Status:** 🚀 In Progress  
+**Last Updated:** 2026-02-05
 
-### Phase 5Q Complete ✅
+### Phase 6 Progress
 
-Effect Rack (SubGraph) is now feature-complete:
-- ✅ Editor opens and closes without crash
-- ✅ Editor can be reopened multiple times without crash
-- ✅ Nodes visible (Audio Input, Output, MIDI Input)
-- ✅ Can load external VST3/AU plugins into rack
-- ✅ Cable wiring tests complete (59 assertions)
-- ✅ All internal plugins restore UI state correctly
+**Plugin Scan Protection (Complete):**
+- ✅ PluginBlacklist singleton with SettingsManager persistence
+- ✅ CrashProtection with SEH wrappers and Watchdog thread
+- ✅ FilterGraph integration (blocks blacklisted plugins at load)
+- ✅ BlacklistWindow UI for manual management (Options → Plugin Blacklist)
+- ⏳ Timeout logic for hung scans (pending)
+- ⏳ Out-of-process scanner (pending)
+
+**Monolith Sharding (Complete):**
+- ✅ PedalboardProcessors.cpp → 7 files
+- ✅ PedalboardProcessorEditors.cpp → 6 files
+- ✅ PluginField.cpp → extracted persistence
+- ✅ PluginComponent.cpp → extracted connections
 
 ### Previous Wins (Feb 2026)
 
-- ✅ **Cable Wiring Tests** - 3 new test cases covering connection creation/deletion
-- ✅ **Effect Rack Re-entry Fixed** - Editor can now be reopened multiple times
-- ✅ **ToneGenerator State Restoration** - Sliders read from processor state
-- ✅ **Effect Rack Crash Fixes** - Three bugs resolved
-- ✅ **Test Suite Expanded** - 396 assertions, 42 test cases
+- ✅ **Effect Rack Feature Complete** - Phase 5Q milestone achieved
+- ✅ **OSC Position Persistence** - Fixed node drift on patch load
+- ✅ **Southwest Cable Fix** - Two-Phase Transform pattern
+- ✅ **Sub-Graph Connection Fix** - Clear before restore pattern
 
 ---
 
@@ -54,9 +59,10 @@ Effect Rack (SubGraph) is now feature-complete:
 | Cables [cables] | 3 | 59 | ✅ Pass |
 | Integration | 5 | 37 | ✅ Pass |
 | ToneGenerator | 8 | 85 | ✅ Pass |
-| PluginPoolManager | 6 | 89 | ✅ Pass |
+| PluginPoolManager | 10 | 130+ | ✅ Pass |
 | Audio Components | 8 | 42 | ✅ Pass |
-| **Total** | **42** | **396** | ✅ All Pass |
+| Protection | 12 | 186 | ✅ Pass |
+| **Total** | **59+** | **700+** | ✅ All Pass |
 
 ---
 
@@ -85,12 +91,12 @@ Effect Rack (SubGraph) is now feature-complete:
 
 ## Next Steps (Phase 6)
 
-1. **6B: Testing** - Add more unit tests (FilterGraph, MIDI mapping)
-2. **6D.3: Thread safety** - Atomic cross-thread variables
-3. **6C: Bug fixes** - Legacy issues from ToDo.txt
-4. **6A: UI Polish** - Consider premium typography/icons
+1. **Timeout Logic** - Detect and terminate hung plugin scans
+2. **Out-of-Process Scanner** - Crash-isolated plugin discovery
+3. **6B: Testing** - Add more unit tests (FilterGraph, MIDI mapping)
+4. **6A: UI Polish** - Premium typography/icons
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-02-05*
 

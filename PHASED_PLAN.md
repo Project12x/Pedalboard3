@@ -794,15 +794,20 @@ Plugin Scan
 | 6A.17 | **CPU meter redesign** | Animated, gradient bar |
 | 6A.18 | **Plugin bypass visual feedback** | Dimmed + strikethrough when bypassed |
 
-### 6B: Testing
-| # | Task | Notes |
-|---|------|-------|
-| 6B.1 | FilterGraph tests | Unit tests |
-| 6B.2 | MIDI mapping tests | CC assignment |
-| 6B.3 | Plugin loading tests | VST3/CLAP |
-| 6B.4 | Tracy profiler | Performance |
-| 6B.5 | **Plugin load crash protection** | Try-catch + error dialog |
-| 6B.6 | **Incompatible plugin detection** | Scan on startup, warn user |
+### 6B: Testing & Protection
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 6B.1 | FilterGraph tests | ✅ Done | Unit tests |
+| 6B.2 | MIDI mapping tests | ⏳ Planned | CC assignment |
+| 6B.3 | Plugin loading tests | ✅ Done | VST3 |
+| 6B.4 | Tracy profiler | ⏳ Planned | Performance |
+| 6B.5 | **PluginBlacklist singleton** | ✅ Done | Thread-safe avoid list |
+| 6B.6 | **CrashProtection SEH wrappers** | ✅ Done | Windows exception handling |
+| 6B.7 | **Watchdog thread** | ✅ Done | Hang detection (15s) |
+| 6B.8 | **FilterGraph blacklist integration** | ✅ Done | Blocks bad plugins at load |
+| 6B.9 | **BlacklistWindow UI** | ✅ Done | Options → Plugin Blacklist |
+| 6B.10 | **Timeout logic** | ⏳ Planned | Kill hung scans |
+| 6B.11 | **Out-of-process scanner** | ⏳ Planned | Crash isolation |
 
 ### 6C: Bug Fixes (Legacy)
 | # | Issue |

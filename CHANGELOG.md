@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Plugin Protection Infrastructure** – Crash resilience for plugin operations
   - `PluginBlacklist` – Thread-safe singleton for blocking problematic plugins with SettingsManager persistence
   - `CrashProtection` – SEH exception wrappers (Windows), watchdog thread (15s timeout), auto-save triggers, crash context logging
+  - `BlacklistWindow` – UI for viewing/removing blacklisted plugins (Options → Plugin Blacklist)
+  - `FilterGraph` integration – Blocks blacklisted plugins at load time (main graph + sub-graphs)
 - **Generic Editor Context Menu** – Right-click Edit button to choose:
   - "Open Custom Editor" – Plugin's native GUI
   - "Open Generic Editor" – Internal parameter view (NiallsGenericEditor)
