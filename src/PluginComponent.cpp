@@ -686,7 +686,10 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         tempFont.setStyleFlags(Font::plain);
         for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
         {
-            if (!ignorePinNames)
+            // Use numbered names for Audio Output (its inputs are device output channels)
+            bool useNumberedNames = ignorePinNames || (pluginName == "Audio Output");
+
+            if (!useNumberedNames)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
@@ -703,7 +706,11 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                 String tempstr;
                 GlyphArrangement* g = new GlyphArrangement;
 
-                tempstr << "Input " << i + 1;
+                // For Audio Output, just show channel number
+                if (pluginName == "Audio Output")
+                    tempstr << i + 1;
+                else
+                    tempstr << "Input " << i + 1;
                 g->addLineOfText(tempFont, tempstr, 10.0f, y);
                 bounds = g->getBoundingBox(0, -1, true);
 
@@ -743,7 +750,10 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         y = 35.0f;
         for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
         {
-            if (!ignorePinNames)
+            // Use numbered names for Audio Input (its outputs are device input channels)
+            bool useNumberedNames = ignorePinNames || (pluginName == "Audio Input");
+
+            if (!useNumberedNames)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
@@ -762,7 +772,11 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                 String tempstr;
                 GlyphArrangement* g = new GlyphArrangement;
 
-                tempstr << "Output " << i + 1;
+                // For Audio Input, just show channel number
+                if (pluginName == "Audio Input")
+                    tempstr << i + 1;
+                else
+                    tempstr << "Output " << i + 1;
                 g->addLineOfText(tempFont, tempstr,
                                  0.0f, //(inputWidth + 20.0f),
                                  y);

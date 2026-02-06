@@ -256,7 +256,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     String tempstr;
     auto savedAudioState = // JUCE 8: returns unique_ptr
         SettingsManager::getInstance().getXmlValue("audioDeviceState");
-    tempstr = deviceManager.initialise(2, 2, savedAudioState.get(), true);
+    // Support up to 16 input/output channels for multi-channel interfaces
+    tempstr = deviceManager.initialise(16, 16, savedAudioState.get(), true);
     if (savedAudioState)
     {
         // JUCE 8: unique_ptr auto-deleted
@@ -1663,7 +1664,8 @@ Result MainPanel::loadDocument(const File& file)
                 {
                     String err;
 
-                    err = deviceManager.initialise(2, 2, deviceXml, true);
+                    // Support up to 16 input/output channels for multi-channel interfaces
+                    err = deviceManager.initialise(16, 16, deviceXml, true);
 
                     if (err != "")
                     {
