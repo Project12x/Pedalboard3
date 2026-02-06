@@ -69,6 +69,7 @@ class InternalPluginFormat : public AudioPluginFormat
         splitterProcFilter,
         mixerProcFilter,
         irLoaderProcFilter,
+        namProcFilter,
         midiTransposeProcFilter,
         midiRechannelizeProcFilter,
         keyboardSplitProcFilter,
@@ -76,6 +77,8 @@ class InternalPluginFormat : public AudioPluginFormat
         labelProcFilter,
         midiFilePlayerProcFilter,
         subGraphProcFilter,
+        channelInputProcFilter,
+        channelOutputProcFilter,
 
         endOfFilterTypes
     };
@@ -139,6 +142,7 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription splitterProcDesc;
     PluginDescription mixerProcDesc;
     PluginDescription irLoaderProcDesc;
+    PluginDescription namProcDesc;
     PluginDescription midiTransposeProcDesc;
     PluginDescription midiRechannelizeProcDesc;
     PluginDescription keyboardSplitProcDesc;
@@ -146,6 +150,8 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription labelProcDesc;
     PluginDescription midiFilePlayerProcDesc;
     PluginDescription subGraphProcDesc;
+    PluginDescription channelInputProcDesc;
+    PluginDescription channelOutputProcDesc;
 };
 
 #endif

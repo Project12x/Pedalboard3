@@ -25,16 +25,20 @@
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
 #include "BlacklistWindow.h"
+#include "ChannelRoutingProcessors.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "SafePluginScanner.h"
+#include "IRLoaderProcessor.h"
 #include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
 #include "MidiFilePlayer.h"
+#include "MidiUtilityProcessors.h"
+#include "NAMProcessor.h"
 #include "NotesProcessor.h"
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
@@ -323,6 +327,34 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         MidiFilePlayerProcessor midiFilePlayer;
         midiFilePlayer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        IRLoaderProcessor irLoader;
+        irLoader.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        NAMProcessor nam;
+        nam.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiTransposeProcessor midiTranspose;
+        midiTranspose.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiRechannelizeProcessor midiRechannelize;
+        midiRechannelize.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        KeyboardSplitProcessor keyboardSplit;
+        keyboardSplit.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        ChannelInputProcessor channelInput;
+        channelInput.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        ChannelOutputProcessor channelOutput;
+        channelOutput.fillInPluginDescription(desc);
         pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);

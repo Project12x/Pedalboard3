@@ -57,6 +57,15 @@ CPMAddPackage(
     OPTIONS "MD4C_USE_UTF8 ON"
 )
 
+# Eigen - Linear algebra library (required for NeuralAmpModeler)
+# Using master branch for full lastN/indexing support
+CPMAddPackage(
+    NAME Eigen3
+    GITLAB_REPOSITORY libeigen/eigen
+    GIT_TAG master
+    OPTIONS "EIGEN_BUILD_DOC OFF" "BUILD_TESTING OFF" "EIGEN_BUILD_PKGCONFIG OFF"
+)
+
 
 # ==============================================================================
 # Testing Framework
@@ -198,6 +207,8 @@ target_sources(Pedalboard3 PRIVATE
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
+    src/ChannelRoutingProcessors.cpp
+    src/ChannelRoutingProcessors.h
     src/IRLoaderProcessor.cpp
     src/IRLoaderProcessor.h
     src/IRLoaderControl.cpp
@@ -205,7 +216,53 @@ target_sources(Pedalboard3 PRIVATE
     src/MidiUtilityProcessors.cpp
     src/MidiUtilityProcessors.h
     src/MidiUtilityControls.cpp
-    
+
+    # NAM (Neural Amp Modeler) Processor
+    src/NAMProcessor.cpp
+    src/NAMProcessor.h
+    src/NAMControl.cpp
+    src/NAMControl.h
+    src/NAMConvolver.cpp
+    src/NAMConvolver.h
+    src/NAMCore.cpp
+    src/NAMCore.h
+    src/NAMModelBrowser.cpp
+    src/NAMModelBrowser.h
+
+    # NeuralAmpModelerCore Library Sources
+    external/NeuralAmpModelerCore/NAM/activations.cpp
+    external/NeuralAmpModelerCore/NAM/activations.h
+    external/NeuralAmpModelerCore/NAM/convnet.cpp
+    external/NeuralAmpModelerCore/NAM/convnet.h
+    external/NeuralAmpModelerCore/NAM/dsp.cpp
+    external/NeuralAmpModelerCore/NAM/dsp.h
+    external/NeuralAmpModelerCore/NAM/get_dsp.cpp
+    external/NeuralAmpModelerCore/NAM/lstm.cpp
+    external/NeuralAmpModelerCore/NAM/lstm.h
+    external/NeuralAmpModelerCore/NAM/util.cpp
+    external/NeuralAmpModelerCore/NAM/util.h
+    external/NeuralAmpModelerCore/NAM/version.h
+    external/NeuralAmpModelerCore/NAM/wavenet.cpp
+    external/NeuralAmpModelerCore/NAM/wavenet.h
+
+    # AudioDSPTools Library Sources
+    external/AudioDSPTools/dsp/dsp.cpp
+    external/AudioDSPTools/dsp/dsp.h
+    external/AudioDSPTools/dsp/ImpulseResponse.cpp
+    external/AudioDSPTools/dsp/ImpulseResponse.h
+    external/AudioDSPTools/dsp/NoiseGate.cpp
+    external/AudioDSPTools/dsp/NoiseGate.h
+    external/AudioDSPTools/dsp/RecursiveLinearFilter.cpp
+    external/AudioDSPTools/dsp/RecursiveLinearFilter.h
+    external/AudioDSPTools/dsp/Resample.h
+    external/AudioDSPTools/dsp/wav.cpp
+    external/AudioDSPTools/dsp/wav.h
+
+    # NAM Wrapper Classes
+    external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h
+    external/NeuralAmpModelerCore/wrapper/ToneStack.cpp
+    external/NeuralAmpModelerCore/wrapper/ToneStack.h
+
     # Notes Node
     src/NotesProcessor.cpp
     src/NotesProcessor.h
@@ -386,10 +443,20 @@ target_compile_definitions(Pedalboard3 PRIVATE
     # Modern features
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
+
+    # NAM (Neural Amp Modeler) settings
+    NAM_SAMPLE_FLOAT
+    DSP_SAMPLE_FLOAT
+    NOMINMAX
 )
 
 target_include_directories(Pedalboard3 PRIVATE
     ${md4c_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/NeuralAmpModelerCore
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/NeuralAmpModelerCore/NAM
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools/dsp
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools/dsp/ResamplingContainer
 )
 
 # Link JUCE modules
@@ -416,9 +483,9 @@ target_link_libraries(Pedalboard3 PRIVATE
     # Modern C++ libraries
     fmt::fmt
     spdlog::spdlog
-    spdlog::spdlog
     nlohmann_json::nlohmann_json
     md4c
+    Eigen3::Eigen
     
     # UI Effects
     melatonin_blur

@@ -31,8 +31,10 @@
 
 #include "InternalFilters.h"
 
+#include "ChannelRoutingProcessors.h"
 #include "FilterGraph.h"
 #include "IRLoaderProcessor.h"
+#include "NAMProcessor.h"
 #include "LabelProcessor.h"
 #include "MidiFilePlayer.h"
 #include "MidiMappingManager.h"
@@ -151,6 +153,12 @@ InternalPluginFormat::InternalPluginFormat()
     }
 
     {
+        NAMProcessor p;
+        p.fillInPluginDescription(namProcDesc);
+        namProcDesc.category = "Built-in";
+    }
+
+    {
         MidiTransposeProcessor p;
         p.fillInPluginDescription(midiTransposeProcDesc);
         midiTransposeProcDesc.category = "MIDI Utility";
@@ -190,6 +198,18 @@ InternalPluginFormat::InternalPluginFormat()
         SubGraphProcessor p;
         p.fillInPluginDescription(subGraphProcDesc);
         subGraphProcDesc.category = "Built-in";
+    }
+
+    {
+        ChannelInputProcessor p;
+        p.fillInPluginDescription(channelInputProcDesc);
+        channelInputProcDesc.category = "Routing";
+    }
+
+    {
+        ChannelOutputProcessor p;
+        p.fillInPluginDescription(channelOutputProcDesc);
+        channelOutputProcDesc.category = "Routing";
     }
 }
 
@@ -266,6 +286,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new IRLoaderProcessor();
     }
+    else if (desc.name == namProcDesc.name)
+    {
+        return new NAMProcessor();
+    }
     else if (desc.name == midiTransposeProcDesc.name)
     {
         return new MidiTransposeProcessor();
@@ -293,6 +317,14 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     else if (desc.name == subGraphProcDesc.name)
     {
         return new SubGraphProcessor();
+    }
+    else if (desc.name == channelInputProcDesc.name)
+    {
+        return new ChannelInputProcessor();
+    }
+    else if (desc.name == channelOutputProcDesc.name)
+    {
+        return new ChannelOutputProcessor();
     }
 
     return 0;
@@ -336,6 +368,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &mixerProcDesc;
     case irLoaderProcFilter:
         return &irLoaderProcDesc;
+    case namProcFilter:
+        return &namProcDesc;
     case midiTransposeProcFilter:
         return &midiTransposeProcDesc;
     case midiRechannelizeProcFilter:
@@ -350,6 +384,10 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &midiFilePlayerProcDesc;
     case subGraphProcFilter:
         return &subGraphProcDesc;
+    case channelInputProcFilter:
+        return &channelInputProcDesc;
+    case channelOutputProcFilter:
+        return &channelOutputProcDesc;
     default:
         return 0;
     }
@@ -369,8 +407,9 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
         levelProcFilter,         filePlayerProcFilter,       outputToggleProcFilter,  vuMeterProcFilter,
         recorderProcFilter,      metronomeProcFilter,        looperProcFilter,        tunerProcFilter,
         toneGenProcFilter,       splitterProcFilter,         mixerProcFilter,         irLoaderProcFilter,
-        midiTransposeProcFilter, midiRechannelizeProcFilter, keyboardSplitProcFilter, notesProcFilter,
-        labelProcFilter,         midiFilePlayerProcFilter,   subGraphProcFilter};
+        namProcFilter,           midiTransposeProcFilter,    midiRechannelizeProcFilter, keyboardSplitProcFilter,
+        notesProcFilter,         labelProcFilter,            midiFilePlayerProcFilter,   subGraphProcFilter,
+        channelInputProcFilter,  channelOutputProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));
