@@ -24,6 +24,7 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include "ColourScheme.h"
+#include "DeviceMeterTap.h"
 #include "FilterGraph.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
@@ -282,6 +283,9 @@ class MainPanel : public Component,
     AudioProcessorPlayer tunerPlayer;
     /// The global tuner processor
     std::unique_ptr<TunerProcessor> globalTuner;
+
+    /// Device-level audio metering for I/O nodes
+    DeviceMeterTap deviceMeterTap;
 
     ///	The currently-loaded patches.
     Array<XmlElement*> patches;

@@ -23,6 +23,7 @@
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
 #include "CrashProtection.h"
+#include "DeviceMeterTap.h"
 #include "FilterGraph.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
@@ -317,6 +318,63 @@ void PluginComponent::paint(Graphics& g)
     // Draw the output channels.
     for (i = 0; i < outputText.size(); ++i)
         outputText[i]->draw(g);
+
+    // Draw horizontal VU meters for Audio I/O nodes
+    if (isAudioIONode() && cachedMeterChannelCount > 0)
+    {
+        const float meterWidth = 36.0f;   // Horizontal: wider for better resolution
+        const float meterHeight = 6.0f;   // Horizontal: compact height per channel
+        const float meterStartY = 28.0f;
+        const float pinSpacing = 24.0f;   // Match Audio I/O pin spacing
+
+        for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
+        {
+            float level = cachedMeterLevels[ch];
+
+            // Convert linear to normalized dB scale (-60 to 0 dB)
+            float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
+            float normalizedLevel = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
+
+            // Position meter - horizontal bars next to pins
+            float x, y;
+            if (pluginName == "Audio Input")
+            {
+                // Output pins are on the right, meter to the left of pin
+                x = w - 20.0f - meterWidth;
+                y = meterStartY + ch * pinSpacing + 4.0f; // Center vertically with pin
+            }
+            else // Audio Output
+            {
+                // Input pins are on the left, meter to the right of pin
+                x = 22.0f;
+                y = meterStartY + ch * pinSpacing + 4.0f; // Center vertically with pin
+            }
+
+            // Meter background (dark track)
+            g.setColour(colours["Plugin Background"].darker(0.5f));
+            g.fillRoundedRectangle(x, y, meterWidth, meterHeight, 2.0f);
+
+            // Meter bar with gradient color based on level (horizontal fill)
+            if (normalizedLevel > 0.0f)
+            {
+                float barWidth = meterWidth * normalizedLevel;
+                Colour barColour;
+                if (level >= 1.0f)
+                    barColour = colours["VU Meter Over Colour"];
+                else if (normalizedLevel > 0.75f)
+                    barColour = colours["VU Meter Upper Colour"];
+                else
+                    barColour = colours["VU Meter Lower Colour"];
+
+                g.setColour(barColour);
+                g.fillRoundedRectangle(x, y, barWidth, meterHeight, 2.0f);
+            }
+
+            // Subtle border for definition
+            g.setColour(colours["Plugin Border"].withAlpha(0.3f));
+            g.drawRoundedRectangle(x, y, meterWidth, meterHeight, 2.0f, 0.5f);
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -332,6 +390,47 @@ void PluginComponent::timerUpdate()
 
     if (bypassable)
         bypassButton->setToggleState(bypassable->getBypass(), false);
+
+    // Update meter levels for Audio I/O nodes
+    if (isAudioIONode())
+    {
+        if (auto* tap = DeviceMeterTap::getInstance())
+        {
+            bool needsRepaint = false;
+            int numChannels = 0;
+
+            if (pluginName == "Audio Input")
+            {
+                numChannels = tap->getNumInputChannels();
+                for (int ch = 0; ch < numChannels && ch < 16; ++ch)
+                {
+                    float level = tap->getInputLevel(ch);
+                    if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
+                    {
+                        cachedMeterLevels[ch] = level;
+                        needsRepaint = true;
+                    }
+                }
+            }
+            else // Audio Output
+            {
+                numChannels = tap->getNumOutputChannels();
+                for (int ch = 0; ch < numChannels && ch < 16; ++ch)
+                {
+                    float level = tap->getOutputLevel(ch);
+                    if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
+                    {
+                        cachedMeterLevels[ch] = level;
+                        needsRepaint = true;
+                    }
+                }
+            }
+
+            cachedMeterChannelCount = numChannels;
+            if (needsRepaint)
+                repaint();
+        }
+    }
 }
 
 //------------------------------------------------------------------------------

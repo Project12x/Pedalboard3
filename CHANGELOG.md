@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to Pedalboard3 will be documented in this file.
 
@@ -9,52 +9,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- **Effect Rack (SubGraphProcessor)** – Nested plugin hosting within a single node
+- **Effect Rack (SubGraphProcessor)** â€“ Nested plugin hosting within a single node
   - `SubGraphProcessor` wraps internal `AudioProcessorGraph`
   - `SubGraphEditorComponent` provides rack editor UI with viewport/canvas
-  - Available via right-click → Pedalboard → Effect Rack
+  - Available via right-click â†’ Pedalboard â†’ Effect Rack
   - Can load external VST3/AU plugins into the rack
   - Double-click canvas to add plugins (same menu as main PluginField)
-- **Cable Wiring/Deletion Tests** – Comprehensive headless test coverage for Effect Rack connections
+- **Cable Wiring/Deletion Tests** â€“ Comprehensive headless test coverage for Effect Rack connections
   - 3 new test cases: wiring creation, connection removal, mutation testing
   - 59 assertions covering stereo, chaining, self-connection rejection, iterator stability
-- **FilterGraph Unit Tests** – Phase 6B testing expansion
+- **FilterGraph Unit Tests** â€“ Phase 6B testing expansion
   - 6 test cases: node management, connection management, position, infrastructure detection
   - 71 assertions covering add/remove/query operations and mutation testing
-- **Expanded Integration Tests** – End-to-end and mutation test coverage
+- **Expanded Integration Tests** â€“ End-to-end and mutation test coverage
   - Signal path: effect chain processing, bypass behavior
   - Plugin lifecycle: load/unload, editor reopen
   - MIDI routing: channel filtering, omni mode
   - MIDI mapping: CC-to-parameter, min/max ranges
   - 10 mutation test cases covering boundaries, returns, conditions
-- **Plugin Protection Infrastructure** – Crash resilience for plugin operations
-  - `PluginBlacklist` – Thread-safe singleton for blocking problematic plugins with SettingsManager persistence
-  - `CrashProtection` – SEH exception wrappers (Windows), watchdog thread (15s timeout), auto-save triggers, crash context logging
-  - `BlacklistWindow` – UI for viewing/removing blacklisted plugins (Options → Plugin Blacklist)
-  - `FilterGraph` integration – Blocks blacklisted plugins at load time (main graph + sub-graphs)
-- **Generic Editor Context Menu** – Right-click Edit button to choose:
-  - "Open Custom Editor" – Plugin's native GUI
-  - "Open Generic Editor" – Internal parameter view (NiallsGenericEditor)
+- **Plugin Protection Infrastructure** â€“ Crash resilience for plugin operations
+  - `PluginBlacklist` â€“ Thread-safe singleton for blocking problematic plugins with SettingsManager persistence
+  - `CrashProtection` â€“ SEH exception wrappers (Windows), watchdog thread (15s timeout), auto-save triggers, crash context logging
+  - `BlacklistWindow` â€“ UI for viewing/removing blacklisted plugins (Options â†’ Plugin Blacklist)
+  - `FilterGraph` integration â€“ Blocks blacklisted plugins at load time (main graph + sub-graphs)
+- **Generic Editor Context Menu** â€“ Right-click Edit button to choose:
+  - "Open Custom Editor" â€“ Plugin's native GUI
+  - "Open Generic Editor" â€“ Internal parameter view (NiallsGenericEditor)
 
 ### Refactored
-- **loadSVGFromMemory Consolidation** – Removed duplicate implementations from `PresetBar`, `MetronomeControl`, `MainPanel`, and `ColourSchemeEditor`. All classes now use global `JuceHelperStuff::loadSVGFromMemory()`.
-- **Plugin Editor Creation** – Extracted `openPluginEditor(bool forceGeneric)` helper for cleaner code reuse
+- **loadSVGFromMemory Consolidation** â€“ Removed duplicate implementations from `PresetBar`, `MetronomeControl`, `MainPanel`, and `ColourSchemeEditor`. All classes now use global `JuceHelperStuff::loadSVGFromMemory()`.
+- **Plugin Editor Creation** â€“ Extracted `openPluginEditor(bool forceGeneric)` helper for cleaner code reuse
 
 ### Fixed
-- **Plugin Editor Reopen Bug** – Fixed custom GUI not reopening after closing:
+- **Plugin Editor Reopen Bug** â€“ Fixed custom GUI not reopening after closing:
   - `EditorWrapper` destructor was removing but not deleting editor, causing memory leak
   - Plugin's cached editor pointer prevented new custom GUI creation
   - Now correctly deletes editor, allowing fresh instance on next open
-- **Effect Rack Editor Crash** – Multiple crash fixes:
+- **Effect Rack Editor Crash** â€“ Multiple crash fixes:
   - `resized()` timing: viewport/canvas had zero bounds because `setSize()` triggered `resized()` before components existed. Fix: explicit `resized()` call at end of constructor.
   - Double-delete in `SubGraphCanvas` destructor: removed redundant `deleteAllChildren()` since `OwnedArray` manages component lifetime.
   - Null pointer in `PluginPinComponent`: added null checks when parent is `SubGraphCanvas` (not `PluginField`).
-- **Mixer Node Pins Missing** – Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
-- **Cable Connection Invisible Collision** – Fixed cable dragging backwards (output→input) causing collision with invisible object at origin. Root cause: `PluginConnection::updateBounds` could set negative bounds. Fix: clamp bounds to non-negative using `jmax(0, left - 5)`.
+- **Mixer Node Pins Missing** â€“ Fallback to `getTotalNumChannels()` for internal processors without bus configuration.
+- **Cable Connection Invisible Collision** â€“ Fixed cable dragging backwards (outputâ†’input) causing collision with invisible object at origin. Root cause: `PluginConnection::updateBounds` could set negative bounds. Fix: clamp bounds to non-negative using `jmax(0, left - 5)`.
 
 ### Known Issues
-- **Effect Rack Connections** – Pin-to-pin wiring not yet functional (no crash, just ignored)
-- **Internal Node Editors** – Special nodes (Tone Generator, etc.) may show generic UI
+- **Effect Rack Connections** â€“ Pin-to-pin wiring not yet functional (no crash, just ignored)
+- **Internal Node Editors** â€“ Special nodes (Tone Generator, etc.) may show generic UI
 
 ### Technical
 - Added `getUnwrappedProcessor()` pattern for safe bus queries through wrapper classes
@@ -67,103 +67,103 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [3.1.0-dev] - 2026-01-30
 
-### 🎹 MIDI Enhancements
+### MIDI Enhancements
 
-- **MIDI File Player** – Load and play .mid/.midi files through synth plugins
+- **MIDI File Player** â€“ Load and play .mid/.midi files through synth plugins
   - Transport controls (play/pause/stop/rewind)
   - Tempo/BPM control with sync support
   - Loop mode for seamless playback
-- **MIDI Transpose** – Shift MIDI notes ±48 semitones
-- **MIDI Rechannelizer** – Remap MIDI input/output channels
-- **Keyboard Split** – Split keyboard with configurable split point and channel routing
+- **MIDI Transpose** â€“ Shift MIDI notes Â±48 semitones
+- **MIDI Rechannelizer** â€“ Remap MIDI input/output channels
+- **Keyboard Split** â€“ Split keyboard with configurable split point and channel routing
 
-### 🎛️ Live Performance
+### Live Performance
 
-- **Stage Mode** – Fullscreen performance view (F11)
+- **Stage Mode** â€“ Fullscreen performance view (F11)
   - Large patch display
   - Next patch preview
   - High-contrast colors for stage visibility
   - Quick patch switching via keyboard/foot controller
-- **Setlist Management** – Organize patches for live performance
+- **Setlist Management** - Organize patches for live performance
   - Drag-and-drop reordering
   - PatchOrganiser integration
-- **Glitch-Free Patch Switching** – Crossfade mixer for silent transitions
-- **Plugin Pool Manager** – Background preloading for instant patch switches
+- **Glitch-Free Patch Switching** â€“ Crossfade mixer for silent transitions
+- **Plugin Pool Manager** â€“ Background preloading for instant patch switches
 
-### 🎸 New Processors
+### New Processors
 
-- **Chromatic Tuner** – Dual-mode display (needle + strobe), YIN pitch detection
-- **Tone Generator** – Sine/square/saw/triangle waveforms
-- **A/B Splitter** – Split signal into two parallel paths with mute controls
-- **A/B Mixer** – Mix two paths back together with level controls
-- **Notes Node** – Text display for patch documentation
-- **Label Node** – Simple themed text labels
-- **IR Loader** – Impulse response cabinet simulation (placeholder)
+- **Chromatic Tuner** â€“ Dual-mode display (needle + strobe), YIN pitch detection
+- **Tone Generator** â€“ Sine/square/saw/triangle waveforms
+- **A/B Splitter** â€“ Split signal into two parallel paths with mute controls
+- **A/B Mixer** â€“ Mix two paths back together with level controls
+- **Notes Node** â€“ Text display for patch documentation
+- **Label Node** â€“ Simple themed text labels
+- **IR Loader** â€“ Impulse response cabinet simulation (placeholder)
 
-### 🎨 Visual Polish
+### Visual Polish
 
-- **Canvas Navigation** – Pan (left-click drag), zoom (scroll wheel), fit-to-screen
-- **Premium Node Design** – Metallic gradients, rounded corners, shadow effects
-- **Modern LAF Updates** – Button hover effects, progress bars, tick boxes
-- **Custom Fonts** – Inter/Roboto typography
-- **Toast Notifications** – With Melatonin Blur shadows
+- **Canvas Navigation** â€“ Pan (left-click drag), zoom (scroll wheel), fit-to-screen
+- **Premium Node Design** â€“ Metallic gradients, rounded corners, shadow effects
+- **Modern LAF Updates** â€“ Button hover effects, progress bars, tick boxes
+- **Custom Fonts** â€“ Inter/Roboto typography
+- **Toast Notifications** â€“ With Melatonin Blur shadows
 
-### 🔧 Bug Fixes
+### Bug Fixes
 
-- **Cable Connection Loss** – Fixed connections breaking when switching patches
-- **Audio Settings Crash** – Suspend audio before patch reload
-- **Looper Hang** – Fixed file load hang and sample rate resampling
-- **Plugin Menu Crash** – Fixed dangling reference in categorized menu
-- **Undo/Redo Crash** – Safe UID access via PluginPinComponent
+- **Cable Connection Loss** â€“ Fixed connections breaking when switching patches
+- **Audio Settings Crash** â€“ Suspend audio before patch reload
+- **Looper Hang** â€“ Fixed file load hang and sample rate resampling
+- **Plugin Menu Crash** â€“ Fixed dangling reference in categorized menu
+- **Undo/Redo Crash** â€“ Safe UID access via PluginPinComponent
 
-### 🔌 Plugin Management
+### Plugin Management
 
-- **Plugin Search** – Filter plugins by name in menu
-- **Favorites System** – Star plugins, "★ Edit Favorites..." submenu
-- **Recent Plugins** – Quick access to recently used
-- **Categorized Menu** – VST3s organized by manufacturer/category
+- **Plugin Search** â€“ Filter plugins by name in menu
+- **Favorites System** â€“ Star plugins, "â˜… Edit Favorites..." submenu
+- **Recent Plugins** â€“ Quick access to recently used
+- **Categorized Menu** â€“ VST3s organized by manufacturer/category
 
 ---
 
 ## [3.0.0] - 2026-01-XX
 
-### 🎉 First Release as Pedalboard3
+### First Release as Pedalboard3
 
 This release marks the modernization of Niall Moody's original Pedalboard2 (2011) to work with
 modern audio plugins and development practices.
 
 ### Added
 
-- **VST3 Plugin Support** – Native 64-bit VST3 hosting (replaces legacy VST2)
-- **Undo/Redo System** – Full undo support for:
+- **VST3 Plugin Support** â€“ Native 64-bit VST3 hosting (replaces legacy VST2)
+- **Undo/Redo System** â€“ Full undo support for:
   - Adding/removing plugins
   - Creating/deleting connections
   - Moving plugins
-- **Panic Button** – Instantly stop all audio (Edit → Panic or Ctrl+Shift+P)
-- **Theme System** – 5 built-in color schemes:
+- **Panic Button** â€“ Instantly stop all audio (Edit â†’ Panic or Ctrl+Shift+P)
+- **Theme System** â€“ 5 built-in color schemes:
   - Midnight (default dark theme)
   - Daylight (light theme)
   - Synthwave (neon/retro)
   - Deep Ocean (blue/cyan)
   - Forest (green/nature)
-- **Background Plugin Scanning** – Non-blocking plugin discovery
-- **JSON Settings** – Modern settings storage via SettingsManager
-- **Modern Logging** – spdlog-based logging system
-- **CMake Build System** – Modern CMake with presets
+- **Background Plugin Scanning** â€“ Non-blocking plugin discovery
+- **JSON Settings** â€“ Modern settings storage via SettingsManager
+- **Modern Logging** â€“ spdlog-based logging system
+- **CMake Build System** â€“ Modern CMake with presets
 
 ### Changed
 
-- **JUCE 8 Migration** – Updated from JUCE 1.x to JUCE 8.0.6
-- **64-bit Only** – Single 64-bit build (no 32-bit version)
-- **Application Name** – Renamed to "Pedalboard 3"
-- **About Page** – Updated credits and links
+- **JUCE 8 Migration** â€“ Updated from JUCE 1.x to JUCE 8.0.6
+- **64-bit Only** â€“ Single 64-bit build (no 32-bit version)
+- **Application Name** â€“ Renamed to "Pedalboard 3"
+- **About Page** â€“ Updated credits and links
 
 ### Removed
 
-- **VST2 Support** – Removed due to Steinberg SDK license restrictions
-- **32-bit Build** – Modern plugins are 64-bit only
-- **Deprecated JUCE APIs** – Removed all legacy JUCE patterns:
-  - `ScopedPointer` → `std::unique_ptr`
+- **VST2 Support** â€“ Removed due to Steinberg SDK license restrictions
+- **32-bit Build** â€“ Modern plugins are 64-bit only
+- **Deprecated JUCE APIs** â€“ Removed all legacy JUCE patterns:
+  - `ScopedPointer` â†’ `std::unique_ptr`
   - `juce_UseDebuggingNewOperator` macros
   - Old `NodeID.uid` direct access
 
@@ -202,8 +202,8 @@ modern audio plugins and development practices.
 Your existing `.pdl` patch files should load in Pedalboard3, but:
 
 1. **VST2 plugins must be replaced with VST3 versions**
-2. **64-bit plugins only** – 32-bit plugins will not load
-3. **Settings file location unchanged** – Your preferences migrate automatically
+2. **64-bit plugins only** â€“ 32-bit plugins will not load
+3. **Settings file location unchanged** â€“ Your preferences migrate automatically
 
 ### Known Limitations
 
@@ -233,3 +233,5 @@ This section documents significant bug fixes with technical details for develope
 ---
 
 *For the full development roadmap, see [PHASED_PLAN.md](PHASED_PLAN.md)*
+
+

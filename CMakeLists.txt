@@ -192,6 +192,8 @@ target_sources(Pedalboard3 PRIVATE
     src/PedalboardProcessorEditors.h
     src/SafetyLimiter.cpp
     src/SafetyLimiter.h
+    src/DeviceMeterTap.cpp
+    src/DeviceMeterTap.h
     src/CrossfadeMixer.cpp
     src/CrossfadeMixer.h
     src/TunerProcessor.cpp
@@ -226,6 +228,17 @@ target_sources(Pedalboard3 PRIVATE
     src/NAMCore.h
     src/NAMModelBrowser.cpp
     src/NAMModelBrowser.h
+    src/NAMOnlineBrowser.cpp
+    src/NAMOnlineBrowser.h
+
+    # TONE3000 API Integration
+    src/Tone3000Types.h
+    src/Tone3000Client.cpp
+    src/Tone3000Client.h
+    src/Tone3000Auth.cpp
+    src/Tone3000Auth.h
+    src/Tone3000DownloadManager.cpp
+    src/Tone3000DownloadManager.h
 
     # NeuralAmpModelerCore Library Sources
     external/NeuralAmpModelerCore/NAM/activations.cpp

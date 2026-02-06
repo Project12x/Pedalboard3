@@ -16,6 +16,7 @@
 #include <vector>
 
 class NAMProcessor;
+class NAMOnlineBrowserComponent;
 
 //==============================================================================
 /**
@@ -68,9 +69,18 @@ class NAMModelBrowserComponent : public Component,
     void updateDetailsPanel(const NAMModelInfo* model);
     void loadSelectedModel();
     void onListSelectionChanged();
+    void switchToTab(int tabIndex);
 
     NAMProcessor* namProcessor;
     std::function<void()> onModelLoadedCallback;
+
+    // Tab buttons
+    std::unique_ptr<TextButton> localTabButton;
+    std::unique_ptr<TextButton> onlineTabButton;
+    int currentTab = 0;  // 0 = Local, 1 = Online
+
+    // Online browser component
+    std::unique_ptr<NAMOnlineBrowserComponent> onlineBrowser;
 
     NAMModelListModel listModel;
 

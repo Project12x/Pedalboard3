@@ -175,6 +175,11 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
 
     ///	Any cached presets we have.
     std::map<int, shared_ptr<MemoryBlock>> cachedPresets;
+
+    /// Cached meter levels for Audio I/O nodes (linear 0.0-1.0+)
+    float cachedMeterLevels[16]{};
+    /// Number of channels for cached meter levels
+    int cachedMeterChannelCount{0};
 };
 
 //------------------------------------------------------------------------------

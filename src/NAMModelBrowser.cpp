@@ -8,6 +8,7 @@
 */
 
 #include "NAMModelBrowser.h"
+#include "NAMOnlineBrowser.h"
 #include "NAMProcessor.h"
 #include "ColourScheme.h"
 
@@ -107,6 +108,25 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(titleLabel.get());
 
+    // Tab buttons
+    localTabButton = std::make_unique<TextButton>("Local");
+    localTabButton->setClickingTogglesState(true);
+    localTabButton->setToggleState(true, dontSendNotification);
+    localTabButton->setRadioGroupId(1);
+    localTabButton->addListener(this);
+    addAndMakeVisible(localTabButton.get());
+
+    onlineTabButton = std::make_unique<TextButton>("Online");
+    onlineTabButton->setClickingTogglesState(true);
+    onlineTabButton->setRadioGroupId(1);
+    onlineTabButton->addListener(this);
+    addAndMakeVisible(onlineTabButton.get());
+
+    // Online browser component (created but initially hidden)
+    onlineBrowser = std::make_unique<NAMOnlineBrowserComponent>(processor, onModelLoaded);
+    onlineBrowser->setVisible(false);
+    addAndMakeVisible(onlineBrowser.get());
+
     // Search box
     searchBox = std::make_unique<TextEditor>("search");
     searchBox->setTextToShowWhenEmpty("Search models...", colours["Text Colour"].withAlpha(0.5f));
@@ -194,23 +214,83 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     g.fillAll(colours["Window Background"]);
 
-    // Draw separator between list and details
-    auto bounds = getLocalBounds().reduced(16);
-    bounds.removeFromTop(30 + 8 + 28 + 8); // Title + search row
-    bounds.removeFromBottom(36 + 8);        // Button row
+    // Only draw separator if on Local tab
+    if (currentTab == 0)
+    {
+        // Draw separator between list and details
+        auto bounds = getLocalBounds().reduced(16);
+        bounds.removeFromTop(30 + 8 + 28 + 8 + 28 + 8); // Title + tabs + search row
+        bounds.removeFromBottom(36 + 8);                 // Button row
 
-    int listWidth = bounds.getWidth() * 0.55f;
-    g.setColour(colours["Text Colour"].withAlpha(0.2f));
-    g.drawVerticalLine(16 + listWidth + 8, bounds.getY(), bounds.getBottom());
+        int listWidth = bounds.getWidth() * 0.55f;
+        g.setColour(colours["Text Colour"].withAlpha(0.2f));
+        g.drawVerticalLine(16 + listWidth + 8, bounds.getY(), bounds.getBottom());
+    }
 }
 
 void NAMModelBrowserComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(16);
 
-    // Title
-    titleLabel->setBounds(bounds.removeFromTop(30));
+    // Title row with tab buttons
+    auto titleRow = bounds.removeFromTop(30);
+    titleLabel->setBounds(titleRow.removeFromLeft(180));
+
+    // Tab buttons on the right side of title
+    titleRow.removeFromLeft(16);
+    localTabButton->setBounds(titleRow.removeFromLeft(60));
+    titleRow.removeFromLeft(4);
+    onlineTabButton->setBounds(titleRow.removeFromLeft(60));
+
     bounds.removeFromTop(8);
+
+    // Online browser takes the full remaining area (minus close button row)
+    if (currentTab == 1)
+    {
+        // Button row at bottom for close button only
+        auto buttonRow = bounds.removeFromBottom(36);
+        bounds.removeFromBottom(8);
+        closeButton->setBounds(buttonRow.removeFromRight(70));
+
+        onlineBrowser->setBounds(bounds);
+
+        // Hide local browser elements
+        searchBox->setVisible(false);
+        refreshButton->setVisible(false);
+        browseFolderButton->setVisible(false);
+        loadButton->setVisible(false);
+        modelList->setVisible(false);
+        detailsTitle->setVisible(false);
+        nameLabel->setVisible(false);
+        nameValue->setVisible(false);
+        architectureLabel->setVisible(false);
+        architectureValue->setVisible(false);
+        sampleRateLabel->setVisible(false);
+        sampleRateValue->setVisible(false);
+        loudnessLabel->setVisible(false);
+        loudnessValue->setVisible(false);
+        metadataLabel->setVisible(false);
+        metadataDisplay->setVisible(false);
+        return;
+    }
+
+    // Show local browser elements
+    searchBox->setVisible(true);
+    refreshButton->setVisible(true);
+    browseFolderButton->setVisible(true);
+    loadButton->setVisible(true);
+    modelList->setVisible(true);
+    detailsTitle->setVisible(true);
+    nameLabel->setVisible(true);
+    nameValue->setVisible(true);
+    architectureLabel->setVisible(true);
+    architectureValue->setVisible(true);
+    sampleRateLabel->setVisible(true);
+    sampleRateValue->setVisible(true);
+    loudnessLabel->setVisible(true);
+    loudnessValue->setVisible(true);
+    metadataLabel->setVisible(true);
+    metadataDisplay->setVisible(true);
 
     // Search and refresh row
     auto searchRow = bounds.removeFromTop(28);
@@ -263,7 +343,15 @@ void NAMModelBrowserComponent::resized()
 
 void NAMModelBrowserComponent::buttonClicked(Button* button)
 {
-    if (button == refreshButton.get())
+    if (button == localTabButton.get())
+    {
+        switchToTab(0);
+    }
+    else if (button == onlineTabButton.get())
+    {
+        switchToTab(1);
+    }
+    else if (button == refreshButton.get())
     {
         scanDirectory(currentDirectory);
     }
@@ -292,6 +380,27 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
         if (auto* window = findParentComponentOfClass<NAMModelBrowser>())
             window->closeButtonPressed();
     }
+}
+
+void NAMModelBrowserComponent::switchToTab(int tabIndex)
+{
+    if (currentTab == tabIndex)
+        return;
+
+    currentTab = tabIndex;
+
+    // Update tab button states
+    localTabButton->setToggleState(tabIndex == 0, dontSendNotification);
+    onlineTabButton->setToggleState(tabIndex == 1, dontSendNotification);
+
+    // Show/hide appropriate content
+    onlineBrowser->setVisible(tabIndex == 1);
+
+    // Trigger layout update
+    resized();
+    repaint();
+
+    spdlog::info("[NAMModelBrowser] Switched to {} tab", tabIndex == 0 ? "Local" : "Online");
 }
 
 void NAMModelBrowserComponent::textEditorTextChanged(TextEditor& editor)

@@ -370,6 +370,13 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     deviceManager.addAudioCallback(&graphPlayer);
+
+    // Device meter tap for I/O node VU meters (can be disabled for debugging)
+    if (SettingsManager::getInstance().getBool("EnableDeviceMeterTap", true))
+    {
+        deviceManager.addAudioCallback(&deviceMeterTap);
+        DeviceMeterTap::setInstance(&deviceMeterTap);
+    }
     deviceManager.addChangeListener(this);
 
     // Setup midi.
@@ -469,6 +476,11 @@ MainPanel::~MainPanel()
     signalThreadShouldExit();
 
     // deviceManager.setAudioCallback(0);
+    if (DeviceMeterTap::getInstance() != nullptr)
+    {
+        deviceManager.removeAudioCallback(&deviceMeterTap);
+        DeviceMeterTap::setInstance(nullptr);
+    }
     deviceManager.removeAudioCallback(&graphPlayer);
     for (const auto& device : midiDevices)
         deviceManager.removeMidiInputCallback(device.identifier, &graphPlayer);
