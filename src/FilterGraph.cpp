@@ -33,7 +33,6 @@
 
 #include "AudioSingletons.h"
 #include "BypassableInstance.h"
-#include "ChannelRoutingProcessors.h"
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
@@ -115,6 +114,29 @@ FilterGraph::FilterGraph()
 FilterGraph::~FilterGraph()
 {
     graph.clear();
+}
+
+void FilterGraph::setDeviceChannelCounts(int numInputs, int numOutputs)
+{
+    spdlog::info("[FilterGraph] Setting device channel counts: {} inputs, {} outputs", numInputs, numOutputs);
+
+    // Configure the graph's bus layout to match the device channels
+    AudioProcessor::BusesLayout layout;
+
+    if (numInputs > 0)
+        layout.inputBuses.add(AudioChannelSet::discreteChannels(numInputs));
+    if (numOutputs > 0)
+        layout.outputBuses.add(AudioChannelSet::discreteChannels(numOutputs));
+
+    if (graph.setBusesLayout(layout))
+    {
+        spdlog::info("[FilterGraph] Graph bus layout set successfully: {} in, {} out",
+                     graph.getTotalNumInputChannels(), graph.getTotalNumOutputChannels());
+    }
+    else
+    {
+        spdlog::warn("[FilterGraph] Failed to set graph bus layout");
+    }
 }
 
 uint32 FilterGraph::getNextUID() throw()
@@ -404,91 +426,6 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
         node->properties.set("y", y);
         spdlog::debug("[addFilterRaw] Set y property, checking processor type...");
         spdlog::default_logger()->flush();
-
-        // Check processor before dynamic_cast
-        AudioProcessor* proc = node->getProcessor();
-        spdlog::debug("[addFilterRaw] Got processor pointer: {}", proc ? "valid" : "null");
-        spdlog::default_logger()->flush();
-
-        // Handle ChannelInputProcessor - connect to audioInputNode automatically
-        if (auto* channelInput = dynamic_cast<ChannelInputProcessor*>(proc))
-        {
-            channelInput->setGraph(&graph);
-            spdlog::debug("[addFilterRaw] ChannelInputProcessor detected, setting up connections");
-
-            // Find the audioInputNode
-            for (int i = 0; i < graph.getNumNodes(); ++i)
-            {
-                auto existingNode = graph.getNode(i);
-                if (auto* ioProc =
-                        dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(existingNode->getProcessor()))
-                {
-                    if (ioProc->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode)
-                    {
-                        // Connect audioInputNode to ChannelInputProcessor based on mode
-                        int selectedChannel = channelInput->getSelectedChannel();
-                        int selectedPair = channelInput->getSelectedPair();
-                        auto mode = channelInput->getMode();
-
-                        if (mode == ChannelInputProcessor::Mode::Stereo)
-                        {
-                            // Connect stereo pair
-                            int leftCh = selectedPair * 2;
-                            int rightCh = selectedPair * 2 + 1;
-                            graph.addConnection({{existingNode->nodeID, leftCh}, {node->nodeID, 0}});
-                            graph.addConnection({{existingNode->nodeID, rightCh}, {node->nodeID, 1}});
-                        }
-                        else
-                        {
-                            // Connect single channel for Mono or MonoToStereo
-                            graph.addConnection({{existingNode->nodeID, selectedChannel}, {node->nodeID, 0}});
-                        }
-                        spdlog::debug("[addFilterRaw] Connected ChannelInputProcessor to audioInputNode");
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Handle ChannelOutputProcessor - connect to audioOutputNode automatically
-        if (auto* channelOutput = dynamic_cast<ChannelOutputProcessor*>(proc))
-        {
-            channelOutput->setGraph(&graph);
-            spdlog::debug("[addFilterRaw] ChannelOutputProcessor detected, setting up connections");
-
-            // Find the audioOutputNode
-            for (int i = 0; i < graph.getNumNodes(); ++i)
-            {
-                auto existingNode = graph.getNode(i);
-                if (auto* ioProc =
-                        dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(existingNode->getProcessor()))
-                {
-                    if (ioProc->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode)
-                    {
-                        // Connect ChannelOutputProcessor to audioOutputNode based on mode
-                        int selectedChannel = channelOutput->getSelectedChannel();
-                        int selectedPair = channelOutput->getSelectedPair();
-                        auto mode = channelOutput->getMode();
-
-                        if (mode == ChannelOutputProcessor::Mode::Stereo)
-                        {
-                            // Connect stereo pair
-                            int leftCh = selectedPair * 2;
-                            int rightCh = selectedPair * 2 + 1;
-                            graph.addConnection({{node->nodeID, 0}, {existingNode->nodeID, leftCh}});
-                            graph.addConnection({{node->nodeID, 1}, {existingNode->nodeID, rightCh}});
-                        }
-                        else
-                        {
-                            // Connect single channel for Mono or StereoToMono
-                            graph.addConnection({{node->nodeID, 0}, {existingNode->nodeID, selectedChannel}});
-                        }
-                        spdlog::debug("[addFilterRaw] Connected ChannelOutputProcessor to audioOutputNode");
-                        break;
-                    }
-                }
-            }
-        }
 
         // Notify listeners that graph changed - creates UI components
         spdlog::debug("[addFilterRaw] Properties set, calling changed()...");

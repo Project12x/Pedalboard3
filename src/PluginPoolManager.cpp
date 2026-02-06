@@ -41,7 +41,16 @@ bool isSubGraphPlugin(const PluginDescription& desc)
     return desc.fileOrIdentifier == "Internal:SubGraph";
 }
 
+bool isNAMProcessor(const PluginDescription& desc)
+{
+    if (desc.pluginFormatName != "Internal")
+        return false;
+
+    return desc.fileOrIdentifier == "NAM Loader";
+}
+
 void extractPluginsFromFilter(const XmlElement& filterElem, std::vector<PluginDescription>& result);
+void extractPluginsFromNAMState(const XmlElement& filterElem, std::vector<PluginDescription>& result);
 std::vector<PluginDescription> extractPluginsFromPatchImpl(const XmlElement* patchXml);
 
 void extractPluginsFromRackState(const XmlElement& filterElem, std::vector<PluginDescription>& result)
@@ -62,6 +71,56 @@ void extractPluginsFromRackState(const XmlElement& filterElem, std::vector<Plugi
         extractPluginsFromFilter(*rackFilter, result);
 }
 
+void extractPluginsFromNAMState(const XmlElement& filterElem, std::vector<PluginDescription>& result)
+{
+    // NAMProcessor stores: version, model path, ir path, 9 params, fx loop enabled, fx loop state
+    auto* stateElem = filterElem.getChildByName("STATE");
+    if (stateElem == nullptr)
+        return;
+
+    juce::MemoryBlock state;
+    if (!state.fromBase64Encoding(stateElem->getAllSubText()))
+        return;
+
+    juce::MemoryInputStream stream(state, false);
+
+    // Read version
+    int version = stream.readInt();
+    if (version < 2)
+        return; // Effects loop was added in version 2
+
+    // Skip model and IR paths
+    stream.readString(); // model path
+    stream.readString(); // ir path
+
+    // Skip 9 parameters: inputGain, outputGain, noiseGateThreshold, bass, mid, treble
+    for (int i = 0; i < 6; ++i)
+        stream.readFloat();
+    // toneStackEnabled, normalizeOutput, irEnabled
+    for (int i = 0; i < 3; ++i)
+        stream.readBool();
+
+    // Read effects loop enabled
+    stream.readBool();
+
+    // Read effects loop state size and data
+    int fxLoopStateSize = stream.readInt();
+    if (fxLoopStateSize <= 0)
+        return;
+
+    juce::MemoryBlock fxLoopState;
+    fxLoopState.setSize(static_cast<size_t>(fxLoopStateSize));
+    stream.read(fxLoopState.getData(), fxLoopStateSize);
+
+    // Parse SubGraphProcessor state (same format as extractPluginsFromRackState)
+    auto rackXml = juce::AudioProcessor::getXmlFromBinary(fxLoopState.getData(), (int)fxLoopState.getSize());
+    if (!rackXml || !rackXml->hasTagName("RACK"))
+        return;
+
+    for (auto* rackFilter : rackXml->getChildWithTagNameIterator("FILTER"))
+        extractPluginsFromFilter(*rackFilter, result);
+}
+
 void extractPluginsFromFilter(const XmlElement& filterElem, std::vector<PluginDescription>& result)
 {
     auto* descElem = filterElem.getChildByName("PLUGIN");
@@ -75,6 +134,12 @@ void extractPluginsFromFilter(const XmlElement& filterElem, std::vector<PluginDe
     if (isSubGraphPlugin(desc))
     {
         extractPluginsFromRackState(filterElem, result);
+        return;
+    }
+
+    if (isNAMProcessor(desc))
+    {
+        extractPluginsFromNAMState(filterElem, result);
         return;
     }
 

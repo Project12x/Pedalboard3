@@ -157,6 +157,9 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     /// Returns true if audio device is active and processing audio
     bool isAudioPlaying() const { return graph.getSampleRate() > 0; }
 
+    /// Configures the graph's bus layout to match the audio device
+    void setDeviceChannelCounts(int numInputs, int numOutputs);
+
     /// Returns the CrossfadeMixer for glitch-free patch switching
     CrossfadeMixerProcessor* getCrossfadeMixer() const { return crossfadeMixer; }
 

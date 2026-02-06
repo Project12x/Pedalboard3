@@ -25,7 +25,6 @@
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
 #include "BlacklistWindow.h"
-#include "ChannelRoutingProcessors.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
 #include "Images.h"
@@ -349,14 +348,6 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         KeyboardSplitProcessor keyboardSplit;
         keyboardSplit.fillInPluginDescription(desc);
         pluginList.addType(desc);
-
-        ChannelInputProcessor channelInput;
-        channelInput.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        ChannelOutputProcessor channelOutput;
-        channelOutput.fillInPluginDescription(desc);
-        pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);
 
@@ -366,9 +357,20 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Register plugin list singleton for SubGraph editors to access
     KnownPluginListSingleton::setInstance(&pluginList);
 
+    // Configure graph bus layout to match device channels
+    if (auto* device = deviceManager.getCurrentAudioDevice())
+    {
+        auto activeInputs = device->getActiveInputChannels();
+        auto activeOutputs = device->getActiveOutputChannels();
+        int numInputs = activeInputs.countNumberOfSetBits();
+        int numOutputs = activeOutputs.countNumberOfSetBits();
+        signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+    }
+
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     deviceManager.addAudioCallback(&graphPlayer);
+    deviceManager.addChangeListener(this);
 
     // Setup midi.
     {
@@ -1419,7 +1421,23 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
 {
     ColourSchemeEditor* ed = dynamic_cast<ColourSchemeEditor*>(changedObject);
 
-    if (changedObject == MainTransport::getInstance())
+    if (changedObject == &deviceManager)
+    {
+        // Audio device changed - update graph channel counts
+        if (auto* device = deviceManager.getCurrentAudioDevice())
+        {
+            auto activeInputs = device->getActiveInputChannels();
+            auto activeOutputs = device->getActiveOutputChannels();
+            int numInputs = activeInputs.countNumberOfSetBits();
+            int numOutputs = activeOutputs.countNumberOfSetBits();
+            signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+
+            // Refresh the UI to show updated channel pins
+            if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+                field->refreshAudioIOPins();
+        }
+    }
+    else if (changedObject == MainTransport::getInstance())
     {
         if (MainTransport::getInstance()->getState())
             playButton->setImages(pauseImage.get());
@@ -1672,6 +1690,18 @@ Result MainPanel::loadDocument(const File& file)
                         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Audio Device Error",
                                                          "Could not initialise audio settings loaded from .pdl file");
                         showToast("Audio error!");
+                    }
+                    else
+                    {
+                        // Update graph bus layout to match device channels
+                        if (auto* device = deviceManager.getCurrentAudioDevice())
+                        {
+                            auto activeInputs = device->getActiveInputChannels();
+                            auto activeOutputs = device->getActiveOutputChannels();
+                            int numInputs = activeInputs.countNumberOfSetBits();
+                            int numOutputs = activeOutputs.countNumberOfSetBits();
+                            signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+                        }
                     }
                 }
             }

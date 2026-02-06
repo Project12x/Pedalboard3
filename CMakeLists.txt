@@ -207,8 +207,6 @@ target_sources(Pedalboard3 PRIVATE
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
-    src/ChannelRoutingProcessors.cpp
-    src/ChannelRoutingProcessors.h
     src/IRLoaderProcessor.cpp
     src/IRLoaderProcessor.h
     src/IRLoaderControl.cpp

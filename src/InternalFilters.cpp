@@ -31,7 +31,6 @@
 
 #include "InternalFilters.h"
 
-#include "ChannelRoutingProcessors.h"
 #include "FilterGraph.h"
 #include "IRLoaderProcessor.h"
 #include "NAMProcessor.h"
@@ -199,18 +198,6 @@ InternalPluginFormat::InternalPluginFormat()
         p.fillInPluginDescription(subGraphProcDesc);
         subGraphProcDesc.category = "Built-in";
     }
-
-    {
-        ChannelInputProcessor p;
-        p.fillInPluginDescription(channelInputProcDesc);
-        channelInputProcDesc.category = "Routing";
-    }
-
-    {
-        ChannelOutputProcessor p;
-        p.fillInPluginDescription(channelOutputProcDesc);
-        channelOutputProcDesc.category = "Routing";
-    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -318,14 +305,6 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new SubGraphProcessor();
     }
-    else if (desc.name == channelInputProcDesc.name)
-    {
-        return new ChannelInputProcessor();
-    }
-    else if (desc.name == channelOutputProcDesc.name)
-    {
-        return new ChannelOutputProcessor();
-    }
 
     return 0;
 }
@@ -384,10 +363,6 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &midiFilePlayerProcDesc;
     case subGraphProcFilter:
         return &subGraphProcDesc;
-    case channelInputProcFilter:
-        return &channelInputProcDesc;
-    case channelOutputProcFilter:
-        return &channelOutputProcDesc;
     default:
         return 0;
     }
@@ -408,8 +383,7 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
         recorderProcFilter,      metronomeProcFilter,        looperProcFilter,        tunerProcFilter,
         toneGenProcFilter,       splitterProcFilter,         mixerProcFilter,         irLoaderProcFilter,
         namProcFilter,           midiTransposeProcFilter,    midiRechannelizeProcFilter, keyboardSplitProcFilter,
-        notesProcFilter,         labelProcFilter,            midiFilePlayerProcFilter,   subGraphProcFilter,
-        channelInputProcFilter,  channelOutputProcFilter};
+        notesProcFilter,         labelProcFilter,            midiFilePlayerProcFilter,   subGraphProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));

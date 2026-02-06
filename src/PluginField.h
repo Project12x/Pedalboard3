@@ -113,6 +113,9 @@ class PluginField : public Component,
     ///	Lets us know the user's edited a processor name.
     void updateProcessorName(uint32 id, const String& val);
 
+    /// Refreshes Audio I/O component pins when device channels change
+    void refreshAudioIOPins();
+
     ///	Returns the FilterGraph.
     FilterGraph* getFilterGraph() { return signalPath; };
 

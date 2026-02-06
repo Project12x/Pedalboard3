@@ -12,6 +12,7 @@ add_executable(Pedalboard3_Tests
     filtergraph_test.cpp
     protection_test.cpp
     audio_thread_stress_test.cpp
+    nam_processor_test.cpp
     ../src/PluginPoolManager.cpp
     ../src/AudioSingletons.cpp
 )

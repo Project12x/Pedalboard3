@@ -1154,6 +1154,31 @@ void PluginField::updateProcessorName(uint32 id, const String& val)
 }
 
 //------------------------------------------------------------------------------
+void PluginField::refreshAudioIOPins()
+{
+    // Refresh pins on Audio Input and Audio Output components
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+        {
+            if (auto* node = comp->getNode())
+            {
+                if (auto* ioProc = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor()))
+                {
+                    auto type = ioProc->getType();
+                    if (type == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode ||
+                        type == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode)
+                    {
+                        comp->refreshPins();
+                    }
+                }
+            }
+        }
+    }
+    repaint();
+}
+
+//------------------------------------------------------------------------------
 void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 {
     if (source)
