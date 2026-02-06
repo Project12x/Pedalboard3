@@ -113,6 +113,12 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
     ///	Returns the number of param pins.
     int getNumParamPins() const { return paramPins.size(); };
 
+    /// Refreshes pins when channel configuration changes (e.g., audio device change)
+    void refreshPins();
+
+    /// Returns true if this is an Audio Input or Audio Output node
+    bool isAudioIONode() const;
+
   private:
     ///	Helper method to determine what size the component should be.
     /*!
@@ -182,8 +188,9 @@ class PluginPinComponent : public Component
         \param id The uid of the plugin this pin is for.
         \param chan The input/output channel of the plugin this pin represents.
         \param param Whether this is an audio or parameter(/midi) pin.
+        \param largePin If true, renders as a larger pin (for Audio I/O nodes).
      */
-    PluginPinComponent(bool dir, uint32 id, int chan, bool param);
+    PluginPinComponent(bool dir, uint32 id, int chan, bool param, bool largePin = false);
     ///	Destructor.
     ~PluginPinComponent();
 
@@ -215,6 +222,8 @@ class PluginPinComponent : public Component
     int channel;
     ///	Whether this is an audio or parameter(/midi) pin.
     bool parameterPin;
+    /// Whether this is a large pin (for Audio I/O nodes).
+    bool largePin;
 };
 
 //------------------------------------------------------------------------------

@@ -21,7 +21,6 @@
 #include "PluginComponent.h"
 
 #include "BypassableInstance.h"
-#include "ChannelRoutingProcessors.h"
 #include "ColourScheme.h"
 #include "CrashProtection.h"
 #include "FilterGraph.h"
@@ -66,10 +65,6 @@ int countInputChannelsFromBuses(AudioProcessor* proc)
     // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
     AudioProcessor* realProc = getUnwrappedProcessor(proc);
 
-    // Hide input pins for ChannelInputProcessor (appears as source node)
-    if (dynamic_cast<ChannelInputProcessor*>(realProc))
-        return 0;
-
     int totalChannels = 0;
     for (int busIdx = 0; busIdx < realProc->getBusCount(true); ++busIdx)
     {
@@ -86,10 +81,6 @@ int countOutputChannelsFromBuses(AudioProcessor* proc)
 {
     // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
     AudioProcessor* realProc = getUnwrappedProcessor(proc);
-
-    // Hide output pins for ChannelOutputProcessor (appears as sink node)
-    if (dynamic_cast<ChannelOutputProcessor*>(realProc))
-        return 0;
 
     int totalChannels = 0;
     for (int busIdx = 0; busIdx < realProc->getBusCount(false); ++busIdx)
@@ -150,6 +141,10 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     titleLabel->setFont(Font(14.0f, Font::bold));
     titleLabel->addListener(this);
     addAndMakeVisible(titleLabel);
+
+    // Shift title label to make room for icon on Audio I/O nodes
+    if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
+        titleLabel->setBounds(18, 0, getWidth() - 23, 20);
 
     if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input"))
@@ -236,10 +231,6 @@ PluginComponent::~PluginComponent()
 //------------------------------------------------------------------------------
 void PluginComponent::paint(Graphics& g)
 {
-    // Temp debug logging
-    spdlog::debug("[PluginComponent::paint] Starting paint for: {}", pluginName.toStdString());
-    spdlog::default_logger()->flush();
-
     int i;
     auto& colours = ColourScheme::getInstance().colours;
     float w = (float)getWidth();
@@ -257,9 +248,64 @@ void PluginComponent::paint(Graphics& g)
     g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, 2.0f);
 
     // === HEADER BAR (title area) ===
-    g.setColour(colours["Plugin Border"]);
+    // Use tinted header for Audio I/O nodes
+    if (isAudioIONode())
+    {
+        Colour accentColour = colours["Audio Connection"].withAlpha(0.6f);
+        g.setColour(accentColour.interpolatedWith(colours["Plugin Border"], 0.3f));
+    }
+    else
+    {
+        g.setColour(colours["Plugin Border"]);
+    }
     g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, 18.0f, cornerRadius);
     g.fillRect(2.0f, 14.0f, w - 4.0f, 6.0f); // Square off bottom of header
+
+    // === ICON for Audio I/O nodes ===
+    if (isAudioIONode())
+    {
+        g.setColour(colours["Text Colour"]);
+        const float iconSize = 10.0f;
+        const float iconX = 6.0f;
+        const float iconY = 4.0f;
+
+        if (pluginName == "Audio Input")
+        {
+            // Microphone icon
+            Path mic;
+            // Mic body (rounded rectangle)
+            mic.addRoundedRectangle(iconX + 2.0f, iconY, iconSize - 4.0f, iconSize * 0.6f, 2.0f);
+            // Mic stand (arc)
+            mic.addArc(iconX, iconY + iconSize * 0.3f, iconSize, iconSize * 0.5f,
+                       MathConstants<float>::pi * 0.2f, MathConstants<float>::pi * 0.8f, true);
+            // Mic base (line)
+            mic.startNewSubPath(iconX + iconSize * 0.5f, iconY + iconSize * 0.7f);
+            mic.lineTo(iconX + iconSize * 0.5f, iconY + iconSize);
+            g.strokePath(mic, PathStrokeType(1.2f));
+        }
+        else // Audio Output
+        {
+            // Speaker icon
+            Path speaker;
+            // Speaker cone
+            speaker.startNewSubPath(iconX + 2.0f, iconY + iconSize * 0.3f);
+            speaker.lineTo(iconX + iconSize * 0.4f, iconY + iconSize * 0.3f);
+            speaker.lineTo(iconX + iconSize * 0.7f, iconY);
+            speaker.lineTo(iconX + iconSize * 0.7f, iconY + iconSize);
+            speaker.lineTo(iconX + iconSize * 0.4f, iconY + iconSize * 0.7f);
+            speaker.lineTo(iconX + 2.0f, iconY + iconSize * 0.7f);
+            speaker.closeSubPath();
+            g.fillPath(speaker);
+            // Sound wave arc
+            Path wave;
+            wave.addCentredArc(iconX + iconSize * 0.75f, iconY + iconSize * 0.5f,
+                               iconSize * 0.25f, iconSize * 0.35f,
+                               0.0f,
+                               -MathConstants<float>::pi * 0.4f,
+                               MathConstants<float>::pi * 0.4f, true);
+            g.strokePath(wave, PathStrokeType(1.2f));
+        }
+    }
 
     // Draw the plugin name.
     g.setColour(colours["Text Colour"]);
@@ -271,9 +317,6 @@ void PluginComponent::paint(Graphics& g)
     // Draw the output channels.
     for (i = 0; i < outputText.size(); ++i)
         outputText[i]->draw(g);
-
-    spdlog::debug("[PluginComponent::paint] Paint complete for: {}", pluginName.toStdString());
-    spdlog::default_logger()->flush();
 }
 
 //------------------------------------------------------------------------------
@@ -678,6 +721,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
     bool showLabels = (!proc) || (pluginName == "Splitter") || (pluginName == "Mixer");
 
+    // Use larger spacing for Audio I/O nodes
+    const float pinSpacing = isAudioIONode() ? 24.0f : 18.0f;
+
     if (showLabels)
     {
         // Determine plugin input channel name bounds.
@@ -720,7 +766,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     inputWidth = bounds.getWidth();
             }
 
-            y += 18.0f;
+            y += pinSpacing;
             ++numInputPins;
         }
 
@@ -788,7 +834,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                     outputWidth = bounds.getWidth();
             }
 
-            y += 18.0f;
+            y += pinSpacing;
             ++numOutputPins;
         }
 
@@ -844,7 +890,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         h = jmax(numInputPins, numOutputPins);
-        h *= 18;
+        h *= (int)pinSpacing;
 
         float minH = (float)h + 60.0f;
         if (proc && minH < procH + 52.0f)
@@ -890,6 +936,33 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 }
 
 //------------------------------------------------------------------------------
+bool PluginComponent::isAudioIONode() const
+{
+    return (pluginName == "Audio Input") || (pluginName == "Audio Output");
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::refreshPins()
+{
+    // Remove all existing pins
+    for (auto* pin : inputPins)
+        removeChildComponent(pin);
+    for (auto* pin : outputPins)
+        removeChildComponent(pin);
+    for (auto* pin : paramPins)
+        removeChildComponent(pin);
+
+    inputPins.clear();
+    outputPins.clear();
+    paramPins.clear();
+
+    // Recalculate size and recreate pins
+    determineSize();
+    createPins();
+    repaint();
+}
+
+//------------------------------------------------------------------------------
 void PluginComponent::createPins()
 {
     int i;
@@ -899,19 +972,25 @@ void PluginComponent::createPins()
     /// @note JUCE 8: NodeID is now a struct, use .uid for integer value
     const uint32 uid = node->nodeID.uid;
 
+    // Use larger pins and spacing for Audio I/O nodes
+    const bool largePin = isAudioIONode();
+    const int pinSpacing = largePin ? 24 : 18;
+    const int pinXOffset = largePin ? -10 : -8;
+    const int pinXOffsetRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
+
     y = 25;
     for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
 
-        pin = new PluginPinComponent(false, uid, i, false);
-        pinPos.setXY(-8, y);
+        pin = new PluginPinComponent(false, uid, i, false, largePin);
+        pinPos.setXY(pinXOffset, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         inputPins.add(pin);
 
-        y += 18;
+        y += pinSpacing;
     }
 
     if ((plugin->acceptsMidi() || (countInputChannelsFromBuses(plugin) > 0) ||
@@ -935,14 +1014,14 @@ void PluginComponent::createPins()
     {
         Point<int> pinPos;
 
-        pin = new PluginPinComponent(true, uid, i, false);
-        pinPos.setXY(getWidth() - 6, y);
+        pin = new PluginPinComponent(true, uid, i, false, largePin);
+        pinPos.setXY(pinXOffsetRight, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         outputPins.add(pin);
 
-        y += 18;
+        y += pinSpacing;
     }
 
     if (plugin->producesMidi() || (plugin->getName() == "OSC Input"))
@@ -962,10 +1041,13 @@ void PluginComponent::createPins()
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-PluginPinComponent::PluginPinComponent(bool dir, uint32 id, int chan, bool param)
-    : Component(), direction(dir), uid(id), channel(chan), parameterPin(param)
+PluginPinComponent::PluginPinComponent(bool dir, uint32 id, int chan, bool param, bool large)
+    : Component(), direction(dir), uid(id), channel(chan), parameterPin(param), largePin(large)
 {
-    setSize(14, 16);
+    if (largePin)
+        setSize(18, 20); // Larger pins for Audio I/O nodes
+    else
+        setSize(14, 16);
 }
 
 //------------------------------------------------------------------------------
