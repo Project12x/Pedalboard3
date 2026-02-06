@@ -21,6 +21,7 @@
 #include "PluginComponent.h"
 
 #include "BypassableInstance.h"
+#include "ChannelRoutingProcessors.h"
 #include "ColourScheme.h"
 #include "CrashProtection.h"
 #include "FilterGraph.h"
@@ -65,6 +66,10 @@ int countInputChannelsFromBuses(AudioProcessor* proc)
     // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
     AudioProcessor* realProc = getUnwrappedProcessor(proc);
 
+    // Hide input pins for ChannelInputProcessor (appears as source node)
+    if (dynamic_cast<ChannelInputProcessor*>(realProc))
+        return 0;
+
     int totalChannels = 0;
     for (int busIdx = 0; busIdx < realProc->getBusCount(true); ++busIdx)
     {
@@ -81,6 +86,10 @@ int countOutputChannelsFromBuses(AudioProcessor* proc)
 {
     // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
     AudioProcessor* realProc = getUnwrappedProcessor(proc);
+
+    // Hide output pins for ChannelOutputProcessor (appears as sink node)
+    if (dynamic_cast<ChannelOutputProcessor*>(realProc))
+        return 0;
 
     int totalChannels = 0;
     for (int busIdx = 0; busIdx < realProc->getBusCount(false); ++busIdx)
