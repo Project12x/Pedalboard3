@@ -53,7 +53,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextValueSuffix(" ¢");
+    detuneSlider->setTextValueSuffix(" ct");
     addAndMakeVisible(detuneSlider.get());
 
     // Detune preset buttons (boundary testing)
@@ -77,18 +77,27 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detune99Btn->setTooltip("+99 cents - near semitone BOUNDARY");
     addAndMakeVisible(detune99Btn.get());
 
-    // Test mode buttons
+    // Test mode buttons (mutually exclusive radio group)
+    const int testModeRadioGroup = 1001;
+
     staticBtn = std::make_unique<TextButton>("STATIC");
     staticBtn->addListener(this);
+    staticBtn->setClickingTogglesState(true);
+    staticBtn->setRadioGroupId(testModeRadioGroup);
+    staticBtn->setToggleState(true, dontSendNotification); // Default mode
     addAndMakeVisible(staticBtn.get());
 
     sweepBtn = std::make_unique<TextButton>("SWEEP");
     sweepBtn->addListener(this);
+    sweepBtn->setClickingTogglesState(true);
+    sweepBtn->setRadioGroupId(testModeRadioGroup);
     sweepBtn->setTooltip("Continuous frequency sweep");
     addAndMakeVisible(sweepBtn.get());
 
     driftBtn = std::make_unique<TextButton>("DRIFT");
     driftBtn->addListener(this);
+    driftBtn->setClickingTogglesState(true);
+    driftBtn->setRadioGroupId(testModeRadioGroup);
     driftBtn->setTooltip("Slow ±5 cent drift - tests tuner stability");
     addAndMakeVisible(driftBtn.get());
 
