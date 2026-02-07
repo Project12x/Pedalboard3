@@ -24,6 +24,8 @@
 #include "MainPanel.h"
 #include "SettingsManager.h"
 
+#include <spdlog/spdlog.h>
+
 
 using namespace std;
 
@@ -284,16 +286,24 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
         if (value > 64)
         {
             // Check if it matches any MidiAppMappings.
+            spdlog::debug("[MIDI] CC{} value {} - checking appMappings (count={})",
+                          cc, value, appMappings.count(cc));
             for (it2 = appMappings.lower_bound(cc); it2 != appMappings.upper_bound(cc); ++it2)
             {
                 CommandID id = it2->second->getId();
                 MainPanel* panel =
                     dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
+                spdlog::debug("[MIDI] Found appMapping CC{} -> CommandID={}, panel={}",
+                              cc, (int)id, panel != nullptr);
+
                 if (panel)
                 {
                     if (id != MainPanel::TransportTapTempo)
+                    {
+                        spdlog::info("[MIDI] Invoking command {} from CC{}", (int)id, cc);
                         panel->invokeCommandFromOtherThread(id);
+                    }
                     else
                     {
                         double tempo = tapHelper.updateTempo(secondsSinceStart);

@@ -23,6 +23,8 @@
 #include "PedalboardProcessorEditors.h"
 #include "PedalboardProcessors.h"
 
+#include <spdlog/spdlog.h>
+
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -133,21 +135,36 @@ void RecorderProcessor::changeListenerCallback(ChangeBroadcaster* source)
 {
     if (source == MainTransport::getInstance())
     {
+        spdlog::debug("[AudioRecorder] MainTransport callback: syncToMainTransport={}, transportState={}",
+                      syncToMainTransport, MainTransport::getInstance()->getState());
+
         if (syncToMainTransport)
         {
             // Play/pause the transport source.
             if (MainTransport::getInstance()->getState())
             {
+                spdlog::info("[AudioRecorder] Transport started, attempting to record. soundFile='{}'",
+                             soundFile.getFullPathName().toStdString());
+
                 if (!recording)
                     setFile(soundFile);
 
                 if (!recording && !stopRecording && threadWriter)
+                {
                     recording = true;
+                    spdlog::info("[AudioRecorder] Recording started successfully");
+                }
+                else
+                {
+                    spdlog::warn("[AudioRecorder] Recording failed to start: recording={}, stopRecording={}, threadWriter={}",
+                                 recording, stopRecording, threadWriter != nullptr);
+                }
             }
             else
             {
                 if (recording)
                 {
+                    spdlog::info("[AudioRecorder] Transport stopped, stopping recording");
                     stopRecording = true;
 
                     setFile(File());
