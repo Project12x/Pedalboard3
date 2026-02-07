@@ -36,12 +36,16 @@ class NAMModelListModel : public ListBoxModel
     const NAMModelInfo* getModelAt(int index) const;
     int getFilteredCount() const { return static_cast<int>(filteredIndices.size()); }
 
+    void setHoveredRow(int row) { hoveredRow = row; }
+    int getHoveredRow() const { return hoveredRow; }
+
   private:
     void rebuildFilteredList();
 
     std::vector<NAMModelInfo> allModels;
     std::vector<size_t> filteredIndices;
     String currentFilter;
+    int hoveredRow = -1;
 };
 
 //==============================================================================
@@ -63,6 +67,8 @@ class NAMModelBrowserComponent : public Component,
     void textEditorTextChanged(TextEditor& editor) override;
     void mouseUp(const MouseEvent& event) override;
     void mouseDoubleClick(const MouseEvent& event) override;
+    void mouseMove(const MouseEvent& event) override;
+    void mouseExit(const MouseEvent& event) override;
 
     void scanDirectory(const File& directory);
     void refreshModelList();

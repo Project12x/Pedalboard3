@@ -42,11 +42,15 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
     void setDownloadFailed(const juce::String& toneId);
     void setCached(const juce::String& toneId, const juce::String& localPath);
 
+    void setHoveredRow(int row) { hoveredRow = row; }
+    int getHoveredRow() const { return hoveredRow; }
+
   private:
     std::vector<Tone3000::ToneInfo> tones;
 
     // Track download states per tone
     std::map<std::string, float> downloadProgress;  // -1 = not downloading, 0-1 = progress, 2 = complete, -2 = failed
+    int hoveredRow = -1;
 };
 
 //==============================================================================
@@ -79,6 +83,8 @@ class NAMOnlineBrowserComponent : public juce::Component,
 
     // Mouse handling for list selection
     void mouseUp(const juce::MouseEvent& event) override;
+    void mouseMove(const juce::MouseEvent& event) override;
+    void mouseExit(const juce::MouseEvent& event) override;
 
     // Tone3000DownloadManager::Listener
     void downloadQueued(const juce::String& toneId) override;

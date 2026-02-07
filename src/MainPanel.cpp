@@ -39,6 +39,7 @@
 #include "MidiUtilityProcessors.h"
 #include "NAMProcessor.h"
 #include "NotesProcessor.h"
+#include "OscilloscopeProcessor.h"
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
@@ -335,6 +336,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         NAMProcessor nam;
         nam.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        OscilloscopeProcessor oscilloscope;
+        oscilloscope.fillInPluginDescription(desc);
         pluginList.addType(desc);
 
         MidiTransposeProcessor midiTranspose;

@@ -107,6 +107,36 @@ static const char* lucide_plus_svg = R"SVG(
 </svg>
 )SVG";
 
+static const char* lucide_search_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+</svg>
+)SVG";
+
+static const char* lucide_check_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 6 9 17l-5-5"/>
+</svg>
+)SVG";
+
+static const char* lucide_download_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" x2="12" y1="15" y2="3"/>
+</svg>
+)SVG";
+
+static const char* lucide_refresh_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M8 16H3v5"/>
+</svg>
+)SVG";
+
 //------------------------------------------------------------------------------
 IconManager& IconManager::getInstance()
 {
@@ -207,4 +237,24 @@ std::unique_ptr<Drawable> IconManager::getCloseIcon(Colour colour)
 std::unique_ptr<Drawable> IconManager::getPlusIcon(Colour colour)
 {
     return createFromSvg(lucide_plus_svg, colour);
+}
+
+std::unique_ptr<Drawable> IconManager::getSearchIcon(Colour colour)
+{
+    return createFromSvg(lucide_search_svg, colour);
+}
+
+std::unique_ptr<Drawable> IconManager::getCheckIcon(Colour colour)
+{
+    return createFromSvg(lucide_check_svg, colour);
+}
+
+std::unique_ptr<Drawable> IconManager::getDownloadIcon(Colour colour)
+{
+    return createFromSvg(lucide_download_svg, colour);
+}
+
+std::unique_ptr<Drawable> IconManager::getRefreshIcon(Colour colour)
+{
+    return createFromSvg(lucide_refresh_svg, colour);
 }

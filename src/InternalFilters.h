@@ -70,6 +70,7 @@ class InternalPluginFormat : public AudioPluginFormat
         mixerProcFilter,
         irLoaderProcFilter,
         namProcFilter,
+        oscilloscopeProcFilter,
         midiTransposeProcFilter,
         midiRechannelizeProcFilter,
         keyboardSplitProcFilter,
@@ -141,6 +142,7 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription mixerProcDesc;
     PluginDescription irLoaderProcDesc;
     PluginDescription namProcDesc;
+    PluginDescription oscilloscopeProcDesc;
     PluginDescription midiTransposeProcDesc;
     PluginDescription midiRechannelizeProcDesc;
     PluginDescription keyboardSplitProcDesc;

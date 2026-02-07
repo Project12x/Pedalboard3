@@ -11,7 +11,9 @@
 #include "NAMOnlineBrowser.h"
 #include "NAMProcessor.h"
 #include "ColourScheme.h"
+#include "IconManager.h"
 
+#include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
 
 //==============================================================================
@@ -39,8 +41,11 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 {
     auto& colours = ColourScheme::getInstance().colours;
 
+    // Background: selection > hover > alternating
     if (rowIsSelected)
         g.fillAll(colours["List Selection"]);
+    else if (rowNumber == hoveredRow)
+        g.fillAll(colours["List Selection"].withAlpha(0.15f));
     else if (rowNumber % 2 == 0)
         g.fillAll(colours["Dialog Inner Background"]);
     else
@@ -49,16 +54,25 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& model = allModels[filteredIndices[rowNumber]];
+        int textX = 10;
+        int halfHeight = height / 2;
 
+        // Name on top line
         g.setColour(colours["Text Colour"]);
         g.setFont(13.0f);
-        g.drawText(String(model.name), 8, 0, width - 120, height, Justification::centredLeft, true);
+        g.drawText(String(model.name), textX, 2, width - 20, halfHeight,
+                   Justification::centredLeft, true);
 
-        // Show architecture in smaller text on the right
+        // Architecture on bottom line (dimmed)
         g.setColour(colours["Text Colour"].withAlpha(0.6f));
         g.setFont(11.0f);
-        g.drawText(String(model.architecture), width - 110, 0, 100, height, Justification::centredRight, true);
+        g.drawText(String(model.architecture), textX, halfHeight, width - 20, halfHeight - 2,
+                   Justification::centredLeft, true);
     }
+
+    // Bottom separator
+    g.setColour(colours["Text Colour"].withAlpha(0.1f));
+    g.drawHorizontalLine(height - 1, 0, width);
 }
 
 const NAMModelInfo* NAMModelListModel::getModelAt(int index) const
@@ -94,6 +108,61 @@ void NAMModelListModel::rebuildFilteredList()
 }
 
 //==============================================================================
+// PillTabLookAndFeel - Custom look for pill-style tab buttons
+//==============================================================================
+
+class PillTabLookAndFeel : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& /*backgroundColour*/,
+                               bool isMouseOverButton, bool isButtonDown) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat().reduced(2);
+        float cornerRadius = bounds.getHeight() / 2;
+
+        if (button.getToggleState())
+        {
+            // Active: filled pill with accent color
+            auto fillColour = colours["Accent Colour"];
+            if (isButtonDown)
+                fillColour = fillColour.darker(0.1f);
+            else if (isMouseOverButton)
+                fillColour = fillColour.brighter(0.1f);
+
+            g.setColour(fillColour);
+            g.fillRoundedRectangle(bounds, cornerRadius);
+        }
+        else
+        {
+            // Inactive: subtle hover effect only
+            if (isMouseOverButton || isButtonDown)
+            {
+                g.setColour(colours["Text Colour"].withAlpha(0.1f));
+                g.fillRoundedRectangle(bounds, cornerRadius);
+            }
+        }
+    }
+
+    void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat();
+
+        g.setFont(Font(13.0f, Font::bold));
+
+        if (button.getToggleState())
+            g.setColour(Colours::white);
+        else
+            g.setColour(colours["Text Colour"].withAlpha(0.7f));
+
+        g.drawText(button.getButtonText(), bounds, Justification::centred);
+    }
+};
+
+static PillTabLookAndFeel pillTabLookAndFeel;
+
+//==============================================================================
 // NAMModelBrowserComponent
 //==============================================================================
 
@@ -108,17 +177,19 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(titleLabel.get());
 
-    // Tab buttons
+    // Tab buttons with pill-style look
     localTabButton = std::make_unique<TextButton>("Local");
     localTabButton->setClickingTogglesState(true);
     localTabButton->setToggleState(true, dontSendNotification);
     localTabButton->setRadioGroupId(1);
+    localTabButton->setLookAndFeel(&pillTabLookAndFeel);
     localTabButton->addListener(this);
     addAndMakeVisible(localTabButton.get());
 
     onlineTabButton = std::make_unique<TextButton>("Online");
     onlineTabButton->setClickingTogglesState(true);
     onlineTabButton->setRadioGroupId(1);
+    onlineTabButton->setLookAndFeel(&pillTabLookAndFeel);
     onlineTabButton->addListener(this);
     addAndMakeVisible(onlineTabButton.get());
 
@@ -153,12 +224,12 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     closeButton->addListener(this);
     addAndMakeVisible(closeButton.get());
 
-    // Model list
+    // Model list - transparent background for custom rounded painting
     modelList = std::make_unique<ListBox>("models", &listModel);
-    modelList->setRowHeight(24);
-    modelList->setColour(ListBox::backgroundColourId, colours["Dialog Inner Background"]);
-    modelList->setColour(ListBox::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
-    modelList->setOutlineThickness(1);
+    modelList->setRowHeight(36);
+    modelList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
+    modelList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
+    modelList->setOutlineThickness(0);
     modelList->setMultipleSelectionEnabled(false);
     modelList->addMouseListener(this, true);
     addAndMakeVisible(modelList.get());
@@ -234,24 +305,62 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     scanDirectory(currentDirectory);
 }
 
-NAMModelBrowserComponent::~NAMModelBrowserComponent() = default;
+NAMModelBrowserComponent::~NAMModelBrowserComponent()
+{
+    // Clear custom LookAndFeel before destruction
+    localTabButton->setLookAndFeel(nullptr);
+    onlineTabButton->setLookAndFeel(nullptr);
+}
 
 void NAMModelBrowserComponent::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    g.fillAll(colours["Window Background"]);
+    auto bgColour = colours["Window Background"];
 
-    // Only draw separator if on Local tab
+    // Gradient background
+    ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0,
+                               bgColour.darker(0.06f), 0, static_cast<float>(getHeight()), false);
+    g.setGradientFill(bgGradient);
+    g.fillAll();
+
+    // Only draw panels if on Local tab
     if (currentTab == 0)
     {
-        // Draw separator between list and details
         auto bounds = getLocalBounds().reduced(16);
-        bounds.removeFromTop(30 + 8 + 28 + 8 + 28 + 8); // Title + tabs + search row
-        bounds.removeFromBottom(36 + 8);                 // Button row
+        bounds.removeFromTop(30 + 8 + 28 + 8); // Title + tabs + search row spacing
+        bounds.removeFromBottom(20 + 4 + 36 + 8); // Status + button row
 
-        int listWidth = bounds.getWidth() * 0.55f;
+        int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
+        auto listArea = bounds.removeFromLeft(listWidth);
+        bounds.removeFromLeft(16); // Gap
+
+        // Draw rounded list background
+        auto listBounds = listArea.toFloat();
+        g.setColour(colours["Dialog Inner Background"]);
+        g.fillRoundedRectangle(listBounds, 8.0f);
         g.setColour(colours["Text Colour"].withAlpha(0.2f));
-        g.drawVerticalLine(16 + listWidth + 8, bounds.getY(), bounds.getBottom());
+        g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
+
+        // Draw card-style details panel with shadow
+        auto detailsBounds = bounds.toFloat();
+        Path detailsPath;
+        detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
+
+        // Drop shadow
+        melatonin::DropShadow shadow(Colours::black.withAlpha(0.2f), 8, {2, 2});
+        shadow.render(g, detailsPath);
+
+        // Card fill with subtle gradient
+        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f),
+                                 detailsBounds.getX(), detailsBounds.getY(),
+                                 colours["Dialog Inner Background"].darker(0.04f),
+                                 detailsBounds.getX(), detailsBounds.getBottom(), false);
+        g.setGradientFill(cardGrad);
+        g.fillPath(detailsPath);
+
+        // Card border
+        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        g.strokePath(detailsPath, PathStrokeType(1.0f));
     }
 }
 
@@ -613,6 +722,30 @@ void NAMModelBrowserComponent::mouseDoubleClick(const MouseEvent& event)
         juce::MessageManager::callAsync([this]() {
             loadSelectedModel();
         });
+    }
+}
+
+void NAMModelBrowserComponent::mouseMove(const MouseEvent& event)
+{
+    if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
+    {
+        auto localPoint = modelList->getLocalPoint(event.eventComponent, event.position);
+        int row = modelList->getRowContainingPosition(static_cast<int>(localPoint.x),
+                                                       static_cast<int>(localPoint.y));
+        if (row != listModel.getHoveredRow())
+        {
+            listModel.setHoveredRow(row);
+            modelList->repaint();
+        }
+    }
+}
+
+void NAMModelBrowserComponent::mouseExit(const MouseEvent& /*event*/)
+{
+    if (listModel.getHoveredRow() != -1)
+    {
+        listModel.setHoveredRow(-1);
+        modelList->repaint();
     }
 }
 

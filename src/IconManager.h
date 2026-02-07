@@ -44,6 +44,10 @@ class IconManager
     // === Lucide: UI Controls ===
     std::unique_ptr<Drawable> getCloseIcon(Colour colour = Colours::white);
     std::unique_ptr<Drawable> getPlusIcon(Colour colour = Colours::white);
+    std::unique_ptr<Drawable> getSearchIcon(Colour colour = Colours::white);
+    std::unique_ptr<Drawable> getCheckIcon(Colour colour = Colours::white);
+    std::unique_ptr<Drawable> getDownloadIcon(Colour colour = Colours::white);
+    std::unique_ptr<Drawable> getRefreshIcon(Colour colour = Colours::white);
 
   private:
     IconManager() = default;

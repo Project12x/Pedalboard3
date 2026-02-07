@@ -13,6 +13,7 @@
 #include "Tone3000Auth.h"
 #include "ColourScheme.h"
 
+#include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
 
 //==============================================================================
@@ -59,9 +60,11 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     auto& colours = ColourScheme::getInstance().colours;
     const auto& tone = tones[rowNumber];
 
-    // Background
+    // Background: selection > hover > alternating
     if (rowIsSelected)
         g.fillAll(colours["Accent Colour"].withAlpha(0.3f));
+    else if (rowNumber == hoveredRow)
+        g.fillAll(colours["Accent Colour"].withAlpha(0.12f));
     else if (rowNumber % 2 == 1)
         g.fillAll(colours["Dialog Inner Background"].withAlpha(0.5f));
 
@@ -139,6 +142,10 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
             g.drawText(sizeText, statusArea, juce::Justification::centred);
         }
     }
+
+    // Bottom separator
+    g.setColour(colours["Text Colour"].withAlpha(0.1f));
+    g.drawHorizontalLine(height - 1, 0, width);
 }
 
 const Tone3000::ToneInfo* Tone3000ResultsListModel::getToneAt(int index) const
@@ -231,12 +238,12 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor,
     sortCombo->addListener(this);
     addAndMakeVisible(sortCombo.get());
 
-    // Results list
+    // Results list - transparent background for custom rounded painting
     resultsList = std::make_unique<juce::ListBox>("results", &listModel);
     resultsList->setRowHeight(40);
-    resultsList->setColour(juce::ListBox::backgroundColourId, colours["Dialog Inner Background"]);
-    resultsList->setColour(juce::ListBox::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
-    resultsList->setOutlineThickness(1);
+    resultsList->setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    resultsList->setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    resultsList->setOutlineThickness(0);
     resultsList->addMouseListener(this, true);
     addAndMakeVisible(resultsList.get());
 
@@ -353,16 +360,50 @@ NAMOnlineBrowserComponent::~NAMOnlineBrowserComponent()
 void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    g.fillAll(colours["Window Background"]);
+    auto bgColour = colours["Window Background"];
 
-    // Draw separator between list and details
+    // Gradient background
+    juce::ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0,
+                                     bgColour.darker(0.06f), 0, static_cast<float>(getHeight()), false);
+    g.setGradientFill(bgGradient);
+    g.fillAll();
+
+    // Calculate panel areas
     auto bounds = getLocalBounds().reduced(8);
     bounds.removeFromTop(70);  // Search + filters
     bounds.removeFromBottom(32);  // Status bar
 
-    int listWidth = bounds.getWidth() * 0.55f;
+    int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
+    auto listArea = bounds.removeFromLeft(listWidth);
+    bounds.removeFromLeft(16);  // Gap
+
+    // Draw rounded list background
+    auto listBounds = listArea.toFloat();
+    g.setColour(colours["Dialog Inner Background"]);
+    g.fillRoundedRectangle(listBounds, 8.0f);
     g.setColour(colours["Text Colour"].withAlpha(0.2f));
-    g.drawVerticalLine(bounds.getX() + listWidth + 4, bounds.getY(), bounds.getBottom());
+    g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
+
+    // Draw card-style details panel with shadow
+    auto detailsBounds = bounds.toFloat();
+    juce::Path detailsPath;
+    detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
+
+    // Drop shadow
+    melatonin::DropShadow shadow(juce::Colours::black.withAlpha(0.2f), 8, {2, 2});
+    shadow.render(g, detailsPath);
+
+    // Card fill with subtle gradient
+    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f),
+                                   detailsBounds.getX(), detailsBounds.getY(),
+                                   colours["Dialog Inner Background"].darker(0.04f),
+                                   detailsBounds.getX(), detailsBounds.getBottom(), false);
+    g.setGradientFill(cardGrad);
+    g.fillPath(detailsPath);
+
+    // Card border
+    g.setColour(colours["Text Colour"].withAlpha(0.15f));
+    g.strokePath(detailsPath, juce::PathStrokeType(1.0f));
 }
 
 void NAMOnlineBrowserComponent::resized()
@@ -512,6 +553,30 @@ void NAMOnlineBrowserComponent::mouseUp(const juce::MouseEvent& event)
         juce::MessageManager::callAsync([this]() {
             onListSelectionChanged();
         });
+    }
+}
+
+void NAMOnlineBrowserComponent::mouseMove(const juce::MouseEvent& event)
+{
+    if (resultsList != nullptr && resultsList->isParentOf(event.eventComponent))
+    {
+        auto localPoint = resultsList->getLocalPoint(event.eventComponent, event.position);
+        int row = resultsList->getRowContainingPosition(static_cast<int>(localPoint.x),
+                                                         static_cast<int>(localPoint.y));
+        if (row != listModel.getHoveredRow())
+        {
+            listModel.setHoveredRow(row);
+            resultsList->repaint();
+        }
+    }
+}
+
+void NAMOnlineBrowserComponent::mouseExit(const juce::MouseEvent& /*event*/)
+{
+    if (listModel.getHoveredRow() != -1)
+    {
+        listModel.setHoveredRow(-1);
+        resultsList->repaint();
     }
 }
 

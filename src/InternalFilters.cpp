@@ -45,6 +45,7 @@
 #include "SubGraphProcessor.h"
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
+#include "OscilloscopeProcessor.h"
 
 //==============================================================================
 InternalPluginFormat::InternalPluginFormat()
@@ -155,6 +156,12 @@ InternalPluginFormat::InternalPluginFormat()
         NAMProcessor p;
         p.fillInPluginDescription(namProcDesc);
         namProcDesc.category = "Built-in";
+    }
+
+    {
+        OscilloscopeProcessor p;
+        p.fillInPluginDescription(oscilloscopeProcDesc);
+        oscilloscopeProcDesc.category = "Built-in";
     }
 
     {
@@ -277,6 +284,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new NAMProcessor();
     }
+    else if (desc.name == oscilloscopeProcDesc.name)
+    {
+        return new OscilloscopeProcessor();
+    }
     else if (desc.name == midiTransposeProcDesc.name)
     {
         return new MidiTransposeProcessor();
@@ -349,6 +360,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &irLoaderProcDesc;
     case namProcFilter:
         return &namProcDesc;
+    case oscilloscopeProcFilter:
+        return &oscilloscopeProcDesc;
     case midiTransposeProcFilter:
         return &midiTransposeProcDesc;
     case midiRechannelizeProcFilter:
@@ -382,8 +395,9 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
         levelProcFilter,         filePlayerProcFilter,       outputToggleProcFilter,  vuMeterProcFilter,
         recorderProcFilter,      metronomeProcFilter,        looperProcFilter,        tunerProcFilter,
         toneGenProcFilter,       splitterProcFilter,         mixerProcFilter,         irLoaderProcFilter,
-        namProcFilter,           midiTransposeProcFilter,    midiRechannelizeProcFilter, keyboardSplitProcFilter,
-        notesProcFilter,         labelProcFilter,            midiFilePlayerProcFilter,   subGraphProcFilter};
+        namProcFilter,           oscilloscopeProcFilter,     midiTransposeProcFilter, midiRechannelizeProcFilter,
+        keyboardSplitProcFilter, notesProcFilter,            labelProcFilter,         midiFilePlayerProcFilter,
+        subGraphProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));
