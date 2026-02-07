@@ -15,6 +15,9 @@
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
+
+#include <set>
 
 //==============================================================================
 // NAMModelListModel
@@ -108,6 +111,116 @@ void NAMModelListModel::rebuildFilteredList()
 }
 
 //==============================================================================
+// IRListModel
+//==============================================================================
+
+void IRListModel::setFiles(const std::vector<IRFileInfo>& newFiles)
+{
+    allFiles = newFiles;
+    rebuildFilteredList();
+}
+
+void IRListModel::setFilter(const String& filter)
+{
+    currentFilter = filter.toLowerCase();
+    rebuildFilteredList();
+}
+
+int IRListModel::getNumRows()
+{
+    return static_cast<int>(filteredIndices.size());
+}
+
+void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+
+    // Background: selection > hover > alternating
+    if (rowIsSelected)
+        g.fillAll(colours["List Selection"]);
+    else if (rowNumber == hoveredRow)
+        g.fillAll(colours["List Selection"].withAlpha(0.15f));
+    else if (rowNumber % 2 == 0)
+        g.fillAll(colours["Dialog Inner Background"]);
+    else
+        g.fillAll(colours["Dialog Inner Background"].darker(0.05f));
+
+    if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
+    {
+        const auto& ir = allFiles[filteredIndices[rowNumber]];
+        int textX = 10;
+        int halfHeight = height / 2;
+
+        // Name on top line
+        g.setColour(colours["Text Colour"]);
+        g.setFont(13.0f);
+        g.drawText(String(ir.name), textX, 2, width - 20, halfHeight,
+                   Justification::centredLeft, true);
+
+        // Duration and sample rate on bottom line (dimmed)
+        g.setColour(colours["Text Colour"].withAlpha(0.6f));
+        g.setFont(11.0f);
+        String details;
+        if (ir.durationSeconds > 0)
+        {
+            if (ir.durationSeconds >= 1.0)
+                details = String(ir.durationSeconds, 2) + "s";
+            else
+                details = String(static_cast<int>(ir.durationSeconds * 1000)) + "ms";
+        }
+        if (ir.sampleRate > 0)
+        {
+            if (details.isNotEmpty())
+                details += " | ";
+            details += String(static_cast<int>(ir.sampleRate / 1000)) + "kHz";
+        }
+        if (ir.numChannels > 0)
+        {
+            if (details.isNotEmpty())
+                details += " | ";
+            details += ir.numChannels == 1 ? "Mono" : (ir.numChannels == 2 ? "Stereo" : String(ir.numChannels) + "ch");
+        }
+        g.drawText(details, textX, halfHeight, width - 20, halfHeight - 2,
+                   Justification::centredLeft, true);
+    }
+
+    // Bottom separator
+    g.setColour(colours["Text Colour"].withAlpha(0.1f));
+    g.drawHorizontalLine(height - 1, 0, width);
+}
+
+const IRFileInfo* IRListModel::getFileAt(int index) const
+{
+    if (index >= 0 && index < static_cast<int>(filteredIndices.size()))
+    {
+        return &allFiles[filteredIndices[index]];
+    }
+    return nullptr;
+}
+
+void IRListModel::rebuildFilteredList()
+{
+    filteredIndices.clear();
+
+    for (size_t i = 0; i < allFiles.size(); ++i)
+    {
+        if (currentFilter.isEmpty())
+        {
+            filteredIndices.push_back(i);
+        }
+        else
+        {
+            String name = String(allFiles[i].name).toLowerCase();
+
+            if (name.contains(currentFilter))
+            {
+                filteredIndices.push_back(i);
+            }
+        }
+    }
+}
+
+//==============================================================================
 // PillTabLookAndFeel - Custom look for pill-style tab buttons
 //==============================================================================
 
@@ -192,6 +305,13 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     onlineTabButton->setLookAndFeel(&pillTabLookAndFeel);
     onlineTabButton->addListener(this);
     addAndMakeVisible(onlineTabButton.get());
+
+    irTabButton = std::make_unique<TextButton>("IRs");
+    irTabButton->setClickingTogglesState(true);
+    irTabButton->setRadioGroupId(1);
+    irTabButton->setLookAndFeel(&pillTabLookAndFeel);
+    irTabButton->addListener(this);
+    addAndMakeVisible(irTabButton.get());
 
     // Online browser component (created but initially hidden)
     onlineBrowser = std::make_unique<NAMOnlineBrowserComponent>(processor, onModelLoaded);
@@ -290,14 +410,74 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     emptyStateLabel->setVisible(false);
     addAndMakeVisible(emptyStateLabel.get());
 
+    // IR browser components
+    irList = std::make_unique<ListBox>("irs", &irListModel);
+    irList->setRowHeight(36);
+    irList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
+    irList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
+    irList->setOutlineThickness(0);
+    irList->setMultipleSelectionEnabled(false);
+    irList->addMouseListener(this, true);
+    irList->setVisible(false);
+    addAndMakeVisible(irList.get());
+
+    irBrowseFolderButton = std::make_unique<TextButton>("Browse IR Folder...");
+    irBrowseFolderButton->addListener(this);
+    irBrowseFolderButton->setVisible(false);
+    addAndMakeVisible(irBrowseFolderButton.get());
+
+    irLoadButton = std::make_unique<TextButton>("Load IR");
+    irLoadButton->addListener(this);
+    irLoadButton->setVisible(false);
+    addAndMakeVisible(irLoadButton.get());
+
+    // IR details panel
+    irDetailsTitle = std::make_unique<Label>("irDetailsTitle", "IR Details");
+    irDetailsTitle->setFont(Font(14.0f, Font::bold));
+    irDetailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    irDetailsTitle->setVisible(false);
+    addAndMakeVisible(irDetailsTitle.get());
+
+    auto createIRLabelPair = [&colours, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
+                                               const String& labelText, const String& valueText) {
+        labelPtr = std::make_unique<Label>("", labelText);
+        labelPtr->setFont(Font(12.0f, Font::bold));
+        labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+        labelPtr->setVisible(false);
+        addAndMakeVisible(labelPtr.get());
+
+        valuePtr = std::make_unique<Label>("", valueText);
+        valuePtr->setFont(Font(12.0f));
+        valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
+        valuePtr->setVisible(false);
+        addAndMakeVisible(valuePtr.get());
+    };
+
+    createIRLabelPair(irNameLabel, irNameValue, "Name:", "-");
+    createIRLabelPair(irDurationLabel, irDurationValue, "Duration:", "-");
+    createIRLabelPair(irSampleRateLabel, irSampleRateValue, "Sample Rate:", "-");
+    createIRLabelPair(irChannelsLabel, irChannelsValue, "Channels:", "-");
+    createIRLabelPair(irFileSizeLabel, irFileSizeValue, "File Size:", "-");
+    createIRLabelPair(irFilePathLabel, irFilePathValue, "File:", "-");
+    irFilePathValue->setMinimumHorizontalScale(0.5f);
+
     // Start with NAM download directory (same as Tone3000DownloadManager uses)
     currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory)
         .getChildFile("Pedalboard3")
         .getChildFile("NAM Models");
 
-    // If the directory doesn't exist yet, fall back to Documents
+    // Create NAM Models directory if it doesn't exist
     if (!currentDirectory.isDirectory())
-        currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory);
+        currentDirectory.createDirectory();
+
+    // IR directory (separate from NAM models)
+    irDirectory = File::getSpecialLocation(File::userDocumentsDirectory)
+        .getChildFile("Pedalboard3")
+        .getChildFile("IR");
+
+    // Create IR directory if it doesn't exist
+    if (!irDirectory.isDirectory())
+        irDirectory.createDirectory();
 
     setSize(700, 500);
 
@@ -310,6 +490,7 @@ NAMModelBrowserComponent::~NAMModelBrowserComponent()
     // Clear custom LookAndFeel before destruction
     localTabButton->setLookAndFeel(nullptr);
     onlineTabButton->setLookAndFeel(nullptr);
+    irTabButton->setLookAndFeel(nullptr);
 }
 
 void NAMModelBrowserComponent::paint(Graphics& g)
@@ -377,20 +558,33 @@ void NAMModelBrowserComponent::resized()
     localTabButton->setBounds(titleRow.removeFromLeft(60));
     titleRow.removeFromLeft(4);
     onlineTabButton->setBounds(titleRow.removeFromLeft(60));
+    titleRow.removeFromLeft(4);
+    irTabButton->setBounds(titleRow.removeFromLeft(50));
 
     bounds.removeFromTop(8);
 
-    // Online browser takes the full remaining area (minus close button row)
-    if (currentTab == 1)
-    {
-        // Button row at bottom for close button only
-        auto buttonRow = bounds.removeFromBottom(36);
-        bounds.removeFromBottom(8);
-        closeButton->setBounds(buttonRow.removeFromRight(70));
+    // Hide all IR components by default
+    auto hideIRComponents = [this]() {
+        irList->setVisible(false);
+        irBrowseFolderButton->setVisible(false);
+        irLoadButton->setVisible(false);
+        irDetailsTitle->setVisible(false);
+        irNameLabel->setVisible(false);
+        irNameValue->setVisible(false);
+        irDurationLabel->setVisible(false);
+        irDurationValue->setVisible(false);
+        irSampleRateLabel->setVisible(false);
+        irSampleRateValue->setVisible(false);
+        irChannelsLabel->setVisible(false);
+        irChannelsValue->setVisible(false);
+        irFileSizeLabel->setVisible(false);
+        irFileSizeValue->setVisible(false);
+        irFilePathLabel->setVisible(false);
+        irFilePathValue->setVisible(false);
+    };
 
-        onlineBrowser->setBounds(bounds);
-
-        // Hide local browser elements
+    // Hide all local NAM components by default
+    auto hideLocalComponents = [this]() {
         searchBox->setVisible(false);
         refreshButton->setVisible(false);
         browseFolderButton->setVisible(false);
@@ -411,8 +605,102 @@ void NAMModelBrowserComponent::resized()
         filePathValue->setVisible(false);
         statusLabel->setVisible(false);
         emptyStateLabel->setVisible(false);
+    };
+
+    // Online browser takes the full remaining area (minus close button row)
+    if (currentTab == 1)
+    {
+        // Button row at bottom for close button only
+        auto buttonRow = bounds.removeFromBottom(36);
+        bounds.removeFromBottom(8);
+        closeButton->setBounds(buttonRow.removeFromRight(70));
+
+        onlineBrowser->setBounds(bounds);
+
+        // Hide local and IR browser elements
+        hideLocalComponents();
+        hideIRComponents();
         return;
     }
+
+    // IR browser tab
+    if (currentTab == 2)
+    {
+        hideLocalComponents();
+        onlineBrowser->setVisible(false);
+
+        // Search row with IR-specific browse button
+        auto searchRow = bounds.removeFromTop(28);
+        refreshButton->setBounds(searchRow.removeFromRight(70));
+        refreshButton->setVisible(true);
+        searchRow.removeFromRight(8);
+        irBrowseFolderButton->setBounds(searchRow.removeFromRight(120));
+        irBrowseFolderButton->setVisible(true);
+        searchRow.removeFromRight(8);
+        searchBox->setBounds(searchRow);
+        searchBox->setVisible(true);
+        bounds.removeFromTop(8);
+
+        // Status bar at bottom
+        auto statusRow = bounds.removeFromBottom(20);
+        statusLabel->setBounds(statusRow);
+        statusLabel->setVisible(true);
+        bounds.removeFromBottom(4);
+
+        // Button row at bottom
+        auto buttonRow = bounds.removeFromBottom(36);
+        bounds.removeFromBottom(8);
+        closeButton->setBounds(buttonRow.removeFromRight(70));
+        buttonRow.removeFromRight(8);
+        irLoadButton->setBounds(buttonRow.removeFromRight(80));
+        irLoadButton->setVisible(true);
+
+        // Split remaining area: list (55%) and details (45%)
+        int listWidth = bounds.getWidth() * 0.55f;
+        auto listArea = bounds.removeFromLeft(listWidth);
+        bounds.removeFromLeft(16);
+
+        // IR list
+        irList->setBounds(listArea);
+        irList->setVisible(true);
+
+        // IR details panel
+        auto detailsArea = bounds;
+
+        irDetailsTitle->setBounds(detailsArea.removeFromTop(24));
+        irDetailsTitle->setVisible(true);
+        detailsArea.removeFromTop(8);
+
+        auto layoutIRLabelValue = [&detailsArea](Label* label, Label* value) {
+            auto row = detailsArea.removeFromTop(20);
+            label->setBounds(row.removeFromLeft(90));
+            label->setVisible(true);
+            value->setBounds(row);
+            value->setVisible(true);
+            detailsArea.removeFromTop(4);
+        };
+
+        layoutIRLabelValue(irNameLabel.get(), irNameValue.get());
+        layoutIRLabelValue(irDurationLabel.get(), irDurationValue.get());
+        layoutIRLabelValue(irSampleRateLabel.get(), irSampleRateValue.get());
+        layoutIRLabelValue(irChannelsLabel.get(), irChannelsValue.get());
+        layoutIRLabelValue(irFileSizeLabel.get(), irFileSizeValue.get());
+
+        detailsArea.removeFromTop(8);
+
+        // File path row
+        auto fileRow = detailsArea.removeFromTop(20);
+        irFilePathLabel->setBounds(fileRow.removeFromLeft(40));
+        irFilePathLabel->setVisible(true);
+        irFilePathValue->setBounds(fileRow);
+        irFilePathValue->setVisible(true);
+
+        return;
+    }
+
+    // Local NAM tab - hide IR components and online browser
+    hideIRComponents();
+    onlineBrowser->setVisible(false);
 
     // Show local browser elements
     searchBox->setVisible(true);
@@ -511,9 +799,16 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
     {
         switchToTab(1);
     }
+    else if (button == irTabButton.get())
+    {
+        switchToTab(2);
+    }
     else if (button == refreshButton.get())
     {
-        scanDirectory(currentDirectory);
+        if (currentTab == 0)
+            scanDirectory(currentDirectory);
+        else if (currentTab == 2)
+            scanIRDirectory(irDirectory);
     }
     else if (button == browseFolderButton.get())
     {
@@ -531,9 +826,29 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
             }
         });
     }
+    else if (button == irBrowseFolderButton.get())
+    {
+        irFolderChooser =
+            std::make_unique<FileChooser>("Select IR Folder", irDirectory, "", true);
+
+        auto chooserFlags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
+
+        irFolderChooser->launchAsync(chooserFlags, [this](const FileChooser& fc) {
+            auto result = fc.getResult();
+            if (result.isDirectory())
+            {
+                irDirectory = result;
+                scanIRDirectory(irDirectory);
+            }
+        });
+    }
     else if (button == loadButton.get())
     {
         loadSelectedModel();
+    }
+    else if (button == irLoadButton.get())
+    {
+        loadSelectedIR();
     }
     else if (button == closeButton.get())
     {
@@ -552,28 +867,41 @@ void NAMModelBrowserComponent::switchToTab(int tabIndex)
     // Update tab button states
     localTabButton->setToggleState(tabIndex == 0, dontSendNotification);
     onlineTabButton->setToggleState(tabIndex == 1, dontSendNotification);
+    irTabButton->setToggleState(tabIndex == 2, dontSendNotification);
 
     // Show/hide appropriate content
     onlineBrowser->setVisible(tabIndex == 1);
 
-    // Refresh local list when switching to Local tab (to pick up new downloads)
+    // Refresh content when switching tabs (each uses its own directory)
     if (tabIndex == 0)
         scanDirectory(currentDirectory);
+    else if (tabIndex == 2)
+        scanIRDirectory(irDirectory);
 
     // Trigger layout update
     resized();
     repaint();
 
-    spdlog::info("[NAMModelBrowser] Switched to {} tab", tabIndex == 0 ? "Local" : "Online");
+    const char* tabNames[] = {"Local", "Online", "IRs"};
+    spdlog::info("[NAMModelBrowser] Switched to {} tab", tabNames[tabIndex]);
 }
 
 void NAMModelBrowserComponent::textEditorTextChanged(TextEditor& editor)
 {
     if (&editor == searchBox.get())
     {
-        listModel.setFilter(searchBox->getText());
-        modelList->updateContent();
-        modelList->repaint();
+        if (currentTab == 0)
+        {
+            listModel.setFilter(searchBox->getText());
+            modelList->updateContent();
+            modelList->repaint();
+        }
+        else if (currentTab == 2)
+        {
+            irListModel.setFilter(searchBox->getText());
+            irList->updateContent();
+            irList->repaint();
+        }
     }
 }
 
@@ -658,7 +986,66 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         filePathValue->setText(modelFile.getFileName(), dontSendNotification);
         filePathValue->setTooltip(String(model->filePath));
 
-        metadataDisplay->setText(String(model->metadata), dontSendNotification);
+        // Format metadata as user-friendly text instead of raw JSON
+        String formattedMetadata;
+        if (!model->metadata.empty())
+        {
+            try
+            {
+                auto meta = nlohmann::json::parse(model->metadata);
+
+                // Extract and format common fields
+                auto addField = [&](const char* label, const char* key)
+                {
+                    if (meta.contains(key) && !meta[key].is_null())
+                    {
+                        String value;
+                        if (meta[key].is_string())
+                            value = String(meta[key].get<std::string>());
+                        else if (meta[key].is_number())
+                            value = String(meta[key].get<double>());
+                        else if (meta[key].is_boolean())
+                            value = meta[key].get<bool>() ? "Yes" : "No";
+
+                        if (value.isNotEmpty())
+                            formattedMetadata += String(label) + ": " + value + "\n";
+                    }
+                };
+
+                // Common NAM metadata fields
+                addField("Author", "author");
+                addField("Name", "name");
+                addField("Modeled By", "modeled_by");
+                addField("Date", "date");
+                addField("Gear", "gear");
+                addField("Amp", "amp");
+                addField("Cab", "cab");
+                addField("Mic", "mic");
+                addField("Description", "description");
+                addField("Notes", "notes");
+                addField("License", "license");
+                addField("Version", "version");
+
+                // Handle nested gear object if present
+                if (meta.contains("gear") && meta["gear"].is_object())
+                {
+                    const auto& gear = meta["gear"];
+                    if (gear.contains("amp") && !gear["amp"].is_null())
+                        formattedMetadata += "Amp: " + String(gear["amp"].get<std::string>()) + "\n";
+                    if (gear.contains("cabinet") && !gear["cabinet"].is_null())
+                        formattedMetadata += "Cabinet: " + String(gear["cabinet"].get<std::string>()) + "\n";
+                    if (gear.contains("mic") && !gear["mic"].is_null())
+                        formattedMetadata += "Mic: " + String(gear["mic"].get<std::string>()) + "\n";
+                }
+            }
+            catch (const std::exception&)
+            {
+                // Fall back to raw metadata if parsing fails
+                formattedMetadata = String(model->metadata);
+            }
+        }
+
+        metadataDisplay->setText(formattedMetadata.trimEnd(), dontSendNotification);
     }
     else
     {
@@ -712,6 +1099,13 @@ void NAMModelBrowserComponent::mouseUp(const MouseEvent& event)
             onListSelectionChanged();
         });
     }
+    // Handle clicks on the IR list
+    if (irList != nullptr && irList->isParentOf(event.eventComponent))
+    {
+        juce::MessageManager::callAsync([this]() {
+            onIRListSelectionChanged();
+        });
+    }
 }
 
 void NAMModelBrowserComponent::mouseDoubleClick(const MouseEvent& event)
@@ -721,6 +1115,13 @@ void NAMModelBrowserComponent::mouseDoubleClick(const MouseEvent& event)
     {
         juce::MessageManager::callAsync([this]() {
             loadSelectedModel();
+        });
+    }
+    // Double-click on IR list item loads the IR
+    if (irList != nullptr && irList->isParentOf(event.eventComponent))
+    {
+        juce::MessageManager::callAsync([this]() {
+            loadSelectedIR();
         });
     }
 }
@@ -738,6 +1139,17 @@ void NAMModelBrowserComponent::mouseMove(const MouseEvent& event)
             modelList->repaint();
         }
     }
+    if (irList != nullptr && irList->isParentOf(event.eventComponent))
+    {
+        auto localPoint = irList->getLocalPoint(event.eventComponent, event.position);
+        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x),
+                                                    static_cast<int>(localPoint.y));
+        if (row != irListModel.getHoveredRow())
+        {
+            irListModel.setHoveredRow(row);
+            irList->repaint();
+        }
+    }
 }
 
 void NAMModelBrowserComponent::mouseExit(const MouseEvent& /*event*/)
@@ -747,6 +1159,219 @@ void NAMModelBrowserComponent::mouseExit(const MouseEvent& /*event*/)
         listModel.setHoveredRow(-1);
         modelList->repaint();
     }
+    if (irListModel.getHoveredRow() != -1)
+    {
+        irListModel.setHoveredRow(-1);
+        irList->repaint();
+    }
+}
+
+//==============================================================================
+// IR Browser Methods
+//==============================================================================
+
+void NAMModelBrowserComponent::scanIRDirectory(const File& directory)
+{
+    irFiles.clear();
+
+    // Track seen file paths to avoid duplicates
+    std::set<String> seenPaths;
+
+    auto scanDir = [this, &seenPaths](const File& dir)
+    {
+        if (!dir.isDirectory())
+            return;
+
+        spdlog::info("[NAMModelBrowser] Scanning IR directory: {}", dir.getFullPathName().toStdString());
+
+        // Find all IR files recursively (.wav, .aiff, .aif)
+        auto wavFiles = dir.findChildFiles(File::findFiles, true, "*.wav");
+        auto aiffFiles = dir.findChildFiles(File::findFiles, true, "*.aiff");
+        auto aifFiles = dir.findChildFiles(File::findFiles, true, "*.aif");
+
+        for (const auto& file : wavFiles)
+        {
+            if (seenPaths.find(file.getFullPathName()) == seenPaths.end())
+            {
+                seenPaths.insert(file.getFullPathName());
+                addIRFileInfo(file);
+            }
+        }
+        for (const auto& file : aiffFiles)
+        {
+            if (seenPaths.find(file.getFullPathName()) == seenPaths.end())
+            {
+                seenPaths.insert(file.getFullPathName());
+                addIRFileInfo(file);
+            }
+        }
+        for (const auto& file : aifFiles)
+        {
+            if (seenPaths.find(file.getFullPathName()) == seenPaths.end())
+            {
+                seenPaths.insert(file.getFullPathName());
+                addIRFileInfo(file);
+            }
+        }
+    };
+
+    // Scan primary IR directory
+    scanDir(directory);
+
+    // Also scan NAM Models directory (TONE3000 downloads IRs there too)
+    if (currentDirectory.isDirectory() && currentDirectory != directory)
+    {
+        scanDir(currentDirectory);
+    }
+
+    spdlog::info("[NAMModelBrowser] Found {} IR files total", irFiles.size());
+
+    // Sort by name
+    std::sort(irFiles.begin(), irFiles.end(),
+              [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
+
+    irListModel.setFiles(irFiles);
+    irList->updateContent();
+    irList->repaint();
+
+    // Update status bar
+    String statusText = irDirectory.getFullPathName();
+    if (currentDirectory != irDirectory)
+        statusText += " + " + currentDirectory.getFileName();
+    if (irFiles.empty())
+        statusText += " - No IR files found";
+    else if (irFiles.size() == 1)
+        statusText += " - 1 IR file";
+    else
+        statusText += " - " + String(irFiles.size()) + " IR files";
+    statusLabel->setText(statusText, dontSendNotification);
+
+    // Clear details
+    updateIRDetailsPanel(nullptr);
+}
+
+void NAMModelBrowserComponent::addIRFileInfo(const File& file)
+{
+    IRFileInfo info;
+    info.name = file.getFileNameWithoutExtension().toStdString();
+    info.filePath = file.getFullPathName().toStdString();
+    info.fileSize = file.getSize();
+
+    // Read audio file metadata
+    AudioFormatManager formatManager;
+    formatManager.registerBasicFormats();
+
+    std::unique_ptr<AudioFormatReader> reader(formatManager.createReaderFor(file));
+    if (reader)
+    {
+        info.sampleRate = reader->sampleRate;
+        info.numChannels = static_cast<int>(reader->numChannels);
+        if (reader->sampleRate > 0)
+            info.durationSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
+    }
+
+    irFiles.push_back(std::move(info));
+}
+
+void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
+{
+    if (irInfo)
+    {
+        irNameValue->setText(String(irInfo->name), dontSendNotification);
+
+        // Duration
+        if (irInfo->durationSeconds > 0)
+        {
+            if (irInfo->durationSeconds >= 1.0)
+                irDurationValue->setText(String(irInfo->durationSeconds, 3) + " s", dontSendNotification);
+            else
+                irDurationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms", dontSendNotification);
+        }
+        else
+        {
+            irDurationValue->setText("-", dontSendNotification);
+        }
+
+        // Sample rate
+        if (irInfo->sampleRate > 0)
+            irSampleRateValue->setText(String(static_cast<int>(irInfo->sampleRate)) + " Hz", dontSendNotification);
+        else
+            irSampleRateValue->setText("-", dontSendNotification);
+
+        // Channels
+        if (irInfo->numChannels > 0)
+        {
+            String chText = irInfo->numChannels == 1 ? "Mono" : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " channels");
+            irChannelsValue->setText(chText, dontSendNotification);
+        }
+        else
+        {
+            irChannelsValue->setText("-", dontSendNotification);
+        }
+
+        // File size
+        if (irInfo->fileSize > 0)
+        {
+            String sizeText;
+            if (irInfo->fileSize > 1024 * 1024)
+                sizeText = String(irInfo->fileSize / (1024 * 1024)) + " MB";
+            else if (irInfo->fileSize > 1024)
+                sizeText = String(irInfo->fileSize / 1024) + " KB";
+            else
+                sizeText = String(irInfo->fileSize) + " bytes";
+            irFileSizeValue->setText(sizeText, dontSendNotification);
+        }
+        else
+        {
+            irFileSizeValue->setText("-", dontSendNotification);
+        }
+
+        // File path
+        File irFile(irInfo->filePath);
+        irFilePathValue->setText(irFile.getFileName(), dontSendNotification);
+        irFilePathValue->setTooltip(String(irInfo->filePath));
+    }
+    else
+    {
+        irNameValue->setText("-", dontSendNotification);
+        irDurationValue->setText("-", dontSendNotification);
+        irSampleRateValue->setText("-", dontSendNotification);
+        irChannelsValue->setText("-", dontSendNotification);
+        irFileSizeValue->setText("-", dontSendNotification);
+        irFilePathValue->setText("-", dontSendNotification);
+        irFilePathValue->setTooltip("");
+    }
+}
+
+void NAMModelBrowserComponent::loadSelectedIR()
+{
+    auto selectedRow = irList->getSelectedRow();
+    if (selectedRow >= 0)
+    {
+        const auto* irInfo = irListModel.getFileAt(selectedRow);
+        if (irInfo && namProcessor)
+        {
+            File irFile(irInfo->filePath);
+            if (namProcessor->loadIR(irFile))
+            {
+                spdlog::info("[NAMModelBrowser] Loaded IR: {}", irInfo->name);
+
+                if (onModelLoadedCallback)
+                    onModelLoadedCallback();
+            }
+            else
+            {
+                spdlog::error("[NAMModelBrowser] Failed to load IR: {}", irInfo->name);
+            }
+        }
+    }
+}
+
+void NAMModelBrowserComponent::onIRListSelectionChanged()
+{
+    auto selectedRow = irList->getSelectedRow();
+    const auto* irInfo = irListModel.getFileAt(selectedRow);
+    updateIRDetailsPanel(irInfo);
 }
 
 //==============================================================================

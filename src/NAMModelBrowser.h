@@ -50,6 +50,50 @@ class NAMModelListModel : public ListBoxModel
 
 //==============================================================================
 /**
+    Info structure for IR files (impulse responses).
+*/
+struct IRFileInfo
+{
+    std::string name;
+    std::string filePath;
+    int64_t fileSize = 0;
+    double durationSeconds = 0.0;
+    double sampleRate = 0.0;
+    int numChannels = 0;
+};
+
+//==============================================================================
+/**
+    ListBox model for displaying IR files with filtering support.
+*/
+class IRListModel : public ListBoxModel
+{
+  public:
+    IRListModel() = default;
+
+    void setFiles(const std::vector<IRFileInfo>& files);
+    void setFilter(const String& filter);
+
+    int getNumRows() override;
+    void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) override;
+
+    const IRFileInfo* getFileAt(int index) const;
+    int getFilteredCount() const { return static_cast<int>(filteredIndices.size()); }
+
+    void setHoveredRow(int row) { hoveredRow = row; }
+    int getHoveredRow() const { return hoveredRow; }
+
+  private:
+    void rebuildFilteredList();
+
+    std::vector<IRFileInfo> allFiles;
+    std::vector<size_t> filteredIndices;
+    String currentFilter;
+    int hoveredRow = -1;
+};
+
+//==============================================================================
+/**
     Main component for the NAM model browser.
     Contains a model list, search box, and details panel.
 */
@@ -79,13 +123,21 @@ class NAMModelBrowserComponent : public Component,
     void onListSelectionChanged();
     void switchToTab(int tabIndex);
 
+    // IR browser methods
+    void scanIRDirectory(const File& directory);
+    void addIRFileInfo(const File& file);
+    void updateIRDetailsPanel(const IRFileInfo* irInfo);
+    void loadSelectedIR();
+    void onIRListSelectionChanged();
+
     NAMProcessor* namProcessor;
     std::function<void()> onModelLoadedCallback;
 
     // Tab buttons
     std::unique_ptr<TextButton> localTabButton;
     std::unique_ptr<TextButton> onlineTabButton;
-    int currentTab = 0;  // 0 = Local, 1 = Online
+    std::unique_ptr<TextButton> irTabButton;
+    int currentTab = 0;  // 0 = Local, 1 = Online, 2 = IRs
 
     // Online browser component
     std::unique_ptr<NAMOnlineBrowserComponent> onlineBrowser;
@@ -125,6 +177,32 @@ class NAMModelBrowserComponent : public Component,
     std::vector<NAMModelInfo> models;
 
     std::unique_ptr<FileChooser> folderChooser;
+
+    // IR browser components (separate directory from NAM models)
+    IRListModel irListModel;
+    std::unique_ptr<ListBox> irList;
+    std::unique_ptr<TextButton> irBrowseFolderButton;
+    std::unique_ptr<TextButton> irLoadButton;
+
+    // IR details labels
+    std::unique_ptr<Label> irDetailsTitle;
+    std::unique_ptr<Label> irNameLabel;
+    std::unique_ptr<Label> irNameValue;
+    std::unique_ptr<Label> irDurationLabel;
+    std::unique_ptr<Label> irDurationValue;
+    std::unique_ptr<Label> irSampleRateLabel;
+    std::unique_ptr<Label> irSampleRateValue;
+    std::unique_ptr<Label> irChannelsLabel;
+    std::unique_ptr<Label> irChannelsValue;
+    std::unique_ptr<Label> irFileSizeLabel;
+    std::unique_ptr<Label> irFileSizeValue;
+    std::unique_ptr<Label> irFilePathLabel;
+    std::unique_ptr<Label> irFilePathValue;
+
+    // IR state (separate directory from NAM models)
+    File irDirectory;
+    std::vector<IRFileInfo> irFiles;
+    std::unique_ptr<FileChooser> irFolderChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMModelBrowserComponent)
 };
