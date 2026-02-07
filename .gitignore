@@ -65,6 +65,7 @@ Implementing*.md
 .DS_Store
 Thumbs.db
 desktop.ini
+nul
 
 # JUCE specific (note: JUCE/ is a submodule, intentionally tracked)
 Builds/
