@@ -205,6 +205,9 @@ void ColourSchemeEditor::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
         if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
             laf->refreshColours();
 
+        // Notify listeners that the colour scheme has changed
+        sendChangeMessage();
+
         // Update colourEditor.
         {
             int i = 0;

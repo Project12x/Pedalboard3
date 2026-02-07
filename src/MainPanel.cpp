@@ -25,6 +25,7 @@
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
 #include "BlacklistWindow.h"
+#include "BranchesLAF.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
 #include "Images.h"
@@ -1465,7 +1466,22 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
     else if (changedObject == dynamic_cast<PluginField*>(viewport->getViewedComponent()))
         changed();
     else if (ed) // The colour scheme editor's updated our colour scheme.
-        repaint();
+    {
+        // Refresh LookAndFeel colors
+        if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
+            laf->refreshColours();
+
+        // Repaint the entire component tree
+        if (auto* topLevel = getTopLevelComponent())
+            topLevel->repaint();
+        else
+            repaint();
+
+        // Also update any visible windows (plugin editors, dialogs, etc.)
+        for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
+            if (auto* comp = Desktop::getInstance().getComponent(i))
+                comp->repaint();
+    }
     else
     {
         // Save the plugin list every time it gets changed, so that if we're

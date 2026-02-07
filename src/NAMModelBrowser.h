@@ -120,6 +120,7 @@ class NAMModelBrowserComponent : public Component,
   private:
     void updateDetailsPanel(const NAMModelInfo* model);
     void loadSelectedModel();
+    void deleteSelectedModel();
     void onListSelectionChanged();
     void switchToTab(int tabIndex);
 
@@ -156,6 +157,10 @@ class NAMModelBrowserComponent : public Component,
     std::unique_ptr<Label> detailsTitle;
     std::unique_ptr<Label> nameLabel;
     std::unique_ptr<Label> nameValue;
+    std::unique_ptr<Label> authorLabel;
+    std::unique_ptr<Label> authorValue;
+    std::unique_ptr<Label> modelTypeLabel;
+    std::unique_ptr<Label> modelTypeValue;
     std::unique_ptr<Label> architectureLabel;
     std::unique_ptr<Label> architectureValue;
     std::unique_ptr<Label> sampleRateLabel;
@@ -166,6 +171,7 @@ class NAMModelBrowserComponent : public Component,
     std::unique_ptr<TextEditor> metadataDisplay;
     std::unique_ptr<Label> filePathLabel;
     std::unique_ptr<Label> filePathValue;
+    std::unique_ptr<TextButton> deleteButton;
 
     // Status bar
     std::unique_ptr<Label> statusLabel;

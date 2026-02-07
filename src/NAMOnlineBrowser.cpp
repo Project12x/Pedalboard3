@@ -349,12 +349,14 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor,
     // Set up list selection callback
     resultsList->setMouseClickGrabsKeyboardFocus(true);
 
-    spdlog::info("[NAMOnlineBrowser] Component initialized");
+    spdlog::info("[NAMOnlineBrowser] Component initialized, this={}", (void*)this);
 }
 
 NAMOnlineBrowserComponent::~NAMOnlineBrowserComponent()
 {
+    spdlog::info("[NAMOnlineBrowser] Component destructor called, this={}", (void*)this);
     Tone3000DownloadManager::getInstance().removeListener(this);
+    spdlog::debug("[NAMOnlineBrowser] Removed download listener");
 }
 
 void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
@@ -506,10 +508,12 @@ void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)
     }
     else if (button == loginButton.get())
     {
+        spdlog::info("[NAMOnlineBrowser] Login button clicked");
         showLoginDialog();
     }
     else if (button == logoutButton.get())
     {
+        spdlog::info("[NAMOnlineBrowser] Logout button clicked");
         logout();
     }
     else if (button == downloadButton.get())
@@ -778,35 +782,76 @@ void NAMOnlineBrowserComponent::updateStatusLabel()
 
 void NAMOnlineBrowserComponent::showLoginDialog()
 {
-    spdlog::info("[NAMOnlineBrowser] Starting authentication flow");
+    spdlog::info("[NAMOnlineBrowser] showLoginDialog() called, this={}", (void*)this);
 
     // Create auth handler and start OAuth flow
     auto* auth = new Tone3000Auth();
+    spdlog::debug("[NAMOnlineBrowser] Created Tone3000Auth object at {}", (void*)auth);
 
-    auth->startAuthentication([this, auth](bool success, juce::String errorMessage) {
+    // Use SafePointer to avoid crash if component is destroyed before callback
+    juce::Component::SafePointer<NAMOnlineBrowserComponent> safeThis(this);
+
+    auth->startAuthentication([safeThis, auth](bool success, juce::String errorMessage) {
+        spdlog::info("[NAMOnlineBrowser] Auth callback fired: success={}, error='{}', safeThis valid={}",
+            success, errorMessage.toStdString(), safeThis != nullptr);
+
         // Clean up auth object
+        spdlog::debug("[NAMOnlineBrowser] Deleting auth object at {}", (void*)auth);
         delete auth;
+        spdlog::debug("[NAMOnlineBrowser] Auth object deleted");
 
         if (success)
         {
-            spdlog::info("[NAMOnlineBrowser] Authentication successful");
-            juce::MessageManager::callAsync([this]() {
-                refreshAuthState();
-                if (selectedTone != nullptr && !selectedTone->isCached())
-                    downloadButton->setEnabled(true);
+            spdlog::info("[NAMOnlineBrowser] Authentication successful, queuing UI update");
+            juce::MessageManager::callAsync([safeThis]() {
+                spdlog::debug("[NAMOnlineBrowser] Success callAsync executing, safeThis valid={}", safeThis != nullptr);
+                if (safeThis == nullptr)
+                {
+                    spdlog::warn("[NAMOnlineBrowser] Component destroyed before success callback could run");
+                    return;
+                }
+                spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState()");
+                safeThis->refreshAuthState();
+                spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
+                if (safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
+                {
+                    spdlog::debug("[NAMOnlineBrowser] Enabling download button");
+                    safeThis->downloadButton->setEnabled(true);
+                }
+                spdlog::info("[NAMOnlineBrowser] UI update complete after successful auth");
             });
         }
         else
         {
-            spdlog::warn("[NAMOnlineBrowser] OAuth failed ({}), showing manual dialog", errorMessage.toStdString());
+            spdlog::warn("[NAMOnlineBrowser] OAuth failed ({}), queuing manual dialog", errorMessage.toStdString());
 
             // Fall back to manual dialog
-            juce::MessageManager::callAsync([this]() {
-                auto* manualDialog = new Tone3000ManualAuthDialog([this](bool manualSuccess) {
-                    juce::MessageManager::callAsync([this, manualSuccess]() {
-                        refreshAuthState();
-                        if (manualSuccess && selectedTone != nullptr && !selectedTone->isCached())
-                            downloadButton->setEnabled(true);
+            juce::MessageManager::callAsync([safeThis]() {
+                spdlog::debug("[NAMOnlineBrowser] Failure callAsync executing, safeThis valid={}", safeThis != nullptr);
+                if (safeThis == nullptr)
+                {
+                    spdlog::warn("[NAMOnlineBrowser] Component destroyed before failure callback could run");
+                    return;
+                }
+
+                spdlog::info("[NAMOnlineBrowser] Launching manual auth dialog");
+                auto* manualDialog = new Tone3000ManualAuthDialog([safeThis](bool manualSuccess) {
+                    spdlog::info("[NAMOnlineBrowser] Manual dialog callback: success={}", manualSuccess);
+                    juce::MessageManager::callAsync([safeThis, manualSuccess]() {
+                        spdlog::debug("[NAMOnlineBrowser] Manual dialog callAsync executing, safeThis valid={}", safeThis != nullptr);
+                        if (safeThis == nullptr)
+                        {
+                            spdlog::warn("[NAMOnlineBrowser] Component destroyed before manual dialog callback could run");
+                            return;
+                        }
+                        spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState() after manual auth");
+                        safeThis->refreshAuthState();
+                        if (manualSuccess && safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
+                        {
+                            spdlog::debug("[NAMOnlineBrowser] Enabling download button after manual auth");
+                            safeThis->downloadButton->setEnabled(true);
+                        }
+                        spdlog::info("[NAMOnlineBrowser] UI update complete after manual auth");
                     });
                 });
 
@@ -818,17 +863,21 @@ void NAMOnlineBrowserComponent::showLoginDialog()
                 options.useNativeTitleBar = true;
                 options.resizable = false;
                 options.launchAsync();
+                spdlog::debug("[NAMOnlineBrowser] Manual auth dialog launched");
             });
         }
     });
+    spdlog::debug("[NAMOnlineBrowser] startAuthentication() called, waiting for callback");
 }
 
 void NAMOnlineBrowserComponent::logout()
 {
-    spdlog::info("[NAMOnlineBrowser] Logging out");
+    spdlog::info("[NAMOnlineBrowser] logout() called, this={}", (void*)this);
     Tone3000Client::getInstance().logout();
+    spdlog::debug("[NAMOnlineBrowser] Tone3000Client logout complete");
     refreshAuthState();
     downloadButton->setEnabled(false);
+    spdlog::info("[NAMOnlineBrowser] Logout complete");
 }
 
 void NAMOnlineBrowserComponent::goToPage(int page)
@@ -839,12 +888,15 @@ void NAMOnlineBrowserComponent::goToPage(int page)
 
 void NAMOnlineBrowserComponent::refreshAuthState()
 {
+    spdlog::debug("[NAMOnlineBrowser] refreshAuthState() called, this={}", (void*)this);
     bool authenticated = Tone3000Client::getInstance().isAuthenticated();
+    spdlog::info("[NAMOnlineBrowser] Auth state: authenticated={}", authenticated);
 
     loginButton->setVisible(!authenticated);
     logoutButton->setVisible(authenticated);
 
     updateStatusLabel();
+    spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
 }
 
 // Download listener callbacks

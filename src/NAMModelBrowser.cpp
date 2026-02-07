@@ -572,6 +572,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     };
 
     createLabelPair(nameLabel, nameValue, "Name:", "-");
+    createLabelPair(authorLabel, authorValue, "Author:", "-");
+    createLabelPair(modelTypeLabel, modelTypeValue, "Type:", "-");
     createLabelPair(architectureLabel, architectureValue, "Architecture:", "-");
     createLabelPair(sampleRateLabel, sampleRateValue, "Sample Rate:", "-");
     createLabelPair(loudnessLabel, loudnessValue, "Loudness:", "-");
@@ -593,6 +595,15 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // File path in details
     createLabelPair(filePathLabel, filePathValue, "File:", "-");
     filePathValue->setMinimumHorizontalScale(0.5f);
+
+    // Delete button
+    deleteButton = std::make_unique<TextButton>("Delete Model");
+    deleteButton->addListener(this);
+    deleteButton->setColour(TextButton::buttonColourId, Colour(0xffe74c3c));  // Red
+    deleteButton->setColour(TextButton::buttonOnColourId, Colour(0xffc0392b));
+    deleteButton->setColour(TextButton::textColourOffId, Colours::white);
+    deleteButton->setColour(TextButton::textColourOnId, Colours::white);
+    addAndMakeVisible(deleteButton.get());
 
     // Status bar
     statusLabel = std::make_unique<Label>("status", "");
@@ -801,6 +812,10 @@ void NAMModelBrowserComponent::resized()
         detailsTitle->setVisible(false);
         nameLabel->setVisible(false);
         nameValue->setVisible(false);
+        authorLabel->setVisible(false);
+        authorValue->setVisible(false);
+        modelTypeLabel->setVisible(false);
+        modelTypeValue->setVisible(false);
         architectureLabel->setVisible(false);
         architectureValue->setVisible(false);
         sampleRateLabel->setVisible(false);
@@ -811,6 +826,7 @@ void NAMModelBrowserComponent::resized()
         metadataDisplay->setVisible(false);
         filePathLabel->setVisible(false);
         filePathValue->setVisible(false);
+        deleteButton->setVisible(false);
         statusLabel->setVisible(false);
         emptyStateLabel->setVisible(false);
     };
@@ -918,6 +934,10 @@ void NAMModelBrowserComponent::resized()
     detailsTitle->setVisible(true);
     nameLabel->setVisible(true);
     nameValue->setVisible(true);
+    authorLabel->setVisible(true);
+    authorValue->setVisible(true);
+    modelTypeLabel->setVisible(true);
+    modelTypeValue->setVisible(true);
     architectureLabel->setVisible(true);
     architectureValue->setVisible(true);
     sampleRateLabel->setVisible(true);
@@ -928,6 +948,7 @@ void NAMModelBrowserComponent::resized()
     metadataDisplay->setVisible(true);
     filePathLabel->setVisible(true);
     filePathValue->setVisible(true);
+    deleteButton->setVisible(true);
     statusLabel->setVisible(true);
 
     // Show list or empty state based on model count
@@ -980,6 +1001,8 @@ void NAMModelBrowserComponent::resized()
     };
 
     layoutLabelValue(nameLabel.get(), nameValue.get());
+    layoutLabelValue(authorLabel.get(), authorValue.get());
+    layoutLabelValue(modelTypeLabel.get(), modelTypeValue.get());
     layoutLabelValue(architectureLabel.get(), architectureValue.get());
     layoutLabelValue(sampleRateLabel.get(), sampleRateValue.get());
     layoutLabelValue(loudnessLabel.get(), loudnessValue.get());
@@ -991,6 +1014,11 @@ void NAMModelBrowserComponent::resized()
     filePathLabel->setBounds(fileRow.removeFromLeft(40));
     filePathValue->setBounds(fileRow);
     detailsArea.removeFromTop(8);
+
+    // Delete button at bottom of details
+    auto deleteRow = detailsArea.removeFromBottom(28);
+    deleteButton->setBounds(deleteRow.removeFromLeft(100));
+    detailsArea.removeFromBottom(8);
 
     metadataLabel->setBounds(detailsArea.removeFromTop(20));
     detailsArea.removeFromTop(4);
@@ -1063,6 +1091,59 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
         if (auto* window = findParentComponentOfClass<NAMModelBrowser>())
             window->closeButtonPressed();
     }
+    else if (button == deleteButton.get())
+    {
+        deleteSelectedModel();
+    }
+}
+
+void NAMModelBrowserComponent::deleteSelectedModel()
+{
+    int selectedRow = modelList->getSelectedRow();
+    const auto* model = listModel.getModelAt(selectedRow);
+
+    if (model == nullptr)
+        return;
+
+    File modelFile(model->filePath);
+    if (!modelFile.existsAsFile())
+        return;
+
+    // Confirm deletion
+    auto options = MessageBoxOptions::makeOptionsOk(
+        MessageBoxIconType::QuestionIcon,
+        "Delete Model?",
+        "Are you sure you want to delete \"" + String(model->name) + "\"?\n\nThis cannot be undone.");
+
+    AlertWindow::showAsync(options, [this, modelFile](int result) {
+        if (result == 1)
+        {
+            // Delete the file
+            if (modelFile.deleteFile())
+            {
+                spdlog::info("[NAMModelBrowser] Deleted model: {}", modelFile.getFullPathName().toStdString());
+
+                // Also delete parent folder if it's empty (TONE3000 creates a folder per model)
+                File parentDir = modelFile.getParentDirectory();
+                if (parentDir != currentDirectory)
+                {
+                    auto remainingFiles = parentDir.findChildFiles(File::findFiles, false);
+                    if (remainingFiles.isEmpty())
+                    {
+                        parentDir.deleteRecursively();
+                        spdlog::info("[NAMModelBrowser] Deleted empty folder: {}", parentDir.getFullPathName().toStdString());
+                    }
+                }
+
+                // Refresh the list
+                scanDirectory(currentDirectory);
+            }
+            else
+            {
+                spdlog::error("[NAMModelBrowser] Failed to delete model: {}", modelFile.getFullPathName().toStdString());
+            }
+        }
+    });
 }
 
 void NAMModelBrowserComponent::switchToTab(int tabIndex)
@@ -1200,15 +1281,36 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         filePathValue->setText(modelFile.getFileName(), dontSendNotification);
         filePathValue->setTooltip(String(model->filePath));
 
-        // Format metadata as user-friendly text instead of raw JSON
+        // Extract author and model type from metadata, format remaining metadata
+        String author = "-";
+        String modelType = "-";
         String formattedMetadata;
+
         if (!model->metadata.empty())
         {
             try
             {
                 auto meta = nlohmann::json::parse(model->metadata);
 
-                // Extract and format common fields
+                // Extract author
+                if (meta.contains("author") && meta["author"].is_string())
+                    author = String(meta["author"].get<std::string>());
+                else if (meta.contains("modeled_by") && meta["modeled_by"].is_string())
+                    author = String(meta["modeled_by"].get<std::string>());
+
+                // Extract model type
+                if (meta.contains("model_type") && meta["model_type"].is_string())
+                    modelType = String(meta["model_type"].get<std::string>());
+                else if (meta.contains("type") && meta["type"].is_string())
+                    modelType = String(meta["type"].get<std::string>());
+                else if (meta.contains("category") && meta["category"].is_string())
+                    modelType = String(meta["category"].get<std::string>());
+                else if (meta.contains("capture") && meta["capture"].is_string())
+                    modelType = String(meta["capture"].get<std::string>());
+                else if (meta.contains("gear_type") && meta["gear_type"].is_string())
+                    modelType = String(meta["gear_type"].get<std::string>());
+
+                // Extract and format remaining fields
                 auto addField = [&](const char* label, const char* key)
                 {
                     if (meta.contains(key) && !meta[key].is_null())
@@ -1226,10 +1328,8 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
                     }
                 };
 
-                // Common NAM metadata fields
-                addField("Author", "author");
+                // Common NAM metadata fields (skip author/type since shown separately)
                 addField("Name", "name");
-                addField("Modeled By", "modeled_by");
                 addField("Date", "date");
                 addField("Gear", "gear");
                 addField("Amp", "amp");
@@ -1259,11 +1359,16 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
             }
         }
 
+        authorValue->setText(author, dontSendNotification);
+        modelTypeValue->setText(modelType, dontSendNotification);
+
         metadataDisplay->setText(formattedMetadata.trimEnd(), dontSendNotification);
     }
     else
     {
         nameValue->setText("-", dontSendNotification);
+        authorValue->setText("-", dontSendNotification);
+        modelTypeValue->setText("-", dontSendNotification);
         architectureValue->setText("-", dontSendNotification);
         sampleRateValue->setText("-", dontSendNotification);
         loudnessValue->setText("-", dontSendNotification);
