@@ -53,7 +53,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextValueSuffix(" ct");
+    detuneSlider->setTextValueSuffix(String::fromUTF8(" \xC2\xA2")); // Cent sign (U+00A2)
     addAndMakeVisible(detuneSlider.get());
 
     // Detune preset buttons (boundary testing)
