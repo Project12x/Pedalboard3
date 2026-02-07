@@ -204,6 +204,9 @@ class NAMModelBrowserComponent : public Component,
     std::vector<IRFileInfo> irFiles;
     std::unique_ptr<FileChooser> irFolderChooser;
 
+    // Scanning state
+    bool isScanning = false;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMModelBrowserComponent)
 };
 

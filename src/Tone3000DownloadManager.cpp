@@ -70,17 +70,19 @@ void Tone3000DownloadManager::queueDownload(const Tone3000::ToneInfo& tone)
                     return;
                 }
 
-                queueDownload(juce::String(tone.id), juce::String(tone.name), url, fileSize);
+                queueDownload(juce::String(tone.id), juce::String(tone.name), url, fileSize,
+                              juce::String(tone.platform));
             });
         return;
     }
 
     queueDownload(juce::String(tone.id), juce::String(tone.name),
-                  juce::String(tone.modelUrl), tone.fileSize);
+                  juce::String(tone.modelUrl), tone.fileSize, juce::String(tone.platform));
 }
 
 void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const juce::String& toneName,
-                                             const juce::String& url, int64_t expectedSize)
+                                             const juce::String& url, int64_t expectedSize,
+                                             const juce::String& platform)
 {
     // Check if already cached
     if (isCached(toneId))
@@ -108,7 +110,7 @@ void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const ju
     task.toneId = toneId.toStdString();
     task.toneName = toneName.toStdString();
     task.url = url.toStdString();
-    task.targetPath = getTargetPath(toneId, toneName).getFullPathName().toStdString();
+    task.targetPath = getTargetPath(toneId, toneName, platform).getFullPathName().toStdString();
     task.state = Tone3000::DownloadState::Pending;
     task.totalBytes = expectedSize;
 
@@ -243,14 +245,25 @@ bool Tone3000DownloadManager::isCached(const juce::String& toneId) const
 
 juce::File Tone3000DownloadManager::getCachedFile(const juce::String& toneId) const
 {
-    // Look for .nam file in tone's cache folder
+    // Look for model/IR files in tone's cache folder
     juce::File toneDir = cacheDirectory.getChildFile(toneId);
 
     if (toneDir.isDirectory())
     {
-        auto files = toneDir.findChildFiles(juce::File::findFiles, false, "*.nam");
-        if (!files.isEmpty())
-            return files[0];
+        // Check for NAM models first
+        auto namFiles = toneDir.findChildFiles(juce::File::findFiles, false, "*.nam");
+        if (!namFiles.isEmpty())
+            return namFiles[0];
+
+        // Check for IR files
+        auto wavFiles = toneDir.findChildFiles(juce::File::findFiles, false, "*.wav");
+        if (!wavFiles.isEmpty())
+            return wavFiles[0];
+
+        // Check for AIDA-X files
+        auto aidaxFiles = toneDir.findChildFiles(juce::File::findFiles, false, "*.aidax");
+        if (!aidaxFiles.isEmpty())
+            return aidaxFiles[0];
     }
 
     return {};
@@ -552,7 +565,8 @@ void Tone3000DownloadManager::notifyCancelled(const juce::String& toneId)
 }
 
 juce::File Tone3000DownloadManager::getTargetPath(const juce::String& toneId,
-                                                   const juce::String& toneName) const
+                                                   const juce::String& toneName,
+                                                   const juce::String& platform) const
 {
     // Create folder for this tone
     juce::File toneDir = cacheDirectory.getChildFile(toneId);
@@ -564,5 +578,12 @@ juce::File Tone3000DownloadManager::getTargetPath(const juce::String& toneId,
     if (safeName.isEmpty())
         safeName = "model";
 
-    return toneDir.getChildFile(safeName + ".nam");
+    // Determine file extension based on platform
+    juce::String extension = ".nam";
+    if (platform.equalsIgnoreCase("ir"))
+        extension = ".wav";
+    else if (platform.equalsIgnoreCase("aida-x"))
+        extension = ".aidax";
+
+    return toneDir.getChildFile(safeName + extension);
 }

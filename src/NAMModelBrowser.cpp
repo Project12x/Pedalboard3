@@ -43,39 +43,188 @@ int NAMModelListModel::getNumRows()
 void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const int margin = 6;
+    const float cornerRadius = 6.0f;
+    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f,
+                                 static_cast<float>(width - margin * 2),
+                                 static_cast<float>(height - 4));
 
-    // Background: selection > hover > alternating
+    // Background with rounded corners
     if (rowIsSelected)
-        g.fillAll(colours["List Selection"]);
+    {
+        g.setColour(colours["Accent Colour"].withAlpha(0.3f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"]);
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.5f);
+    }
     else if (rowNumber == hoveredRow)
-        g.fillAll(colours["List Selection"].withAlpha(0.15f));
-    else if (rowNumber % 2 == 0)
-        g.fillAll(colours["Dialog Inner Background"]);
-    else
-        g.fillAll(colours["Dialog Inner Background"].darker(0.05f));
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+    }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& model = allModels[filteredIndices[rowNumber]];
-        int textX = 10;
-        int halfHeight = height / 2;
+        const int textX = margin + 10;
 
-        // Name on top line
-        g.setColour(colours["Text Colour"]);
-        g.setFont(13.0f);
-        g.drawText(String(model.name), textX, 2, width - 20, halfHeight,
+        // Extract rig type and model type from metadata
+        String rigType;
+        String modelType;
+        if (!model.metadata.empty())
+        {
+            try
+            {
+                auto meta = nlohmann::json::parse(model.metadata);
+
+                // Try to get amp/gear info in order of preference
+                if (meta.contains("gear") && meta["gear"].is_object())
+                {
+                    const auto& gear = meta["gear"];
+                    if (gear.contains("amp") && gear["amp"].is_string())
+                        rigType = String(gear["amp"].get<std::string>());
+                }
+                if (rigType.isEmpty() && meta.contains("amp") && meta["amp"].is_string())
+                    rigType = String(meta["amp"].get<std::string>());
+                if (rigType.isEmpty() && meta.contains("gear") && meta["gear"].is_string())
+                    rigType = String(meta["gear"].get<std::string>());
+                if (rigType.isEmpty() && meta.contains("name") && meta["name"].is_string())
+                    rigType = String(meta["name"].get<std::string>());
+
+                // Try to get model type (preamp/amp/full chain)
+                if (meta.contains("model_type") && meta["model_type"].is_string())
+                    modelType = String(meta["model_type"].get<std::string>());
+                else if (meta.contains("type") && meta["type"].is_string())
+                    modelType = String(meta["type"].get<std::string>());
+                else if (meta.contains("category") && meta["category"].is_string())
+                    modelType = String(meta["category"].get<std::string>());
+                else if (meta.contains("capture") && meta["capture"].is_string())
+                    modelType = String(meta["capture"].get<std::string>());
+                else if (meta.contains("gear_type") && meta["gear_type"].is_string())
+                    modelType = String(meta["gear_type"].get<std::string>());
+            }
+            catch (const std::exception&)
+            {
+                // Ignore parse errors
+            }
+        }
+
+        // Badge layout - rightmost is architecture, then model type
+        const int badgeHeight = 16;
+        const int badgeSpacing = 4;
+        int badgeX = width - margin - 6;
+
+        // Architecture badge (rightmost)
+        const int archBadgeWidth = 50;
+        badgeX -= archBadgeWidth;
+
+        Colour archColour;
+        String archShort(model.architecture);
+        if (archShort.containsIgnoreCase("LSTM"))
+            archColour = Colour(0xff4a9eff);  // Blue
+        else if (archShort.containsIgnoreCase("WaveNet"))
+            archColour = Colour(0xff9b59b6);  // Purple
+        else if (archShort.containsIgnoreCase("ConvNet"))
+            archColour = Colour(0xff2ecc71);  // Green
+        else if (archShort.containsIgnoreCase("Linear"))
+            archColour = Colour(0xffe67e22);  // Orange
+        else
+            archColour = colours["Text Colour"].withAlpha(0.4f);
+
+        Rectangle<float> archBadgeBounds(static_cast<float>(badgeX),
+                                          (height - badgeHeight) / 2.0f,
+                                          static_cast<float>(archBadgeWidth),
+                                          static_cast<float>(badgeHeight));
+        g.setColour(archColour.withAlpha(0.15f));
+        g.fillRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f);
+        g.setColour(archColour.withAlpha(0.6f));
+        g.drawRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f, 1.0f);
+
+        g.setFont(Font(9.0f));
+        g.setColour(archColour.withAlpha(0.8f));
+        g.drawText(archShort, archBadgeBounds, Justification::centred, true);
+
+        // Model type badge (left of architecture badge, if we have type info)
+        if (modelType.isNotEmpty())
+        {
+            badgeX -= badgeSpacing;
+
+            // Normalize model type display text
+            String typeDisplay = modelType.toLowerCase();
+            Colour typeColour;
+            if (typeDisplay.contains("preamp") || typeDisplay.contains("pre-amp"))
+            {
+                typeDisplay = "Preamp";
+                typeColour = Colour(0xfff39c12);  // Yellow/gold
+            }
+            else if (typeDisplay.contains("full") || typeDisplay.contains("chain") || typeDisplay.contains("rig"))
+            {
+                typeDisplay = "Full Rig";
+                typeColour = Colour(0xff1abc9c);  // Teal
+            }
+            else if (typeDisplay.contains("pedal"))
+            {
+                typeDisplay = "Pedal";
+                typeColour = Colour(0xffe74c3c);  // Red
+            }
+            else if (typeDisplay.contains("amp"))
+            {
+                typeDisplay = "Amp";
+                typeColour = Colour(0xff3498db);  // Blue
+            }
+            else
+            {
+                typeDisplay = modelType.substring(0, 10);  // Truncate unknown types
+                typeColour = colours["Text Colour"].withAlpha(0.5f);
+            }
+
+            int typeBadgeWidth = static_cast<int>(Font(9.0f).getStringWidthFloat(typeDisplay)) + 12;
+            badgeX -= typeBadgeWidth;
+
+            Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX),
+                                              (height - badgeHeight) / 2.0f,
+                                              static_cast<float>(typeBadgeWidth),
+                                              static_cast<float>(badgeHeight));
+            g.setColour(typeColour.withAlpha(0.15f));
+            g.fillRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f);
+            g.setColour(typeColour.withAlpha(0.6f));
+            g.drawRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f, 1.0f);
+
+            g.setFont(Font(9.0f));
+            g.setColour(typeColour.withAlpha(0.8f));
+            g.drawText(typeDisplay, typeBadgeBounds, Justification::centred, true);
+        }
+
+        // Model name (top line) - adjust width to not overlap badges
+        const int textEndX = badgeX - 8;
+        g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
+        g.setFont(Font(13.0f, Font::bold));
+        g.drawText(String(model.name), textX, 4, textEndX - textX, height / 2,
                    Justification::centredLeft, true);
 
-        // Architecture on bottom line (dimmed)
-        g.setColour(colours["Text Colour"].withAlpha(0.6f));
-        g.setFont(11.0f);
-        g.drawText(String(model.architecture), textX, halfHeight, width - 20, halfHeight - 2,
-                   Justification::centredLeft, true);
+        // Rig type and sample rate info on bottom line
+        String infoLine;
+        if (rigType.isNotEmpty())
+        {
+            // Truncate long rig names
+            if (rigType.length() > 40)
+                rigType = rigType.substring(0, 37) + "...";
+            infoLine = rigType;
+        }
+        if (model.expectedSampleRate > 0)
+        {
+            if (infoLine.isNotEmpty()) infoLine += "  |  ";
+            infoLine += String(static_cast<int>(model.expectedSampleRate)) + " Hz";
+        }
+
+        if (infoLine.isNotEmpty())
+        {
+            g.setColour(colours["Text Colour"].withAlpha(0.5f));
+            g.setFont(11.0f);
+            g.drawText(infoLine, textX, height / 2, textEndX - textX, height / 2 - 4,
+                       Justification::centredLeft, true);
+        }
     }
-
-    // Bottom separator
-    g.setColour(colours["Text Colour"].withAlpha(0.1f));
-    g.drawHorizontalLine(height - 1, 0, width);
 }
 
 const NAMModelInfo* NAMModelListModel::getModelAt(int index) const
@@ -134,59 +283,85 @@ int IRListModel::getNumRows()
 void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const int margin = 6;
+    const float cornerRadius = 6.0f;
+    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f,
+                                 static_cast<float>(width - margin * 2),
+                                 static_cast<float>(height - 4));
 
-    // Background: selection > hover > alternating
+    // Background with rounded corners
     if (rowIsSelected)
-        g.fillAll(colours["List Selection"]);
+    {
+        g.setColour(colours["Accent Colour"].withAlpha(0.3f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"]);
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.5f);
+    }
     else if (rowNumber == hoveredRow)
-        g.fillAll(colours["List Selection"].withAlpha(0.15f));
-    else if (rowNumber % 2 == 0)
-        g.fillAll(colours["Dialog Inner Background"]);
-    else
-        g.fillAll(colours["Dialog Inner Background"].darker(0.05f));
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+    }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& ir = allFiles[filteredIndices[rowNumber]];
-        int textX = 10;
-        int halfHeight = height / 2;
+        const int textX = margin + 10;
+        const int badgeWidth = 50;
+        const int badgeHeight = 18;
+        const int badgeX = width - margin - badgeWidth - 8;
 
-        // Name on top line
-        g.setColour(colours["Text Colour"]);
-        g.setFont(13.0f);
-        g.drawText(String(ir.name), textX, 2, width - 20, halfHeight,
-                   Justification::centredLeft, true);
-
-        // Duration and sample rate on bottom line (dimmed)
-        g.setColour(colours["Text Colour"].withAlpha(0.6f));
-        g.setFont(11.0f);
-        String details;
+        // Duration badge
+        String durationText;
         if (ir.durationSeconds > 0)
         {
             if (ir.durationSeconds >= 1.0)
-                details = String(ir.durationSeconds, 2) + "s";
+                durationText = String(ir.durationSeconds, 2) + "s";
             else
-                details = String(static_cast<int>(ir.durationSeconds * 1000)) + "ms";
+                durationText = String(static_cast<int>(ir.durationSeconds * 1000)) + "ms";
         }
-        if (ir.sampleRate > 0)
+
+        if (durationText.isNotEmpty())
         {
-            if (details.isNotEmpty())
-                details += " | ";
-            details += String(static_cast<int>(ir.sampleRate / 1000)) + "kHz";
+            Rectangle<float> badgeBounds(static_cast<float>(badgeX),
+                                          (height - badgeHeight) / 2.0f,
+                                          static_cast<float>(badgeWidth),
+                                          static_cast<float>(badgeHeight));
+            Colour badgeColour = Colour(0xff3498db);  // Blue for duration
+            g.setColour(badgeColour.withAlpha(0.2f));
+            g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
+            g.setColour(badgeColour);
+            g.drawRoundedRectangle(badgeBounds, badgeHeight / 2.0f, 1.0f);
+
+            g.setFont(Font(10.0f, Font::bold));
+            g.setColour(badgeColour);
+            g.drawText(durationText, badgeBounds, Justification::centred, true);
         }
+
+        // IR name
+        g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
+        g.setFont(Font(13.0f, Font::bold));
+        g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2,
+                   Justification::centredLeft, true);
+
+        // Sample rate and channels on bottom line
+        String details;
+        if (ir.sampleRate > 0)
+            details = String(static_cast<int>(ir.sampleRate / 1000)) + "kHz";
         if (ir.numChannels > 0)
         {
-            if (details.isNotEmpty())
-                details += " | ";
+            if (details.isNotEmpty()) details += "  |  ";
             details += ir.numChannels == 1 ? "Mono" : (ir.numChannels == 2 ? "Stereo" : String(ir.numChannels) + "ch");
         }
-        g.drawText(details, textX, halfHeight, width - 20, halfHeight - 2,
-                   Justification::centredLeft, true);
-    }
 
-    // Bottom separator
-    g.setColour(colours["Text Colour"].withAlpha(0.1f));
-    g.drawHorizontalLine(height - 1, 0, width);
+        if (details.isNotEmpty())
+        {
+            g.setColour(colours["Text Colour"].withAlpha(0.5f));
+            g.setFont(11.0f);
+            g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4,
+                       Justification::centredLeft, true);
+        }
+    }
 }
 
 const IRFileInfo* IRListModel::getFileAt(int index) const
@@ -327,21 +502,44 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     searchBox->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
     addAndMakeVisible(searchBox.get());
 
-    // Buttons
+    // Buttons with styled colors
+    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false) {
+        if (isPrimary)
+        {
+            // Primary action button (accent color)
+            btn->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
+            btn->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+            btn->setColour(TextButton::textColourOffId, Colours::white);
+            btn->setColour(TextButton::textColourOnId, Colours::white);
+        }
+        else
+        {
+            // Secondary button
+            btn->setColour(TextButton::buttonColourId, colours["Button Colour"]);
+            btn->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
+            btn->setColour(TextButton::textColourOffId, colours["Text Colour"]);
+            btn->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+        }
+    };
+
     refreshButton = std::make_unique<TextButton>("Refresh");
     refreshButton->addListener(this);
+    styleButton(refreshButton.get());
     addAndMakeVisible(refreshButton.get());
 
     browseFolderButton = std::make_unique<TextButton>("Browse Folder...");
     browseFolderButton->addListener(this);
+    styleButton(browseFolderButton.get());
     addAndMakeVisible(browseFolderButton.get());
 
     loadButton = std::make_unique<TextButton>("Load Model");
     loadButton->addListener(this);
+    styleButton(loadButton.get(), true);  // Primary action
     addAndMakeVisible(loadButton.get());
 
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->addListener(this);
+    styleButton(closeButton.get());
     addAndMakeVisible(closeButton.get());
 
     // Model list - transparent background for custom rounded painting
@@ -423,11 +621,19 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     irBrowseFolderButton = std::make_unique<TextButton>("Browse IR Folder...");
     irBrowseFolderButton->addListener(this);
+    irBrowseFolderButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
+    irBrowseFolderButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
+    irBrowseFolderButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
+    irBrowseFolderButton->setColour(TextButton::textColourOnId, colours["Text Colour"]);
     irBrowseFolderButton->setVisible(false);
     addAndMakeVisible(irBrowseFolderButton.get());
 
     irLoadButton = std::make_unique<TextButton>("Load IR");
     irLoadButton->addListener(this);
+    irLoadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
+    irLoadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+    irLoadButton->setColour(TextButton::textColourOffId, Colours::white);
+    irLoadButton->setColour(TextButton::textColourOnId, Colours::white);
     irLoadButton->setVisible(false);
     addAndMakeVisible(irLoadButton.get());
 
@@ -504,8 +710,8 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     g.setGradientFill(bgGradient);
     g.fillAll();
 
-    // Only draw panels if on Local tab
-    if (currentTab == 0)
+    // Draw panels for Local and IR tabs
+    if (currentTab == 0 || currentTab == 2)
     {
         auto bounds = getLocalBounds().reduced(16);
         bounds.removeFromTop(30 + 8 + 28 + 8); // Title + tabs + search row spacing
@@ -515,11 +721,11 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         auto listArea = bounds.removeFromLeft(listWidth);
         bounds.removeFromLeft(16); // Gap
 
-        // Draw rounded list background
+        // Draw rounded list background with subtle inner shadow
         auto listBounds = listArea.toFloat();
-        g.setColour(colours["Dialog Inner Background"]);
+        g.setColour(colours["Dialog Inner Background"].darker(0.02f));
         g.fillRoundedRectangle(listBounds, 8.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.2f));
+        g.setColour(colours["Text Colour"].withAlpha(0.15f));
         g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
         // Draw card-style details panel with shadow
@@ -528,19 +734,21 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
         // Drop shadow
-        melatonin::DropShadow shadow(Colours::black.withAlpha(0.2f), 8, {2, 2});
+        melatonin::DropShadow shadow(Colours::black.withAlpha(0.25f), 10, {2, 3});
         shadow.render(g, detailsPath);
 
         // Card fill with subtle gradient
-        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f),
+        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f),
                                  detailsBounds.getX(), detailsBounds.getY(),
-                                 colours["Dialog Inner Background"].darker(0.04f),
+                                 colours["Dialog Inner Background"].darker(0.03f),
                                  detailsBounds.getX(), detailsBounds.getBottom(), false);
         g.setGradientFill(cardGrad);
         g.fillPath(detailsPath);
 
-        // Card border
-        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        // Card border with glow effect
+        g.setColour(colours["Accent Colour"].withAlpha(0.1f));
+        g.strokePath(detailsPath, PathStrokeType(2.0f));
+        g.setColour(colours["Text Colour"].withAlpha(0.12f));
         g.strokePath(detailsPath, PathStrokeType(1.0f));
     }
 }
@@ -916,6 +1124,11 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
         return;
     }
 
+    // Show scanning indicator
+    isScanning = true;
+    statusLabel->setText("Scanning for NAM models...", dontSendNotification);
+    statusLabel->repaint();
+
     spdlog::info("[NAMModelBrowser] Scanning directory: {}", directory.getFullPathName().toStdString());
 
     // Find all .nam files recursively
@@ -930,6 +1143,7 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
         }
     }
 
+    isScanning = false;
     spdlog::info("[NAMModelBrowser] Found {} NAM models", models.size());
 
     // Sort by name
@@ -940,7 +1154,7 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
     modelList->updateContent();
     modelList->repaint();
 
-    // Update status bar
+    // Update status bar with result
     String statusText = currentDirectory.getFullPathName();
     if (models.empty())
         statusText += " - No models found";
@@ -1174,6 +1388,11 @@ void NAMModelBrowserComponent::scanIRDirectory(const File& directory)
 {
     irFiles.clear();
 
+    // Show scanning indicator
+    isScanning = true;
+    statusLabel->setText("Scanning for IR files...", dontSendNotification);
+    statusLabel->repaint();
+
     // Track seen file paths to avoid duplicates
     std::set<String> seenPaths;
 
@@ -1224,6 +1443,7 @@ void NAMModelBrowserComponent::scanIRDirectory(const File& directory)
         scanDir(currentDirectory);
     }
 
+    isScanning = false;
     spdlog::info("[NAMModelBrowser] Found {} IR files total", irFiles.size());
 
     // Sort by name

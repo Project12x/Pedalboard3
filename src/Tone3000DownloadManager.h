@@ -65,7 +65,8 @@ public:
 
     /// Queue a download with explicit URL
     void queueDownload(const juce::String& toneId, const juce::String& toneName,
-                        const juce::String& url, int64_t expectedSize = 0);
+                        const juce::String& url, int64_t expectedSize = 0,
+                        const juce::String& platform = "nam");
 
     /// Cancel a specific download
     void cancelDownload(const juce::String& toneId);
@@ -130,7 +131,8 @@ private:
     void notifyCancelled(const juce::String& toneId);
 
     /// Get target file path for a tone
-    juce::File getTargetPath(const juce::String& toneId, const juce::String& toneName) const;
+    juce::File getTargetPath(const juce::String& toneId, const juce::String& toneName,
+                              const juce::String& platform) const;
 
     //==========================================================================
     // Members
