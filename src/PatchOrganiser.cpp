@@ -572,8 +572,11 @@ void PatchOrganiser::labelTextChanged(Label* labelThatHasChanged)
     {
         patches[index]->setAttribute("name", labelThatHasChanged->getText());
         patchComboBox->changeItemText(index + 1, labelThatHasChanged->getText());
+
+        // If renaming the currently selected patch, update the displayed text directly
+        // (changeItemText doesn't update the visible text for the current selection)
         if (patchComboBox->getSelectedItemIndex() == index)
-            patchComboBox->setSelectedId(index + 1);
+            patchComboBox->setText(labelThatHasChanged->getText(), dontSendNotification);
     }
 }
 
