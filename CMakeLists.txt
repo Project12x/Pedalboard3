@@ -552,19 +552,16 @@ target_compile_definitions(Pedalboard3Scanner PRIVATE
     JUCE_PLUGINHOST_VST=0
     JUCE_PLUGINHOST_AU=0
     JUCE_PLUGINHOST_LADSPA=0
+    JUCE_STANDALONE_APPLICATION=1
+    JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=0
 )
 
+# Minimal dependencies for plugin scanning - no audio devices, formats, or utils needed
 target_link_libraries(Pedalboard3Scanner PRIVATE
-    juce::juce_audio_basics
-    juce::juce_audio_devices
-    juce::juce_audio_formats
-    juce::juce_audio_processors
-    juce::juce_audio_utils
+    juce::juce_audio_processors  # Required for plugin loading (pulls in gui_basics, graphics)
     juce::juce_core
     juce::juce_data_structures
     juce::juce_events
-    juce::juce_gui_basics
-    juce::juce_graphics
     juce::juce_recommended_config_flags
 )
 
