@@ -7,10 +7,12 @@ A focused roadmap for current development. For historical completed phases, see 
 ## Current Status
 
 **Phase 4 (Launch)** - COMPLETE
-- Undo/Redo system
-- Plugin blacklist + crash protection
-- Out-of-process scanner
-- Launch prep (donations, announcements)
+| # | Feature | Status |
+|---|---------|--------|
+| 4.1 | Undo/Redo system | ✅ Complete |
+| 4.2 | Plugin blacklist + crash protection | ✅ Complete |
+| 4.3 | Out-of-process scanner | ✅ Complete |
+| 4.4 | Launch prep (donations, announcements) | ✅ Complete |
 
 ---
 
@@ -179,7 +181,7 @@ A focused roadmap for current development. For historical completed phases, see 
 ### 6E: Legacy UX (Niall's ToDo.txt)
 | # | Task | Status |
 |---|------|--------|
-| 6E.1 | Snap to grid | Planned |
+| 6E.1 | Snap to grid | Deferred |
 | 6E.2 | Zoom out mode | Planned |
 | 6E.3 | Plugin pins enlarge on hover | Planned |
 | 6E.4 | Hotkey to bypass all | Planned |

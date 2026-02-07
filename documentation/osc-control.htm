@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSC Control - Pedalboard3</title>
+    <style>
+        :root { --bg-color: #1a1a2e; --card-bg: #16213e; --text-color: #eee; --text-muted: #aaa; --accent: #4da6ff; --border: #2a3a5e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.7; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        p { margin-bottom: 1rem; }
+        ol, ul { margin: 1rem 0 1rem 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+        code { background: rgba(77, 166, 255, 0.15); padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; }
+        pre { background: var(--card-bg); padding: 1rem; border-radius: 4px; overflow-x: auto; margin: 1rem 0; }
+        a { color: var(--accent); }
+        .back-link { display: inline-block; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / OSC Control</p>
+        <h1>OSC Control</h1>
+        <p>Control Pedalboard3 remotely using Open Sound Control (OSC) from tablets, phones, or other computers.</p>
+
+        <h2>Enabling OSC</h2>
+        <ol>
+            <li>Go to <strong>Options &gt; Misc Settings</strong></li>
+            <li>Enable OSC input</li>
+            <li>Note the port number (default: 8000)</li>
+            <li>Your IP address is shown in <strong>Help &gt; About</strong></li>
+        </ol>
+
+        <h2>Compatible Apps</h2>
+        <ul>
+            <li><strong>TouchOSC</strong> (iOS, Android) - Custom layouts</li>
+            <li><strong>Open Stage Control</strong> (Desktop) - Free, open source</li>
+            <li><strong>OSC Controller</strong> (iOS) - Simple controls</li>
+        </ul>
+
+        <h2>OSC Address Format</h2>
+        <p>Parameters are addressed using this format:</p>
+        <pre>/pedalboard/plugin/[plugin-name]/param/[param-index]</pre>
+
+        <h2>Mapping OSC</h2>
+        <ol>
+            <li>Right-click on any plugin parameter</li>
+            <li>Select <strong>OSC Learn</strong></li>
+            <li>Send an OSC message from your controller</li>
+            <li>The mapping is created automatically</li>
+        </ol>
+
+        <h2>Application Mappings</h2>
+        <p>Go to <strong>Options &gt; Application Mappings</strong> to map OSC to:</p>
+        <ul>
+            <li>Patch switching</li>
+            <li>Transport controls</li>
+            <li>Master volume</li>
+            <li>Any plugin parameter</li>
+        </ul>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>

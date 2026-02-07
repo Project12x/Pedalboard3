@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming &amp; Recording Setup - Pedalboard3</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #eee;
+            --text-muted: #aaa;
+            --accent: #4da6ff;
+            --accent-hover: #7bbfff;
+            --border: #2a3a5e;
+            --success: #4caf50;
+            --warning: #ff9800;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            padding: 2rem;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb {
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+        .intro {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        h2 {
+            font-size: 1.4rem;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h3 {
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent);
+        }
+        p { margin-bottom: 1rem; }
+        .method {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .method.recommended {
+            border-color: var(--success);
+        }
+        .method-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .method-header h3 { margin: 0; }
+        .tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .tag.recommended { background: var(--success); color: #fff; }
+        .tag.alternative { background: var(--warning); color: #000; }
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li { margin-bottom: 0.5rem; }
+        code {
+            background: rgba(77, 166, 255, 0.15);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 0.9em;
+        }
+        .note {
+            background: rgba(77, 166, 255, 0.1);
+            border-left: 3px solid var(--accent);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .note strong { color: var(--accent); }
+        a { color: var(--accent); }
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / Streaming &amp; Recording</p>
+
+        <h1>Streaming &amp; Recording Setup</h1>
+        <p class="intro">How to capture Pedalboard3 audio in OBS, Discord, and other applications.</p>
+
+        <h2>Recommended: OBS Application Audio Capture</h2>
+
+        <div class="method recommended">
+            <div class="method-header">
+                <span class="tag recommended">Recommended</span>
+                <h3>OBS Studio (Windows 10/11)</h3>
+            </div>
+            <p>OBS 28+ can capture audio directly from Pedalboard3 without any additional software.</p>
+
+            <h4>Setup Steps:</h4>
+            <ol>
+                <li>Open <strong>OBS Studio</strong> (version 28 or newer)</li>
+                <li>In the <strong>Sources</strong> panel, click the <code>+</code> button</li>
+                <li>Select <strong>Application Audio Capture</strong></li>
+                <li>Name it (e.g., "Pedalboard Audio") and click OK</li>
+                <li>In the properties window, find <strong>Pedalboard3</strong> in the application list</li>
+                <li>Click OK to add the source</li>
+            </ol>
+
+            <div class="note">
+                <strong>Note:</strong> Make sure Pedalboard3 is running and producing audio before adding the source.
+                OBS can only detect applications that are actively using audio.
+            </div>
+
+            <p><strong>Advantages:</strong></p>
+            <ul>
+                <li>Zero additional software required</li>
+                <li>Captures only Pedalboard3 audio (not system sounds)</li>
+                <li>No latency added</li>
+                <li>Works immediately</li>
+            </ul>
+        </div>
+
+        <h2>Alternative Methods</h2>
+
+        <div class="method">
+            <div class="method-header">
+                <span class="tag alternative">Alternative</span>
+                <h3>VB-Cable (Virtual Audio Cable)</h3>
+            </div>
+            <p>A free virtual audio driver that creates a virtual audio device for routing.</p>
+
+            <h4>Setup Steps:</h4>
+            <ol>
+                <li>Download and install <a href="https://vb-audio.com/Cable/" target="_blank">VB-Cable</a> (free)</li>
+                <li>Restart your computer</li>
+                <li>In Pedalboard3, go to <strong>Options &gt; Audio Settings</strong></li>
+                <li>Set the <strong>Output</strong> to <code>CABLE Input (VB-Audio Virtual Cable)</code></li>
+                <li>In OBS, add an <strong>Audio Input Capture</strong> source</li>
+                <li>Select <code>CABLE Output (VB-Audio Virtual Cable)</code></li>
+            </ol>
+
+            <div class="note">
+                <strong>Tip:</strong> You won't hear audio through your speakers when outputting to VB-Cable.
+                Use VoiceMeeter (also free from VB-Audio) if you need to hear audio while streaming.
+            </div>
+        </div>
+
+        <div class="method">
+            <div class="method-header">
+                <span class="tag alternative">Alternative</span>
+                <h3>Discord / Zoom / Video Calls</h3>
+            </div>
+            <p>To share Pedalboard3 audio in voice/video applications:</p>
+
+            <ol>
+                <li>Install VB-Cable (see above)</li>
+                <li>Set Pedalboard3 output to <code>CABLE Input</code></li>
+                <li>In Discord/Zoom, set your <strong>Input Device</strong> to <code>CABLE Output</code></li>
+            </ol>
+
+            <p>This routes your processed audio as if it were a microphone input.</p>
+        </div>
+
+        <h2>Troubleshooting</h2>
+
+        <h3>No audio in OBS?</h3>
+        <ul>
+            <li>Check that Pedalboard3 is producing audio (meters should be moving)</li>
+            <li>Make sure the audio source isn't muted in OBS</li>
+            <li>Try restarting OBS after opening Pedalboard3</li>
+        </ul>
+
+        <h3>Audio is delayed/out of sync?</h3>
+        <ul>
+            <li>In OBS, right-click the audio source and select <strong>Advanced Audio Properties</strong></li>
+            <li>Adjust the <strong>Sync Offset</strong> to match your video</li>
+        </ul>
+
+        <h3>VB-Cable not appearing?</h3>
+        <ul>
+            <li>Restart your computer after installing</li>
+            <li>Check Windows Sound Settings to ensure VB-Cable is enabled</li>
+            <li>Run the VB-Cable installer as Administrator</li>
+        </ul>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>

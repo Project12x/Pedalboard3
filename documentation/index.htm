@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedalboard3 Documentation</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #eee;
+            --text-muted: #aaa;
+            --accent: #4da6ff;
+            --accent-hover: #7bbfff;
+            --border: #2a3a5e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+        .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        .section { margin-bottom: 2rem; }
+        .section h2 {
+            font-size: 1.3rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .card h3 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .tag {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg-color);
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        footer a { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pedalboard3 Documentation</h1>
+        <p class="subtitle">A modern VST3 plugin host for live performance</p>
+
+        <div class="section">
+            <h2>Getting Started</h2>
+            <div class="card-grid">
+                <a href="quick-start.htm" class="card">
+                    <h3>Quick Start Guide</h3>
+                    <p>Set up your audio interface and add your first plugins</p>
+                </a>
+                <a href="streaming-setup.htm" class="card">
+                    <span class="tag">NEW</span>
+                    <h3>Streaming &amp; Recording</h3>
+                    <p>Capture audio in OBS, Discord, and other applications</p>
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Features</h2>
+            <div class="card-grid">
+                <a href="midi-mapping.htm" class="card">
+                    <h3>MIDI Mapping</h3>
+                    <p>Control plugin parameters with MIDI controllers</p>
+                </a>
+                <a href="osc-control.htm" class="card">
+                    <h3>OSC Control</h3>
+                    <p>Remote control via Open Sound Control protocol</p>
+                </a>
+                <a href="built-in-tools.htm" class="card">
+                    <h3>Built-in Tools</h3>
+                    <p>Tuner, metronome, looper, tone generator, and more</p>
+                </a>
+                <a href="subgraphs.htm" class="card">
+                    <h3>Subgraphs</h3>
+                    <p>Organize complex signal chains into reusable groups</p>
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Reference</h2>
+            <div class="card-grid">
+                <a href="keyboard-shortcuts.htm" class="card">
+                    <h3>Keyboard Shortcuts</h3>
+                    <p>Speed up your workflow with hotkeys</p>
+                </a>
+                <a href="troubleshooting.htm" class="card">
+                    <h3>Troubleshooting</h3>
+                    <p>Common issues and solutions</p>
+                </a>
+            </div>
+        </div>
+
+        <footer>
+            <p>Pedalboard3 is open source software.
+               <a href="https://github.com/Project12x/Pedalboard3">View on GitHub</a> |
+               <a href="https://ko-fi.com/worriedwalrus">Support Development</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

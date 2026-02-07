@@ -16,8 +16,8 @@
 - ✅ CrashProtection with SEH wrappers and Watchdog thread
 - ✅ FilterGraph integration (blocks blacklisted plugins at load)
 - ✅ BlacklistWindow UI for manual management (Options → Plugin Blacklist)
+- ✅ Out-of-process scanner (Complete)
 - ⏳ Timeout logic for hung scans (pending)
-- ⏳ Out-of-process scanner (pending)
 
 **Monolith Sharding (Complete):**
 - ✅ PedalboardProcessors.cpp → 7 files
@@ -91,12 +91,11 @@
 
 ## Next Steps (Phase 6)
 
-1. **Timeout Logic** - Detect and terminate hung plugin scans
-2. **Out-of-Process Scanner** - Crash-isolated plugin discovery
+1. **Patch Organiser Sync** - Fix combobox text update on rename
+2. **Timeout Logic** - Detect and terminate hung plugin scans
 3. **6B: Testing** - Add more unit tests (FilterGraph, MIDI mapping)
 4. **6A: UI Polish** - Premium typography/icons
 
 ---
 
 *Last updated: 2026-02-05*
-

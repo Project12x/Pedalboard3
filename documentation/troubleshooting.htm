@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - Pedalboard3</title>
+    <style>
+        :root { --bg-color: #1a1a2e; --card-bg: #16213e; --text-color: #eee; --text-muted: #aaa; --accent: #4da6ff; --border: #2a3a5e; --warning: #ff9800; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.7; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--warning); }
+        p { margin-bottom: 1rem; }
+        ul { margin: 0.5rem 0 1rem 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+        code { background: rgba(77, 166, 255, 0.15); padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; }
+        a { color: var(--accent); }
+        .back-link { display: inline-block; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / Troubleshooting</p>
+        <h1>Troubleshooting</h1>
+
+        <h2>Audio Issues</h2>
+
+        <h3>No sound output</h3>
+        <ul>
+            <li>Check that Audio Output is connected in your patch</li>
+            <li>Verify your audio interface is selected in Options &gt; Audio Settings</li>
+            <li>Check that your interface isn't being used by another application</li>
+            <li>Make sure output isn't muted (check the Output Toggle node if present)</li>
+        </ul>
+
+        <h3>Audio crackling or dropouts</h3>
+        <ul>
+            <li>Increase buffer size in Audio Settings (try 256 or 512 samples)</li>
+            <li>Close other applications using audio</li>
+            <li>Disable WiFi and Bluetooth if not needed</li>
+            <li>Check your audio interface drivers are up to date</li>
+        </ul>
+
+        <h3>High latency</h3>
+        <ul>
+            <li>Use ASIO drivers on Windows for lowest latency</li>
+            <li>Lower the buffer size (but watch for crackling)</li>
+            <li>Reduce the number of plugins in your chain</li>
+        </ul>
+
+        <h2>Plugin Issues</h2>
+
+        <h3>Plugin not appearing after scan</h3>
+        <ul>
+            <li>Make sure you're scanning the correct folder</li>
+            <li>Only VST3 plugins are supported (not VST2)</li>
+            <li>Check if the plugin is 64-bit (32-bit plugins won't work)</li>
+            <li>Some plugins may be blacklisted - check Options &gt; Plugin Management</li>
+        </ul>
+
+        <h3>Plugin crashes on load</h3>
+        <ul>
+            <li>The plugin will be automatically blacklisted</li>
+            <li>Try updating the plugin to the latest version</li>
+            <li>Check <code>Help &gt; Event Log</code> for error details</li>
+        </ul>
+
+        <h3>Plugin window doesn't appear</h3>
+        <ul>
+            <li>Double-click the plugin node to open its editor</li>
+            <li>Check if the window opened off-screen (resize/move your main window)</li>
+            <li>Some plugins don't have a GUI - their parameters appear in the node</li>
+        </ul>
+
+        <h2>Performance Issues</h2>
+
+        <h3>High CPU usage</h3>
+        <ul>
+            <li>Some plugins are CPU-intensive - check individual plugin CPU in the node</li>
+            <li>Freeze or bounce tracks you're not actively editing</li>
+            <li>Consider using fewer instances of heavy plugins</li>
+        </ul>
+
+        <h2>Getting Help</h2>
+        <p>If you're still having issues:</p>
+        <ul>
+            <li>Check <code>Help &gt; Event Log</code> for error messages</li>
+            <li>Visit the <a href="https://github.com/Project12x/Pedalboard3/issues">GitHub Issues</a> page</li>
+            <li>Include your OS version, audio interface, and steps to reproduce</li>
+        </ul>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>
