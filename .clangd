@@ -6,7 +6,7 @@ If:
     - .*/JUCE/examples/.*
     - .*/JuceLibraryCode/.*
     # Build artifacts
-    - .*/build/.*
+    - .*/build.*/.*
     - .*/out/.*
     - .*/release/.*
     - .*/cmake-build-.*/.*
