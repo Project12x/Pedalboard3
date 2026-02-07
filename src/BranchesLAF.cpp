@@ -142,6 +142,8 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
     }
 
     // === Border ===
+    bool isToggled = button.getToggleState();
+
     if (isMouseOverButton && !isButtonDown)
     {
         // Glowing accent border on hover
@@ -152,9 +154,9 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
         g.setColour(accentCol.withAlpha(0.3f));
         g.drawRoundedRectangle(bounds.expanded(1.0f), cornerRadius + 1.0f, 2.0f);
     }
-    else if (isButtonDown)
+    else if (isButtonDown || isToggled)
     {
-        // Bright accent border when pressed
+        // Bright accent border when pressed or toggled on
         g.setColour(accentCol);
         g.drawRoundedRectangle(bounds, cornerRadius, 2.0f);
     }

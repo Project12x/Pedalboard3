@@ -168,12 +168,15 @@ void ToneGeneratorControl::buttonClicked(Button* button)
     }
 
     // Test mode buttons
-    else if (button == staticBtn.get())
-        toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Static);
-    else if (button == sweepBtn.get())
-        toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Sweep);
-    else if (button == driftBtn.get())
-        toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Drift);
+    else if (button == staticBtn.get() || button == sweepBtn.get() || button == driftBtn.get())
+    {
+        if (button == staticBtn.get())
+            toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Static);
+        else if (button == sweepBtn.get())
+            toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Sweep);
+        else
+            toneProcessor->setTestMode(ToneGeneratorProcessor::TestMode::Drift);
+    }
 
     // Play/Stop
     else if (button == playButton.get())
@@ -310,9 +313,10 @@ void ToneGeneratorControl::resized()
     modeRow.removeFromLeft(8);
     playButton->setBounds(modeRow);
 
-    // Style buttons
-    for (auto* btn : {sineBtn.get(), sawBtn.get(), squareBtn.get(), noiseBtn.get(), detune1Btn.get(), detune5Btn.get(),
-                      detune50Btn.get(), detune99Btn.get(), staticBtn.get(), sweepBtn.get(), driftBtn.get()})
+    // Style all buttons
+    for (auto* btn : {sineBtn.get(), sawBtn.get(), squareBtn.get(), noiseBtn.get(),
+                      detune1Btn.get(), detune5Btn.get(), detune50Btn.get(), detune99Btn.get(),
+                      staticBtn.get(), sweepBtn.get(), driftBtn.get()})
     {
         btn->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.1f));
         btn->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));
