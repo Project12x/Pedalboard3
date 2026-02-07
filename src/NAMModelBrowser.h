@@ -61,6 +61,8 @@ class NAMModelBrowserComponent : public Component,
     void resized() override;
     void buttonClicked(Button* button) override;
     void textEditorTextChanged(TextEditor& editor) override;
+    void mouseUp(const MouseEvent& event) override;
+    void mouseDoubleClick(const MouseEvent& event) override;
 
     void scanDirectory(const File& directory);
     void refreshModelList();
@@ -104,6 +106,14 @@ class NAMModelBrowserComponent : public Component,
     std::unique_ptr<Label> loudnessValue;
     std::unique_ptr<Label> metadataLabel;
     std::unique_ptr<TextEditor> metadataDisplay;
+    std::unique_ptr<Label> filePathLabel;
+    std::unique_ptr<Label> filePathValue;
+
+    // Status bar
+    std::unique_ptr<Label> statusLabel;
+
+    // Empty state
+    std::unique_ptr<Label> emptyStateLabel;
 
     File currentDirectory;
     std::vector<NAMModelInfo> models;

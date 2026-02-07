@@ -222,35 +222,42 @@ void Tone3000Client::getModelDownloadInfo(
     const juce::String& toneId,
     std::function<void(juce::String url, int64_t fileSize, Tone3000::ApiError)> callback)
 {
+    if (!isAuthenticated())
+    {
+        callback("", 0, Tone3000::ApiError::fromMessage("Not authenticated"));
+        return;
+    }
+
     juce::URL url(juce::String(API_BASE_URL) + "/models");
     url = url.withParameter("tone_id", toneId);
 
-    // Add auth if available (some models may require it)
-    if (isAuthenticated())
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex);
-        url = url.withParameter("access_token", juce::String(authTokens.accessToken));
-    }
+    spdlog::debug("[Tone3000Client] Getting model info for tone: {}", toneId.toStdString());
 
     makeAsyncGetRequest(url,
         [callback](juce::var result, Tone3000::ApiError error) {
             if (error.isError())
             {
+                spdlog::error("[Tone3000Client] Failed to get model info: {}", error.message);
                 callback("", 0, error);
                 return;
             }
 
-            // Parse model download info
+            // Parse model download info - TONE3000 API returns "data" array with "model_url" field
             auto data = result.getProperty("data", juce::var());
             if (data.isArray() && data.size() > 0)
             {
                 auto firstModel = data[0];
-                juce::String modelUrl = firstModel.getProperty("url", "").toString();
-                int64_t fileSize = static_cast<int64_t>(firstModel.getProperty("file_size", 0));
+                juce::String modelUrl = firstModel.getProperty("model_url", "").toString();
+                // Size might be in "size" or "file_size" field
+                int64_t fileSize = static_cast<int64_t>(firstModel.getProperty("file_size",
+                    firstModel.getProperty("size", 0)));
+
+                spdlog::info("[Tone3000Client] Got model URL: {}...", modelUrl.substring(0, 50).toStdString());
                 callback(modelUrl, fileSize, Tone3000::ApiError::none());
             }
             else
             {
+                spdlog::error("[Tone3000Client] No model data in response");
                 callback("", 0, Tone3000::ApiError::fromMessage("No model data found"));
             }
         });
@@ -333,12 +340,14 @@ juce::var Tone3000Client::makeGetRequest(const juce::URL& url, Tone3000::ApiErro
 
     recordRequest();
 
-    juce::String headers;
+    juce::String headers = "Content-Type: application/json\r\n";
     {
         std::lock_guard<std::mutex> lock(tokenMutex);
         if (authTokens.isValid())
-            headers = "Authorization: Bearer " + juce::String(authTokens.accessToken);
+            headers += "Authorization: Bearer " + juce::String(authTokens.accessToken);
     }
+
+    spdlog::debug("[Tone3000Client] GET {}", url.toString(true).toStdString());
 
     auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress)
         .withConnectionTimeoutMs(10000)

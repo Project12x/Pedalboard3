@@ -14,6 +14,12 @@
 #include <spdlog/spdlog.h>
 #include <random>
 
+#ifdef _WIN32
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#endif
+
 //==============================================================================
 // Tone3000Auth
 //==============================================================================
@@ -50,14 +56,33 @@ void Tone3000Auth::startAuthentication(std::function<void(bool, juce::String)> c
     juce::String redirectUri = "http://localhost:" + juce::String(callbackPort) + "/callback";
     juce::URL authUrl(AUTH_URL);
     authUrl = authUrl.withParameter("redirect_url", redirectUri);
+    authUrl = authUrl.withParameter("state", expectedState);
 
-    spdlog::info("[Tone3000Auth] Starting OAuth flow, redirect: {}", redirectUri.toStdString());
+    spdlog::info("[Tone3000Auth] Starting OAuth flow, redirect: {}, state: {}",
+        redirectUri.toStdString(), expectedState.toStdString());
+
+    // Reset ready flag
+    serverReady = false;
 
     // Start the callback server thread
     startThread();
 
-    // Give the server a moment to start
-    Thread::sleep(100);
+    // Wait for server to be ready (up to 3 seconds)
+    for (int i = 0; i < 30; ++i)
+    {
+        Thread::sleep(100);
+        if (serverReady)
+            break;
+    }
+
+    if (!serverReady)
+    {
+        spdlog::error("[Tone3000Auth] Server failed to start in time");
+        callback(false, "Failed to start authentication server");
+        return;
+    }
+
+    spdlog::info("[Tone3000Auth] Server ready on port {}, opening browser...", callbackPort);
 
     // Open browser to auth URL
     authUrl.launchInDefaultBrowser();
@@ -78,21 +103,77 @@ void Tone3000Auth::run()
 {
     spdlog::info("[Tone3000Auth] Starting callback server on port {}", callbackPort);
 
-    // Create server socket
-    serverSocket = std::make_unique<juce::StreamingSocket>();
-
-    if (!serverSocket->createListener(callbackPort, "127.0.0.1"))
+#ifdef _WIN32
+    // Use native WinSock2 for better reliability on Windows
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
-        spdlog::error("[Tone3000Auth] Failed to create listener on port {}", callbackPort);
-
+        spdlog::error("[Tone3000Auth] WSAStartup failed");
+        serverReady = false;
         juce::MessageManager::callAsync([this]() {
             if (completionCallback)
-                completionCallback(false, "Failed to start authentication server. Port may be in use.");
+                completionCallback(false, "Failed to initialize network.");
         });
         return;
     }
 
-    // Wait for connection with timeout
+    SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listenSocket == INVALID_SOCKET)
+    {
+        spdlog::error("[Tone3000Auth] Failed to create socket: {}", WSAGetLastError());
+        WSACleanup();
+        serverReady = false;
+        juce::MessageManager::callAsync([this]() {
+            if (completionCallback)
+                completionCallback(false, "Failed to create socket.");
+        });
+        return;
+    }
+
+    // Allow address reuse
+    int optval = 1;
+    setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval));
+
+    sockaddr_in serverAddr{};
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);  // Bind to all interfaces for better compatibility
+    serverAddr.sin_port = htons(static_cast<u_short>(callbackPort));
+
+    if (bind(listenSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+    {
+        spdlog::error("[Tone3000Auth] Failed to bind socket: {}", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        serverReady = false;
+        juce::MessageManager::callAsync([this]() {
+            if (completionCallback)
+                completionCallback(false, "Failed to bind to port. It may be in use.");
+        });
+        return;
+    }
+
+    if (listen(listenSocket, 1) == SOCKET_ERROR)
+    {
+        spdlog::error("[Tone3000Auth] Failed to listen on socket: {}", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        serverReady = false;
+        juce::MessageManager::callAsync([this]() {
+            if (completionCallback)
+                completionCallback(false, "Failed to start listening.");
+        });
+        return;
+    }
+
+    spdlog::info("[Tone3000Auth] Server listening on port {} (native WinSock)", callbackPort);
+
+    // Small delay to ensure socket is fully established before signaling ready
+    Sleep(100);
+
+    serverReady = true;
+
+    // Keep socket in blocking mode but use select() for timeout
+
     constexpr int timeoutMs = 300000;  // 5 minutes
     auto startTime = juce::Time::getMillisecondCounter();
 
@@ -101,7 +182,8 @@ void Tone3000Auth::run()
         if (juce::Time::getMillisecondCounter() - startTime > timeoutMs)
         {
             spdlog::warn("[Tone3000Auth] Timed out waiting for callback");
-
+            closesocket(listenSocket);
+            WSACleanup();
             juce::MessageManager::callAsync([this]() {
                 if (completionCallback)
                     completionCallback(false, "Authentication timed out. Please try again.");
@@ -109,43 +191,66 @@ void Tone3000Auth::run()
             return;
         }
 
-        // Check for incoming connection
-        if (serverSocket->waitUntilReady(true, 500) == 1)
-        {
-            auto client = std::unique_ptr<juce::StreamingSocket>(serverSocket->waitForNextConnection());
+        // Use select for timeout-based waiting
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(listenSocket, &readSet);
 
-            if (client)
+        timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000;  // 500ms
+
+        int selectResult = select(0, &readSet, nullptr, nullptr, &timeout);
+        if (selectResult > 0 && FD_ISSET(listenSocket, &readSet))
+        {
+            sockaddr_in clientAddr{};
+            int clientAddrLen = sizeof(clientAddr);
+            SOCKET clientSocket = accept(listenSocket, (sockaddr*)&clientAddr, &clientAddrLen);
+
+            if (clientSocket != INVALID_SOCKET)
             {
+                spdlog::debug("[Tone3000Auth] Accepted connection from client");
+
                 // Read HTTP request
                 char buffer[4096];
-                int bytesRead = client->read(buffer, sizeof(buffer) - 1, false);
+                int bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
 
                 if (bytesRead > 0)
                 {
                     buffer[bytesRead] = '\0';
                     juce::String request(buffer);
 
-                    spdlog::debug("[Tone3000Auth] Received callback request");
+                    spdlog::debug("[Tone3000Auth] Received callback request: {}",
+                        request.substring(0, 100).toStdString());
 
-                    // Extract the first line (GET /callback?code=XXX&state=YYY HTTP/1.1)
                     juce::String firstLine = request.upToFirstOccurrenceOf("\r\n", false, false);
-
-                    // Extract authorization code and state
                     juce::String authCode = extractAuthCode(firstLine);
                     juce::String state = extractState(firstLine);
 
+                    auto sendHttpResponse = [&](int statusCode, const juce::String& statusText, const juce::String& body) {
+                        juce::String response;
+                        response << "HTTP/1.1 " << statusCode << " " << statusText << "\r\n";
+                        response << "Content-Type: text/html; charset=utf-8\r\n";
+                        response << "Content-Length: " << body.length() << "\r\n";
+                        response << "Connection: close\r\n";
+                        response << "\r\n";
+                        response << body;
+                        send(clientSocket, response.toRawUTF8(), response.getNumBytesAsUTF8(), 0);
+                    };
+
                     if (authCode.isNotEmpty())
                     {
-                        // Verify state matches (CSRF protection)
-                        if (state != expectedState)
+                        spdlog::info("[Tone3000Auth] Received auth code: {}...", authCode.substring(0, 10).toStdString());
+
+                        if (state.isNotEmpty() && state != expectedState)
                         {
-                            spdlog::error("[Tone3000Auth] State mismatch! Expected: {}, got: {}",
-                                expectedState.toStdString(), state.toStdString());
-
-                            sendResponse(*client, 400, "Bad Request",
+                            spdlog::error("[Tone3000Auth] State mismatch!");
+                            sendHttpResponse(400, "Bad Request",
                                 "<html><body><h1>Authentication Failed</h1>"
-                                "<p>Security verification failed. Please try again.</p></body></html>");
-
+                                "<p>Security verification failed.</p></body></html>");
+                            closesocket(clientSocket);
+                            closesocket(listenSocket);
+                            WSACleanup();
                             juce::MessageManager::callAsync([this]() {
                                 if (completionCallback)
                                     completionCallback(false, "Security verification failed");
@@ -153,16 +258,19 @@ void Tone3000Auth::run()
                             return;
                         }
 
-                        // Exchange code for tokens
+                        // Exchange api_key for session tokens via POST to /auth/session
+                        spdlog::info("[Tone3000Auth] Exchanging api_key for session tokens...");
                         bool success = exchangeCodeForTokens(authCode);
 
                         if (success)
                         {
-                            sendResponse(*client, 200, "OK",
+                            sendHttpResponse(200, "OK",
                                 "<html><body><h1>Authentication Successful!</h1>"
                                 "<p>You can close this window and return to Pedalboard.</p>"
                                 "<script>window.close();</script></body></html>");
-
+                            closesocket(clientSocket);
+                            closesocket(listenSocket);
+                            WSACleanup();
                             juce::MessageManager::callAsync([this]() {
                                 if (completionCallback)
                                     completionCallback(true, "");
@@ -170,10 +278,12 @@ void Tone3000Auth::run()
                         }
                         else
                         {
-                            sendResponse(*client, 500, "Internal Server Error",
+                            sendHttpResponse(500, "Internal Server Error",
                                 "<html><body><h1>Authentication Failed</h1>"
-                                "<p>Failed to exchange authorization code. Please try again.</p></body></html>");
-
+                                "<p>Failed to process authentication.</p></body></html>");
+                            closesocket(clientSocket);
+                            closesocket(listenSocket);
+                            WSACleanup();
                             juce::MessageManager::callAsync([this]() {
                                 if (completionCallback)
                                     completionCallback(false, "Failed to exchange authorization code");
@@ -181,32 +291,104 @@ void Tone3000Auth::run()
                         }
                         return;
                     }
+                    else if (request.contains("error="))
+                    {
+                        sendHttpResponse(200, "OK",
+                            "<html><body><h1>Authentication Cancelled</h1></body></html>");
+                        closesocket(clientSocket);
+                        closesocket(listenSocket);
+                        WSACleanup();
+                        juce::MessageManager::callAsync([this]() {
+                            if (completionCallback)
+                                completionCallback(false, "Authentication was cancelled");
+                        });
+                        return;
+                    }
                     else
                     {
-                        // Check for error in callback
-                        if (request.contains("error="))
-                        {
-                            sendResponse(*client, 200, "OK",
-                                "<html><body><h1>Authentication Cancelled</h1>"
-                                "<p>You cancelled the authentication. You can close this window.</p></body></html>");
+                        sendHttpResponse(404, "Not Found", "<html><body><h1>Not Found</h1></body></html>");
+                    }
+                }
+                closesocket(clientSocket);
+            }
+        }
+    }
 
-                            juce::MessageManager::callAsync([this]() {
-                                if (completionCallback)
-                                    completionCallback(false, "Authentication was cancelled");
-                            });
-                            return;
-                        }
+    closesocket(listenSocket);
+    WSACleanup();
+    spdlog::info("[Tone3000Auth] Callback server stopped");
 
-                        // Unknown request, send simple response
-                        sendResponse(*client, 404, "Not Found",
-                            "<html><body><h1>Not Found</h1></body></html>");
+#else
+    // Use JUCE sockets on non-Windows platforms
+    serverSocket = std::make_unique<juce::StreamingSocket>();
+    bool bound = serverSocket->createListener(callbackPort, "127.0.0.1");
+
+    if (!bound)
+    {
+        spdlog::error("[Tone3000Auth] Failed to create listener on port {}", callbackPort);
+        serverReady = false;
+        juce::MessageManager::callAsync([this]() {
+            if (completionCallback)
+                completionCallback(false, "Failed to start authentication server.");
+        });
+        return;
+    }
+
+    spdlog::info("[Tone3000Auth] Server listening on port {}", callbackPort);
+    serverReady = true;
+
+    constexpr int timeoutMs = 300000;
+    auto startTime = juce::Time::getMillisecondCounter();
+
+    while (!shouldStop)
+    {
+        if (juce::Time::getMillisecondCounter() - startTime > timeoutMs)
+        {
+            juce::MessageManager::callAsync([this]() {
+                if (completionCallback)
+                    completionCallback(false, "Authentication timed out.");
+            });
+            return;
+        }
+
+        if (serverSocket->waitUntilReady(true, 500) == 1)
+        {
+            auto client = std::unique_ptr<juce::StreamingSocket>(serverSocket->waitForNextConnection());
+            if (client)
+            {
+                char buffer[4096];
+                int bytesRead = client->read(buffer, sizeof(buffer) - 1, false);
+                if (bytesRead > 0)
+                {
+                    buffer[bytesRead] = '\0';
+                    juce::String request(buffer);
+                    juce::String firstLine = request.upToFirstOccurrenceOf("\r\n", false, false);
+                    juce::String authCode = extractAuthCode(firstLine);
+
+                    if (authCode.isNotEmpty())
+                    {
+                        Tone3000::AuthTokens tokens;
+                        tokens.accessToken = authCode.toStdString();
+                        auto now = std::chrono::system_clock::now();
+                        auto nowSecs = std::chrono::duration_cast<std::chrono::seconds>(
+                            now.time_since_epoch()).count();
+                        tokens.expiresAt = nowSecs + (30 * 24 * 60 * 60);
+                        Tone3000Client::getInstance().setTokens(tokens);
+
+                        sendResponse(*client, 200, "OK",
+                            "<html><body><h1>Authentication Successful!</h1></body></html>");
+                        juce::MessageManager::callAsync([this]() {
+                            if (completionCallback)
+                                completionCallback(true, "");
+                        });
+                        return;
                     }
                 }
             }
         }
     }
-
     spdlog::info("[Tone3000Auth] Callback server stopped");
+#endif
 }
 
 juce::String Tone3000Auth::generateState()
@@ -225,12 +407,20 @@ juce::String Tone3000Auth::generateState()
 
 juce::String Tone3000Auth::extractAuthCode(const juce::String& requestLine)
 {
-    // Parse: GET /callback?code=XXX&state=YYY HTTP/1.1
-    int codeStart = requestLine.indexOf("code=");
-    if (codeStart < 0)
-        return {};
-
-    codeStart += 5;  // Skip "code="
+    // Parse: GET /callback?api_key=XXX HTTP/1.1 (TONE3000 uses api_key, not code)
+    int codeStart = requestLine.indexOf("api_key=");
+    if (codeStart >= 0)
+    {
+        codeStart += 8;  // Skip "api_key="
+    }
+    else
+    {
+        // Fallback to standard OAuth "code" parameter
+        codeStart = requestLine.indexOf("code=");
+        if (codeStart < 0)
+            return {};
+        codeStart += 5;  // Skip "code="
+    }
 
     int codeEnd = requestLine.indexOf(codeStart, "&");
     if (codeEnd < 0)
@@ -258,20 +448,21 @@ juce::String Tone3000Auth::extractState(const juce::String& requestLine)
     return juce::URL::removeEscapeChars(requestLine.substring(stateStart, stateEnd));
 }
 
-bool Tone3000Auth::exchangeCodeForTokens(const juce::String& code)
+bool Tone3000Auth::exchangeCodeForTokens(const juce::String& apiKey)
 {
-    spdlog::info("[Tone3000Auth] Exchanging authorization code for tokens");
+    spdlog::info("[Tone3000Auth] Exchanging api_key for session tokens");
 
     juce::URL tokenUrl(TOKEN_URL);
 
-    juce::String postData = "code=" + juce::URL::addEscapeChars(code, true);
+    // TONE3000 expects JSON body with api_key
+    juce::String jsonBody = "{\"api_key\":\"" + apiKey + "\"}";
 
     auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inPostData)
         .withHttpRequestCmd("POST")
         .withConnectionTimeoutMs(10000)
-        .withExtraHeaders("Content-Type: application/x-www-form-urlencoded");
+        .withExtraHeaders("Content-Type: application/json");
 
-    auto stream = tokenUrl.withPOSTData(postData).createInputStream(options);
+    auto stream = tokenUrl.withPOSTData(jsonBody).createInputStream(options);
 
     if (!stream)
     {
@@ -415,9 +606,11 @@ void Tone3000ManualAuthDialog::buttonClicked(juce::Button* button)
 {
     if (button == openBrowserButton.get())
     {
-        // Open TONE3000 API key page with OTP-only mode
+        // Open TONE3000 auth page - redirect_url is required by the API
+        // We use a localhost URL even though we won't receive the callback
+        // (the user will manually copy the api_key from the redirect URL)
         juce::URL url("https://www.tone3000.com/api/v1/auth");
-        url = url.withParameter("otp_only", "true");
+        url = url.withParameter("redirect_url", "http://localhost:43821/callback");
         url.launchInDefaultBrowser();
     }
     else if (button == submitButton.get())
@@ -449,19 +642,74 @@ void Tone3000ManualAuthDialog::submitApiKey()
         return;
     }
 
-    // Try to use the API key to get a session
-    // The API key from OTP flow can be used directly as access token
-    Tone3000::AuthTokens tokens;
-    tokens.accessToken = apiKey.toStdString();
-    tokens.refreshToken = "";  // OTP keys don't have refresh tokens
+    spdlog::info("[Tone3000Auth] Exchanging API key for session tokens...");
 
-    // Set expiry to 24 hours from now (typical for API keys)
+    // Exchange API key for session tokens via POST to /auth/session
+    juce::URL sessionUrl("https://www.tone3000.com/api/v1/auth/session");
+
+    // Create JSON body
+    juce::String jsonBody = "{\"api_key\":\"" + apiKey + "\"}";
+
+    auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inPostData)
+        .withHttpRequestCmd("POST")
+        .withConnectionTimeoutMs(10000)
+        .withExtraHeaders("Content-Type: application/json");
+
+    auto stream = sessionUrl.withPOSTData(jsonBody).createInputStream(options);
+
+    if (!stream)
+    {
+        spdlog::error("[Tone3000Auth] Failed to connect to session endpoint");
+        apiKeyInput->setColour(juce::TextEditor::outlineColourId, juce::Colours::red);
+        return;
+    }
+
+    juce::String response = stream->readEntireStreamAsString();
+    spdlog::debug("[Tone3000Auth] Session response: {}", response.toStdString());
+
+    auto json = juce::JSON::parse(response);
+
+    if (json.isVoid())
+    {
+        spdlog::error("[Tone3000Auth] Invalid JSON in session response");
+        apiKeyInput->setColour(juce::TextEditor::outlineColourId, juce::Colours::red);
+        return;
+    }
+
+    // Check for error
+    if (json.hasProperty("error"))
+    {
+        spdlog::error("[Tone3000Auth] Session exchange error: {}",
+            json.getProperty("error", "Unknown").toString().toStdString());
+        apiKeyInput->setColour(juce::TextEditor::outlineColourId, juce::Colours::red);
+        return;
+    }
+
+    // Extract tokens
+    juce::String accessToken = json.getProperty("access_token", "").toString();
+    juce::String refreshToken = json.getProperty("refresh_token", "").toString();
+    int expiresIn = static_cast<int>(json.getProperty("expires_in", 3600));
+
+    if (accessToken.isEmpty())
+    {
+        spdlog::error("[Tone3000Auth] No access_token in session response");
+        apiKeyInput->setColour(juce::TextEditor::outlineColourId, juce::Colours::red);
+        return;
+    }
+
+    // Calculate expiry timestamp
     auto now = std::chrono::system_clock::now();
     auto nowSecs = std::chrono::duration_cast<std::chrono::seconds>(
         now.time_since_epoch()).count();
-    tokens.expiresAt = nowSecs + 86400;
+
+    Tone3000::AuthTokens tokens;
+    tokens.accessToken = accessToken.toStdString();
+    tokens.refreshToken = refreshToken.toStdString();
+    tokens.expiresAt = nowSecs + expiresIn;
 
     Tone3000Client::getInstance().setTokens(tokens);
+
+    spdlog::info("[Tone3000Auth] Successfully obtained session tokens, expires in {} seconds", expiresIn);
 
     if (completionCallback)
         completionCallback(true);

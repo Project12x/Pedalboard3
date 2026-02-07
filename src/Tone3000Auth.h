@@ -80,6 +80,7 @@ private:
     std::function<void(bool, juce::String)> completionCallback;
     std::unique_ptr<juce::StreamingSocket> serverSocket;
     std::atomic<bool> shouldStop{false};
+    std::atomic<bool> serverReady{false};
 
     juce::String expectedState;
     int callbackPort{43821};

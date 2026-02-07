@@ -26,6 +26,7 @@
 #include <JuceHeader.h>
 
 class MainPanel;
+class Tone3000DownloadManager;
 //[/Headers]
 
 
@@ -105,6 +106,12 @@ private:
     ToggleButton* startInTrayButton;
     ToggleButton* fixedSizeButton;
     ToggleButton* pdlAudioSettingsButton;
+
+    // NAM Options
+    Label* namLabel;
+    Label* namDirLabel;
+    Label* namDirValue;
+    TextButton* namDirBrowseButton;
 
 
     //==============================================================================

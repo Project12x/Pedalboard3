@@ -77,6 +77,9 @@ class NAMOnlineBrowserComponent : public juce::Component,
     // ComboBox::Listener
     void comboBoxChanged(juce::ComboBox* comboBox) override;
 
+    // Mouse handling for list selection
+    void mouseUp(const juce::MouseEvent& event) override;
+
     // Tone3000DownloadManager::Listener
     void downloadQueued(const juce::String& toneId) override;
     void downloadStarted(const juce::String& toneId) override;

@@ -1082,8 +1082,6 @@ bool MainPanel::perform(const InvocationInfo& info)
         tempstr << sock.getPort();
         PreferencesDialog dlg(this, tempstr, sock.getMulticastGroup().c_str());
 
-        dlg.setSize(560, 500);
-
         JuceHelperStuff::showModalDialog("Misc Settings", &dlg, 0,
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
     }

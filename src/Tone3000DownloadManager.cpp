@@ -23,13 +23,13 @@ Tone3000DownloadManager& Tone3000DownloadManager::getInstance()
 Tone3000DownloadManager::Tone3000DownloadManager()
     : Thread("Tone3000Downloads")
 {
-    // Default cache directory
-    cacheDirectory = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+    // Default cache directory: Documents/Pedalboard3/NAM Models
+    cacheDirectory = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
         .getChildFile("Pedalboard3")
-        .getChildFile("nam_cache");
+        .getChildFile("NAM Models");
 
     // Load custom cache directory from settings if set
-    juce::String customPath = SettingsManager::getInstance().getString("tone3000_cache_directory", "");
+    juce::String customPath = SettingsManager::getInstance().getString("nam_download_directory", "");
     if (customPath.isNotEmpty())
     {
         juce::File customDir(customPath);
@@ -229,9 +229,9 @@ void Tone3000DownloadManager::setCacheDirectory(const juce::File& directory)
     if (directory.isDirectory() || directory.createDirectory())
     {
         cacheDirectory = directory;
-        SettingsManager::getInstance().setValue("tone3000_cache_directory",
+        SettingsManager::getInstance().setValue("nam_download_directory",
             directory.getFullPathName());
-        spdlog::info("[Tone3000DownloadManager] Cache directory changed to: {}",
+        spdlog::info("[Tone3000DownloadManager] NAM download directory changed to: {}",
             directory.getFullPathName().toStdString());
     }
 }
@@ -366,8 +366,15 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
 
     auto lastProgressUpdate = juce::Time::getMillisecondCounter();
 
+    // Get auth token for download (TONE3000 may require authentication)
+    juce::String authHeader;
+    auto tokens = Tone3000Client::getInstance().getTokens();
+    if (tokens.isValid())
+        authHeader = "Authorization: Bearer " + juce::String(tokens.accessToken);
+
     auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress)
         .withConnectionTimeoutMs(30000)
+        .withExtraHeaders(authHeader)
         .withProgressCallback([&](int bytesDownloaded, int totalBytes) -> bool {
             task.bytesDownloaded = bytesDownloaded;
             if (totalBytes > 0)
@@ -404,32 +411,69 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
         return false;
     }
 
-    // Write to temp file
-    juce::FileOutputStream fileStream(tempFile);
+    // Write to temp file - scope the FileOutputStream so it closes before we move the file
+    int64_t totalBytesWritten = 0;
+    {
+        juce::FileOutputStream fileStream(tempFile);
 
-    if (!fileStream.openedOk())
+        if (!fileStream.openedOk())
+        {
+            task.state = Tone3000::DownloadState::Failed;
+            task.errorMessage = "Failed to create download file";
+            spdlog::error("[Tone3000DownloadManager] {}: {}", task.toneName, task.errorMessage);
+            notifyFailed(juce::String(task.toneId), juce::String(task.errorMessage));
+            return false;
+        }
+
+        // Download in chunks
+        char buffer[DOWNLOAD_BUFFER_SIZE];
+
+        while (!shouldStop && !threadShouldExit() && task.state == Tone3000::DownloadState::Downloading)
+        {
+            int bytesRead = stream->read(buffer, DOWNLOAD_BUFFER_SIZE);
+
+            if (bytesRead <= 0)
+                break;
+
+            fileStream.write(buffer, bytesRead);
+            totalBytesWritten += bytesRead;
+        }
+
+        fileStream.flush();
+    }  // FileOutputStream closes here
+
+    spdlog::info("[Tone3000DownloadManager] Download finished, wrote {} bytes to temp file", totalBytesWritten);
+
+    // Check if we actually downloaded anything
+    if (totalBytesWritten == 0)
     {
         task.state = Tone3000::DownloadState::Failed;
-        task.errorMessage = "Failed to create download file";
+        task.errorMessage = "No data received from server";
+        tempFile.deleteFile();
         spdlog::error("[Tone3000DownloadManager] {}: {}", task.toneName, task.errorMessage);
         notifyFailed(juce::String(task.toneId), juce::String(task.errorMessage));
         return false;
     }
 
-    // Download in chunks
-    char buffer[DOWNLOAD_BUFFER_SIZE];
-
-    while (!shouldStop && !threadShouldExit() && task.state == Tone3000::DownloadState::Downloading)
+    // Check if we got a small response (likely an error page)
+    if (totalBytesWritten < 1000)
     {
-        int bytesRead = stream->read(buffer, DOWNLOAD_BUFFER_SIZE);
+        // Read the temp file content to check if it's an error response
+        juce::String content = tempFile.loadFileAsString();
+        spdlog::warn("[Tone3000DownloadManager] Small download ({} bytes), content: {}",
+            totalBytesWritten, content.substring(0, 200).toStdString());
 
-        if (bytesRead <= 0)
-            break;
-
-        fileStream.write(buffer, bytesRead);
+        if (content.containsIgnoreCase("error") || content.containsIgnoreCase("unauthorized") ||
+            content.containsIgnoreCase("<!DOCTYPE") || content.containsIgnoreCase("<html"))
+        {
+            task.state = Tone3000::DownloadState::Failed;
+            task.errorMessage = "Server returned error instead of file";
+            tempFile.deleteFile();
+            spdlog::error("[Tone3000DownloadManager] {}: {}", task.toneName, task.errorMessage);
+            notifyFailed(juce::String(task.toneId), juce::String(task.errorMessage));
+            return false;
+        }
     }
-
-    fileStream.flush();
 
     // Check if cancelled
     if (task.state == Tone3000::DownloadState::Cancelled)

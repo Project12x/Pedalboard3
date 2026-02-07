@@ -201,10 +201,37 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     metadataDisplay->setFont(Font(11.0f));
     addAndMakeVisible(metadataDisplay.get());
 
-    // Start with user documents folder
-    currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory);
+    // File path in details
+    createLabelPair(filePathLabel, filePathValue, "File:", "-");
+    filePathValue->setMinimumHorizontalScale(0.5f);
+
+    // Status bar
+    statusLabel = std::make_unique<Label>("status", "");
+    statusLabel->setFont(Font(11.0f));
+    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
+    addAndMakeVisible(statusLabel.get());
+
+    // Empty state message
+    emptyStateLabel = std::make_unique<Label>("emptyState", "No NAM models found.\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
+    emptyStateLabel->setFont(Font(13.0f));
+    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+    emptyStateLabel->setJustificationType(Justification::centred);
+    emptyStateLabel->setVisible(false);
+    addAndMakeVisible(emptyStateLabel.get());
+
+    // Start with NAM download directory (same as Tone3000DownloadManager uses)
+    currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory)
+        .getChildFile("Pedalboard3")
+        .getChildFile("NAM Models");
+
+    // If the directory doesn't exist yet, fall back to Documents
+    if (!currentDirectory.isDirectory())
+        currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory);
 
     setSize(700, 500);
+
+    // Auto-scan on creation
+    scanDirectory(currentDirectory);
 }
 
 NAMModelBrowserComponent::~NAMModelBrowserComponent() = default;
@@ -271,6 +298,10 @@ void NAMModelBrowserComponent::resized()
         loudnessValue->setVisible(false);
         metadataLabel->setVisible(false);
         metadataDisplay->setVisible(false);
+        filePathLabel->setVisible(false);
+        filePathValue->setVisible(false);
+        statusLabel->setVisible(false);
+        emptyStateLabel->setVisible(false);
         return;
     }
 
@@ -279,7 +310,6 @@ void NAMModelBrowserComponent::resized()
     refreshButton->setVisible(true);
     browseFolderButton->setVisible(true);
     loadButton->setVisible(true);
-    modelList->setVisible(true);
     detailsTitle->setVisible(true);
     nameLabel->setVisible(true);
     nameValue->setVisible(true);
@@ -291,6 +321,14 @@ void NAMModelBrowserComponent::resized()
     loudnessValue->setVisible(true);
     metadataLabel->setVisible(true);
     metadataDisplay->setVisible(true);
+    filePathLabel->setVisible(true);
+    filePathValue->setVisible(true);
+    statusLabel->setVisible(true);
+
+    // Show list or empty state based on model count
+    bool hasModels = listModel.getNumRows() > 0;
+    modelList->setVisible(hasModels);
+    emptyStateLabel->setVisible(!hasModels);
 
     // Search and refresh row
     auto searchRow = bounds.removeFromTop(28);
@@ -300,6 +338,11 @@ void NAMModelBrowserComponent::resized()
     searchRow.removeFromRight(8);
     searchBox->setBounds(searchRow);
     bounds.removeFromTop(8);
+
+    // Status bar at bottom
+    auto statusRow = bounds.removeFromBottom(20);
+    statusLabel->setBounds(statusRow);
+    bounds.removeFromBottom(4);
 
     // Button row at bottom
     auto buttonRow = bounds.removeFromBottom(36);
@@ -314,8 +357,9 @@ void NAMModelBrowserComponent::resized()
     auto listArea = bounds.removeFromLeft(listWidth);
     bounds.removeFromLeft(16); // Gap
 
-    // Model list
+    // Model list or empty state
     modelList->setBounds(listArea);
+    emptyStateLabel->setBounds(listArea);
 
     // Details panel
     auto detailsArea = bounds;
@@ -336,6 +380,13 @@ void NAMModelBrowserComponent::resized()
     layoutLabelValue(loudnessLabel.get(), loudnessValue.get());
 
     detailsArea.removeFromTop(8);
+
+    // File path row (wider layout)
+    auto fileRow = detailsArea.removeFromTop(20);
+    filePathLabel->setBounds(fileRow.removeFromLeft(40));
+    filePathValue->setBounds(fileRow);
+    detailsArea.removeFromTop(8);
+
     metadataLabel->setBounds(detailsArea.removeFromTop(20));
     detailsArea.removeFromTop(4);
     metadataDisplay->setBounds(detailsArea);
@@ -396,6 +447,10 @@ void NAMModelBrowserComponent::switchToTab(int tabIndex)
     // Show/hide appropriate content
     onlineBrowser->setVisible(tabIndex == 1);
 
+    // Refresh local list when switching to Local tab (to pick up new downloads)
+    if (tabIndex == 0)
+        scanDirectory(currentDirectory);
+
     // Trigger layout update
     resized();
     repaint();
@@ -448,6 +503,21 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
     modelList->updateContent();
     modelList->repaint();
 
+    // Update status bar
+    String statusText = currentDirectory.getFullPathName();
+    if (models.empty())
+        statusText += " - No models found";
+    else if (models.size() == 1)
+        statusText += " - 1 model";
+    else
+        statusText += " - " + String(models.size()) + " models";
+    statusLabel->setText(statusText, dontSendNotification);
+
+    // Update empty state visibility
+    bool hasModels = !models.empty();
+    modelList->setVisible(hasModels);
+    emptyStateLabel->setVisible(!hasModels);
+
     // Clear details
     updateDetailsPanel(nullptr);
 }
@@ -474,6 +544,11 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         else
             loudnessValue->setText("N/A", dontSendNotification);
 
+        // Show file path (just the filename, with tooltip for full path)
+        File modelFile(model->filePath);
+        filePathValue->setText(modelFile.getFileName(), dontSendNotification);
+        filePathValue->setTooltip(String(model->filePath));
+
         metadataDisplay->setText(String(model->metadata), dontSendNotification);
     }
     else
@@ -482,6 +557,8 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         architectureValue->setText("-", dontSendNotification);
         sampleRateValue->setText("-", dontSendNotification);
         loudnessValue->setText("-", dontSendNotification);
+        filePathValue->setText("-", dontSendNotification);
+        filePathValue->setTooltip("");
         metadataDisplay->setText("", dontSendNotification);
     }
 }
@@ -515,6 +592,28 @@ void NAMModelBrowserComponent::onListSelectionChanged()
     auto selectedRow = modelList->getSelectedRow();
     const auto* model = listModel.getModelAt(selectedRow);
     updateDetailsPanel(model);
+}
+
+void NAMModelBrowserComponent::mouseUp(const MouseEvent& event)
+{
+    // Handle clicks on the model list to update selection
+    if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
+    {
+        juce::MessageManager::callAsync([this]() {
+            onListSelectionChanged();
+        });
+    }
+}
+
+void NAMModelBrowserComponent::mouseDoubleClick(const MouseEvent& event)
+{
+    // Double-click on list item loads the model
+    if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
+    {
+        juce::MessageManager::callAsync([this]() {
+            loadSelectedModel();
+        });
+    }
 }
 
 //==============================================================================

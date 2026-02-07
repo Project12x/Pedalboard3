@@ -25,6 +25,7 @@
 #include "ColourScheme.h"
 #include "MainPanel.h"
 #include "SettingsManager.h"
+#include "Tone3000DownloadManager.h"
 
 //[/Headers]
 
@@ -39,7 +40,8 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
       multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
       otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0), ignorePinNamesButton(0),
       midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0),
-      fixedSizeButton(0), pdlAudioSettingsButton(0)
+      fixedSizeButton(0), pdlAudioSettingsButton(0),
+      namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
 {
     addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
     oscPortLabel->setFont(Font(15.0000f, Font::plain));
@@ -168,6 +170,28 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     pdlAudioSettingsButton->setButtonText("Save audio settings in .pdl files");
     pdlAudioSettingsButton->addListener(this);
 
+    // NAM Options
+    addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
+    namLabel->setFont(Font(15.0000f, Font::bold));
+    namLabel->setJustificationType(Justification::centredLeft);
+    namLabel->setEditable(false, false, false);
+
+    addAndMakeVisible(namDirLabel = new Label("namDirLabel", "Download Directory:"));
+    namDirLabel->setFont(Font(15.0000f, Font::plain));
+    namDirLabel->setJustificationType(Justification::centredLeft);
+    namDirLabel->setEditable(false, false, false);
+
+    addAndMakeVisible(namDirValue = new Label("namDirValue", ""));
+    namDirValue->setFont(Font(13.0000f, Font::plain));
+    namDirValue->setJustificationType(Justification::centredLeft);
+    namDirValue->setEditable(false, false, false);
+    namDirValue->setColour(Label::backgroundColourId, Colours::white);
+    namDirValue->setColour(Label::outlineColourId, Colour(0x40000000));
+
+    addAndMakeVisible(namDirBrowseButton = new TextButton("namDirBrowseButton"));
+    namDirBrowseButton->setButtonText("Browse...");
+    namDirBrowseButton->addListener(this);
+
     //[UserPreSize]
 
     bool useTrayIcon;
@@ -198,6 +222,10 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     pdlAudioSettingsButton->setToggleState(SettingsManager::getInstance().getBool("pdlAudioSettings", false), false);
 
+    // Set NAM directory value from download manager
+    namDirValue->setText(Tone3000DownloadManager::getInstance().getCacheDirectory().getFullPathName(),
+                         dontSendNotification);
+
 #ifndef __APPLE__
     useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon", false);
     useTrayIconButton->setToggleState(useTrayIcon, false);
@@ -222,7 +250,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     //[/UserPreSize]
 
-    setSize(560, 530);
+    setSize(560, 590);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -255,6 +283,10 @@ PreferencesDialog::~PreferencesDialog()
     delete startInTrayButton; startInTrayButton = nullptr;
     delete fixedSizeButton; fixedSizeButton = nullptr;
     delete pdlAudioSettingsButton; pdlAudioSettingsButton = nullptr;
+    delete namLabel; namLabel = nullptr;
+    delete namDirLabel; namDirLabel = nullptr;
+    delete namDirValue; namDirValue = nullptr;
+    delete namDirBrowseButton; namDirBrowseButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
@@ -311,6 +343,12 @@ void PreferencesDialog::resized()
     startInTrayButton->setBounds(16, 448, 168, 24);
     fixedSizeButton->setBounds(16, 472, 224, 24);
     pdlAudioSettingsButton->setBounds(16, 496, 224, 24);
+
+    // NAM Options
+    namLabel->setBounds(0, 528, 150, 24);
+    namDirLabel->setBounds(16, 552, 130, 24);
+    namDirValue->setBounds(146, 552, getWidth() - 230, 24);
+    namDirBrowseButton->setBounds(getWidth() - 80, 552, 70, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
@@ -432,6 +470,19 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
         SettingsManager::getInstance().setValue("pdlAudioSettings", pdlAudioSettingsButton->getToggleState());
 
         //[/UserButtonCode_pdlAudioSettingsButton]
+    }
+    else if (buttonThatWasClicked == namDirBrowseButton)
+    {
+        FileChooser chooser("Select NAM Download Directory",
+                            Tone3000DownloadManager::getInstance().getCacheDirectory(),
+                            "", true);
+
+        if (chooser.browseForDirectory())
+        {
+            File selectedDir = chooser.getResult();
+            Tone3000DownloadManager::getInstance().setCacheDirectory(selectedDir);
+            namDirValue->setText(selectedDir.getFullPathName(), dontSendNotification);
+        }
     }
 
     //[UserbuttonClicked_Post]

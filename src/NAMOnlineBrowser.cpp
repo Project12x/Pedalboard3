@@ -503,6 +503,18 @@ void NAMOnlineBrowserComponent::textEditorReturnKeyPressed(juce::TextEditor& edi
     }
 }
 
+void NAMOnlineBrowserComponent::mouseUp(const juce::MouseEvent& event)
+{
+    // Check if click was on the results list
+    if (resultsList != nullptr && resultsList->isParentOf(event.eventComponent))
+    {
+        // Defer the selection check to allow JUCE to update the selection first
+        juce::MessageManager::callAsync([this]() {
+            onListSelectionChanged();
+        });
+    }
+}
+
 void NAMOnlineBrowserComponent::comboBoxChanged(juce::ComboBox* comboBox)
 {
     if (comboBox == gearTypeCombo.get())
@@ -703,29 +715,28 @@ void NAMOnlineBrowserComponent::showLoginDialog()
 {
     spdlog::info("[NAMOnlineBrowser] Starting authentication flow");
 
-    statusLabel->setText("Logging in...", juce::dontSendNotification);
-    loginButton->setEnabled(false);
-
+    // Create auth handler and start OAuth flow
     auto* auth = new Tone3000Auth();
+
     auth->startAuthentication([this, auth](bool success, juce::String errorMessage) {
-        juce::MessageManager::callAsync([this, auth, success, errorMessage]() {
-            delete auth;
+        // Clean up auth object
+        delete auth;
 
-            loginButton->setEnabled(true);
-            refreshAuthState();
-
-            if (success)
-            {
-                spdlog::info("[NAMOnlineBrowser] Authentication successful");
-                // Re-enable download button if a model is selected
+        if (success)
+        {
+            spdlog::info("[NAMOnlineBrowser] Authentication successful");
+            juce::MessageManager::callAsync([this]() {
+                refreshAuthState();
                 if (selectedTone != nullptr && !selectedTone->isCached())
                     downloadButton->setEnabled(true);
-            }
-            else
-            {
-                spdlog::error("[NAMOnlineBrowser] Authentication failed: {}", errorMessage.toStdString());
+            });
+        }
+        else
+        {
+            spdlog::warn("[NAMOnlineBrowser] OAuth failed ({}), showing manual dialog", errorMessage.toStdString());
 
-                // Show manual auth dialog as fallback
+            // Fall back to manual dialog
+            juce::MessageManager::callAsync([this]() {
                 auto* manualDialog = new Tone3000ManualAuthDialog([this](bool manualSuccess) {
                     juce::MessageManager::callAsync([this, manualSuccess]() {
                         refreshAuthState();
@@ -736,14 +747,14 @@ void NAMOnlineBrowserComponent::showLoginDialog()
 
                 juce::DialogWindow::LaunchOptions options;
                 options.content.setOwned(manualDialog);
-                options.dialogTitle = "TONE3000 Manual Login";
+                options.dialogTitle = "TONE3000 Login";
                 options.dialogBackgroundColour = ColourScheme::getInstance().colours["Window Background"];
                 options.escapeKeyTriggersCloseButton = true;
                 options.useNativeTitleBar = true;
                 options.resizable = false;
                 options.launchAsync();
-            }
-        });
+            });
+        }
     });
 }
 
