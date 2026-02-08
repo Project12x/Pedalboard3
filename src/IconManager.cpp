@@ -137,6 +137,22 @@ static const char* lucide_refresh_svg = R"SVG(
 </svg>
 )SVG";
 
+static const char* lucide_mic_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+    <line x1="12" x2="12" y1="19" y2="22"/>
+</svg>
+)SVG";
+
+static const char* lucide_volume2_svg = R"SVG(
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/>
+    <path d="M16 9a5 5 0 0 1 0 6"/>
+    <path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>
+</svg>
+)SVG";
+
 //------------------------------------------------------------------------------
 IconManager& IconManager::getInstance()
 {
@@ -257,4 +273,17 @@ std::unique_ptr<Drawable> IconManager::getDownloadIcon(Colour colour)
 std::unique_ptr<Drawable> IconManager::getRefreshIcon(Colour colour)
 {
     return createFromSvg(lucide_refresh_svg, colour);
+}
+
+//------------------------------------------------------------------------------
+// Lucide Audio I/O Icons
+//------------------------------------------------------------------------------
+std::unique_ptr<Drawable> IconManager::getMicIcon(Colour colour)
+{
+    return createFromSvg(lucide_mic_svg, colour);
+}
+
+std::unique_ptr<Drawable> IconManager::getSpeakerIcon(Colour colour)
+{
+    return createFromSvg(lucide_volume2_svg, colour);
 }

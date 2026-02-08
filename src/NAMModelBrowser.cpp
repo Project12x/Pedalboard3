@@ -1730,3 +1730,497 @@ void NAMModelBrowser::showWindow(NAMProcessor* processor, std::function<void()> 
     instance->setVisible(true);
     instance->toFront(true);
 }
+
+//==============================================================================
+// IRBrowserComponent - Standalone IR browser for IRLoaderProcessor
+//==============================================================================
+
+IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSelected)
+    : onIRSelectedCallback(std::move(onIRSelected))
+{
+    auto& colours = ColourScheme::getInstance().colours;
+
+    // Title with icon-like styling
+    titleLabel = std::make_unique<Label>("title", "IR Browser");
+    titleLabel->setFont(Font(16.0f, Font::bold));
+    titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
+    addAndMakeVisible(titleLabel.get());
+
+    // Search box with improved styling
+    searchBox = std::make_unique<TextEditor>("search");
+    searchBox->setTextToShowWhenEmpty("Search IRs...", colours["Text Colour"].withAlpha(0.4f));
+    searchBox->setColour(TextEditor::backgroundColourId, colours["Background"]);
+    searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
+    searchBox->setColour(TextEditor::outlineColourId, colours["Border Colour"]);
+    searchBox->setColour(TextEditor::focusedOutlineColourId, colours["Accent Colour"]);
+    searchBox->addListener(this);
+    addAndMakeVisible(searchBox.get());
+
+    // Buttons with consistent styling
+    refreshButton = std::make_unique<TextButton>("Refresh");
+    refreshButton->setTooltip("Rescan IR folders");
+    refreshButton->addListener(this);
+    addAndMakeVisible(refreshButton.get());
+
+    browseFolderButton = std::make_unique<TextButton>("Folder...");
+    browseFolderButton->setTooltip("Select IR folder to scan");
+    browseFolderButton->addListener(this);
+    addAndMakeVisible(browseFolderButton.get());
+
+    // Load button with accent color (prominent action button)
+    loadButton = std::make_unique<TextButton>("Load IR");
+    loadButton->setTooltip("Load selected IR");
+    loadButton->setColour(TextButton::buttonColourId, Colour(0xff4a90d9));  // Blue accent
+    loadButton->setColour(TextButton::buttonOnColourId, Colour(0xff3a80c9));
+    loadButton->setColour(TextButton::textColourOffId, Colours::white);
+    loadButton->setColour(TextButton::textColourOnId, Colours::white);
+    loadButton->addListener(this);
+    addAndMakeVisible(loadButton.get());
+
+    closeButton = std::make_unique<TextButton>("Close");
+    closeButton->addListener(this);
+    addAndMakeVisible(closeButton.get());
+
+    // IR List with improved styling
+    irList = std::make_unique<ListBox>("irList", &listModel);
+    irList->setRowHeight(36);  // Taller rows for better readability
+    irList->setColour(ListBox::backgroundColourId, colours["Background"]);
+    irList->setColour(ListBox::outlineColourId, colours["Border Colour"]);
+    irList->setOutlineThickness(1);
+    irList->addMouseListener(this, true);  // Receive mouse events from children
+    addAndMakeVisible(irList.get());
+
+    // Details panel labels with improved styling
+    detailsTitle = std::make_unique<Label>("detailsTitle", "IR Details");
+    detailsTitle->setFont(Font(13.0f, Font::bold));
+    detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    addAndMakeVisible(detailsTitle.get());
+
+    auto addDetailRow = [&](std::unique_ptr<Label>& label, std::unique_ptr<Label>& value, const String& labelText)
+    {
+        label = std::make_unique<Label>("", labelText);
+        label->setFont(Font(11.0f));
+        label->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
+        label->setJustificationType(Justification::centredRight);
+        addAndMakeVisible(label.get());
+
+        value = std::make_unique<Label>("", "-");
+        value->setFont(Font(11.0f, Font::bold));
+        value->setColour(Label::textColourId, colours["Text Colour"]);
+        value->setJustificationType(Justification::centredLeft);
+        addAndMakeVisible(value.get());
+    };
+
+    addDetailRow(nameLabel, nameValue, "Name:");
+    addDetailRow(durationLabel, durationValue, "Duration:");
+    addDetailRow(sampleRateLabel, sampleRateValue, "Rate:");
+    addDetailRow(channelsLabel, channelsValue, "Channels:");
+    addDetailRow(fileSizeLabel, fileSizeValue, "Size:");
+
+    // Status bar with path display
+    statusLabel = std::make_unique<Label>("status", "");
+    statusLabel->setFont(Font(10.0f));
+    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+    statusLabel->setJustificationType(Justification::centredLeft);
+    addAndMakeVisible(statusLabel.get());
+
+    // Set default directories
+    auto pedalboard3Dir = File::getSpecialLocation(File::userDocumentsDirectory)
+                              .getChildFile("Pedalboard3");
+
+    currentDirectory = pedalboard3Dir.getChildFile("IR");
+    namModelsDirectory = pedalboard3Dir.getChildFile("NAM Models");
+
+    if (!currentDirectory.isDirectory())
+        currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory);
+
+    scanDirectory(currentDirectory);
+}
+
+void IRBrowserComponent::paint(Graphics& g)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat();
+
+    // Main background
+    g.fillAll(colours["Window Background"]);
+
+    // Header area with gradient
+    Rectangle<float> headerArea(0, 0, bounds.getWidth(), 45);
+    ColourGradient headerGradient(colours["Background Light"].brighter(0.05f), 0, 0,
+                                   colours["Window Background"], 0, 45, false);
+    g.setGradientFill(headerGradient);
+    g.fillRect(headerArea);
+
+    // Header bottom separator
+    g.setColour(colours["Border Colour"]);
+    g.drawHorizontalLine(44, 0, bounds.getWidth());
+
+    // Details panel background with subtle border
+    auto contentBounds = getLocalBounds();
+    contentBounds.removeFromTop(73);  // Title + search row
+    contentBounds.removeFromBottom(35);  // Status bar
+    auto detailsArea = contentBounds.removeFromRight(200).reduced(5);
+
+    // Panel shadow
+    g.setColour(Colours::black.withAlpha(0.15f));
+    g.fillRoundedRectangle(detailsArea.toFloat().translated(2, 2), 8.0f);
+
+    // Panel background
+    ColourGradient panelGradient(colours["Background Light"].brighter(0.02f),
+                                  detailsArea.getX(), detailsArea.getY(),
+                                  colours["Background Light"].darker(0.02f),
+                                  detailsArea.getX(), detailsArea.getBottom(), false);
+    g.setGradientFill(panelGradient);
+    g.fillRoundedRectangle(detailsArea.toFloat(), 8.0f);
+
+    // Panel border
+    g.setColour(colours["Border Colour"].withAlpha(0.5f));
+    g.drawRoundedRectangle(detailsArea.toFloat(), 8.0f, 1.0f);
+
+    // Status bar background
+    Rectangle<float> statusArea(0, bounds.getHeight() - 30, bounds.getWidth(), 30);
+    g.setColour(colours["Background"].darker(0.1f));
+    g.fillRect(statusArea);
+    g.setColour(colours["Border Colour"]);
+    g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - 30), 0, bounds.getWidth());
+}
+
+void IRBrowserComponent::resized()
+{
+    auto bounds = getLocalBounds().reduced(12);
+
+    // Title row (inside header area)
+    auto titleRow = bounds.removeFromTop(32);
+    titleLabel->setBounds(titleRow.removeFromLeft(120));
+    closeButton->setBounds(titleRow.removeFromRight(65));
+    titleRow.removeFromRight(8);
+    loadButton->setBounds(titleRow.removeFromRight(80));
+
+    bounds.removeFromTop(8);
+
+    // Search/button row
+    auto searchRow = bounds.removeFromTop(28);
+    searchBox->setBounds(searchRow.removeFromLeft(180));
+    searchRow.removeFromLeft(8);
+    refreshButton->setBounds(searchRow.removeFromLeft(65));
+    searchRow.removeFromLeft(5);
+    browseFolderButton->setBounds(searchRow.removeFromLeft(70));
+
+    bounds.removeFromTop(12);
+
+    // Status bar at bottom
+    auto statusRow = bounds.removeFromBottom(20);
+    statusLabel->setBounds(statusRow);
+
+    bounds.removeFromBottom(8);
+
+    // Details panel on right
+    auto detailsArea = bounds.removeFromRight(190).reduced(8);
+    bounds.removeFromRight(12);
+
+    detailsTitle->setBounds(detailsArea.removeFromTop(24));
+    detailsArea.removeFromTop(12);
+
+    auto addDetailLayout = [&](Label* label, Label* value)
+    {
+        auto row = detailsArea.removeFromTop(20);
+        label->setBounds(row.removeFromLeft(75));
+        row.removeFromLeft(5);
+        value->setBounds(row);
+        detailsArea.removeFromTop(2);  // Small gap between rows
+    };
+
+    addDetailLayout(nameLabel.get(), nameValue.get());
+    addDetailLayout(durationLabel.get(), durationValue.get());
+    addDetailLayout(sampleRateLabel.get(), sampleRateValue.get());
+    addDetailLayout(channelsLabel.get(), channelsValue.get());
+    addDetailLayout(fileSizeLabel.get(), fileSizeValue.get());
+
+    // IR list takes remaining space with rounded corners visual
+    irList->setBounds(bounds);
+}
+
+void IRBrowserComponent::buttonClicked(Button* button)
+{
+    if (button == refreshButton.get())
+    {
+        scanDirectory(currentDirectory);
+    }
+    else if (button == browseFolderButton.get())
+    {
+        folderChooser = std::make_unique<FileChooser>("Select IR Folder", currentDirectory);
+        auto flags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
+
+        folderChooser->launchAsync(flags, [this](const FileChooser& fc)
+        {
+            auto result = fc.getResult();
+            if (result.isDirectory())
+            {
+                currentDirectory = result;
+                scanDirectory(currentDirectory);
+            }
+        });
+    }
+    else if (button == loadButton.get())
+    {
+        loadSelectedIR();
+    }
+    else if (button == closeButton.get())
+    {
+        if (auto* window = findParentComponentOfClass<DocumentWindow>())
+            window->setVisible(false);
+    }
+}
+
+void IRBrowserComponent::textEditorTextChanged(TextEditor& editor)
+{
+    if (&editor == searchBox.get())
+    {
+        listModel.setFilter(searchBox->getText());
+        irList->updateContent();
+        irList->repaint();
+    }
+}
+
+void IRBrowserComponent::mouseUp(const MouseEvent& event)
+{
+    if (irList->isParentOf(event.eventComponent))
+    {
+        // Use callAsync to ensure ListBox has updated selection before we query it
+        juce::MessageManager::callAsync([this]() {
+            onListSelectionChanged();
+        });
+    }
+}
+
+void IRBrowserComponent::mouseDoubleClick(const MouseEvent& event)
+{
+    if (irList->isParentOf(event.eventComponent))
+    {
+        loadSelectedIR();
+    }
+}
+
+void IRBrowserComponent::mouseMove(const MouseEvent& event)
+{
+    if (irList->isParentOf(event.eventComponent))
+    {
+        auto localPoint = irList->getLocalPoint(event.eventComponent, event.position);
+        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x),
+                                                    static_cast<int>(localPoint.y));
+        if (row != listModel.getHoveredRow())
+        {
+            listModel.setHoveredRow(row);
+            irList->repaint();
+        }
+    }
+}
+
+void IRBrowserComponent::mouseExit(const MouseEvent& /*event*/)
+{
+    if (listModel.getHoveredRow() != -1)
+    {
+        listModel.setHoveredRow(-1);
+        irList->repaint();
+    }
+}
+
+void IRBrowserComponent::scanDirectory(const File& directory)
+{
+    irFiles.clear();
+
+    statusLabel->setText("Scanning for IR files...", dontSendNotification);
+
+    std::set<String> seenPaths;
+    AudioFormatManager formatManager;
+    formatManager.registerBasicFormats();
+
+    auto addFile = [&](const File& file)
+    {
+        if (seenPaths.find(file.getFullPathName()) != seenPaths.end())
+            return;
+        seenPaths.insert(file.getFullPathName());
+
+        IRFileInfo info;
+        info.name = file.getFileNameWithoutExtension().toStdString();
+        info.filePath = file.getFullPathName().toStdString();
+        info.fileSize = file.getSize();
+
+        std::unique_ptr<AudioFormatReader> reader(formatManager.createReaderFor(file));
+        if (reader)
+        {
+            info.sampleRate = reader->sampleRate;
+            info.numChannels = static_cast<int>(reader->numChannels);
+            if (reader->sampleRate > 0)
+                info.durationSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
+
+            spdlog::debug("[IRBrowser] Loaded IR: {} - {}Hz, {}ch, {:.3f}s",
+                          info.name, info.sampleRate, info.numChannels, info.durationSeconds);
+        }
+        else
+        {
+            spdlog::warn("[IRBrowser] Failed to read audio file: {}", file.getFullPathName().toStdString());
+        }
+
+        irFiles.push_back(std::move(info));
+    };
+
+    auto scanDir = [&](const File& dir)
+    {
+        if (!dir.isDirectory())
+            return;
+
+        spdlog::info("[IRBrowser] Scanning directory: {}", dir.getFullPathName().toStdString());
+
+        auto wavFiles = dir.findChildFiles(File::findFiles, true, "*.wav");
+        auto aiffFiles = dir.findChildFiles(File::findFiles, true, "*.aiff");
+        auto aifFiles = dir.findChildFiles(File::findFiles, true, "*.aif");
+
+        for (const auto& f : wavFiles) addFile(f);
+        for (const auto& f : aiffFiles) addFile(f);
+        for (const auto& f : aifFiles) addFile(f);
+    };
+
+    // Scan primary IR directory
+    scanDir(directory);
+
+    // Also scan NAM Models directory (TONE3000 downloads IRs there too)
+    if (namModelsDirectory.isDirectory() && namModelsDirectory != directory)
+    {
+        scanDir(namModelsDirectory);
+    }
+
+    spdlog::info("[IRBrowser] Found {} IR files total", irFiles.size());
+
+    std::sort(irFiles.begin(), irFiles.end(),
+              [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
+
+    listModel.setFiles(irFiles);
+    irList->updateContent();
+    irList->repaint();
+
+    // Update status to show both directories being scanned
+    String statusText = currentDirectory.getFullPathName();
+    if (namModelsDirectory.isDirectory() && namModelsDirectory != currentDirectory)
+        statusText += " + " + namModelsDirectory.getFileName();
+    if (irFiles.empty())
+        statusText += " - No IR files found";
+    else if (irFiles.size() == 1)
+        statusText += " - 1 IR file";
+    else
+        statusText += " - " + String(irFiles.size()) + " IR files";
+    statusLabel->setText(statusText, dontSendNotification);
+
+    updateDetailsPanel(nullptr);
+}
+
+void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
+{
+    if (irInfo)
+    {
+        nameValue->setText(String(irInfo->name), dontSendNotification);
+
+        if (irInfo->durationSeconds > 0)
+        {
+            if (irInfo->durationSeconds >= 1.0)
+                durationValue->setText(String(irInfo->durationSeconds, 3) + " s", dontSendNotification);
+            else
+                durationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms", dontSendNotification);
+        }
+        else
+        {
+            durationValue->setText("-", dontSendNotification);
+        }
+
+        if (irInfo->sampleRate > 0)
+            sampleRateValue->setText(String(static_cast<int>(irInfo->sampleRate)) + " Hz", dontSendNotification);
+        else
+            sampleRateValue->setText("-", dontSendNotification);
+
+        if (irInfo->numChannels > 0)
+        {
+            String chText = irInfo->numChannels == 1 ? "Mono" : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " ch");
+            channelsValue->setText(chText, dontSendNotification);
+        }
+        else
+        {
+            channelsValue->setText("-", dontSendNotification);
+        }
+
+        if (irInfo->fileSize > 0)
+        {
+            if (irInfo->fileSize >= 1024 * 1024)
+                fileSizeValue->setText(String(irInfo->fileSize / (1024.0 * 1024.0), 2) + " MB", dontSendNotification);
+            else
+                fileSizeValue->setText(String(irInfo->fileSize / 1024) + " KB", dontSendNotification);
+        }
+        else
+        {
+            fileSizeValue->setText("-", dontSendNotification);
+        }
+    }
+    else
+    {
+        nameValue->setText("-", dontSendNotification);
+        durationValue->setText("-", dontSendNotification);
+        sampleRateValue->setText("-", dontSendNotification);
+        channelsValue->setText("-", dontSendNotification);
+        fileSizeValue->setText("-", dontSendNotification);
+    }
+}
+
+void IRBrowserComponent::loadSelectedIR()
+{
+    int selectedRow = irList->getSelectedRow();
+    const IRFileInfo* ir = listModel.getFileAt(selectedRow);
+
+    if (ir == nullptr)
+        return;
+
+    File irFile(ir->filePath);
+    if (!irFile.existsAsFile())
+        return;
+
+    spdlog::info("[IRBrowser] Loading IR: {}", ir->name);
+
+    if (onIRSelectedCallback)
+        onIRSelectedCallback(irFile);
+
+    // Close window after loading
+    if (auto* window = findParentComponentOfClass<DocumentWindow>())
+        window->setVisible(false);
+}
+
+void IRBrowserComponent::onListSelectionChanged()
+{
+    int selectedRow = irList->getSelectedRow();
+    const IRFileInfo* ir = listModel.getFileAt(selectedRow);
+    updateDetailsPanel(ir);
+}
+
+//==============================================================================
+// IRBrowser Window
+//==============================================================================
+
+std::unique_ptr<IRBrowser> IRBrowser::instance;
+std::function<void(const File&)> IRBrowser::currentCallback;
+
+IRBrowser::IRBrowser(std::function<void(const File&)> onIRSelected)
+    : DocumentWindow("IR Browser", ColourScheme::getInstance().colours["Window Background"],
+                     DocumentWindow::closeButton)
+{
+    setContentOwned(new IRBrowserComponent(std::move(onIRSelected)), true);
+    setResizable(true, true);
+    setResizeLimits(500, 350, 1200, 800);
+    setUsingNativeTitleBar(true);
+    centreWithSize(600, 450);
+}
+
+void IRBrowser::showWindow(std::function<void(const File&)> onIRSelected)
+{
+    currentCallback = std::move(onIRSelected);
+    instance = std::make_unique<IRBrowser>(currentCallback);
+    instance->setVisible(true);
+    instance->toFront(true);
+}

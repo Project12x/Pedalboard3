@@ -40,7 +40,7 @@ class NAMProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(400, 280); }
+    Point<int> getSize() override { return Point<int>(400, 310); }
 
     void updateEditorBounds(const juce::Rectangle<int>& bounds);
 
@@ -88,6 +88,13 @@ class NAMProcessor : public PedalboardProcessor
 
     bool isIREnabled() const { return irEnabled.load(); }
     void setIREnabled(bool enabled) { irEnabled.store(enabled); }
+
+    // IR filters (high-pass before IR, low-pass after IR)
+    float getIRLowCut() const { return irLowCut.load(); }
+    void setIRLowCut(float freqHz);
+
+    float getIRHighCut() const { return irHighCut.load(); }
+    void setIRHighCut(float freqHz);
 
     //==========================================================================
     // Effects Loop (SubGraph between tone stack and IR)
@@ -150,6 +157,7 @@ class NAMProcessor : public PedalboardProcessor
   private:
     void updateNoiseGate();
     void updateToneStack();
+    void updateIRFilters();
     void normalizeModelOutput(float* output, int numSamples);
     static float dBToLinear(float dB);
 
@@ -164,6 +172,14 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<bool> irLoaded{false};
     std::atomic<bool> irEnabled{true};
     juce::File currentIRFile;
+
+    // IR filters (high-pass before convolution, low-pass after)
+    std::atomic<float> irLowCut{80.0f};      // Hz (high-pass cutoff)
+    std::atomic<float> irHighCut{12000.0f};  // Hz (low-pass cutoff)
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
+                                    juce::dsp::IIR::Coefficients<float>> irLowCutFilter;
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
+                                    juce::dsp::IIR::Coefficients<float>> irHighCutFilter;
 
     // Effects loop (SubGraphProcessor for hosting plugins between tone stack and IR)
     std::unique_ptr<SubGraphProcessor> effectsLoop;

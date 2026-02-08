@@ -49,6 +49,10 @@ class IconManager
     std::unique_ptr<Drawable> getDownloadIcon(Colour colour = Colours::white);
     std::unique_ptr<Drawable> getRefreshIcon(Colour colour = Colours::white);
 
+    // === Lucide: Audio I/O Icons ===
+    std::unique_ptr<Drawable> getMicIcon(Colour colour = Colours::white);
+    std::unique_ptr<Drawable> getSpeakerIcon(Colour colour = Colours::white);
+
   private:
     IconManager() = default;
     ~IconManager() = default;

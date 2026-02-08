@@ -79,6 +79,12 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     std::unique_ptr<Label> irNameLabel;
     std::unique_ptr<ToggleButton> irEnabledButton;
 
+    // IR filters
+    std::unique_ptr<Slider> irLowCutSlider;
+    std::unique_ptr<Label> irLowCutLabel;
+    std::unique_ptr<Slider> irHighCutSlider;
+    std::unique_ptr<Label> irHighCutLabel;
+
     // Effects loop
     std::unique_ptr<ToggleButton> fxLoopEnabledButton;
     std::unique_ptr<TextButton> editFxLoopButton;

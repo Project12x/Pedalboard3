@@ -91,6 +91,9 @@ void DeviceMeterTap::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     if (device != nullptr)
     {
+        // Store device name for display
+        deviceName = device->getName();
+
         // Calculate decay coefficient based on sample rate
         // Target: ~3 second decay time from 1.0 to ~0.001 (-60dB)
         double sampleRate = device->getCurrentSampleRate();
@@ -180,4 +183,10 @@ DeviceMeterTap* DeviceMeterTap::getInstance()
 void DeviceMeterTap::setInstance(DeviceMeterTap* inst)
 {
     instance = inst;
+}
+
+//------------------------------------------------------------------------------
+juce::String DeviceMeterTap::getDeviceName() const
+{
+    return deviceName;
 }

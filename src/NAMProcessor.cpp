@@ -54,6 +54,16 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
     // Prepare convolver for IR
     convolver->prepare(sampleRate, estimatedSamplesPerBlock);
 
+    // Prepare IR filters
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32>(estimatedSamplesPerBlock);
+    spec.numChannels = 2;
+
+    irLowCutFilter.prepare(spec);
+    irHighCutFilter.prepare(spec);
+    updateIRFilters();
+
     // Prepare effects loop
     if (effectsLoop)
     {
@@ -245,10 +255,25 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
         effectsLoop->processBlock(buffer, midiMessages);
     }
 
-    // Apply IR convolution if enabled
+    // Apply IR convolution with filters if enabled
     if (doIR)
     {
+        // Low cut (high-pass) filter BEFORE convolution - removes rumble
+        {
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            irLowCutFilter.process(context);
+        }
+
+        // Apply IR convolution
         convolver->process(buffer);
+
+        // High cut (low-pass) filter AFTER convolution - tames harshness
+        {
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            irHighCutFilter.process(context);
+        }
     }
 
     // Apply output gain
@@ -310,6 +335,34 @@ void NAMProcessor::setMid(float value)
 void NAMProcessor::setTreble(float value)
 {
     treble.store(juce::jlimit(0.0f, 10.0f, value));
+}
+
+void NAMProcessor::setIRLowCut(float freqHz)
+{
+    irLowCut.store(juce::jlimit(20.0f, 500.0f, freqHz));
+    updateIRFilters();
+}
+
+void NAMProcessor::setIRHighCut(float freqHz)
+{
+    irHighCut.store(juce::jlimit(2000.0f, 20000.0f, freqHz));
+    updateIRFilters();
+}
+
+void NAMProcessor::updateIRFilters()
+{
+    if (!isPrepared)
+        return;
+
+    // Low cut (high-pass) filter - removes rumble before IR
+    auto lowCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(
+        currentSampleRate, irLowCut.load());
+    *irLowCutFilter.state = *lowCutCoeffs;
+
+    // High cut (low-pass) filter - removes harshness after IR
+    auto highCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(
+        currentSampleRate, irHighCut.load());
+    *irHighCutFilter.state = *highCutCoeffs;
 }
 
 //==============================================================================
@@ -438,7 +491,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(2); // Version (2 = added effects loop)
+    stream.writeInt(3); // Version (3 = added IR filters)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -468,6 +521,10 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
     {
         stream.writeInt(0);
     }
+
+    // IR filters (v3+)
+    stream.writeFloat(irLowCut.load());
+    stream.writeFloat(irHighCut.load());
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -521,6 +578,14 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
             stream.read(fxLoopState.getData(), static_cast<int>(fxLoopState.getSize()));
             effectsLoop->setStateInformation(fxLoopState.getData(), static_cast<int>(fxLoopState.getSize()));
         }
+    }
+
+    // IR filters (v3+)
+    if (version >= 3 && !stream.isExhausted())
+    {
+        irLowCut.store(stream.readFloat());
+        irHighCut.store(stream.readFloat());
+        updateIRFilters();
     }
 }
 

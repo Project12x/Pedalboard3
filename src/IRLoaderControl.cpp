@@ -3,6 +3,7 @@
 
     IRLoaderControl.cpp
     UI control for the IR Loader processor
+    Professional styling matching NAM Loader aesthetic
 
   ==============================================================================
 */
@@ -10,34 +11,166 @@
 #include "IRLoaderControl.h"
 
 #include "IRLoaderProcessor.h"
+#include "NAMModelBrowser.h"
 
+//==============================================================================
+// IRLoaderLookAndFeel Implementation
+//==============================================================================
+IRLoaderLookAndFeel::IRLoaderLookAndFeel()
+{
+    // Set dark color scheme
+    setColour(Slider::backgroundColourId, Colour(0xff1a1a1a));
+    setColour(Slider::trackColourId, Colour(0xff4a90d9));
+    setColour(Slider::thumbColourId, Colour(0xffe0e0e0));
+    setColour(TextButton::buttonColourId, Colour(0xff3a3a3a));
+    setColour(TextButton::textColourOffId, Colour(0xffe0e0e0));
+    setColour(Label::textColourId, Colour(0xffe0e0e0));
+}
+
+void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int height,
+                                            float sliderPos, float minSliderPos, float maxSliderPos,
+                                            const Slider::SliderStyle style, Slider& slider)
+{
+    const bool isHorizontal = (style == Slider::LinearHorizontal || style == Slider::LinearBar);
+    const float trackThickness = 4.0f;
+
+    Rectangle<float> track;
+    if (isHorizontal)
+    {
+        track = Rectangle<float>(static_cast<float>(x), y + (height - trackThickness) * 0.5f,
+                                  static_cast<float>(width), trackThickness);
+    }
+    else
+    {
+        track = Rectangle<float>(x + (width - trackThickness) * 0.5f, static_cast<float>(y),
+                                  trackThickness, static_cast<float>(height));
+    }
+
+    // Track background (inset effect)
+    g.setColour(Colour(0xff101010));
+    g.fillRoundedRectangle(track, 2.0f);
+    g.setColour(Colour(0xff080808));
+    g.drawRoundedRectangle(track, 2.0f, 1.0f);
+
+    // Filled portion
+    Rectangle<float> filledTrack;
+    if (isHorizontal)
+    {
+        const float fillWidth = sliderPos - x;
+        filledTrack = Rectangle<float>(static_cast<float>(x), track.getY(), fillWidth, trackThickness);
+    }
+    else
+    {
+        const float fillHeight = (y + height) - sliderPos;
+        filledTrack = Rectangle<float>(track.getX(), sliderPos, trackThickness, fillHeight);
+    }
+
+    ColourGradient fillGradient(Colour(0xff4a90d9), filledTrack.getX(), filledTrack.getY(),
+                                 Colour(0xff3070a0), filledTrack.getRight(), filledTrack.getBottom(), false);
+    g.setGradientFill(fillGradient);
+    g.fillRoundedRectangle(filledTrack, 2.0f);
+
+    // Thumb
+    const float thumbSize = 14.0f;
+    float thumbX, thumbY;
+    if (isHorizontal)
+    {
+        thumbX = sliderPos - thumbSize * 0.5f;
+        thumbY = y + (height - thumbSize) * 0.5f;
+    }
+    else
+    {
+        thumbX = x + (width - thumbSize) * 0.5f;
+        thumbY = sliderPos - thumbSize * 0.5f;
+    }
+
+    // Thumb shadow
+    g.setColour(Colours::black.withAlpha(0.3f));
+    g.fillEllipse(thumbX + 1, thumbY + 1, thumbSize, thumbSize);
+
+    // Thumb body
+    ColourGradient thumbGradient(Colour(0xff505050), thumbX, thumbY,
+                                  Colour(0xff303030), thumbX, thumbY + thumbSize, false);
+    g.setGradientFill(thumbGradient);
+    g.fillEllipse(thumbX, thumbY, thumbSize, thumbSize);
+
+    // Thumb highlight
+    g.setColour(Colour(0xff606060));
+    g.drawEllipse(thumbX, thumbY, thumbSize, thumbSize, 1.0f);
+}
+
+void IRLoaderLookAndFeel::drawButtonBackground(Graphics& g, Button& button,
+                                                const Colour& backgroundColour,
+                                                bool shouldDrawButtonAsHighlighted,
+                                                bool shouldDrawButtonAsDown)
+{
+    auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+
+    Colour baseColour = shouldDrawButtonAsDown ? Colour(0xff252525)
+                      : shouldDrawButtonAsHighlighted ? Colour(0xff454545)
+                      : Colour(0xff353535);
+
+    // Button shadow
+    g.setColour(Colours::black.withAlpha(0.3f));
+    g.fillRoundedRectangle(bounds.translated(0, 1), 4.0f);
+
+    // Button body gradient
+    ColourGradient buttonGradient(baseColour.brighter(0.1f), bounds.getX(), bounds.getY(),
+                                   baseColour.darker(0.1f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill(buttonGradient);
+    g.fillRoundedRectangle(bounds, 4.0f);
+
+    // Border
+    g.setColour(Colour(0xff505050));
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+}
+
+//==============================================================================
+// IRLoaderControl Implementation
 //==============================================================================
 IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(processor)
 {
+    setLookAndFeel(&irLookAndFeel);
+
     // Load button
-    loadButton = std::make_unique<TextButton>("Load IR");
+    loadButton = std::make_unique<TextButton>("Load");
     loadButton->addListener(this);
     addAndMakeVisible(loadButton.get());
+
+    // Browse button (opens IR browser window)
+    browseButton = std::make_unique<TextButton>("Browse");
+    browseButton->setTooltip("Browse IR Library");
+    browseButton->addListener(this);
+    addAndMakeVisible(browseButton.get());
+
+    // Clear button
+    clearButton = std::make_unique<TextButton>("X");
+    clearButton->setTooltip("Clear IR");
+    clearButton->addListener(this);
+    addAndMakeVisible(clearButton.get());
 
     // IR name display
     irNameLabel = std::make_unique<Label>("irName", "No IR Loaded");
     irNameLabel->setJustificationType(Justification::centredLeft);
-    irNameLabel->setColour(Label::textColourId, Colours::white);
-    irNameLabel->setColour(Label::backgroundColourId, Colours::transparentBlack);
+    irNameLabel->setColour(Label::textColourId, Colour(kTextBright));
+    irNameLabel->setColour(Label::backgroundColourId, Colour(0xff151515));
+    irNameLabel->setColour(Label::outlineColourId, Colour(0xff080808));
     addAndMakeVisible(irNameLabel.get());
 
-    // Mix slider
+    // Mix slider (0-100% display)
     mixSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
-    mixSlider->setRange(0.0, 1.0, 0.01);
-    mixSlider->setValue(irProcessor->getMix());
+    mixSlider->setRange(0.0, 100.0, 1.0);
+    mixSlider->setValue(irProcessor->getMix() * 100.0);
     mixSlider->addListener(this);
     mixSlider->setTextValueSuffix("%");
     mixSlider->setNumDecimalPlacesToDisplay(0);
+    mixSlider->setTextBoxStyle(Slider::TextBoxRight, false, 45, 18);
     addAndMakeVisible(mixSlider.get());
 
-    mixLabel = std::make_unique<Label>("mixLabel", "Mix");
+    mixLabel = std::make_unique<Label>("mixLabel", "MIX");
     mixLabel->setJustificationType(Justification::centredRight);
-    mixLabel->setColour(Label::textColourId, Colours::white);
+    mixLabel->setColour(Label::textColourId, Colour(kTextDim));
+    mixLabel->setFont(Font(11.0f, Font::bold));
     addAndMakeVisible(mixLabel.get());
 
     // Low cut slider
@@ -47,11 +180,13 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
     lowCutSlider->addListener(this);
     lowCutSlider->setTextValueSuffix(" Hz");
     lowCutSlider->setSkewFactorFromMidPoint(100.0);
+    lowCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
     addAndMakeVisible(lowCutSlider.get());
 
-    lowCutLabel = std::make_unique<Label>("lowCutLabel", "Lo Cut");
+    lowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
     lowCutLabel->setJustificationType(Justification::centredRight);
-    lowCutLabel->setColour(Label::textColourId, Colours::white);
+    lowCutLabel->setColour(Label::textColourId, Colour(kTextDim));
+    lowCutLabel->setFont(Font(11.0f, Font::bold));
     addAndMakeVisible(lowCutLabel.get());
 
     // High cut slider
@@ -61,62 +196,135 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
     highCutSlider->addListener(this);
     highCutSlider->setTextValueSuffix(" Hz");
     highCutSlider->setSkewFactorFromMidPoint(6000.0);
+    highCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
     addAndMakeVisible(highCutSlider.get());
 
-    highCutLabel = std::make_unique<Label>("highCutLabel", "Hi Cut");
+    highCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
     highCutLabel->setJustificationType(Justification::centredRight);
-    highCutLabel->setColour(Label::textColourId, Colours::white);
+    highCutLabel->setColour(Label::textColourId, Colour(kTextDim));
+    highCutLabel->setFont(Font(11.0f, Font::bold));
     addAndMakeVisible(highCutLabel.get());
 
     // Update display
     updateIRDisplay();
 }
 
-IRLoaderControl::~IRLoaderControl() {}
+IRLoaderControl::~IRLoaderControl()
+{
+    setLookAndFeel(nullptr);
+}
 
 //==============================================================================
 void IRLoaderControl::paint(Graphics& g)
 {
-    // Dark background
-    g.fillAll(Colour(0xff2a2a2a));
+    auto bounds = getLocalBounds().toFloat();
 
-    // Border
+    // Main background with subtle gradient
+    ColourGradient bgGradient(Colour(kBackgroundMid), 0, 0,
+                               Colour(kBackgroundDark), 0, bounds.getHeight(), false);
+    g.setGradientFill(bgGradient);
+    g.fillRoundedRectangle(bounds, 4.0f);
+
+    // Outer border with bevel effect
+    g.setColour(Colour(0xff101010));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 4.0f, 1.0f);
     g.setColour(Colour(0xff404040));
-    g.drawRect(getLocalBounds(), 1);
+    g.drawRoundedRectangle(bounds.reduced(1.5f), 3.0f, 1.0f);
 
-    // Header area
-    auto headerBounds = getLocalBounds().removeFromTop(28);
-    g.setColour(Colour(0xff1a1a1a));
-    g.fillRect(headerBounds);
+    // Header bar with rounded top corners
+    Rectangle<float> headerBounds(1, 1, bounds.getWidth() - 2, 27);
+    Path headerPath;
+    headerPath.addRoundedRectangle(headerBounds.getX(), headerBounds.getY(),
+                                    headerBounds.getWidth(), headerBounds.getHeight(),
+                                    3.0f, 3.0f, true, true, false, false);
+    ColourGradient headerGradient(Colour(kHeaderAccent).brighter(0.1f), 0, 0,
+                                   Colour(kBackgroundDark), 0, 28, false);
+    g.setGradientFill(headerGradient);
+    g.fillPath(headerPath);
 
-    // Title
-    g.setColour(Colours::white);
-    g.setFont(14.0f);
-    g.drawText("IR LOADER", headerBounds.reduced(8, 0), Justification::centredLeft);
+    // Header bottom line
+    g.setColour(Colour(0xff101010));
+    g.drawHorizontalLine(27, 1, bounds.getWidth() - 1);
+    g.setColour(Colour(0xff505050).withAlpha(0.5f));
+    g.drawHorizontalLine(28, 1, bounds.getWidth() - 1);
 
-    // Status indicator
-    Colour statusColour = irProcessor->isIRLoaded() ? Colours::limegreen : Colours::grey;
-    g.setColour(statusColour);
-    g.fillEllipse(headerBounds.getRight() - 20.0f, headerBounds.getCentreY() - 5.0f, 10.0f, 10.0f);
+    // Cabinet icon (speaker cone representation)
+    const float iconX = 10.0f;
+    const float iconY = 6.0f;
+    const float iconSize = 16.0f;
+
+    // Outer ring
+    g.setColour(Colour(kTextDim));
+    g.drawEllipse(iconX, iconY, iconSize, iconSize, 1.5f);
+    // Inner cone
+    g.setColour(Colour(kTextBright).withAlpha(0.8f));
+    g.fillEllipse(iconX + 5, iconY + 5, iconSize - 10, iconSize - 10);
+    g.setColour(Colour(kTextDim));
+    g.drawEllipse(iconX + 5, iconY + 5, iconSize - 10, iconSize - 10, 1.0f);
+
+    // Title text
+    g.setColour(Colour(kTextBright));
+    g.setFont(Font(13.0f, Font::bold));
+    g.drawText("IR LOADER", Rectangle<float>(iconX + iconSize + 6, 0, 100, 28),
+               Justification::centredLeft);
+
+    // Status LED (IR loaded indicator)
+    const float ledSize = 8.0f;
+    const float ledX = bounds.getWidth() - 18.0f;
+    const float ledY = (28 - ledSize) * 0.5f;
+
+    Colour ledColour = irProcessor->isIRLoaded() ? Colour(kLedOn) : Colour(kLedOff);
+
+    // LED glow effect
+    if (irProcessor->isIRLoaded())
+    {
+        g.setColour(ledColour.withAlpha(0.3f));
+        g.fillEllipse(ledX - 4, ledY - 4, ledSize + 8, ledSize + 8);
+        g.setColour(ledColour.withAlpha(0.15f));
+        g.fillEllipse(ledX - 6, ledY - 6, ledSize + 12, ledSize + 12);
+    }
+
+    // LED body with gradient
+    ColourGradient ledGradient(ledColour.brighter(0.4f), ledX, ledY,
+                                ledColour.darker(0.3f), ledX, ledY + ledSize, false);
+    g.setGradientFill(ledGradient);
+    g.fillEllipse(ledX, ledY, ledSize, ledSize);
+
+    // LED rim
+    g.setColour(Colour(0xff101010));
+    g.drawEllipse(ledX, ledY, ledSize, ledSize, 1.0f);
+
+    // Subtle section separator above sliders
+    float separatorY = 56.0f;
+    g.setColour(Colour(0xff101010));
+    g.drawHorizontalLine(static_cast<int>(separatorY), 8, bounds.getWidth() - 8);
+    g.setColour(Colour(0xff353535));
+    g.drawHorizontalLine(static_cast<int>(separatorY) + 1, 8, bounds.getWidth() - 8);
 }
 
 void IRLoaderControl::resized()
 {
-    auto bounds = getLocalBounds().reduced(8);
-    bounds.removeFromTop(28); // Header space
+    auto bounds = getLocalBounds();
+    bounds.removeFromTop(32); // Header space
+    bounds = bounds.reduced(8, 4);
 
-    const int rowHeight = 24;
-    const int labelWidth = 50;
-    const int buttonWidth = 70;
+    const int rowHeight = 22;
+    const int labelWidth = 45;
+    const int buttonWidth = 60;
+    const int clearButtonWidth = 22;
     const int spacing = 4;
 
-    // Row 1: Load button + IR name
+    // Row 1: Load + Browse + Clear + IR name
     auto row1 = bounds.removeFromTop(rowHeight);
-    loadButton->setBounds(row1.removeFromLeft(buttonWidth));
+    loadButton->setBounds(row1.removeFromLeft(45));
+    row1.removeFromLeft(spacing);
+    browseButton->setBounds(row1.removeFromLeft(55));
+    row1.removeFromLeft(spacing);
+    clearButton->setBounds(row1.removeFromLeft(clearButtonWidth));
     row1.removeFromLeft(spacing);
     irNameLabel->setBounds(row1);
 
-    bounds.removeFromTop(spacing);
+    bounds.removeFromTop(spacing + 2);
 
     // Row 2: Mix slider
     auto row2 = bounds.removeFromTop(rowHeight);
@@ -164,13 +372,30 @@ void IRLoaderControl::buttonClicked(Button* button)
                                      }
                                  });
     }
+    else if (button == browseButton.get())
+    {
+        // Open IR browser window
+        IRBrowser::showWindow([this](const File& irFile) {
+            irProcessor->loadIRFile(irFile);
+            updateIRDisplay();
+            repaint();
+        });
+    }
+    else if (button == clearButton.get())
+    {
+        // Clear the loaded IR
+        irProcessor->loadIRFile(File());
+        updateIRDisplay();
+        repaint();
+    }
 }
 
 void IRLoaderControl::sliderValueChanged(Slider* slider)
 {
     if (slider == mixSlider.get())
     {
-        irProcessor->setMix(static_cast<float>(slider->getValue()));
+        // Convert 0-100% display value to 0-1 internal value
+        irProcessor->setMix(static_cast<float>(slider->getValue() / 100.0));
     }
     else if (slider == lowCutSlider.get())
     {
@@ -188,9 +413,11 @@ void IRLoaderControl::updateIRDisplay()
     if (irProcessor->isIRLoaded())
     {
         irNameLabel->setText(irProcessor->getIRName(), dontSendNotification);
+        irNameLabel->setColour(Label::textColourId, Colour(kTextBright));
     }
     else
     {
         irNameLabel->setText("No IR Loaded", dontSendNotification);
+        irNameLabel->setColour(Label::textColourId, Colour(kTextDim));
     }
 }

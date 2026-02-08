@@ -22,6 +22,7 @@
 
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
+#include "IconManager.h"
 #include "CrashProtection.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
@@ -265,46 +266,32 @@ void PluginComponent::paint(Graphics& g)
     // === ICON for Audio I/O nodes ===
     if (isAudioIONode())
     {
-        g.setColour(colours["Text Colour"]);
-        const float iconSize = 10.0f;
-        const float iconX = 6.0f;
-        const float iconY = 4.0f;
+        const float iconSize = 12.0f;
+        const float iconX = 5.0f;
+        const float iconY = 3.0f;
+
+        auto& iconManager = IconManager::getInstance();
+        std::unique_ptr<Drawable> icon;
 
         if (pluginName == "Audio Input")
+            icon = iconManager.getMicIcon(colours["Text Colour"]);
+        else
+            icon = iconManager.getSpeakerIcon(colours["Text Colour"]);
+
+        if (icon)
+            icon->drawWithin(g, Rectangle<float>(iconX, iconY, iconSize, iconSize),
+                             RectanglePlacement::centred, 1.0f);
+
+        // Draw device name subtitle
+        if (auto* tap = DeviceMeterTap::getInstance())
         {
-            // Microphone icon
-            Path mic;
-            // Mic body (rounded rectangle)
-            mic.addRoundedRectangle(iconX + 2.0f, iconY, iconSize - 4.0f, iconSize * 0.6f, 2.0f);
-            // Mic stand (arc)
-            mic.addArc(iconX, iconY + iconSize * 0.3f, iconSize, iconSize * 0.5f,
-                       MathConstants<float>::pi * 0.2f, MathConstants<float>::pi * 0.8f, true);
-            // Mic base (line)
-            mic.startNewSubPath(iconX + iconSize * 0.5f, iconY + iconSize * 0.7f);
-            mic.lineTo(iconX + iconSize * 0.5f, iconY + iconSize);
-            g.strokePath(mic, PathStrokeType(1.2f));
-        }
-        else // Audio Output
-        {
-            // Speaker icon
-            Path speaker;
-            // Speaker cone
-            speaker.startNewSubPath(iconX + 2.0f, iconY + iconSize * 0.3f);
-            speaker.lineTo(iconX + iconSize * 0.4f, iconY + iconSize * 0.3f);
-            speaker.lineTo(iconX + iconSize * 0.7f, iconY);
-            speaker.lineTo(iconX + iconSize * 0.7f, iconY + iconSize);
-            speaker.lineTo(iconX + iconSize * 0.4f, iconY + iconSize * 0.7f);
-            speaker.lineTo(iconX + 2.0f, iconY + iconSize * 0.7f);
-            speaker.closeSubPath();
-            g.fillPath(speaker);
-            // Sound wave arc
-            Path wave;
-            wave.addCentredArc(iconX + iconSize * 0.75f, iconY + iconSize * 0.5f,
-                               iconSize * 0.25f, iconSize * 0.35f,
-                               0.0f,
-                               -MathConstants<float>::pi * 0.4f,
-                               MathConstants<float>::pi * 0.4f, true);
-            g.strokePath(wave, PathStrokeType(1.2f));
+            String deviceName = tap->getDeviceName();
+            if (deviceName.isNotEmpty())
+            {
+                g.setColour(colours["Text Colour"].withAlpha(0.6f));
+                g.setFont(Font(9.0f));
+                g.drawText(deviceName, 4.0f, 18.0f, w - 8.0f, 12.0f, Justification::centred, true);
+            }
         }
     }
 
@@ -319,12 +306,14 @@ void PluginComponent::paint(Graphics& g)
     for (i = 0; i < outputText.size(); ++i)
         outputText[i]->draw(g);
 
-    // Draw horizontal VU meters for Audio I/O nodes
+    // Draw horizontal VU meters for Audio I/O nodes (full width)
     if (isAudioIONode() && cachedMeterChannelCount > 0)
     {
-        const float meterWidth = 36.0f;   // Horizontal: wider for better resolution
-        const float meterHeight = 6.0f;   // Horizontal: compact height per channel
-        const float meterStartY = 28.0f;
+        const float pinMargin = 22.0f;    // Space for pin on one side
+        const float edgeMargin = 8.0f;    // Space on the other side
+        const float meterWidth = w - pinMargin - edgeMargin;  // Full width minus margins
+        const float meterHeight = 6.0f;   // Compact height per channel
+        const float meterStartY = 32.0f;  // Below device name subtitle
         const float pinSpacing = 24.0f;   // Match Audio I/O pin spacing
 
         for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
@@ -335,19 +324,19 @@ void PluginComponent::paint(Graphics& g)
             float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
             float normalizedLevel = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
 
-            // Position meter - horizontal bars next to pins
+            // Position meter - full width horizontal bars
             float x, y;
             if (pluginName == "Audio Input")
             {
-                // Output pins are on the right, meter to the left of pin
-                x = w - 20.0f - meterWidth;
-                y = meterStartY + ch * pinSpacing + 4.0f; // Center vertically with pin
+                // Output pins are on the right, meter starts from left edge
+                x = edgeMargin;
+                y = meterStartY + ch * pinSpacing;
             }
             else // Audio Output
             {
-                // Input pins are on the left, meter to the right of pin
-                x = 22.0f;
-                y = meterStartY + ch * pinSpacing + 4.0f; // Center vertically with pin
+                // Input pins are on the left, meter starts after pin
+                x = pinMargin;
+                y = meterStartY + ch * pinSpacing;
             }
 
             // Meter background (dark track)

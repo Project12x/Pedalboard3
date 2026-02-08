@@ -31,7 +31,7 @@ class IRLoaderProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(280, 120); }
+    Point<int> getSize() override { return Point<int>(280, 150); }
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 

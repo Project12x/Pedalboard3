@@ -277,6 +277,37 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     irEnabledButton->addListener(this);
     addAndMakeVisible(irEnabledButton.get());
 
+    // IR filters
+    irLowCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+    irLowCutSlider->setRange(20.0, 500.0, 1.0);
+    irLowCutSlider->setValue(namProcessor->getIRLowCut());
+    irLowCutSlider->setSkewFactorFromMidPoint(100.0);
+    irLowCutSlider->addListener(this);
+    irLowCutSlider->setTextValueSuffix(" Hz");
+    irLowCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    addAndMakeVisible(irLowCutSlider.get());
+
+    irLowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
+    irLowCutLabel->setJustificationType(Justification::centredRight);
+    irLowCutLabel->setColour(Label::textColourId, Colour(kTextDim));
+    irLowCutLabel->setFont(Font(11.0f, Font::bold));
+    addAndMakeVisible(irLowCutLabel.get());
+
+    irHighCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+    irHighCutSlider->setRange(2000.0, 20000.0, 100.0);
+    irHighCutSlider->setValue(namProcessor->getIRHighCut());
+    irHighCutSlider->setSkewFactorFromMidPoint(8000.0);
+    irHighCutSlider->addListener(this);
+    irHighCutSlider->setTextValueSuffix(" Hz");
+    irHighCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    addAndMakeVisible(irHighCutSlider.get());
+
+    irHighCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
+    irHighCutLabel->setJustificationType(Justification::centredRight);
+    irHighCutLabel->setColour(Label::textColourId, Colour(kTextDim));
+    irHighCutLabel->setFont(Font(11.0f, Font::bold));
+    addAndMakeVisible(irHighCutLabel.get());
+
     // Effects loop controls
     fxLoopEnabledButton = std::make_unique<ToggleButton>("FX Loop");
     fxLoopEnabledButton->setToggleState(namProcessor->isEffectsLoopEnabled(), dontSendNotification);
@@ -505,6 +536,24 @@ void NAMControl::resized()
 
     bounds.removeFromTop(spacing);
 
+    // IR Filters row (compact side-by-side layout)
+    auto irFilterRow = bounds.removeFromTop(rowHeight);
+    const int halfWidth = (irFilterRow.getWidth() - spacing) / 2;
+
+    auto lowCutArea = irFilterRow.removeFromLeft(halfWidth);
+    irLowCutLabel->setBounds(lowCutArea.removeFromLeft(45));
+    lowCutArea.removeFromLeft(2);
+    irLowCutSlider->setBounds(lowCutArea);
+
+    irFilterRow.removeFromLeft(spacing);
+
+    auto highCutArea = irFilterRow;
+    irHighCutLabel->setBounds(highCutArea.removeFromLeft(45));
+    highCutArea.removeFromLeft(2);
+    irHighCutSlider->setBounds(highCutArea);
+
+    bounds.removeFromTop(spacing);
+
     // FX Loop section
     auto fxRow = bounds.removeFromTop(rowHeight);
     fxLoopEnabledButton->setBounds(fxRow.removeFromLeft(70));
@@ -696,6 +745,14 @@ void NAMControl::sliderValueChanged(Slider* slider)
     else if (slider == trebleSlider.get())
     {
         namProcessor->setTreble(static_cast<float>(slider->getValue()));
+    }
+    else if (slider == irLowCutSlider.get())
+    {
+        namProcessor->setIRLowCut(static_cast<float>(slider->getValue()));
+    }
+    else if (slider == irHighCutSlider.get())
+    {
+        namProcessor->setIRHighCut(static_cast<float>(slider->getValue()));
     }
 }
 

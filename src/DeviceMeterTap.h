@@ -56,6 +56,9 @@ public:
     /// Returns the number of active output channels
     int getNumOutputChannels() const;
 
+    /// Returns the current audio device name
+    juce::String getDeviceName() const;
+
     /// Static instance accessor (set by MainPanel)
     static DeviceMeterTap* getInstance();
     static void setInstance(DeviceMeterTap* instance);
@@ -77,6 +80,9 @@ private:
 
     // Static instance pointer
     static DeviceMeterTap* instance;
+
+    // Current device name
+    juce::String deviceName;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeviceMeterTap)
 };

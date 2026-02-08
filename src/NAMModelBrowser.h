@@ -238,3 +238,90 @@ class NAMModelBrowser : public DocumentWindow
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMModelBrowser)
 };
+
+//==============================================================================
+/**
+    Simple IR browser component for standalone IR loading.
+    Used by IRLoaderProcessor to browse and load IR files.
+*/
+class IRBrowserComponent : public Component,
+                           public Button::Listener,
+                           public TextEditor::Listener
+{
+  public:
+    IRBrowserComponent(std::function<void(const File&)> onIRSelected);
+    ~IRBrowserComponent() override = default;
+
+    void paint(Graphics& g) override;
+    void resized() override;
+    void buttonClicked(Button* button) override;
+    void textEditorTextChanged(TextEditor& editor) override;
+    void mouseUp(const MouseEvent& event) override;
+    void mouseDoubleClick(const MouseEvent& event) override;
+    void mouseMove(const MouseEvent& event) override;
+    void mouseExit(const MouseEvent& event) override;
+
+    void scanDirectory(const File& directory);
+
+  private:
+    void updateDetailsPanel(const IRFileInfo* irInfo);
+    void loadSelectedIR();
+    void onListSelectionChanged();
+
+    std::function<void(const File&)> onIRSelectedCallback;
+
+    IRListModel listModel;
+
+    std::unique_ptr<Label> titleLabel;
+    std::unique_ptr<TextEditor> searchBox;
+    std::unique_ptr<TextButton> refreshButton;
+    std::unique_ptr<TextButton> browseFolderButton;
+    std::unique_ptr<TextButton> loadButton;
+    std::unique_ptr<TextButton> closeButton;
+    std::unique_ptr<ListBox> irList;
+
+    // Details panel
+    std::unique_ptr<Label> detailsTitle;
+    std::unique_ptr<Label> nameLabel;
+    std::unique_ptr<Label> nameValue;
+    std::unique_ptr<Label> durationLabel;
+    std::unique_ptr<Label> durationValue;
+    std::unique_ptr<Label> sampleRateLabel;
+    std::unique_ptr<Label> sampleRateValue;
+    std::unique_ptr<Label> channelsLabel;
+    std::unique_ptr<Label> channelsValue;
+    std::unique_ptr<Label> fileSizeLabel;
+    std::unique_ptr<Label> fileSizeValue;
+
+    // Status bar
+    std::unique_ptr<Label> statusLabel;
+
+    File currentDirectory;
+    File namModelsDirectory;  // Also scan NAM Models folder for IRs
+    std::vector<IRFileInfo> irFiles;
+
+    std::unique_ptr<FileChooser> folderChooser;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IRBrowserComponent)
+};
+
+//==============================================================================
+/**
+    Document window for the standalone IR browser.
+*/
+class IRBrowser : public DocumentWindow
+{
+  public:
+    IRBrowser(std::function<void(const File&)> onIRSelected);
+    ~IRBrowser() override = default;
+
+    void closeButtonPressed() override { setVisible(false); }
+
+    static void showWindow(std::function<void(const File&)> onIRSelected);
+
+  private:
+    static std::unique_ptr<IRBrowser> instance;
+    static std::function<void(const File&)> currentCallback;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IRBrowser)
+};
