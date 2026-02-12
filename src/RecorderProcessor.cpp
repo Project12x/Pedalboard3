@@ -157,7 +157,7 @@ void RecorderProcessor::changeListenerCallback(ChangeBroadcaster* source)
                 else
                 {
                     spdlog::warn("[AudioRecorder] Recording failed to start: recording={}, stopRecording={}, threadWriter={}",
-                                 recording, stopRecording, threadWriter != nullptr);
+                                 recording.load(), stopRecording.load(), threadWriter != nullptr);
                 }
             }
             else

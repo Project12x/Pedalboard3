@@ -64,8 +64,9 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
         p.fillInPluginDescription(desc);
 
-        // Use Raw method to avoid adding to undo history
-        signalPath->addFilterRaw(&desc, 50, 400);
+        // Position OSC Input below Virtual MIDI Input based on actual node heights
+        float oscY = signalPath->getNextInputNodeY();
+        signalPath->addFilterRaw(&desc, 50, oscY);
     }
 
     // Setup gui.
@@ -165,9 +166,19 @@ void PluginField::paint(Graphics& g)
 
     if (displayDoubleClickMessage)
     {
-        // Draw a centered, polished empty state hint
-        auto centerX = bounds.getCentreX();
-        auto centerY = bounds.getCentreY();
+        // Draw hint at center of visible viewport area (not canvas center)
+        float centerX, centerY;
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            auto viewArea = viewport->getViewArea();
+            centerX = viewArea.getCentreX();
+            centerY = viewArea.getCentreY();
+        }
+        else
+        {
+            centerX = bounds.getCentreX();
+            centerY = bounds.getCentreY();
+        }
 
         // Primary instruction text
         g.setFont(FontManager::getInstance().getUIFont(18.0f));
@@ -789,34 +800,49 @@ void PluginField::enableAudioInput(bool val)
 
     if (!val)
     {
-        // Delete the filter(s) in the signal path.
-        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
-        {
-            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
-                deleteFilter(signalPath->getNode(i).get()); // JUCE 8: Node::Ptr
-        }
-
-        // Delete the associated "Audio Input" PluginComponent(s).
+        // Delete the associated "Audio Input" PluginComponent(s) first
         for (i = (getNumChildComponents() - 1); i >= 0; --i)
         {
             PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-            if (comp)
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "Audio Input")
             {
-                if (comp->getNode()->getProcessor()->getName() == "Audio Input")
-                    delete removeChildComponent(i);
+                delete removeChildComponent(i);
+            }
+        }
+
+        // Now delete the filter(s) in the signal path
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
+            {
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
     else
     {
-        InternalPluginFormat internalFormat;
+        // Check if Audio Input already exists
+        bool audioInputExists = false;
+        for (i = 0; i < signalPath->getNumFilters(); ++i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
+            {
+                audioInputExists = true;
+                break;
+            }
+        }
 
-        // Add the filter to the signal path.
-        signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        if (!audioInputExists)
+        {
+            InternalPluginFormat internalFormat;
 
-        // Add the associated PluginComponent.
-        addFilter(signalPath->getNumFilters() - 1);
+            // Add the filter to the signal path.
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f,
+                                  10.0f);
+
+            // Add the associated PluginComponent.
+            addFilter(signalPath->getNumFilters() - 1);
+        }
     }
 }
 
@@ -824,7 +850,6 @@ void PluginField::enableAudioInput(bool val)
 void PluginField::enableMidiInput(bool val)
 {
     int i;
-    AudioProcessorGraph::Node* tempNode = 0;
     multimap<uint32, Mapping*>::iterator it;
 
     midiInputEnabled = val;
@@ -845,77 +870,86 @@ void PluginField::enableMidiInput(bool val)
                 ++it;
         }
 
-        // Midi Input filter.
+        // Delete Midi Input PluginComponent first (before deleting the filter)
+        for (i = (getNumChildComponents() - 1); i >= 0; --i)
         {
-            // Delete filter.
-            for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "Midi Input")
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
-                {
-                    tempNode = signalPath->getNode(i).get(); // JUCE 8: Node::Ptr
-                    deleteFilter(tempNode);
-                }
-            }
-
-            // Delete PluginComponent.
-            for (i = (getNumChildComponents() - 1); i >= 0; --i)
-            {
-                PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-                if (comp)
-                {
-                    if (comp->getNode() == tempNode)
-                        delete removeChildComponent(i);
-                }
+                delete removeChildComponent(i);
             }
         }
-        // Midi Interceptor filter.
+
+        // Now delete the Midi Input filter from signal path
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
         {
-            // Delete filter.
-            for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
-                    deleteFilter(signalPath->getNode(i).get()); // JUCE 8: Node::Ptr
+                deleteFilter(signalPath->getNode(i).get());
+            }
+        }
+
+        // Delete Midi Interceptor filter
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+            {
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
     else
     {
-        InternalPluginFormat internalFormat;
-
-        // Add the filter to the signal path.
-        signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
-
-        // Add the associated PluginComponent.
-        addFilter(signalPath->getNumFilters() - 1);
-
-        // Add the Midi Interceptor too.
+        // Check if MIDI Input already exists
+        bool midiInputExists = false;
+        for (i = 0; i < signalPath->getNumFilters(); ++i)
         {
-            MidiInterceptor p;
-            PluginDescription desc;
-
-            p.fillInPluginDescription(desc);
-
-            signalPath->addFilter(&desc, 100, 100);
-
-            // And connect it up to the midi input.
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
             {
-                AudioProcessorGraph::NodeID midiInput;
-                AudioProcessorGraph::NodeID midiInterceptor;
+                midiInputExists = true;
+                break;
+            }
+        }
 
-                for (i = 0; i < signalPath->getNumFilters(); ++i)
+        if (!midiInputExists)
+        {
+            InternalPluginFormat internalFormat;
+
+            // Add the filter to the signal path.
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f,
+                                  120.0f);
+
+            // Add the associated PluginComponent.
+            addFilter(signalPath->getNumFilters() - 1);
+
+            // Add the Midi Interceptor too.
+            {
+                MidiInterceptor p;
+                PluginDescription desc;
+
+                p.fillInPluginDescription(desc);
+
+                signalPath->addFilter(&desc, 100, 100);
+
+                // And connect it up to the midi input.
                 {
-                    if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
-                        midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                    else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+                    AudioProcessorGraph::NodeID midiInput;
+                    AudioProcessorGraph::NodeID midiInterceptor;
+
+                    for (i = 0; i < signalPath->getNumFilters(); ++i)
                     {
-                        midiInterceptor = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                        dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())
-                            ->setManager(&midiManager);
+                        if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+                            midiInput = signalPath->getNode(i)->nodeID;
+                        else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+                        {
+                            midiInterceptor = signalPath->getNode(i)->nodeID;
+                            dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())
+                                ->setManager(&midiManager);
+                        }
                     }
+                    signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
+                                              AudioProcessorGraph::midiChannelIndex);
                 }
-                signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
-                                          AudioProcessorGraph::midiChannelIndex);
             }
         }
     }
@@ -926,7 +960,6 @@ void PluginField::enableOscInput(bool val)
 {
     int i;
     multimap<uint32, Mapping*>::iterator it;
-    AudioProcessorGraph::Node* tempNode = 0;
 
     oscInputEnabled = val;
 
@@ -946,25 +979,22 @@ void PluginField::enableOscInput(bool val)
                 ++it;
         }
 
-        // Delete filter.
+        // Delete PluginComponent first (before deleting the filter)
+        for (i = (getNumChildComponents() - 1); i >= 0; --i)
+        {
+            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "OSC Input")
+            {
+                delete removeChildComponent(i);
+            }
+        }
+
+        // Now delete the filter
         for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
         {
             if (signalPath->getNode(i)->getProcessor()->getName() == "OSC Input")
             {
-                tempNode = signalPath->getNode(i).get(); // JUCE 8: Node::Ptr
-                deleteFilter(tempNode);
-            }
-        }
-
-        // Delete PluginComponent.
-        for (i = (getNumChildComponents() - 1); i >= 0; --i)
-        {
-            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-            if (comp)
-            {
-                if (comp->getNode() == tempNode)
-                    delete removeChildComponent(i);
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
@@ -988,7 +1018,9 @@ void PluginField::enableOscInput(bool val)
 
             p.fillInPluginDescription(desc);
 
-            signalPath->addFilter(&desc, 10, 215);
+            // Position OSC Input below Virtual MIDI Input based on actual node heights
+            float oscY = signalPath->getNextInputNodeY();
+            signalPath->addFilter(&desc, 50, oscY);
 
             addFilter(signalPath->getNumFilters() - 1);
         }
@@ -1403,17 +1435,17 @@ void PluginField::enableMidiForNode(AudioProcessorGraph::Node* node, bool val)
         return;
 
     // Check if there's a connection.
-    connection = (signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex,
-                                                   node->nodeID, AudioProcessorGraph::midiChannelIndex) != 0);
-    if (val)
+    connection = signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex,
+                                                  node->nodeID, AudioProcessorGraph::midiChannelIndex);
+    if (val && connection)
     {
-        // If there's a connection, remove it.
+        // Override is on and connection exists - remove it.
         signalPath->removeConnection(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
                                      AudioProcessorGraph::midiChannelIndex);
     }
-    else
+    else if (!val && !connection)
     {
-        // If there's not a connection, add it.
+        // Override is off and no connection - add it.
         signalPath->addConnection(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
                                   AudioProcessorGraph::midiChannelIndex);
     }
@@ -1443,7 +1475,7 @@ bool PluginField::getMidiEnabledForNode(AudioProcessorGraph::Node* node) const
         return false;
     else
         return signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
-                                                AudioProcessorGraph::midiChannelIndex) != 0;
+                                                AudioProcessorGraph::midiChannelIndex);
 }
 
 //------------------------------------------------------------------------------

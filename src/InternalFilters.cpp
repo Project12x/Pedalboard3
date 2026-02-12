@@ -46,6 +46,7 @@
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
 #include "OscilloscopeProcessor.h"
+#include "VirtualMidiInputProcessor.h"
 
 //==============================================================================
 InternalPluginFormat::InternalPluginFormat()
@@ -205,6 +206,12 @@ InternalPluginFormat::InternalPluginFormat()
         p.fillInPluginDescription(subGraphProcDesc);
         subGraphProcDesc.category = "Built-in";
     }
+
+    {
+        VirtualMidiInputProcessor p;
+        p.fillInPluginDescription(virtualMidiInputProcDesc);
+        virtualMidiInputProcDesc.category = "MIDI Utility";
+    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -316,6 +323,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new SubGraphProcessor();
     }
+    else if (desc.name == virtualMidiInputProcDesc.name)
+    {
+        return new VirtualMidiInputProcessor();
+    }
 
     return 0;
 }
@@ -376,6 +387,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &midiFilePlayerProcDesc;
     case subGraphProcFilter:
         return &subGraphProcDesc;
+    case virtualMidiInputProcFilter:
+        return &virtualMidiInputProcDesc;
     default:
         return 0;
     }
@@ -397,7 +410,7 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
         toneGenProcFilter,       splitterProcFilter,         mixerProcFilter,         irLoaderProcFilter,
         namProcFilter,           oscilloscopeProcFilter,     midiTransposeProcFilter, midiRechannelizeProcFilter,
         keyboardSplitProcFilter, notesProcFilter,            labelProcFilter,         midiFilePlayerProcFilter,
-        subGraphProcFilter};
+        subGraphProcFilter,      virtualMidiInputProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));

@@ -209,7 +209,6 @@ target_sources(Pedalboard3 PRIVATE
     src/ToneGeneratorControl.cpp
     src/ToneGeneratorControl.h
     src/StageView.cpp
-    src/StageView.cpp
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
@@ -220,6 +219,8 @@ target_sources(Pedalboard3 PRIVATE
     src/MidiUtilityProcessors.cpp
     src/MidiUtilityProcessors.h
     src/MidiUtilityControls.cpp
+    src/VirtualMidiInputProcessor.cpp
+    src/VirtualMidiInputProcessor.h
 
     # NAM (Neural Amp Modeler) Processor
     src/NAMProcessor.cpp

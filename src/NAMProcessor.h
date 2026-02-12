@@ -181,6 +181,10 @@ class NAMProcessor : public PedalboardProcessor
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
                                     juce::dsp::IIR::Coefficients<float>> irHighCutFilter;
 
+    // Audio-thread-only tracking for lazy coefficient updates
+    float lastIRLowCut = 0.0f;
+    float lastIRHighCut = 0.0f;
+
     // Effects loop (SubGraphProcessor for hosting plugins between tone stack and IR)
     std::unique_ptr<SubGraphProcessor> effectsLoop;
     std::atomic<bool> effectsLoopEnabled{false};

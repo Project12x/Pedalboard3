@@ -208,16 +208,21 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     /// @brief JUCE 8: Connection API uses std::vector
     std::vector<AudioProcessorGraph::Connection> getConnections() const override;
 
-    const AudioProcessorGraph::Connection* getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID,
-                                                                int sourceFilterChannel,
-                                                                AudioProcessorGraph::NodeID destFilterUID,
-                                                                int destFilterChannel) const override;
+    bool getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                              AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const override;
 
     bool canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
                     AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const;
 
     // void clear(bool addAudioIO = true);
-    void clear(bool addAudioIn = true, bool addMidiIn = true, bool addAudioOut = true);
+    void clear(bool addAudioIn = true, bool addMidiIn = true, bool addAudioOut = true, bool addVirtualMidiIn = true);
+
+    /// Repositions the default input nodes (Audio Input, MIDI Input, Virtual MIDI Input)
+    /// based on their actual heights. Called after adding nodes and when device changes.
+    void repositionDefaultInputNodes();
+
+    /// Returns the next available Y position for adding input nodes (below all default input nodes)
+    float getNextInputNodeY() const;
 
     //==============================================================================
 

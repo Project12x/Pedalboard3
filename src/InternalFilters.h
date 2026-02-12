@@ -78,6 +78,7 @@ class InternalPluginFormat : public AudioPluginFormat
         labelProcFilter,
         midiFilePlayerProcFilter,
         subGraphProcFilter,
+        virtualMidiInputProcFilter,
 
         endOfFilterTypes
     };
@@ -150,6 +151,7 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription labelProcDesc;
     PluginDescription midiFilePlayerProcDesc;
     PluginDescription subGraphProcDesc;
+    PluginDescription virtualMidiInputProcDesc;
 };
 
 #endif

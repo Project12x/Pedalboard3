@@ -60,10 +60,8 @@ class SubGraphFilterGraph : public IFilterGraph
                              juce::AudioProcessorGraph::NodeID destId, int destChannel) override;
 
     std::vector<juce::AudioProcessorGraph::Connection> getConnections() const override;
-    const juce::AudioProcessorGraph::Connection* getConnectionBetween(juce::AudioProcessorGraph::NodeID sourceId,
-                                                                      int sourceChannel,
-                                                                      juce::AudioProcessorGraph::NodeID destId,
-                                                                      int destChannel) const override;
+    bool getConnectionBetween(juce::AudioProcessorGraph::NodeID sourceId, int sourceChannel,
+                              juce::AudioProcessorGraph::NodeID destId, int destChannel) const override;
 
     void setNodePosition(int nodeId, double x, double y) override;
     void getNodePosition(int nodeId, double& x, double& y) const override;

@@ -258,6 +258,9 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
     // Apply IR convolution with filters if enabled
     if (doIR)
     {
+        // Update filter coefficients on the audio thread if parameters changed
+        updateIRFilters();
+
         // Low cut (high-pass) filter BEFORE convolution - removes rumble
         {
             juce::dsp::AudioBlock<float> block(buffer);
@@ -340,13 +343,11 @@ void NAMProcessor::setTreble(float value)
 void NAMProcessor::setIRLowCut(float freqHz)
 {
     irLowCut.store(juce::jlimit(20.0f, 500.0f, freqHz));
-    updateIRFilters();
 }
 
 void NAMProcessor::setIRHighCut(float freqHz)
 {
     irHighCut.store(juce::jlimit(2000.0f, 20000.0f, freqHz));
-    updateIRFilters();
 }
 
 void NAMProcessor::updateIRFilters()
@@ -354,15 +355,19 @@ void NAMProcessor::updateIRFilters()
     if (!isPrepared)
         return;
 
-    // Low cut (high-pass) filter - removes rumble before IR
-    auto lowCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(
-        currentSampleRate, irLowCut.load());
-    *irLowCutFilter.state = *lowCutCoeffs;
+    // Only recompute coefficients when values actually changed (audio thread only)
+    const float currentLowCut = irLowCut.load();
+    const float currentHighCut = irHighCut.load();
 
-    // High cut (low-pass) filter - removes harshness after IR
-    auto highCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(
-        currentSampleRate, irHighCut.load());
-    *irHighCutFilter.state = *highCutCoeffs;
+    if (currentLowCut != lastIRLowCut || currentHighCut != lastIRHighCut)
+    {
+        *irLowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(
+            currentSampleRate, currentLowCut);
+        *irHighCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
+            currentSampleRate, currentHighCut);
+        lastIRLowCut = currentLowCut;
+        lastIRHighCut = currentHighCut;
+    }
 }
 
 //==============================================================================

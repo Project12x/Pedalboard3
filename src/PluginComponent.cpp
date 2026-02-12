@@ -481,7 +481,18 @@ void PluginComponent::mouseDrag(const MouseEvent& e)
             viewport->autoScroll(tempEv.x, tempEv.y, 20, 4);
         }
 
-        setTopLeftPosition(eField.x - dragX, eField.y - dragY);
+        int newX = eField.x - dragX;
+        int newY = eField.y - dragY;
+
+        // Snap to grid if enabled
+        if (SettingsManager::getInstance().getBool("SnapToGrid", false))
+        {
+            constexpr int gridSize = 20;
+            newX = (newX / gridSize) * gridSize;
+            newY = (newY / gridSize) * gridSize;
+        }
+
+        setTopLeftPosition(newX, newY);
         if (getX() < 0)
             setTopLeftPosition(0, getY());
         if (getY() < 0)
@@ -496,6 +507,18 @@ void PluginComponent::mouseDrag(const MouseEvent& e)
 void PluginComponent::mouseUp(const MouseEvent& e)
 {
     beingDragged = false;
+
+    // Final snap on mouse up (in case drag didn't snap perfectly)
+    if (SettingsManager::getInstance().getBool("SnapToGrid", false))
+    {
+        constexpr int gridSize = 20;
+        int snappedX = (getX() / gridSize) * gridSize;
+        int snappedY = (getY() / gridSize) * gridSize;
+        setTopLeftPosition(snappedX, snappedY);
+        node->properties.set("x", snappedX);
+        node->properties.set("y", snappedY);
+    }
+
     if (pluginWindow)
         node->properties.set("windowOpen", false);
 }

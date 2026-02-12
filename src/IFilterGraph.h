@@ -61,9 +61,8 @@ class IFilterGraph
                                      juce::AudioProcessorGraph::NodeID destId, int destChannel) = 0;
 
     virtual std::vector<juce::AudioProcessorGraph::Connection> getConnections() const = 0;
-    virtual const juce::AudioProcessorGraph::Connection*
-    getConnectionBetween(juce::AudioProcessorGraph::NodeID sourceId, int sourceChannel,
-                         juce::AudioProcessorGraph::NodeID destId, int destChannel) const = 0;
+    virtual bool getConnectionBetween(juce::AudioProcessorGraph::NodeID sourceId, int sourceChannel,
+                                      juce::AudioProcessorGraph::NodeID destId, int destChannel) const = 0;
 
     //==============================================================================
     // Position management

@@ -67,6 +67,9 @@ void IRLoaderProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi
     if (buffer.getNumChannels() == 0 || buffer.getNumSamples() == 0)
         return;
 
+    // Update filter coefficients on the audio thread if parameters changed
+    updateFilters();
+
     const int numSamples = buffer.getNumSamples();
     const int numChannels = juce::jmin(buffer.getNumChannels(), 2);
     const float currentMix = mix.load();
@@ -131,13 +134,17 @@ void IRLoaderProcessor::updateFilters()
     if (!isPrepared)
         return;
 
-    // Low cut (high-pass) filter
-    auto lowCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, lowCut.load());
-    *lowCutFilter.state = *lowCutCoeffs;
+    // Only recompute coefficients when values actually changed (audio thread only)
+    const float currentLowCut = lowCut.load();
+    const float currentHighCut = highCut.load();
 
-    // High cut (low-pass) filter
-    auto highCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, highCut.load());
-    *highCutFilter.state = *highCutCoeffs;
+    if (currentLowCut != lastLowCut || currentHighCut != lastHighCut)
+    {
+        *lowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, currentLowCut);
+        *highCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, currentHighCut);
+        lastLowCut = currentLowCut;
+        lastHighCut = currentHighCut;
+    }
 }
 
 //==============================================================================

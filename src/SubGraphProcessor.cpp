@@ -278,21 +278,18 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
     rackName = xml.getStringAttribute("name", "Loaded Rack");
     spdlog::debug("[SubGraphProcessor] Restoring rack: {}", rackName.toStdString());
 
-    // Reinitialize with fresh I/O nodes
-    initializeInternalGraph();
+    // --- Phase 1: Create plugin instances OUTSIDE the callback lock ---
+    // Plugin creation can be slow (DLL loading, initialization), so we must not
+    // hold the audio callback lock during this phase.
+    struct PreparedNode
+    {
+        int oldUid;
+        double x, y;
+        juce::String name;
+        std::unique_ptr<juce::AudioProcessor> processor;
+    };
+    std::vector<PreparedNode> preparedNodes;
 
-    // Clear the default passthrough connections - we'll load saved connections instead
-    auto connections = internalGraph.getConnections();
-    for (const auto& conn : connections)
-        internalGraph.removeConnection(conn);
-
-    // Map old UIDs to new node IDs for connection restoration
-    std::map<int, juce::AudioProcessorGraph::NodeID> uidToNodeId;
-
-    // Pre-populate with I/O nodes (they keep the same logical meaning)
-    // Connections referencing "audio input" will need to map to rackAudioInNode, etc.
-
-    // Load filters
     for (auto* filterXml : xml.getChildWithTagNameIterator("FILTER"))
     {
         int oldUid = filterXml->getIntAttribute("uid");
@@ -317,7 +314,7 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
             continue;
         }
 
-        // Create plugin instance
+        // Create plugin instance (potentially slow - outside lock)
         juce::String errorMessage;
         auto instance = AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(
             pd, currentSampleRate, currentBlockSize, errorMessage);
@@ -356,54 +353,82 @@ void SubGraphProcessor::restoreFromRackXml(const juce::XmlElement& xml)
             processor = std::make_unique<BypassableInstance>(instance.release());
         }
 
-        // Add to graph
-        if (auto node = internalGraph.addNode(std::move(processor)))
-        {
-            node->properties.set("x", x);
-            node->properties.set("y", y);
-            uidToNodeId[oldUid] = node->nodeID;
-            spdlog::debug("[SubGraphProcessor] Loaded plugin: {} as node {}", pd.name.toStdString(), node->nodeID.uid);
-        }
+        preparedNodes.push_back({oldUid, x, y, pd.name, std::move(processor)});
     }
 
-    // Load connections
+    // Parse connection XML (lightweight, no lock needed)
+    struct PreparedConnection
+    {
+        int srcUid, srcChannel, dstUid, dstChannel;
+    };
+    std::vector<PreparedConnection> preparedConnections;
+
     for (auto* connXml : xml.getChildWithTagNameIterator("CONNECTION"))
     {
-        int srcUid = connXml->getIntAttribute("srcNode");
-        int srcChannel = connXml->getIntAttribute("srcChannel");
-        int dstUid = connXml->getIntAttribute("dstNode");
-        int dstChannel = connXml->getIntAttribute("dstChannel");
+        preparedConnections.push_back({connXml->getIntAttribute("srcNode"), connXml->getIntAttribute("srcChannel"),
+                                       connXml->getIntAttribute("dstNode"), connXml->getIntAttribute("dstChannel")});
+    }
 
-        // Map UIDs to actual node IDs
-        auto srcIt = uidToNodeId.find(srcUid);
-        auto dstIt = uidToNodeId.find(dstUid);
+    // --- Phase 2: Mutate the graph UNDER the callback lock ---
+    {
+        const juce::ScopedLock sl(internalGraph.getCallbackLock());
 
-        juce::AudioProcessorGraph::NodeID srcNode, dstNode;
+        // Reinitialize with fresh I/O nodes
+        initializeInternalGraph();
 
-        // Handle I/O nodes specially (they have fixed UIDs in saves)
-        if (srcIt != uidToNodeId.end())
-            srcNode = srcIt->second;
-        else if (srcUid == rackAudioInUid) // Convention: 1 = audio in
-            srcNode = rackAudioInNode;
-        else if (srcUid == rackMidiInUid) // Convention: 3 = MIDI in
-            srcNode = rackMidiInNode;
-        else
+        // Clear the default passthrough connections
+        auto connections = internalGraph.getConnections();
+        for (const auto& conn : connections)
+            internalGraph.removeConnection(conn);
+
+        // Map old UIDs to new node IDs for connection restoration
+        std::map<int, juce::AudioProcessorGraph::NodeID> uidToNodeId;
+
+        // Add pre-created nodes to graph
+        for (auto& prepared : preparedNodes)
         {
-            spdlog::warn("[SubGraphProcessor] Unknown source node UID: {}", srcUid);
-            continue;
+            if (auto node = internalGraph.addNode(std::move(prepared.processor)))
+            {
+                node->properties.set("x", prepared.x);
+                node->properties.set("y", prepared.y);
+                uidToNodeId[prepared.oldUid] = node->nodeID;
+                spdlog::debug("[SubGraphProcessor] Loaded plugin: {} as node {}", prepared.name.toStdString(),
+                              node->nodeID.uid);
+            }
         }
 
-        if (dstIt != uidToNodeId.end())
-            dstNode = dstIt->second;
-        else if (dstUid == rackAudioOutUid) // Convention: 2 = audio out
-            dstNode = rackAudioOutNode;
-        else
+        // Add connections
+        for (const auto& pc : preparedConnections)
         {
-            spdlog::warn("[SubGraphProcessor] Unknown destination node UID: {}", dstUid);
-            continue;
-        }
+            auto srcIt = uidToNodeId.find(pc.srcUid);
+            auto dstIt = uidToNodeId.find(pc.dstUid);
 
-        internalGraph.addConnection({{srcNode, srcChannel}, {dstNode, dstChannel}});
+            juce::AudioProcessorGraph::NodeID srcNode, dstNode;
+
+            if (srcIt != uidToNodeId.end())
+                srcNode = srcIt->second;
+            else if (pc.srcUid == rackAudioInUid)
+                srcNode = rackAudioInNode;
+            else if (pc.srcUid == rackMidiInUid)
+                srcNode = rackMidiInNode;
+            else
+            {
+                spdlog::warn("[SubGraphProcessor] Unknown source node UID: {}", pc.srcUid);
+                continue;
+            }
+
+            if (dstIt != uidToNodeId.end())
+                dstNode = dstIt->second;
+            else if (pc.dstUid == rackAudioOutUid)
+                dstNode = rackAudioOutNode;
+            else
+            {
+                spdlog::warn("[SubGraphProcessor] Unknown destination node UID: {}", pc.dstUid);
+                continue;
+            }
+
+            internalGraph.addConnection({{srcNode, pc.srcChannel}, {dstNode, pc.dstChannel}});
+        }
     }
 
     spdlog::info("[SubGraphProcessor] Restored rack with {} nodes", internalGraph.getNumNodes());

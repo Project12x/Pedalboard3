@@ -462,8 +462,7 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
                 loopPos = 0;
                 if (loopIndex >= loopBuffer.size())
                 {
-                    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Looper Error",
-                                                     "Not enough memory to continue. Recording stopped.");
+                    memoryError.store(true, std::memory_order_relaxed);
                     stopRecording = true;
                     loopLength += i;
                     fadeOutStart = i;
@@ -485,8 +484,7 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
         }
         else
         {
-            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Looper Error",
-                                             "Not enough memory to continue. Recording stopped.");
+            memoryError.store(true, std::memory_order_relaxed);
             stopRecording = true;
         }
 
@@ -694,10 +692,10 @@ const String LooperProcessor::getParameterName(int parameterIndex)
         retval = "Bar Denominator";
         break;
     case InputLevel:
-        retval = "Input Leve";
+        retval = "Input Level";
         break;
     case LoopLevel:
-        retval = "Loop Leve";
+        retval = "Loop Level";
         break;
     }
 

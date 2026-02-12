@@ -55,6 +55,7 @@
 #include "TunerProcessor.h"
 #include "UserPresetWindow.h"
 #include "Vectors.h"
+#include "VirtualMidiInputProcessor.h"
 
 #include <iostream>
 #include <sstream>
@@ -392,6 +393,13 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
             deviceManager.addMidiInputCallback(device.identifier, &graphPlayer);
     }
 
+    // Setup virtual MIDI keyboard
+    virtualKeyboard = std::make_unique<MidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
+    virtualKeyboard->setKeyWidth(40.0f);
+    virtualKeyboard->setAvailableRange(36, 96); // C2 to C7
+    addAndMakeVisible(virtualKeyboard.get());
+    keyboardState.addListener(this);
+
     // Setup the PluginField.
     PluginField* field = new PluginField(&signalPath, &pluginList, commandManager);
     field->addChangeListener(this);
@@ -473,6 +481,9 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 MainPanel::~MainPanel()
 {
     //[Destructor_pre]. You can add your own custom destruction code here..
+
+    // Remove keyboard listener before destruction
+    keyboardState.removeListener(this);
 
     int i;
     auto midiDevices = MidiInput::getAvailableDevices(); // JUCE 8: Array<MidiDeviceInfo>
@@ -561,11 +572,15 @@ void MainPanel::paint(Graphics& g)
 
 void MainPanel::resized()
 {
+    // Calculate heights: toolbar at bottom (40px), keyboard above that, viewport fills rest
+    const int toolbarHeight = 40;
+    const int viewportHeight = getHeight() - toolbarHeight - keyboardHeight;
+
     patchLabel->setBounds(8, getHeight() - 33, 48, 24);
     prevPatch->setBounds(264, getHeight() - 33, 24, 24);
     nextPatch->setBounds(288, getHeight() - 33, 24, 24);
     patchComboBox->setBounds(56, getHeight() - 33, 200, 24);
-    viewport->setBounds(0, 0, getWidth() - 0, getHeight() - 40);
+    viewport->setBounds(0, 0, getWidth(), viewportHeight);
     cpuSlider->setBounds(getWidth() - 156, getHeight() - 33, 150, 24);
     cpuLabel->setBounds(getWidth() - 236, getHeight() - 33, 78, 24);
     playButton->setBounds(proportionOfWidth(0.5000f) - ((36) / 2), getHeight() - 38, 36, 36);
@@ -573,6 +588,11 @@ void MainPanel::resized()
     tempoLabel->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -151, getHeight() - 33, 64, 24);
     tempoEditor->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -87, getHeight() - 33, 52, 24);
     tapTempoButton->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -31, getHeight() - 27, 10, 16);
+
+    // Virtual MIDI keyboard between viewport and toolbar
+    if (virtualKeyboard != nullptr)
+        virtualKeyboard->setBounds(0, viewportHeight, getWidth(), keyboardHeight);
+
     //[UserResized] Add your own custom resize handling here..
 
     int x, y;
@@ -582,8 +602,8 @@ void MainPanel::resized()
     y = field->getHeight();
     if (field->getWidth() < getWidth())
         x = getWidth();
-    if (field->getHeight() < (getHeight() - 40))
-        y = getHeight() - 40;
+    if (field->getHeight() < viewportHeight)
+        y = viewportHeight;
     field->setSize(x, y);
 
     // Keep StageView covering the entire panel
@@ -718,6 +738,30 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
 // other code here...
 
 //------------------------------------------------------------------------------
+void MainPanel::handleNoteOn(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity)
+{
+    ignoreUnused(source);
+    if (auto* processor = VirtualMidiInputProcessor::getInstance())
+    {
+        auto msg = MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
+        msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
+        processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::handleNoteOff(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity)
+{
+    ignoreUnused(source);
+    if (auto* processor = VirtualMidiInputProcessor::getInstance())
+    {
+        auto msg = MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity);
+        msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
+        processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
 void MainPanel::showToast(const String& message)
 {
     // Use custom ToastOverlay with Melatonin Blur for premium shadows
@@ -797,6 +841,7 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsPreferences);
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
+        retval.addCommandItem(commandManager, OptionsSnapToGrid);
         retval.addCommandItem(commandManager, OptionsKeyMappings);
         retval.addSeparator();
         retval.addCommandItem(commandManager, ToggleStageMode);
@@ -851,7 +896,8 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              TransportRtz,
                              TransportTapTempo,
                              ToggleStageMode,
-                             OptionsPluginBlacklist};
+                             OptionsPluginBlacklist,
+                             OptionsSnapToGrid};
     commands.addArray(ids, numElementsInArray(ids));
 }
 
@@ -963,6 +1009,10 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case OptionsPluginBlacklist:
         result.setInfo("Plugin Blacklist", "Manage blacklisted plugins that will not be loaded.", optionsCategory, 0);
+        break;
+    case OptionsSnapToGrid:
+        result.setInfo("Snap to Grid", "Snap plugin nodes to a 20px grid when dragging.", optionsCategory, 0);
+        result.setTicked(SettingsManager::getInstance().getBool("SnapToGrid", false));
         break;
     }
 }
@@ -1146,7 +1196,7 @@ bool MainPanel::perform(const InvocationInfo& info)
     {
         AboutPage dlg(String(sock.getIpAddress().c_str()));
 
-        dlg.setSize(400, 250);
+        dlg.setSize(400, 340);
 
         JuceHelperStuff::showModalDialog("About", &dlg, 0, ColourScheme::getInstance().colours["Window Background"],
                                          true, true);
@@ -1270,6 +1320,13 @@ bool MainPanel::perform(const InvocationInfo& info)
     case OptionsPluginBlacklist:
         BlacklistWindow::showWindow();
         break;
+    case OptionsSnapToGrid:
+    {
+        bool current = SettingsManager::getInstance().getBool("SnapToGrid", false);
+        SettingsManager::getInstance().setValue("SnapToGrid", !current);
+        showToast(!current ? "Snap to Grid enabled" : "Snap to Grid disabled");
+    }
+    break;
     }
     return true;
 }

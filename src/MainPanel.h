@@ -56,7 +56,8 @@ class MainPanel : public Component,
                   public TextEditor::Listener,
                   public Button::Listener,
                   public ComboBox::Listener,
-                  public Slider::Listener
+                  public Slider::Listener,
+                  public MidiKeyboardState::Listener
 {
   public:
     //==============================================================================
@@ -216,7 +217,8 @@ class MainPanel : public Component,
         EditRedo,
         EditPanic,
         ToggleStageMode,
-        OptionsPluginBlacklist
+        OptionsPluginBlacklist,
+        OptionsSnapToGrid
     };
 
     //[/UserMethods]
@@ -358,6 +360,15 @@ class MainPanel : public Component,
     /// Toast notification using JUCE's BubbleMessageComponent
     std::unique_ptr<BubbleMessageComponent> toastBubble;
     void showToast(const String& message);
+
+    /// Virtual MIDI keyboard state and component
+    MidiKeyboardState keyboardState;
+    std::unique_ptr<MidiKeyboardComponent> virtualKeyboard;
+    static constexpr int keyboardHeight = 60;
+
+    /// MidiKeyboardState::Listener callbacks
+    void handleNoteOn(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity) override;
 
     //[/UserVariables]
 

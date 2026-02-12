@@ -36,6 +36,7 @@
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
+#include "PedalboardProcessors.h"
 #include "PluginBlacklist.h"
 #include "SettingsManager.h"
 #include "SubGraphProcessor.h"
@@ -69,17 +70,19 @@ FilterGraph::FilterGraph()
     bool audioInput = SettingsManager::getInstance().getBool("AudioInput", true);
     bool midiInput = SettingsManager::getInstance().getBool("MidiInput", true);
 
+    // Add nodes with temporary Y positions (will be repositioned below)
     if (audioInput)
     {
-        // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 100.0f);
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 0.0f);
     }
 
     if (midiInput)
     {
-        // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 250.0f);
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 0.0f);
     }
+
+    // Virtual MIDI Input (for on-screen keyboard) - always added
+    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::virtualMidiInputProcFilter), 50.0f, 0.0f);
 
     // Use Raw method to avoid adding to undo history
     addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 400.0f, 100.0f);
@@ -108,6 +111,9 @@ FilterGraph::FilterGraph()
         crossfadeNode->properties.set("y", -150.0);
     }
 
+    // Position input nodes relative to each other based on actual heights
+    repositionDefaultInputNodes();
+
     setChangedFlag(false);
 }
 
@@ -132,11 +138,91 @@ void FilterGraph::setDeviceChannelCounts(int numInputs, int numOutputs)
     {
         spdlog::info("[FilterGraph] Graph bus layout set successfully: {} in, {} out",
                      graph.getTotalNumInputChannels(), graph.getTotalNumOutputChannels());
+
+        // Reposition default input nodes based on new channel counts
+        repositionDefaultInputNodes();
     }
     else
     {
         spdlog::warn("[FilterGraph] Failed to set graph bus layout");
     }
+}
+
+void FilterGraph::repositionDefaultInputNodes()
+{
+    // Find default input nodes and reposition them with generous spacing
+    // Order: Audio Input, MIDI Input, Virtual MIDI Input
+    // Use fixed spacing of 150px to guarantee no overlap regardless of node size
+
+    constexpr float startY = 50.0f;
+    constexpr float spacing = 150.0f;  // Fixed spacing between node tops
+    constexpr float nodeX = 50.0f;
+
+    float currentY = startY;
+
+    // Find and position Audio Input
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (node && node->getProcessor()->getName() == "Audio Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", currentY);
+            currentY += spacing;
+            break;
+        }
+    }
+
+    // Find and position MIDI Input
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (node && node->getProcessor()->getName() == "Midi Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", currentY);
+            currentY += spacing;
+            break;
+        }
+    }
+
+    // Find and position Virtual MIDI Input
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (node && node->getProcessor()->getName() == "Virtual MIDI Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", currentY);
+            currentY += spacing;
+            break;
+        }
+    }
+}
+
+float FilterGraph::getNextInputNodeY() const
+{
+    // Find the Virtual MIDI Input node and return position after it
+    // This is used by PluginField to position OSC Input
+    constexpr float gap = 20.0f;
+
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (node && node->getProcessor()->getName() == "Virtual MIDI Input")
+        {
+            float y = static_cast<float>(node->properties.getWithDefault("y", 100.0));
+
+            // Virtual MIDI Input: getSize().y (40) + header (52) = 92px
+            auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
+            float height = proc ? (proc->getSize().y + 52.0f) : 92.0f;
+
+            return y + height + gap;
+        }
+    }
+
+    // Fallback if Virtual MIDI Input not found
+    return 300.0f;
 }
 
 uint32 FilterGraph::getNextUID() throw()
@@ -282,27 +368,19 @@ std::vector<AudioProcessorGraph::Connection> FilterGraph::getConnections() const
     return graph.getConnections();
 }
 
-// JUCE 8: Implementation of getConnectionBetween - finds a matching connection
-const AudioProcessorGraph::Connection* FilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID,
-                                                                         int sourceFilterChannel,
-                                                                         AudioProcessorGraph::NodeID destFilterUID,
-                                                                         int destFilterChannel) const
+// JUCE 8: Implementation of getConnectionBetween - checks if a connection exists
+bool FilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                                       AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const
 {
-    // Search through all connections to find a matching one
-    auto connections = graph.getConnections();
-    for (const auto& conn : connections)
+    for (const auto& conn : graph.getConnections())
     {
         if (conn.source.nodeID == sourceFilterUID && conn.source.channelIndex == sourceFilterChannel &&
             conn.destination.nodeID == destFilterUID && conn.destination.channelIndex == destFilterChannel)
         {
-            // Return pointer to the connection - we need to store it to return a
-            // valid pointer
-            static AudioProcessorGraph::Connection lastFoundConnection;
-            lastFoundConnection = conn;
-            return &lastFoundConnection;
+            return true;
         }
     }
-    return nullptr;
+    return false;
 }
 
 bool FilterGraph::canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
@@ -531,7 +609,7 @@ FilterGraph::getConnectionsForNode(AudioProcessorGraph::NodeID nodeId) const
     return nodeConnections;
 }
 
-void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut)
+void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut, bool addVirtualMidiIn)
 {
     InternalPluginFormat internalFormat;
 
@@ -539,20 +617,30 @@ void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut)
 
     graph.clear();
 
+    // Add nodes with temporary Y positions (will be repositioned below)
     if (addAudioIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 100.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 50.0f, 0.0f);
     }
 
     if (addMidiIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 250.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 50.0f, 0.0f);
+    }
+
+    // Virtual MIDI Input (for on-screen keyboard)
+    if (addVirtualMidiIn)
+    {
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::virtualMidiInputProcFilter), 50.0f, 0.0f);
     }
 
     if (addAudioOut)
     {
         addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 400.0f, 100.0f);
     }
+
+    // Position input nodes relative to each other based on actual heights
+    repositionDefaultInputNodes();
 
     changed();
 }
@@ -794,7 +882,7 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
         if (!midiAddress.isEmpty())
             oscManager.registerMIDIProcessor(midiAddress, bypassable);
 
-        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChanne"));
+        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
     }
 
     node->getProcessor()->setCurrentProgram(xml.getIntAttribute("program"));
@@ -828,7 +916,7 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
 
 void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager)
 {
-    clear(false, false, false);
+    clear(false, false, false, false);
 
     int nodeCount = 0;
     forEachXmlChildElementWithTagName(xml, e, "FILTER")

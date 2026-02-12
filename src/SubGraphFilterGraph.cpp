@@ -132,7 +132,9 @@ AudioProcessorGraph::NodeID SubGraphFilterGraph::addFilterRaw(const PluginDescri
 
 void SubGraphFilterGraph::removeFilterRaw(AudioProcessorGraph::NodeID id)
 {
-    if (processor.getInternalGraph().removeNode(id))
+    auto& graph = processor.getInternalGraph();
+    const ScopedLock sl(graph.getCallbackLock());
+    if (graph.removeNode(id))
         changed();
 }
 
@@ -155,6 +157,7 @@ bool SubGraphFilterGraph::addConnectionRaw(AudioProcessorGraph::NodeID sourceId,
                                            AudioProcessorGraph::NodeID destId, int destChannel)
 {
     auto& graph = processor.getInternalGraph();
+    const ScopedLock sl(graph.getCallbackLock());
     AudioProcessorGraph::Connection conn{{sourceId, sourceChannel}, {destId, destChannel}};
 
     if (graph.addConnection(conn))
@@ -169,6 +172,7 @@ void SubGraphFilterGraph::removeConnectionRaw(AudioProcessorGraph::NodeID source
                                               AudioProcessorGraph::NodeID destId, int destChannel)
 {
     auto& graph = processor.getInternalGraph();
+    const ScopedLock sl(graph.getCallbackLock());
     AudioProcessorGraph::Connection conn{{sourceId, sourceChannel}, {destId, destChannel}};
 
     if (graph.removeConnection(conn))
@@ -183,6 +187,7 @@ std::vector<AudioProcessorGraph::Connection> SubGraphFilterGraph::getConnections
 void SubGraphFilterGraph::disconnectFilter(AudioProcessorGraph::NodeID id)
 {
     auto& graph = processor.getInternalGraph();
+    const ScopedLock sl(graph.getCallbackLock());
     for (auto& conn : graph.getConnections())
     {
         if (conn.source.nodeID == id || conn.destination.nodeID == id)
@@ -191,22 +196,19 @@ void SubGraphFilterGraph::disconnectFilter(AudioProcessorGraph::NodeID id)
     changed();
 }
 
-const AudioProcessorGraph::Connection* SubGraphFilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceId,
-                                                                                 int sourceChannel,
-                                                                                 AudioProcessorGraph::NodeID destId,
-                                                                                 int destChannel) const
+bool SubGraphFilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceId, int sourceChannel,
+                                                AudioProcessorGraph::NodeID destId, int destChannel) const
 {
-    // JUCE 8 removed getConnectionBetween, so we iterate manually
     auto& graph = processor.getInternalGraph();
-    for (auto& conn : graph.getConnections())
+    for (const auto& conn : graph.getConnections())
     {
         if (conn.source.nodeID == sourceId && conn.source.channelIndex == sourceChannel &&
             conn.destination.nodeID == destId && conn.destination.channelIndex == destChannel)
         {
-            return &conn;
+            return true;
         }
     }
-    return nullptr;
+    return false;
 }
 
 //==============================================================================

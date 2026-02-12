@@ -48,18 +48,10 @@ class IRLoaderProcessor : public PedalboardProcessor
     void setMix(float newMix) { mix.store(juce::jlimit(0.0f, 1.0f, newMix)); }
 
     float getLowCut() const { return lowCut.load(); }
-    void setLowCut(float freqHz)
-    {
-        lowCut.store(juce::jlimit(20.0f, 500.0f, freqHz));
-        updateFilters();
-    }
+    void setLowCut(float freqHz) { lowCut.store(juce::jlimit(20.0f, 500.0f, freqHz)); }
 
     float getHighCut() const { return highCut.load(); }
-    void setHighCut(float freqHz)
-    {
-        highCut.store(juce::jlimit(2000.0f, 20000.0f, freqHz));
-        updateFilters();
-    }
+    void setHighCut(float freqHz) { highCut.store(juce::jlimit(2000.0f, 20000.0f, freqHz)); }
 
     //==========================================================================
     // AudioProcessor overrides
@@ -114,9 +106,13 @@ class IRLoaderProcessor : public PedalboardProcessor
     juce::dsp::Convolution convolver;
     juce::dsp::ProcessSpec spec;
 
-    // Pre/post filters for tone shaping
+    // Pre/post filters for tone shaping (coefficients updated on audio thread only)
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> lowCutFilter;
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> highCutFilter;
+
+    // Audio-thread-only tracking for lazy coefficient updates
+    float lastLowCut = 0.0f;
+    float lastHighCut = 0.0f;
 
     // Dry buffer for wet/dry mixing
     juce::AudioBuffer<float> dryBuffer;

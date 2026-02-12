@@ -74,8 +74,19 @@ void SubGraphCanvas::paint(Graphics& g)
 
     if (displayDoubleClickMessage)
     {
-        auto centerX = bounds.getCentreX();
-        auto centerY = bounds.getCentreY();
+        // Draw hint at center of visible viewport area (not canvas center)
+        float centerX, centerY;
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            auto viewArea = viewport->getViewArea();
+            centerX = viewArea.getCentreX();
+            centerY = viewArea.getCentreY();
+        }
+        else
+        {
+            centerX = bounds.getCentreX();
+            centerY = bounds.getCentreY();
+        }
 
         g.setFont(FontManager::getInstance().getUIFont(18.0f));
         g.setColour(Colour(0xFF00CCCC).withAlpha(0.6f)); // Cyan text

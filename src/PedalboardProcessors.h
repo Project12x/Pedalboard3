@@ -22,6 +22,7 @@
 
 #include <JuceHeader.h>
 #include <stdint.h>
+#include <atomic>
 
 
 class LooperControl;
@@ -446,7 +447,7 @@ class RecorderProcessor : public PedalboardProcessor, public ChangeListener, pub
     ///	Returns the sound file.
     const File& getFile() const { return soundFile; };
     ///	Returns whether or not we're currently recording.
-    bool isRecording() const { return recording; };
+    bool isRecording() const { return recording.load(std::memory_order_relaxed); };
 
     ///	Returns the component which is added to the instance's PluginComponent.
     Component* getControls();
@@ -535,9 +536,9 @@ class RecorderProcessor : public PedalboardProcessor, public ChangeListener, pub
     AudioThumbnail thumbnail;
 
     ///	If we're currently recording or not.
-    bool recording;
+    std::atomic<bool> recording{false};
     ///	Safeguard in case the user tries to change the file while we're recording.
-    bool stopRecording;
+    std::atomic<bool> stopRecording{false};
     ///	Whether or not we're syncing to the main transport.
     bool syncToMainTransport;
 
@@ -728,9 +729,15 @@ class LooperProcessor : public PedalboardProcessor,
         return soundFile;
     };
     ///	Returns whether or not we're currently playing.
-    bool isPlaying() const { return (playing && !stopPlaying); };
+    bool isPlaying() const { return (playing.load(std::memory_order_relaxed) && !stopPlaying.load(std::memory_order_relaxed)); };
     ///	Returns whether or not we're currently recording.
-    bool isRecording() const { return (recording && !stopRecording); };
+    bool isRecording() const { return (recording.load(std::memory_order_relaxed) && !stopRecording.load(std::memory_order_relaxed)); };
+
+    /// Returns true and clears the flag if an out-of-memory error occurred during recording.
+    bool getAndClearMemoryError()
+    {
+        return memoryError.exchange(false, std::memory_order_relaxed);
+    }
     ///	Returns the current read position within the file.
     /*!
         \return 0->1
@@ -859,19 +866,21 @@ class LooperProcessor : public PedalboardProcessor,
     ///	The file we're playing.
     File soundFile;
     ///	If we're currently playing or not.
-    bool playing;
+    std::atomic<bool> playing{false};
     ///	Safeguard in case the user tries to record a new loop while we're playing.
-    bool stopPlaying;
+    std::atomic<bool> stopPlaying{false};
     ///	If we're currently recording or not.
-    bool recording;
+    std::atomic<bool> recording{false};
     ///	Safeguard in case the user tries to change the file while we're recording.
-    bool stopRecording;
+    std::atomic<bool> stopRecording{false};
     ///	Whether or not we're syncing to the main transport.
-    bool syncToMainTransport;
+    std::atomic<bool> syncToMainTransport{false};
     ///	Whether or not recording should stop after a bar.
-    bool stopAfterBar;
+    std::atomic<bool> stopAfterBar{false};
     ///	True if playback should start immediately after recording has stopped.
-    bool autoPlay;
+    std::atomic<bool> autoPlay{false};
+    ///	Set from audio thread when out-of-memory during recording.
+    std::atomic<bool> memoryError{false};
     ///	The output level of the looper's input.
     float inputLevel;
     ///	The output level of the looper's loop.
