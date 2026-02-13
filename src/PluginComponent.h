@@ -32,7 +32,11 @@ class PluginPinComponent;
 
 //------------------------------------------------------------------------------
 ///	Component representing a plugin/filter in the PluginField.
-class PluginComponent : public Component, public ChangeBroadcaster, public Button::Listener, public Label::Listener
+class PluginComponent : public Component,
+                        public ChangeBroadcaster,
+                        public Button::Listener,
+                        public Label::Listener,
+                        public Slider::Listener
 {
   public:
     ///	Constructor.
@@ -61,6 +65,8 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
 
     ///	Called when the user changes the plugin's name.
     void labelTextChanged(Label* label);
+    ///	Called when the gain slider is moved.
+    void sliderValueChanged(Slider* slider) override;
     ///	Sets the plugin's name.
     void setUserName(const String& val);
 
@@ -180,6 +186,9 @@ class PluginComponent : public Component, public ChangeBroadcaster, public Butto
     float cachedMeterLevels[16]{};
     /// Number of channels for cached meter levels
     int cachedMeterChannelCount{0};
+
+    /// Per-channel gain sliders for Audio I/O nodes
+    OwnedArray<Slider> channelGainSliders;
 };
 
 //------------------------------------------------------------------------------

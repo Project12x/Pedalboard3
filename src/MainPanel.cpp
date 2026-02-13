@@ -47,6 +47,7 @@
 #include "PluginPoolManager.h"
 #include "PreferencesDialog.h"
 #include "RoutingProcessors.h"
+#include "MasterGainState.h"
 #include "SettingsManager.h"
 #include "StageView.h"
 #include "TapTempoBox.h"
@@ -205,6 +206,32 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     fitButton->setButtonText("Fit");
     fitButton->setTooltip("Fit all nodes to screen");
     fitButton->addListener(this);
+
+    addAndMakeVisible(inputGainLabel = new Label("inputGainLabel", "IN"));
+    inputGainLabel->setFont(Font(12.0f, Font::bold));
+    inputGainLabel->setJustificationType(Justification::centredRight);
+
+    addAndMakeVisible(inputGainSlider = new Slider("inputGainSlider"));
+    inputGainSlider->setSliderStyle(Slider::LinearBar);
+    inputGainSlider->setRange(-60.0, 12.0, 0.1);
+    inputGainSlider->setTextValueSuffix(" dB");
+    inputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    inputGainSlider->setTooltip("Master Input Gain");
+    inputGainSlider->textFromValueFunction = [](double v) { return "IN " + String(v, 1) + " dB"; };
+    inputGainSlider->addListener(this);
+
+    addAndMakeVisible(outputGainLabel = new Label("outputGainLabel", "OUT"));
+    outputGainLabel->setFont(Font(12.0f, Font::bold));
+    outputGainLabel->setJustificationType(Justification::centredRight);
+
+    addAndMakeVisible(outputGainSlider = new Slider("outputGainSlider"));
+    outputGainSlider->setSliderStyle(Slider::LinearBar);
+    outputGainSlider->setRange(-60.0, 12.0, 0.1);
+    outputGainSlider->setTextValueSuffix(" dB");
+    outputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    outputGainSlider->setTooltip("Master Output Gain");
+    outputGainSlider->textFromValueFunction = [](double v) { return "OUT " + String(v, 1) + " dB"; };
+    outputGainSlider->addListener(this);
 
     //[UserPreSize]
 
@@ -457,6 +484,14 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // deferred from the audio thread to this timer on the message thread.
     Mapping::setParamFifo(&midiAppFifo);
 
+    // Load master gain state from settings and sync footer sliders
+    MasterGainState::getInstance().loadFromSettings();
+    {
+        auto& gs = MasterGainState::getInstance();
+        inputGainSlider->setValue(gs.masterInputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+        outputGainSlider->setValue(gs.masterOutputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+    }
+
     // Start timers.
     startTimer(CpuTimer, 100);
     startTimer(MidiAppTimer, 5);
@@ -488,6 +523,9 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 MainPanel::~MainPanel()
 {
     //[Destructor_pre]. You can add your own custom destruction code here..
+
+    // Save gain state before shutdown
+    MasterGainState::getInstance().saveToSettings();
 
     // Remove keyboard listener before destruction
     keyboardState.removeListener(this);
@@ -544,6 +582,14 @@ MainPanel::~MainPanel()
     tapTempoButton = nullptr;
     delete organiseButton;
     organiseButton = nullptr;
+    delete inputGainSlider;
+    inputGainSlider = nullptr;
+    delete outputGainSlider;
+    outputGainSlider = nullptr;
+    delete inputGainLabel;
+    inputGainLabel = nullptr;
+    delete outputGainLabel;
+    outputGainLabel = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -588,8 +634,6 @@ void MainPanel::resized()
     nextPatch->setBounds(288, getHeight() - 33, 24, 24);
     patchComboBox->setBounds(56, getHeight() - 33, 200, 24);
     viewport->setBounds(0, 0, getWidth(), viewportHeight);
-    cpuSlider->setBounds(getWidth() - 156, getHeight() - 33, 150, 24);
-    cpuLabel->setBounds(getWidth() - 236, getHeight() - 33, 78, 24);
     playButton->setBounds(proportionOfWidth(0.5000f) - ((36) / 2), getHeight() - 38, 36, 36);
     rtzButton->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + 38, getHeight() - 32, 24, 24);
     tempoLabel->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -151, getHeight() - 33, 64, 24);
@@ -617,12 +661,76 @@ void MainPanel::resized()
     if (stageView != nullptr)
         stageView->setBounds(getLocalBounds());
 
-    // Place Organise button in the gap between Transport (Center) and CPU (Right)
-    // Center group ends approx width/2 + 50. CPU starts width - 236.
-    organiseButton->setBounds(getWidth() - 320, getHeight() - 33, 70, 24);
+    // Right group: tightly packed from right edge
+    // [FIT][Manage][CPU:][======cpu======]
+    const int rightMargin = 6;
+    int rxEnd = getWidth() - rightMargin;
+    cpuSlider->setBounds(rxEnd - 144, getHeight() - 33, 144, 24);
+    rxEnd -= 144 + 2;
+    cpuLabel->setBounds(rxEnd - 42, getHeight() - 33, 42, 24);
+    rxEnd -= 42 + 4;
+    organiseButton->setBounds(rxEnd - 64, getHeight() - 33, 64, 24);
+    rxEnd -= 64 + 4;
+    fitButton->setBounds(rxEnd - 38, getHeight() - 33, 38, 24);
+    int fitStartX = rxEnd - 38;
 
-    // FIT button next to Organise
-    fitButton->setBounds(getWidth() - 390, getHeight() - 33, 50, 24);
+    // Master gain sliders between transport and FIT button (responsive layout)
+    {
+        int transportEndX = (proportionOfWidth(0.5f) - 18) + 38 + 24 + 10;
+        int gainAreaW = fitStartX - transportEndX;
+        int gainY = getHeight() - 33;
+
+        const int labelW = 34;
+        const int gap = 4;
+        const int minSliderW = 50;
+
+        // Full layout: [IN label][slider][gap][OUT label][slider]
+        int fullW = labelW * 2 + gap * 3 + minSliderW * 2;
+        // Compact layout: [slider][gap][slider] (no labels, self-labeled via textFromValue)
+        int compactW = gap * 2 + minSliderW * 2;
+
+        if (gainAreaW >= fullW)
+        {
+            // Full layout with labels
+            int sliderW = (gainAreaW - labelW * 2 - gap * 3) / 2;
+
+            int x = transportEndX + gap;
+            inputGainLabel->setVisible(true);
+            inputGainLabel->setBounds(x, gainY, labelW, 24);
+            x += labelW;
+            inputGainSlider->setVisible(true);
+            inputGainSlider->setBounds(x, gainY, sliderW, 24);
+            x += sliderW + gap;
+            outputGainLabel->setVisible(true);
+            outputGainLabel->setBounds(x, gainY, labelW, 24);
+            x += labelW;
+            outputGainSlider->setVisible(true);
+            outputGainSlider->setBounds(x, gainY, sliderW, 24);
+        }
+        else if (gainAreaW >= compactW)
+        {
+            // Compact layout: sliders only (self-labeled "IN 0.0 dB" / "OUT 0.0 dB")
+            int sliderW = (gainAreaW - gap * 2) / 2;
+
+            inputGainLabel->setVisible(false);
+            outputGainLabel->setVisible(false);
+
+            int x = transportEndX + gap;
+            inputGainSlider->setVisible(true);
+            inputGainSlider->setBounds(x, gainY, sliderW, 24);
+            x += sliderW + gap;
+            outputGainSlider->setVisible(true);
+            outputGainSlider->setBounds(x, gainY, sliderW, 24);
+        }
+        else
+        {
+            // Not enough space: hide gain controls
+            inputGainLabel->setVisible(false);
+            outputGainLabel->setVisible(false);
+            inputGainSlider->setVisible(false);
+            outputGainSlider->setVisible(false);
+        }
+    }
 
     //[/UserResized]
 }
@@ -738,6 +846,18 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
     }
 
     //[UsersliderValueChanged_Post]
+    else if (sliderThatWasMoved == inputGainSlider)
+    {
+        auto& state = MasterGainState::getInstance();
+        state.masterInputGainDb.store((float)inputGainSlider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
+    }
+    else if (sliderThatWasMoved == outputGainSlider)
+    {
+        auto& state = MasterGainState::getInstance();
+        state.masterOutputGainDb.store((float)outputGainSlider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
+    }
     //[/UsersliderValueChanged_Post]
 }
 
@@ -1442,12 +1562,22 @@ void MainPanel::timerCallback(int timerId)
             }
         }
 
-        /*if(programChangePatch != currentPatch)
+        // Sync master gain sliders from MasterGainState (when not being dragged)
         {
-                if((programChangePatch < patches.size()) && (programChangePatch >
-        -1)) patchComboBox->setSelectedId(programChangePatch+1); programChangePatch
-        = currentPatch;
-        }*/
+            auto& gs = MasterGainState::getInstance();
+            if (!inputGainSlider->isMouseButtonDown())
+            {
+                float inDb = gs.masterInputGainDb.load(std::memory_order_relaxed);
+                if (std::abs((float)inputGainSlider->getValue() - inDb) > 0.01f)
+                    inputGainSlider->setValue(inDb, dontSendNotification);
+            }
+            if (!outputGainSlider->isMouseButtonDown())
+            {
+                float outDb = gs.masterOutputGainDb.load(std::memory_order_relaxed);
+                if (std::abs((float)outputGainSlider->getValue() - outDb) > 0.01f)
+                    outputGainSlider->setValue(outDb, dontSendNotification);
+            }
+        }
         break;
     case MidiAppTimer:
         CrashProtection::getInstance().pingWatchdog();

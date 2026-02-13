@@ -26,6 +26,7 @@
 #include "ColourScheme.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "MasterGainState.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
@@ -39,23 +40,88 @@ class TunerProcessor;
 //[/Headers]
 
 //==============================================================================
-/// AudioProcessorPlayer subclass that taps device output buffers for VU metering.
-/// After the graph processes, the real output buffers contain final audio -
-/// we read them and update SafetyLimiterProcessor's output level atomics (RT-safe).
+/// AudioProcessorPlayer subclass that applies master gain and taps device
+/// buffers for VU metering. All operations are RT-safe: pre-allocated buffers,
+/// atomic reads, no allocations or locks in the audio callback.
 class MeteringProcessorPlayer : public AudioProcessorPlayer
 {
   public:
+    static constexpr int MaxChannels = 16;
+
+    void audioDeviceAboutToStart(AudioIODevice* device) override
+    {
+        AudioProcessorPlayer::audioDeviceAboutToStart(device);
+        if (device != nullptr)
+        {
+            int maxCh = jmax(device->getActiveInputChannels().countNumberOfSetBits(),
+                             device->getActiveOutputChannels().countNumberOfSetBits());
+            inputGainBuffer.setSize(jmax(maxCh, 2), device->getCurrentBufferSizeSamples() * 2);
+        }
+    }
+
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
                                          float* const* outputChannelData, int numOutputChannels, int numSamples,
                                          const AudioIODeviceCallbackContext& context) override
     {
-        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(inputChannelData, numInputChannels, outputChannelData,
+        auto& gainState = MasterGainState::getInstance();
+
+        // Apply per-channel input gain (master * channel). inputChannelData is
+        // const, so we copy to a pre-allocated buffer and scale per-channel.
+        const float* const* actualInput = inputChannelData;
+        bool anyInputGain = false;
+        {
+            int chCount = jmin(numInputChannels, inputGainBuffer.getNumChannels());
+            for (int ch = 0; ch < chCount; ++ch)
+            {
+                float gain = gainState.getInputGainLinear(ch);
+                if (inputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f
+                    && numSamples <= inputGainBuffer.getNumSamples())
+                {
+                    float* dest = inputGainBuffer.getWritePointer(ch);
+                    const float* src = inputChannelData[ch];
+                    for (int i = 0; i < numSamples; ++i)
+                        dest[i] = src[i] * gain;
+                    gainedInputPtrs[ch] = dest;
+                    anyInputGain = true;
+                }
+                else
+                {
+                    gainedInputPtrs[ch] = inputChannelData[ch];
+                }
+            }
+            for (int ch = chCount; ch < numInputChannels; ++ch)
+                gainedInputPtrs[ch] = inputChannelData[ch];
+            if (anyInputGain)
+                actualInput = gainedInputPtrs;
+        }
+
+        // Process graph with (possibly gained) input
+        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(actualInput, numInputChannels, outputChannelData,
                                                               numOutputChannels, numSamples, context);
 
-        // Tap output levels from the real device output buffers
+        // Apply per-channel output gain (master * channel). Output buffers are writable.
+        for (int ch = 0; ch < numOutputChannels; ++ch)
+        {
+            float gain = gainState.getOutputGainLinear(ch);
+            if (outputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f)
+            {
+                float* data = outputChannelData[ch];
+                for (int i = 0; i < numSamples; ++i)
+                    data[i] *= gain;
+            }
+        }
+
+        // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
+        {
+            limiter->updateInputLevelsFromDevice(actualInput, numInputChannels, numSamples);
             limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
+        }
     }
+
+  private:
+    AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
+    const float* gainedInputPtrs[MaxChannels] = {};
 };
 
 //==============================================================================
@@ -408,6 +474,10 @@ class MainPanel : public Component,
     ArrowButton* tapTempoButton;
     TextButton* organiseButton;
     TextButton* fitButton;
+    Slider* inputGainSlider;
+    Slider* outputGainSlider;
+    Label* inputGainLabel;
+    Label* outputGainLabel;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

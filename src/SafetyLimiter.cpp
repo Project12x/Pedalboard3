@@ -43,6 +43,8 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     dcBlockerState[0] = dcBlockerState[1] = 0.0f;
     outputLevels[0].store(0.0f, std::memory_order_relaxed);
     outputLevels[1].store(0.0f, std::memory_order_relaxed);
+    inputLevels[0].store(0.0f, std::memory_order_relaxed);
+    inputLevels[1].store(0.0f, std::memory_order_relaxed);
 
     setInstance(this);
 }
@@ -199,4 +201,28 @@ void SafetyLimiterProcessor::updateOutputLevelsFromDevice(const float* const* ou
     }
     for (int ch = chCount; ch < 2; ++ch)
         outputLevels[ch].store(0.0f, std::memory_order_relaxed);
+}
+
+void SafetyLimiterProcessor::updateInputLevelsFromDevice(const float* const* inputData, int numChannels, int numSamples)
+{
+    int chCount = jmin(numChannels, 2);
+    for (int ch = 0; ch < chCount; ++ch)
+    {
+        if (inputData[ch] == nullptr)
+            continue;
+        float peak = inputLevels[ch].load(std::memory_order_relaxed);
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float s = std::abs(inputData[ch][i]);
+            if (s > peak)
+                peak = s;
+            else
+                peak *= outputDecayCoeff;
+        }
+        if (peak < 1e-10f)
+            peak = 0.0f;
+        inputLevels[ch].store(peak, std::memory_order_relaxed);
+    }
+    for (int ch = chCount; ch < 2; ++ch)
+        inputLevels[ch].store(0.0f, std::memory_order_relaxed);
 }

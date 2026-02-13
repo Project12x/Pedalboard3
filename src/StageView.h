@@ -27,7 +27,7 @@ class TunerControl;
     - Panic button
     - Keyboard/foot controller friendly
 */
-class StageView : public Component, public Button::Listener, public Timer
+class StageView : public Component, public Button::Listener, public Slider::Listener, public Timer
 {
   public:
     StageView(MainPanel* panel);
@@ -43,6 +43,7 @@ class StageView : public Component, public Button::Listener, public Timer
     void paint(Graphics& g) override;
     void resized() override;
     void buttonClicked(Button* button) override;
+    void sliderValueChanged(Slider* slider) override;
     bool keyPressed(const KeyPress& key) override;
 
     //==========================================================================
@@ -72,6 +73,14 @@ class StageView : public Component, public Button::Listener, public Timer
     std::unique_ptr<TextButton> panicButton;
     std::unique_ptr<TextButton> exitButton;
     std::unique_ptr<TextButton> tunerToggleButton;
+
+    // Master gain sliders
+    std::unique_ptr<Slider> inputGainSlider;
+    std::unique_ptr<Slider> outputGainSlider;
+
+    // Cached VU meter levels (stereo)
+    float cachedInputLevels[2]{};
+    float cachedOutputLevels[2]{};
 
     // Drawing helpers
     void drawPatchDisplay(Graphics& g, Rectangle<float> bounds);

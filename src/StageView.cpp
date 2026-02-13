@@ -12,6 +12,8 @@
 #include "ColourScheme.h"
 #include "FontManager.h"
 #include "MainPanel.h"
+#include "MasterGainState.h"
+#include "SafetyLimiter.h"
 #include "TunerProcessor.h"
 
 //==============================================================================
@@ -60,6 +62,34 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     tunerToggleButton->setColour(TextButton::textColourOnId, Colours::white);
     addAndMakeVisible(tunerToggleButton.get());
 
+    // Master gain sliders (larger for live use)
+    inputGainSlider = std::make_unique<Slider>("stageInputGain");
+    inputGainSlider->setSliderStyle(Slider::LinearBar);
+    inputGainSlider->setRange(-60.0, 12.0, 0.1);
+    inputGainSlider->setTextValueSuffix(" dB");
+    inputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    inputGainSlider->setTooltip("Master Input Gain");
+    inputGainSlider->textFromValueFunction = [](double v) { return "IN " + String(v, 1) + " dB"; };
+    inputGainSlider->addListener(this);
+    addAndMakeVisible(inputGainSlider.get());
+
+    outputGainSlider = std::make_unique<Slider>("stageOutputGain");
+    outputGainSlider->setSliderStyle(Slider::LinearBar);
+    outputGainSlider->setRange(-60.0, 12.0, 0.1);
+    outputGainSlider->setTextValueSuffix(" dB");
+    outputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    outputGainSlider->setTooltip("Master Output Gain");
+    outputGainSlider->textFromValueFunction = [](double v) { return "OUT " + String(v, 1) + " dB"; };
+    outputGainSlider->addListener(this);
+    addAndMakeVisible(outputGainSlider.get());
+
+    // Sync initial values from MasterGainState
+    {
+        auto& gs = MasterGainState::getInstance();
+        inputGainSlider->setValue(gs.masterInputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+        outputGainSlider->setValue(gs.masterOutputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+    }
+
     // Capture keyboard focus
     setWantsKeyboardFocus(true);
 
@@ -91,6 +121,8 @@ void StageView::setTunerProcessor(TunerProcessor* tuner)
 //==============================================================================
 void StageView::timerCallback()
 {
+    bool needsRepaint = false;
+
     if (tunerProcessor != nullptr && showTuner)
     {
         float targetCents = tunerProcessor->getCentsDeviation();
@@ -100,8 +132,45 @@ void StageView::timerCallback()
         needleAngle += (targetAngle - needleAngle) * NEEDLE_SMOOTHING;
 
         detectedNote = tunerProcessor->getDetectedNote();
-        repaint();
+        needsRepaint = true;
     }
+
+    // Update VU meter levels from SafetyLimiter
+    if (auto* limiter = SafetyLimiterProcessor::getInstance())
+    {
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            float inLevel = limiter->getInputLevel(ch);
+            float outLevel = limiter->getOutputLevel(ch);
+            if (std::abs(inLevel - cachedInputLevels[ch]) > 0.001f ||
+                std::abs(outLevel - cachedOutputLevels[ch]) > 0.001f)
+            {
+                cachedInputLevels[ch] = inLevel;
+                cachedOutputLevels[ch] = outLevel;
+                needsRepaint = true;
+            }
+        }
+    }
+
+    // Sync master gain sliders from MasterGainState (when not being dragged)
+    {
+        auto& gs = MasterGainState::getInstance();
+        if (inputGainSlider && !inputGainSlider->isMouseButtonDown())
+        {
+            float inDb = gs.masterInputGainDb.load(std::memory_order_relaxed);
+            if (std::abs((float)inputGainSlider->getValue() - inDb) > 0.01f)
+                inputGainSlider->setValue(inDb, dontSendNotification);
+        }
+        if (outputGainSlider && !outputGainSlider->isMouseButtonDown())
+        {
+            float outDb = gs.masterOutputGainDb.load(std::memory_order_relaxed);
+            if (std::abs((float)outputGainSlider->getValue() - outDb) > 0.01f)
+                outputGainSlider->setValue(outDb, dontSendNotification);
+        }
+    }
+
+    if (needsRepaint)
+        repaint();
 }
 
 //==============================================================================
@@ -132,6 +201,58 @@ void StageView::paint(Graphics& g)
 
     if (showTuner && tunerProcessor != nullptr)
         drawTunerDisplay(g, tunerArea);
+
+    // Draw VU meters in footer area
+    {
+        auto& fonts = FontManager::getInstance();
+        float footerY = (float)getHeight() - footerHeight;
+        float meterH = 8.0f;
+        float meterW = 140.0f;
+        float labelW = 40.0f;
+        float startX = 30.0f;
+
+        // Helper lambda to draw a stereo VU meter
+        auto drawVU = [&](float x, float y, const String& label, float level0, float level1)
+        {
+            g.setColour(Colours::white.withAlpha(0.6f));
+            g.setFont(fonts.getUIFont(14.0f, true));
+            g.drawText(label, x, y, labelW, 28.0f, Justification::centredRight);
+
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                float level = (ch == 0) ? level0 : level1;
+                float my = y + ch * (meterH + 4.0f) + 4.0f;
+                float mx = x + labelW + 6.0f;
+
+                // Convert to dB scale
+                float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
+                float normalized = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
+
+                // Background
+                g.setColour(Colour(0xFF2a2a3e));
+                g.fillRoundedRectangle(mx, my, meterW, meterH, 3.0f);
+
+                // Level bar
+                if (normalized > 0.0f)
+                {
+                    Colour barColour;
+                    if (level >= 1.0f)
+                        barColour = Colour(0xFFFF5252);
+                    else if (normalized > 0.75f)
+                        barColour = Colour(0xFFFFEB3B);
+                    else
+                        barColour = Colour(0xFF00E676);
+
+                    g.setColour(barColour);
+                    g.fillRoundedRectangle(mx, my, meterW * normalized, meterH, 3.0f);
+                }
+            }
+        };
+
+        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1]);
+        drawVU(startX + labelW + meterW + 30.0f + 160.0f, footerY + 4.0f, "OUT",
+               cachedOutputLevels[0], cachedOutputLevels[1]);
+    }
 }
 
 void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
@@ -267,6 +388,22 @@ void StageView::resized()
     // Panic button (bottom right)
     panicButton->setBounds(bounds.getWidth() - 160 - margin, bounds.getHeight() - buttonHeight - margin, 160,
                            buttonHeight);
+
+    // Master gain sliders in footer area (next to VU meters)
+    {
+        int footerY = bounds.getHeight() - 80;
+        float labelW = 40.0f;
+        float meterW = 140.0f;
+        float startX = 30.0f;
+
+        // Input slider below input VU
+        int inSliderX = (int)(startX + labelW + 6.0f);
+        inputGainSlider->setBounds(inSliderX, footerY + 30, (int)meterW, 28);
+
+        // Output slider below output VU
+        int outSliderX = (int)(startX + labelW + meterW + 30.0f + 160.0f + labelW + 6.0f);
+        outputGainSlider->setBounds(outSliderX, footerY + 30, (int)meterW, 28);
+    }
 }
 
 //==============================================================================
@@ -296,6 +433,21 @@ void StageView::buttonClicked(Button* button)
         showTuner = tunerToggleButton->getToggleState();
         resized();
         repaint();
+    }
+}
+
+void StageView::sliderValueChanged(Slider* slider)
+{
+    auto& state = MasterGainState::getInstance();
+    if (slider == inputGainSlider.get())
+    {
+        state.masterInputGainDb.store((float)slider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
+    }
+    else if (slider == outputGainSlider.get())
+    {
+        state.masterOutputGainDb.store((float)slider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
     }
 }
 

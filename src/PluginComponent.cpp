@@ -26,6 +26,7 @@
 #include "CrashProtection.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "MasterGainState.h"
 #include "SafetyLimiter.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
@@ -232,6 +233,49 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 
     createPins();
 
+    // Create per-channel gain sliders for Audio I/O nodes (inline with pins)
+    if (isAudioIONode())
+    {
+        AudioProcessor* plugin = node->getProcessor();
+        bool isInput = (pluginName == "Audio Input");
+        int numCh = isInput ? countOutputChannelsFromBuses(plugin)
+                            : countInputChannelsFromBuses(plugin);
+        auto& state = MasterGainState::getInstance();
+
+        const float meterStartY = 32.0f;
+        const float pinSpacing = 36.0f;
+        const int sliderHeight = 18;
+        const int pinMargin = 22;
+        const int edgeMargin = 8;
+        // Slider width matches VU meter width
+        int sliderW = getWidth() - pinMargin - edgeMargin;
+
+        for (int ch = 0; ch < numCh && ch < MasterGainState::MaxChannels; ++ch)
+        {
+            auto* slider = new Slider("channelGain_" + String(ch));
+            slider->setSliderStyle(Slider::LinearBar);
+            slider->setRange(-60.0, 12.0, 0.1);
+            slider->setTextValueSuffix(" dB");
+            slider->setDoubleClickReturnValue(true, 0.0);
+            slider->setTooltip(String(isInput ? "Input" : "Output") + " Ch " + String(ch + 1) + " Gain");
+            slider->addListener(this);
+
+            // Position slider inline with its pin (below VU meter for this channel)
+            int sliderY = (int)(meterStartY + ch * pinSpacing + 10.0f);
+            int sliderX = isInput ? edgeMargin : pinMargin;
+            slider->setBounds(sliderX, sliderY, sliderW, sliderHeight);
+
+            // Sync initial value from MasterGainState per-channel
+            float initDb = isInput
+                ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+            slider->setValue(initDb, dontSendNotification);
+
+            addAndMakeVisible(slider);
+            channelGainSliders.add(slider);
+        }
+    }
+
     if (node->properties.getWithDefault("windowOpen", false))
         buttonClicked(editButton);
 }
@@ -239,6 +283,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 //------------------------------------------------------------------------------
 PluginComponent::~PluginComponent()
 {
+    channelGainSliders.clear(false); // Release without deleting - deleteAllChildren() handles it
     deleteAllChildren();
     if (pluginWindow)
         delete pluginWindow;
@@ -328,7 +373,7 @@ void PluginComponent::paint(Graphics& g)
         const float meterWidth = w - pinMargin - edgeMargin;  // Full width minus margins
         const float meterHeight = 6.0f;   // Compact height per channel
         const float meterStartY = 32.0f;  // Below device name subtitle
-        const float pinSpacing = 24.0f;   // Match Audio I/O pin spacing
+        const float pinSpacing = 36.0f;   // Match Audio I/O pin spacing
 
         for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
         {
@@ -397,44 +442,47 @@ void PluginComponent::timerUpdate()
     // Update meter levels for Audio I/O nodes
     if (isAudioIONode())
     {
-        if (auto* tap = DeviceMeterTap::getInstance())
+        bool needsRepaint = false;
+        int numChannels = 0;
+
+        if (auto* limiter = SafetyLimiterProcessor::getInstance())
         {
-            bool needsRepaint = false;
-            int numChannels = 0;
-
-            if (pluginName == "Audio Input")
+            numChannels = 2;
+            for (int ch = 0; ch < numChannels; ++ch)
             {
-                numChannels = tap->getNumInputChannels();
-                for (int ch = 0; ch < numChannels && ch < 16; ++ch)
+                float level = (pluginName == "Audio Input")
+                    ? limiter->getInputLevel(ch)
+                    : limiter->getOutputLevel(ch);
+                if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
                 {
-                    float level = tap->getInputLevel(ch);
-                    if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
-                    {
-                        cachedMeterLevels[ch] = level;
-                        needsRepaint = true;
-                    }
+                    cachedMeterLevels[ch] = level;
+                    needsRepaint = true;
                 }
             }
-            else // Audio Output - read from SafetyLimiter (processes all output audio)
+        }
+
+        cachedMeterChannelCount = numChannels;
+        if (needsRepaint)
+            repaint();
+
+        // Sync per-channel gain sliders from MasterGainState (when not being dragged)
+        if (channelGainSliders.size() > 0)
+        {
+            bool isInput = (pluginName == "Audio Input");
+            auto& state = MasterGainState::getInstance();
+            for (int ch = 0; ch < channelGainSliders.size(); ++ch)
             {
-                if (auto* limiter = SafetyLimiterProcessor::getInstance())
+                auto* slider = channelGainSliders[ch];
+                if (slider != nullptr && !slider->isMouseButtonDown())
                 {
-                    numChannels = 2;
-                    for (int ch = 0; ch < numChannels; ++ch)
-                    {
-                        float level = limiter->getOutputLevel(ch);
-                        if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
-                        {
-                            cachedMeterLevels[ch] = level;
-                            needsRepaint = true;
-                        }
-                    }
+                    float currentDb = isInput
+                        ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                        : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+
+                    if (std::abs((float)slider->getValue() - currentDb) > 0.01f)
+                        slider->setValue(currentDb, dontSendNotification);
                 }
             }
-
-            cachedMeterChannelCount = numChannels;
-            if (needsRepaint)
-                repaint();
         }
     }
 }
@@ -723,6 +771,23 @@ void PluginComponent::labelTextChanged(Label* label)
 }
 
 //------------------------------------------------------------------------------
+void PluginComponent::sliderValueChanged(Slider* slider)
+{
+    // Find which channel this slider controls
+    int chIndex = channelGainSliders.indexOf(slider);
+    if (chIndex >= 0)
+    {
+        auto& state = MasterGainState::getInstance();
+        float val = (float)slider->getValue();
+
+        if (pluginName == "Audio Input")
+            state.inputChannelGainDb[chIndex].store(val, std::memory_order_relaxed);
+        else
+            state.outputChannelGainDb[chIndex].store(val, std::memory_order_relaxed);
+    }
+}
+
+//------------------------------------------------------------------------------
 void PluginComponent::setUserName(const String& val)
 {
     titleLabel->setText(val, sendNotification);
@@ -846,8 +911,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
     bool showLabels = (!proc) || (pluginName == "Splitter") || (pluginName == "Mixer");
 
-    // Use larger spacing for Audio I/O nodes
-    const float pinSpacing = isAudioIONode() ? 24.0f : 18.0f;
+    // Use larger spacing for Audio I/O nodes (36px for VU + slider per channel)
+    const float pinSpacing = isAudioIONode() ? 36.0f : 18.0f;
 
     if (showLabels)
     {
@@ -1008,6 +1073,10 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         else
             w = (int)jmax(contentW, procW);
 
+        // Enforce consistent minimum width for Audio I/O nodes (VU meters + gain sliders)
+        if (isAudioIONode())
+            w = jmax(w, 140);
+
         // Shift output texts to where they should be.
         {
             x = (w - outputWidth - 10.0f);
@@ -1042,7 +1111,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             h = jmax((int)minH, h + 60);
         }
         else
+        {
             h = jmax((int)minH, h + 34);
+        }
     }
     else
     {
@@ -1101,7 +1172,7 @@ void PluginComponent::createPins()
 
     // Use larger pins and spacing for Audio I/O nodes
     const bool largePin = isAudioIONode();
-    const int pinSpacing = largePin ? 24 : 18;
+    const int pinSpacing = largePin ? 36 : 18;
     const int pinXOffset = largePin ? -10 : -8;
     const int pinXOffsetRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
 
