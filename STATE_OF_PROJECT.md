@@ -105,10 +105,12 @@
 
 ## Next Steps (Phase 6)
 
-1. **Patch Organiser Sync** - Fix combobox text update on rename
-2. **Timeout Logic** - Detect and terminate hung plugin scans
-3. **6B: Testing** - Add more unit tests (FilterGraph, MIDI mapping)
-4. **6A: UI Polish** - Premium typography/icons
+1. ~~**Patch Organiser Sync**~~ - Done (commit 02acb82)
+2. ~~**Timeout Logic**~~ - Done (out-of-process scanner with timeout)
+3. ~~**Premium Typography**~~ - Done (Inter font family)
+4. **6B: Testing** - Add more unit tests (MIDI mapping)
+5. **6A: UI Polish** - blend2d vectors, animations, hover tooltips
+6. **6E: Legacy UX** - Zoom out mode, pin hover enlarge, keyboard shortcuts
 
 ---
 

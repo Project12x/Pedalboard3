@@ -160,6 +160,9 @@ A focused roadmap for current development. For historical completed phases, see 
 | 6A.18 | Plugin bypass visual feedback | Planned |
 | 6A.19 | Master gain controls (Audio I/O) | Done |
 | 6A.20 | Professional VU meters (gradient, peak hold, glow) | Done |
+| 6A.21 | Premium typography (Inter font family) | Done |
+| 6A.22 | Infrastructure node polish (MIDI/OSC pins, buttons, sizing) | Done |
+| 6A.23 | Canvas fit-to-screen and smooth viewport scrolling | Done |
 
 ### 6B: Testing & Protection
 | # | Task | Status |
@@ -170,7 +173,7 @@ A focused roadmap for current development. For historical completed phases, see 
 ### 6C: Bug Fixes (Legacy)
 | # | Issue | Status |
 |---|-------|--------|
-| 6C.2 | Patch Organiser sync | Planned |
+| 6C.2 | Patch Organiser sync | Done |
 | 6C.3 | AudioRecorder MIDI trigger | Planned |
 | 6C.4 | Start minimized | Planned |
 | 6C.5 | Home key mapping | Planned |
@@ -182,7 +185,7 @@ A focused roadmap for current development. For historical completed phases, see 
 ### 6D: Code Refactoring
 | # | Task | Status |
 |---|------|--------|
-| 6D.1 | Split PedalboardProcessors | Planned |
+| 6D.1 | Split PedalboardProcessors | Done |
 | 6D.2 | Global loadSVGFromMemory() | Planned |
 | 6D.3 | Atomic cross-thread vars | Done |
 | 6D.4 | RT-safe MIDI/OSC parameter dispatch (FIFO) | Done |
@@ -352,5 +355,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-11*
 
