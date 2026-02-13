@@ -52,7 +52,7 @@ BranchesLAF::BranchesLAF() : LookAndFeel_V4()
     setColour(ComboBox::buttonColourId, colours["Button Colour"]);
     setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
     setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
-    setColour(DirectoryContentsDisplayComponent::highlightColourId, Colour(0xFFD7D1B5));
+    setColour(DirectoryContentsDisplayComponent::highlightColourId, colours["List Selected Colour"]);
     setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
     setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
 

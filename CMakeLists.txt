@@ -141,6 +141,11 @@ juce_add_binary_data(Pedalboard3_fonts
     NAMESPACE FontData
     SOURCES
         fonts/SpaceGrotesk-Regular.ttf
+        fonts/SpaceGrotesk-Bold.ttf
+        fonts/IBMPlexSans-Regular.ttf
+        fonts/IBMPlexSans-Bold.ttf
+        fonts/Inter-Regular.ttf
+        fonts/Inter-Bold.ttf
         fonts/JetBrainsMono-Regular.ttf
 )
 

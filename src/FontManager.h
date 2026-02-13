@@ -42,6 +42,11 @@ class FontManager
     FontManager& operator=(const FontManager&) = delete;
 
     Typeface::Ptr spaceGroteskTypeface;
+    Typeface::Ptr spaceGroteskBoldTypeface;
+    Typeface::Ptr ibmPlexSansTypeface;
+    Typeface::Ptr ibmPlexSansBoldTypeface;
+    Typeface::Ptr interTypeface;
+    Typeface::Ptr interBoldTypeface;
     Typeface::Ptr jetBrainsMonoTypeface;
     bool fontsLoaded = false;
 };

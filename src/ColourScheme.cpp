@@ -203,6 +203,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF6366F1);
         colours["Level Dial Colour"] = Colour(0xFF4F46E5);
         colours["Tick Box Colour"] = Colour(0x806366F1);
+        colours["Stage Background Top"] = Colour(0xFF1a1a2e);
+        colours["Stage Background Bottom"] = Colour(0xFF0f0f1a);
+        colours["Stage Panel Background"] = Colour(0xFF2a2a3e);
+        colours["Dialog Background"] = Colour(0xFFEEECE1);
+        colours["Tuner Active Colour"] = Colour(0xFF00AA55);
     }
     else if (name == "Daylight")
     {
@@ -229,6 +234,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF0077CC);
         colours["Level Dial Colour"] = Colour(0xFF005599);
         colours["Tick Box Colour"] = Colour(0x800077CC);
+        colours["Stage Background Top"] = Colour(0xFFE8E8E8);
+        colours["Stage Background Bottom"] = Colour(0xFFD0D0D0);
+        colours["Stage Panel Background"] = Colour(0xFFCCCCCC);
+        colours["Dialog Background"] = Colour(0xFFF0F0F0);
+        colours["Tuner Active Colour"] = Colour(0xFF00AA00);
     }
     else if (name == "Synthwave")
     {
@@ -255,6 +265,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF00FFFF);
         colours["Level Dial Colour"] = Colour(0xFFFF00AA);
         colours["Tick Box Colour"] = Colour(0x80FF00FF);
+        colours["Stage Background Top"] = Colour(0xFF0D0221);
+        colours["Stage Background Bottom"] = Colour(0xFF060112);
+        colours["Stage Panel Background"] = Colour(0xFF2D0A4E);
+        colours["Dialog Background"] = Colour(0xFF1A0533);
+        colours["Tuner Active Colour"] = Colour(0xFF00FF88);
     }
     else if (name == "Deep Ocean")
     {
@@ -281,6 +296,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF7DD3FC);
         colours["Level Dial Colour"] = Colour(0xFF0284C7);
         colours["Tick Box Colour"] = Colour(0x800EA5E9);
+        colours["Stage Background Top"] = Colour(0xFF0A1628);
+        colours["Stage Background Bottom"] = Colour(0xFF060E18);
+        colours["Stage Panel Background"] = Colour(0xFF142D4C);
+        colours["Dialog Background"] = Colour(0xFF0D1F3C);
+        colours["Tuner Active Colour"] = Colour(0xFF00DDAA);
     }
     else if (name == "Forest")
     {
@@ -307,6 +327,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF86EFAC);
         colours["Level Dial Colour"] = Colour(0xFF22C55E);
         colours["Tick Box Colour"] = Colour(0x804ADE80);
+        colours["Stage Background Top"] = Colour(0xFF1A2F1A);
+        colours["Stage Background Bottom"] = Colour(0xFF0F1F0F);
+        colours["Stage Panel Background"] = Colour(0xFF244024);
+        colours["Dialog Background"] = Colour(0xFF1A2F1A);
+        colours["Tuner Active Colour"] = Colour(0xFF66CC66);
     }
     else
     {

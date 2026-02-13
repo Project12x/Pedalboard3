@@ -57,7 +57,7 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     tunerToggleButton->setClickingTogglesState(true);
     tunerToggleButton->setToggleState(true, dontSendNotification);
     tunerToggleButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
-    tunerToggleButton->setColour(TextButton::buttonOnColourId, Colour(0xFF00AA55));
+    tunerToggleButton->setColour(TextButton::buttonOnColourId, colours["Tuner Active Colour"]);
     tunerToggleButton->setColour(TextButton::textColourOffId, Colours::white.withAlpha(0.7f));
     tunerToggleButton->setColour(TextButton::textColourOnId, Colours::white);
     addAndMakeVisible(tunerToggleButton.get());
@@ -217,9 +217,8 @@ void StageView::paint(Graphics& g)
     auto bounds = getLocalBounds().toFloat();
 
     // Dark background with subtle gradient
-    Colour bgTop = Colour(0xFF1a1a2e);
-    Colour bgBot = Colour(0xFF0f0f1a);
-    g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBot, 0, bounds.getHeight(), false));
+    g.setGradientFill(ColourGradient(colours["Stage Background Top"], 0, 0,
+                                     colours["Stage Background Bottom"], 0, bounds.getHeight(), false));
     g.fillAll();
 
     // Layout areas
@@ -248,9 +247,9 @@ void StageView::paint(Graphics& g)
         float labelW = 40.0f;
         float startX = 30.0f;
 
-        const Colour colGreen(0xFF00E676);
-        const Colour colYellow(0xFFFFEB3B);
-        const Colour colRed(0xFFFF5252);
+        const Colour colGreen = colours["VU Meter Lower Colour"].withAlpha(1.0f);
+        const Colour colYellow = colours["VU Meter Upper Colour"].withAlpha(1.0f);
+        const Colour colRed = colours["VU Meter Over Colour"].withAlpha(1.0f);
 
         // Helper lambda to draw a stereo VU meter with gradient, peak hold, glow, and tick marks
         auto drawVU = [&](float x, float y, const String& label, float level0, float level1,
@@ -270,7 +269,7 @@ void StageView::paint(Graphics& g)
                 float normalized = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
 
                 // Background
-                g.setColour(Colour(0xFF2a2a3e));
+                g.setColour(colours["Stage Panel Background"]);
                 g.fillRoundedRectangle(mx, my, meterW, meterH, 3.0f);
 
                 // Gradient-filled level bar
@@ -584,14 +583,15 @@ String StageView::getNoteName(int midiNote) const
 
 Colour StageView::getTuningColour(float cents) const
 {
+    auto& colours = ColourScheme::getInstance().colours;
     float absCents = std::abs(cents);
 
     if (absCents < 5.0f)
-        return Colour(0xFF00E676); // Green - in tune
+        return colours["VU Meter Lower Colour"].withAlpha(1.0f);
     else if (absCents < 15.0f)
-        return Colour(0xFFFFEB3B); // Yellow - close
+        return colours["VU Meter Upper Colour"].withAlpha(1.0f);
     else
-        return Colour(0xFFFF5252); // Red - out of tune
+        return colours["VU Meter Over Colour"].withAlpha(1.0f);
 }
 
 void StageView::updateAfterPatchChange()

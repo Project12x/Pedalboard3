@@ -28,6 +28,7 @@
 #include "FilterGraph.h"
 #include "MasterGainState.h"
 #include "SafetyLimiter.h"
+#include "FontManager.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "MappingsDialog.h"
@@ -153,15 +154,16 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     determineSize();
 
     titleLabel = new Label("titleLabe", pluginName);
-    titleLabel->setBounds(5, 0, getWidth() - 10, 20);
+    titleLabel->setBounds(5, 3, getWidth() - 10, 20);
     titleLabel->setInterceptsMouseClicks(false, false);
-    titleLabel->setFont(Font(14.0f, Font::bold));
+    titleLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
+    titleLabel->setJustificationType(Justification::centredLeft);
     titleLabel->addListener(this);
     addAndMakeVisible(titleLabel);
 
     // Shift title label to make room for icon on Audio I/O nodes
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
-        titleLabel->setBounds(18, 0, getWidth() - 23, 20);
+        titleLabel->setBounds(18, 3, getWidth() - 23, 20);
 
     if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input"))
@@ -179,7 +181,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 
         // So the audio I/O etc. don't get their titles squeezed by the
         // non-existent close button.
-        titleLabel->setBounds(5, 0, getWidth() - 17, 20);
+        titleLabel->setBounds(5, 3, getWidth() - 17, 20);
 
         // Skip edit/mappings buttons for Tuner (no external editor, no mappable params)
         if (pluginName != "Tuner")
@@ -242,8 +244,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
                             : countInputChannelsFromBuses(plugin);
         auto& state = MasterGainState::getInstance();
 
-        const float meterStartY = 32.0f;
-        const float pinSpacing = 36.0f;
+        const float meterStartY = 44.0f;
+        const float pinSpacing = 40.0f;
         const int sliderHeight = 18;
         const int pinMargin = 22;
         const int edgeMargin = 8;
@@ -308,26 +310,46 @@ void PluginComponent::paint(Graphics& g)
     g.setColour(colours["Plugin Border"]);
     g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, 2.0f);
 
-    // === HEADER BAR (title area) ===
-    // Use tinted header for Audio I/O nodes
-    if (isAudioIONode())
+    // === HEADER BAR (title area with gradient) ===
+    const float headerHeight = 23.0f;
     {
-        Colour accentColour = colours["Audio Connection"].withAlpha(0.6f);
-        g.setColour(accentColour.interpolatedWith(colours["Plugin Border"], 0.3f));
+        Colour headerTop, headerBottom;
+        if (isAudioIONode())
+        {
+            Colour accent = colours["Audio Connection"].withAlpha(0.6f);
+            Colour base = accent.interpolatedWith(colours["Plugin Border"], 0.3f);
+            headerTop = base.brighter(0.15f);
+            headerBottom = base.darker(0.1f);
+        }
+        else
+        {
+            headerTop = colours["Plugin Border"].brighter(0.12f);
+            headerBottom = colours["Plugin Border"].darker(0.08f);
+        }
+        g.setGradientFill(ColourGradient(headerTop, 0, 2.0f, headerBottom, 0, headerHeight + 2.0f, false));
     }
-    else
     {
-        g.setColour(colours["Plugin Border"]);
+        Path headerPath;
+        headerPath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, headerHeight,
+                                       cornerRadius, cornerRadius,
+                                       true, true, false, false);
+        g.fillPath(headerPath);
     }
-    g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, 18.0f, cornerRadius);
-    g.fillRect(2.0f, 14.0f, w - 4.0f, 6.0f); // Square off bottom of header
+
+    // Subtle top highlight (inner bevel)
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawHorizontalLine(3, 4.0f, w - 4.0f);
+
+    // Separator line at bottom of header
+    g.setColour(colours["Plugin Border"].brighter(0.15f));
+    g.drawHorizontalLine((int)(headerHeight + 1.0f), 3.0f, w - 3.0f);
 
     // === ICON for Audio I/O nodes ===
     if (isAudioIONode())
     {
-        const float iconSize = 12.0f;
+        const float iconSize = 14.0f;
         const float iconX = 5.0f;
-        const float iconY = 3.0f;
+        const float iconY = 5.0f;
 
         auto& iconManager = IconManager::getInstance();
         std::unique_ptr<Drawable> icon;
@@ -348,10 +370,23 @@ void PluginComponent::paint(Graphics& g)
             if (deviceName.isNotEmpty())
             {
                 g.setColour(colours["Text Colour"].withAlpha(0.6f));
-                g.setFont(Font(9.0f));
-                g.drawText(deviceName, 4.0f, 18.0f, w - 8.0f, 12.0f, Justification::centred, true);
+                g.setFont(FontManager::getInstance().getUIFont(10.0f));
+                g.drawText(deviceName, 4.0f, 25.0f, w - 8.0f, 14.0f, Justification::centred, true);
             }
         }
+    }
+
+    // === INNER BODY HIGHLIGHT (subtle top edge below header) ===
+    g.setColour(Colours::white.withAlpha(0.03f));
+    g.fillRect(3.0f, headerHeight + 2.0f, w - 6.0f, 1.0f);
+
+    // === FOOTER SEPARATOR (above edit/bypass buttons) ===
+    if ((pluginName != "Audio Input") && (pluginName != "Midi Input") &&
+        (pluginName != "Audio Output") && (pluginName != "OSC Input"))
+    {
+        float footerY = h - 36.0f;
+        g.setColour(colours["Plugin Border"].withAlpha(0.4f));
+        g.drawHorizontalLine((int)footerY, 6.0f, w - 6.0f);
     }
 
     // Draw the plugin name.
@@ -372,8 +407,8 @@ void PluginComponent::paint(Graphics& g)
         const float edgeMargin = 8.0f;
         const float meterWidth = w - pinMargin - edgeMargin;
         const float meterHeight = 8.0f;
-        const float meterStartY = 32.0f;
-        const float pinSpacing = 36.0f;
+        const float meterStartY = 44.0f;
+        const float pinSpacing = 40.0f;
 
         for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
         {
@@ -793,33 +828,30 @@ void PluginComponent::labelTextChanged(Label* label)
 
     // Reset the Component's size/layout.
     determineSize(true);
-    titleLabel->setBounds(5, 0, getWidth() - 17, 20);
+    titleLabel->setBounds(5, 3, getWidth() - 17, 20);
     if (deleteButton)
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
     if (bypassButton)
         bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
 
-    y = 25;
-    for (i = 0; i < outputPins.size(); ++i)
     {
-        Point<int> pinPos;
-
-        pinPos.setXY(getWidth() - 6, y);
-        outputPins[i]->setTopLeftPosition(pinPos.getX(), pinPos.getY());
-
-        y += 18;
-    }
-
-    for (i = 0; i < paramPins.size(); ++i)
-    {
-        Point<int> pinPos;
-
-        pinPos.setXY(getWidth() - 6, y);
-        if (paramPins[i]->getX() > 0)
+        const bool largePin = isAudioIONode();
+        const int ps = largePin ? 40 : 22;
+        const int psY = largePin ? 40 : 34;
+        const int xRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
+        y = psY;
+        for (i = 0; i < outputPins.size(); ++i)
         {
-            paramPins[i]->setTopLeftPosition(pinPos.getX(), pinPos.getY());
-
-            y += 18;
+            outputPins[i]->setTopLeftPosition(xRight, y);
+            y += ps;
+        }
+        for (i = 0; i < paramPins.size(); ++i)
+        {
+            if (paramPins[i]->getX() > 0)
+            {
+                paramPins[i]->setTopLeftPosition(xRight, y);
+                y += 22;
+            }
         }
     }
 }
@@ -888,7 +920,7 @@ void PluginComponent::openMappingsWindow()
                        parent->getMappingsForPlugin(node->nodeID.uid), parent);
 
     tempstr << node->getProcessor()->getName() << " Mappings";
-    JuceHelperStuff::showModalDialog(tempstr, &dlg, getParentComponent(), Colour(0xFFEEECE1), false, true);
+    JuceHelperStuff::showModalDialog(tempstr, &dlg, getParentComponent(), ColourScheme::getInstance().colours["Dialog Background"], false, true);
 }
 
 //------------------------------------------------------------------------------
@@ -924,14 +956,14 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     float nameWidth;
     float inputWidth = 0.0f;
     float outputWidth = 0.0f;
-    int w = 150;
+    int w = 160;
     int h = 100;
     float x;
-    float y = 15.0f;
+    float y = 22.0f;
     int numInputPins = 0;
     int numOutputPins = 0;
     PedalboardProcessor* proc = nullptr;
-    Font tempFont(14.0f, Font::bold);
+    Font tempFont = FontManager::getInstance().getUIFont(15.0f, true);
     AudioProcessor* plugin = node->getProcessor();
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(plugin);
     bool ignorePinNames = SettingsManager::getInstance().getBool("IgnorePinNames", false);
@@ -965,15 +997,15 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
     bool showLabels = (!proc) || (pluginName == "Splitter") || (pluginName == "Mixer");
 
-    // Use larger spacing for Audio I/O nodes (36px for VU + slider per channel)
-    const float pinSpacing = isAudioIONode() ? 36.0f : 18.0f;
+    // Use larger spacing for Audio I/O nodes (40px for VU + slider per channel)
+    const float pinSpacing = isAudioIONode() ? 40.0f : 22.0f;
 
     if (showLabels)
     {
         int numIn = countInputChannelsFromBuses(plugin);
         int numOut = countOutputChannelsFromBuses(plugin);
         // Determine plugin input channel name bounds.
-        y = 35.0f;
+        y = 44.0f;
         tempFont.setHeight(12.0f);
         tempFont.setStyleFlags(Font::plain);
         for (i = 0; i < numIn; ++i)
@@ -1039,7 +1071,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Determine plugin output channel name bounds.
-        y = 35.0f;
+        y = 44.0f;
         for (i = 0; i < numOut; ++i)
         {
             // Use numbered names for Audio Input (its outputs are device input channels)
@@ -1129,7 +1161,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
         // Enforce consistent minimum width for Audio I/O nodes (VU meters + gain sliders)
         if (isAudioIONode())
-            w = jmax(w, 140);
+            w = jmax(w, 160);
 
         // Shift output texts to where they should be.
         {
@@ -1142,31 +1174,26 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         h = jmax(numInputPins, numOutputPins);
         h *= (int)pinSpacing;
 
-        float minH = (float)h + 60.0f;
-        if (proc && minH < procH + 52.0f)
-            minH = procH + 52.0f;
+        float minH = (float)h + 70.0f;
+        if (proc && minH < procH + 60.0f)
+            minH = procH + 60.0f;
 
         if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
             h = (int)minH;
         }
-        else if (proc) // Wait, Audio Input doesn't have proc usually?
+        else if (proc)
             h = (int)minH;
-
-        // Original logic for Input/Output nodes used + 60 in the block, so that's preserved.
-        // Wait, original: if (pluginName != ...) h += 60; else h += 34; (lines 596-602)
-        // I should preserve that.
 
         if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
-            // h is pin height * 13
-            h = jmax((int)minH, h + 60);
+            h = jmax((int)minH, h + 70);
         }
         else
         {
-            h = jmax((int)minH, h + 34);
+            h = jmax((int)minH, h + 44);
         }
     }
     else
@@ -1226,11 +1253,12 @@ void PluginComponent::createPins()
 
     // Use larger pins and spacing for Audio I/O nodes
     const bool largePin = isAudioIONode();
-    const int pinSpacing = largePin ? 36 : 18;
+    const int pinSpacing = largePin ? 40 : 22;
+    const int pinStartY = largePin ? 40 : 34;
     const int pinXOffset = largePin ? -10 : -8;
     const int pinXOffsetRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
 
-    y = 25;
+    y = pinStartY;
     for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
@@ -1258,10 +1286,10 @@ void PluginComponent::createPins()
 
         paramPins.add(pin);
 
-        y += 18;
+        y += 22;
     }
 
-    y = 25;
+    y = pinStartY;
     for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
@@ -1287,7 +1315,7 @@ void PluginComponent::createPins()
 
         paramPins.add(pin);
 
-        y += 18;
+        y += 22;
     }
 }
 

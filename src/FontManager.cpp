@@ -24,27 +24,43 @@ FontManager& FontManager::getInstance()
 //------------------------------------------------------------------------------
 FontManager::FontManager()
 {
-    // Load Space Grotesk (main UI font)
+    // Load Space Grotesk Regular + Bold
     spaceGroteskTypeface =
         Typeface::createSystemTypefaceFor(FontData::SpaceGroteskRegular_ttf, FontData::SpaceGroteskRegular_ttfSize);
+    spaceGroteskBoldTypeface =
+        Typeface::createSystemTypefaceFor(FontData::SpaceGroteskBold_ttf, FontData::SpaceGroteskBold_ttfSize);
+
+    // Load IBM Plex Sans Regular + Bold
+    ibmPlexSansTypeface =
+        Typeface::createSystemTypefaceFor(FontData::IBMPlexSansRegular_ttf, FontData::IBMPlexSansRegular_ttfSize);
+    ibmPlexSansBoldTypeface =
+        Typeface::createSystemTypefaceFor(FontData::IBMPlexSansBold_ttf, FontData::IBMPlexSansBold_ttfSize);
+
+    // Load Inter Regular + Bold
+    interTypeface =
+        Typeface::createSystemTypefaceFor(FontData::InterRegular_ttf, FontData::InterRegular_ttfSize);
+    interBoldTypeface =
+        Typeface::createSystemTypefaceFor(FontData::InterBold_ttf, FontData::InterBold_ttfSize);
 
     // Load JetBrains Mono (numbers/code)
     jetBrainsMonoTypeface =
         Typeface::createSystemTypefaceFor(FontData::JetBrainsMonoRegular_ttf, FontData::JetBrainsMonoRegular_ttfSize);
 
-    fontsLoaded = (spaceGroteskTypeface != nullptr && jetBrainsMonoTypeface != nullptr);
+    fontsLoaded = (interTypeface != nullptr && interBoldTypeface != nullptr
+                   && jetBrainsMonoTypeface != nullptr);
 }
 
 //------------------------------------------------------------------------------
 Font FontManager::getUIFont(float height, bool bold) const
 {
-    if (spaceGroteskTypeface != nullptr)
+    // Currently using Inter; swap to ibmPlexSans* or spaceGrotesk* to revert
+    Typeface::Ptr face = bold ? interBoldTypeface : interTypeface;
+
+    if (face != nullptr)
     {
         FontOptions options;
-        options = options.withTypeface(spaceGroteskTypeface);
+        options = options.withTypeface(face);
         options = options.withHeight(height);
-        if (bold)
-            options = options.withStyle("Bold");
         return Font(options);
     }
     // Fallback to system font

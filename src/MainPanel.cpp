@@ -28,6 +28,7 @@
 #include "BranchesLAF.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
+#include "FontManager.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "SafePluginScanner.h"
@@ -79,7 +80,7 @@ class PluginListWindow : public DocumentWindow
 {
   public:
     PluginListWindow(KnownPluginList& knownPluginList, MainPanel* p, bool useSafeScanner = true)
-        : DocumentWindow("Available Plugins", Colour(0xffeeece1),
+        : DocumentWindow("Available Plugins", ColourScheme::getInstance().colours["Dialog Background"],
                          DocumentWindow::minimiseButton | DocumentWindow::closeButton),
           panel(p)
     {
@@ -133,7 +134,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
       tempoEditor(0), tapTempoButton(0)
 {
     addAndMakeVisible(patchLabel = new Label("patchLabel", "Patch:"));
-    patchLabel->setFont(Font(15.0000f, Font::plain));
+    patchLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     patchLabel->setJustificationType(Justification::centredLeft);
     patchLabel->setEditable(false, false, false);
     patchLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -167,7 +168,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuSlider->addListener(this);
 
     addAndMakeVisible(cpuLabel = new Label("cpuLabel", "CPU Usage:"));
-    cpuLabel->setFont(Font(15.0000f, Font::plain));
+    cpuLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
     cpuLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -180,7 +181,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     rtzButton->setName("rtzButton");
 
     addAndMakeVisible(tempoLabel = new Label("tempoLabel", "Tempo:"));
-    tempoLabel->setFont(Font(15.0000f, Font::plain));
+    tempoLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     tempoLabel->setJustificationType(Justification::centredLeft);
     tempoLabel->setEditable(false, false, false);
     tempoLabel->setColour(TextEditor::textColourId, Colours::black);
@@ -208,7 +209,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     fitButton->addListener(this);
 
     addAndMakeVisible(inputGainLabel = new Label("inputGainLabel", "IN"));
-    inputGainLabel->setFont(Font(12.0f, Font::bold));
+    inputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
     inputGainLabel->setJustificationType(Justification::centredRight);
 
     addAndMakeVisible(inputGainSlider = new Slider("inputGainSlider"));
@@ -221,7 +222,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     inputGainSlider->addListener(this);
 
     addAndMakeVisible(outputGainLabel = new Label("outputGainLabel", "OUT"));
-    outputGainLabel->setFont(Font(12.0f, Font::bold));
+    outputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
     outputGainLabel->setJustificationType(Justification::centredRight);
 
     addAndMakeVisible(outputGainSlider = new Slider("outputGainSlider"));
@@ -613,8 +614,6 @@ void MainPanel::paint(Graphics& g)
     rtzButton->setColour(DrawableButton::backgroundOnColourId, tempCol);
 
     //[/UserPrePaint]
-
-    g.fillAll(Colour(0xffeeece1));
 
     //[UserPaint] Add your own custom painting code here..
 
