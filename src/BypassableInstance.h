@@ -23,6 +23,8 @@
 
 #include <JuceHeader.h>
 
+#include <atomic>
+
 ///	Wrapper class to provide a bypass to AudioPluginInstance.
 class BypassableInstance : public AudioPluginInstance
 {
@@ -42,12 +44,12 @@ class BypassableInstance : public AudioPluginInstance
     ///	Sets the bypass state.
     void setBypass(bool val);
     ///	Returns the bypass state.
-    bool getBypass() const { return bypass; };
+    bool getBypass() const { return bypass.load(); };
 
     ///	Sets the MIDI channel the plugin responds to.
     void setMIDIChannel(int val);
     ///	Returns the plugin's MIDI channel (-1 == omni).
-    int getMIDIChannel() const { return midiChannel; };
+    int getMIDIChannel() const { return midiChannel.load(); };
     ///	Passes a MIDI message to the plugin from the OSC input.
     void addMidiMessage(const MidiMessage& message);
 
@@ -91,14 +93,27 @@ class BypassableInstance : public AudioPluginInstance
         return bus && bus->getCurrentLayout().size() >= 2;
     }
 
-    // Bus forwarding for wrapped plugin - CRITICAL for VSTi audio pins
-    // NOTE: AudioProcessor::getBusCount/getBus/getTotalNumChannels are NOT virtual!
-    // Callers MUST use getPlugin() to access the wrapped plugin's actual bus state,
-    // or use these explicit helper methods.
-    int getWrappedBusCount(bool isInput) const { return plugin->getBusCount(isInput); }
-    AudioProcessor::Bus* getWrappedBus(bool isInput, int busIndex) { return plugin->getBus(isInput, busIndex); }
-    int getWrappedTotalNumInputChannels() const { return plugin->getTotalNumInputChannels(); }
-    int getWrappedTotalNumOutputChannels() const { return plugin->getTotalNumOutputChannels(); }
+    // Cached channel info - populated at construction time before the plugin is
+    // added to the audio graph. Safe to read from any thread without racing
+    // against the audio thread's processBlock calls.
+    int getCachedInputChannelCount() const { return cachedInputChannelCount; }
+    int getCachedOutputChannelCount() const { return cachedOutputChannelCount; }
+    const String& getCachedInputChannelName(int index) const
+    {
+        if (index >= 0 && index < cachedInputChannelNames.size())
+            return cachedInputChannelNames.getReference(index);
+        static const String empty;
+        return empty;
+    }
+    const String& getCachedOutputChannelName(int index) const
+    {
+        if (index >= 0 && index < cachedOutputChannelNames.size())
+            return cachedOutputChannelNames.getReference(index);
+        static const String empty;
+        return empty;
+    }
+    bool getCachedAcceptsMidi() const { return cachedAcceptsMidi; }
+    bool getCachedProducesMidi() const { return cachedProducesMidi; }
 
     ///	Returns the length of the plugin's tail.
     double getTailLengthSeconds() const { return plugin->getTailLengthSeconds(); };
@@ -239,15 +254,27 @@ class BypassableInstance : public AudioPluginInstance
     ///	Buffer used to store the plugin's audio.
     AudioSampleBuffer tempBuffer;
 
-    ///	Whether we are currently bypassing the plugin or not.
-    bool bypass;
+    ///	Whether we are currently bypassing the plugin or not (set from UI, read from audio thread).
+    std::atomic<bool> bypass{false};
     ///	Used to ramp the bypass audio.
     float bypassRamp;
 
-    ///	The MIDI channel the plugin responds to.
-    int midiChannel;
+    ///	The MIDI channel the plugin responds to (set from UI, read from audio thread).
+    std::atomic<int> midiChannel{0};
     ///	Used to pass OSC MIDI messages to the plugin.
     MidiMessageCollector midiCollector;
+
+    // Cached channel info - snapshot taken at construction time before audio starts.
+    int cachedInputChannelCount = 0;
+    int cachedOutputChannelCount = 0;
+    StringArray cachedInputChannelNames;
+    StringArray cachedOutputChannelNames;
+    bool cachedAcceptsMidi = false;
+    bool cachedProducesMidi = false;
+
+    /// Set to true after prepareToPlay completes. Prevents processBlock
+    /// from calling into the plugin before it's ready.
+    std::atomic<bool> prepared{false};
 };
 
 #endif

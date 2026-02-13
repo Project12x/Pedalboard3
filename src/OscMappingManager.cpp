@@ -195,6 +195,9 @@ void OscMappingManager::messageReceived(OSC::Message* message)
         LogFile::getInstance().logEvent("OSC", tempstr);
     }
 
+    // All container access under lock (OSC network thread vs. message thread mutations).
+    const ScopedLock sl(containerLock);
+
     // Standard OSC mappings are all treated as floats (0->1).
     for (i = 0; i < message->getNumFloats(); ++i)
         handleFloatMessage(address, i, message->getFloat(i));
@@ -235,6 +238,7 @@ void OscMappingManager::messageReceived(OSC::Message* message)
 //------------------------------------------------------------------------------
 void OscMappingManager::handleFloatMessage(const String& address, int index, float val)
 {
+    // Caller (messageReceived) already holds containerLock.
     multimap<String, OscMapping*>::iterator it;
     multimap<String, OscAppMapping*>::iterator it2;
 
@@ -280,6 +284,7 @@ void OscMappingManager::handleFloatMessage(const String& address, int index, flo
 //------------------------------------------------------------------------------
 void OscMappingManager::handleMIDIMessage(const String& address, OSC::MIDIMessage val)
 {
+    const ScopedLock sl(containerLock);
     multimap<String, BypassableInstance*>::iterator it;
     MidiMessage tempMess(val.bytes.byte1, val.bytes.byte2, val.bytes.byte3);
 
@@ -293,6 +298,7 @@ void OscMappingManager::handleMIDIMessage(const String& address, OSC::MIDIMessag
 //------------------------------------------------------------------------------
 void OscMappingManager::registerMapping(const String& address, OscMapping* mapping)
 {
+    const ScopedLock sl(containerLock);
     jassert(mapping);
 
     mappings.insert(make_pair(address, mapping));
@@ -301,6 +307,7 @@ void OscMappingManager::registerMapping(const String& address, OscMapping* mappi
 //------------------------------------------------------------------------------
 void OscMappingManager::unregisterMapping(OscMapping* mapping)
 {
+    const ScopedLock sl(containerLock);
     multimap<String, OscMapping*>::iterator it;
 
     jassert(mapping);
@@ -318,6 +325,7 @@ void OscMappingManager::unregisterMapping(OscMapping* mapping)
 //------------------------------------------------------------------------------
 void OscMappingManager::registerAppMapping(OscAppMapping* mapping)
 {
+    const ScopedLock sl(containerLock);
     jassert(mapping);
 
     appMappings.insert(make_pair(mapping->getAddress(), mapping));
@@ -326,6 +334,7 @@ void OscMappingManager::registerAppMapping(OscAppMapping* mapping)
 //------------------------------------------------------------------------------
 void OscMappingManager::unregisterAppMapping(OscAppMapping* mapping)
 {
+    const ScopedLock sl(containerLock);
     multimap<String, OscAppMapping*>::iterator it;
 
     for (it = appMappings.begin(); it != appMappings.end();)
@@ -341,10 +350,21 @@ void OscMappingManager::unregisterAppMapping(OscAppMapping* mapping)
 //------------------------------------------------------------------------------
 void OscMappingManager::registerMIDIProcessor(const String& address, BypassableInstance* processor)
 {
+    const ScopedLock sl(containerLock);
     jassert(processor);
 
     // So we don't get multiple entries for a single processor.
-    unregisterMIDIProcessor(processor);
+    // Call the unguarded version to avoid recursive lock (CriticalSection is reentrant,
+    // but we can just inline the logic to be explicit).
+    multimap<String, BypassableInstance*>::iterator it;
+    for (it = midiProcessors.begin(); it != midiProcessors.end(); ++it)
+    {
+        if (it->second == processor)
+        {
+            midiProcessors.erase(it);
+            break;
+        }
+    }
 
     midiProcessors.insert(make_pair(address, processor));
 }
@@ -352,6 +372,7 @@ void OscMappingManager::registerMIDIProcessor(const String& address, BypassableI
 //------------------------------------------------------------------------------
 void OscMappingManager::unregisterMIDIProcessor(BypassableInstance* processor)
 {
+    const ScopedLock sl(containerLock);
     multimap<String, BypassableInstance*>::iterator it;
 
     for (it = midiProcessors.begin(); it != midiProcessors.end(); ++it)
@@ -367,6 +388,7 @@ void OscMappingManager::unregisterMIDIProcessor(BypassableInstance* processor)
 //------------------------------------------------------------------------------
 const String OscMappingManager::getMIDIProcessorAddress(BypassableInstance* processor) const
 {
+    const ScopedLock sl(containerLock);
     String retval;
     multimap<String, BypassableInstance*>::const_iterator it;
 
@@ -383,8 +405,16 @@ const String OscMappingManager::getMIDIProcessorAddress(BypassableInstance* proc
 }
 
 //------------------------------------------------------------------------------
+int OscMappingManager::getNumAppMappings() const
+{
+    const ScopedLock sl(containerLock);
+    return static_cast<int>(appMappings.size());
+}
+
+//------------------------------------------------------------------------------
 OscAppMapping* OscMappingManager::getAppMapping(int index)
 {
+    const ScopedLock sl(containerLock);
     int i = 0;
     OscAppMapping* retval = 0;
     multimap<String, OscAppMapping*>::iterator it;
@@ -400,6 +430,13 @@ OscAppMapping* OscMappingManager::getAppMapping(int index)
     }
 
     return retval;
+}
+
+//------------------------------------------------------------------------------
+StringArray OscMappingManager::getReceivedAddresses() const
+{
+    const ScopedLock sl(containerLock);
+    return uniqueAddresses;
 }
 
 //------------------------------------------------------------------------------

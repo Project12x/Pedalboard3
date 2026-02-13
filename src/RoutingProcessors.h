@@ -118,10 +118,10 @@ class MixerProcessor : public PedalboardProcessor
 
     // Parameters
     void setLevelA(float level);
-    float getLevelA() const { return levelA; }
+    float getLevelA() const { return levelA.load(); }
 
     void setLevelB(float level);
-    float getLevelB() const { return levelB; }
+    float getLevelB() const { return levelB.load(); }
 
     // Parameter handling
     enum Parameters
@@ -138,8 +138,8 @@ class MixerProcessor : public PedalboardProcessor
     const String getParameterText(int parameterIndex) override;
 
   private:
-    float levelA{0.707f}; // Unityish
-    float levelB{0.707f};
+    std::atomic<float> levelA{0.707f};
+    std::atomic<float> levelB{0.707f};
 
     Rectangle<int> editorBounds;
 

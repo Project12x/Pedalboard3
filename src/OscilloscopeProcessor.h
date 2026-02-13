@@ -80,9 +80,12 @@ class OscilloscopeProcessor : public PedalboardProcessor
     std::array<float, BUFFER_SIZE> circularBuffer;
     int writePos = 0;
 
-    // Double-buffer for thread-safe display
-    std::array<float, DISPLAY_SAMPLES> displaySnapshot;
-    std::atomic<bool> snapshotReady{false};
+    // Double-buffer for thread-safe display.
+    // Audio writes to displayBuffers[backBuffer], flips frontBuffer on capture complete.
+    // UI reads from displayBuffers[frontBuffer.load()].
+    std::array<float, DISPLAY_SAMPLES> displayBuffers[2];
+    std::atomic<int> frontBuffer{0};
+    int backBuffer = 1;
 
     // Simple zero-crossing trigger
     std::atomic<float> triggerLevel{0.0f};

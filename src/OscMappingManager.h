@@ -144,8 +144,6 @@ class OscMappingManager
 
 	///	Called when an OSC message is received.
 	void messageReceived(OSC::Message *message);
-	///	Called when a OSC message is received.
-	void handleFloatMessage(const String& address, int index, float val);
 	///	Called when a OSC MIDI message is received.
 	void handleMIDIMessage(const String& address, OSC::MIDIMessage val);
 
@@ -168,15 +166,23 @@ class OscMappingManager
 	const String getMIDIProcessorAddress(BypassableInstance *processor) const;
 
 	///	Returns the number of OscAppMappings.
-	int getNumAppMappings() const {return appMappings.size();};
+	int getNumAppMappings() const;
 	///	Returns the indexed OscAppMapping.
 	OscAppMapping *getAppMapping(int i);
 
 	///	Returns an array of all unique OSC addresses the manager has received so far.
-	const StringArray& getReceivedAddresses() const {return uniqueAddresses;};
+	StringArray getReceivedAddresses() const;
 
 
   private:
+	///	Dispatches a float OSC message to mappings and app mappings.
+	///	Must be called with containerLock held.
+	void handleFloatMessage(const String& address, int index, float val);
+
+	///	Protects mappings, appMappings, midiProcessors, and uniqueAddresses
+	///	against concurrent access from the OSC network thread (reads) and the
+	///	message thread (register/unregister mutations).
+	mutable juce::CriticalSection containerLock;
 	///	Holds all the OscMappings to dispatch messages to.
 	std::multimap<String, OscMapping *> mappings;
 

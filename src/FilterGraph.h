@@ -262,6 +262,10 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     uint32 lastUID;
     uint32 getNextUID() throw();
 
+    /// Recreates hidden infrastructure processors (SafetyLimiter/CrossfadeMixer)
+    /// after graph resets and refreshes cached raw pointers.
+    void createInfrastructureNodes();
+
     void createNodeFromXml(const XmlElement& xml, OscMappingManager& oscManager);
 
     FilterGraph(const FilterGraph&);

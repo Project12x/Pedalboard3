@@ -27,7 +27,7 @@
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 MetronomeProcessor::MetronomeProcessor()
-    : playing(false), syncToMainTransport(false), numerator(4), denominator(4), sineX0(1.0f), sineX1(0.0f),
+    : numerator(4), denominator(4), sineX0(1.0f), sineX1(0.0f),
       sineEnv(0.0f), clickCount(0.0f), clickDec(0.0f), measureCount(0), isAccent(true)
 {
     setPlayConfigDetails(0, 1, 0, 0);
@@ -40,74 +40,73 @@ MetronomeProcessor::~MetronomeProcessor()
 {
     removeAllChangeListeners();
     MainTransport::getInstance()->unregisterTransport(this);
-    transportSource[0].setSource(0);
-    transportSource[1].setSource(0);
+}
+
+//------------------------------------------------------------------------------
+static void loadFileIntoBuffer(const File& phil, juce::AudioBuffer<float>& buffer, int& length)
+{
+    length = 0;
+    buffer.setSize(0, 0);
+
+    std::unique_ptr<AudioFormatReader> reader(
+        AudioFormatManagerSingleton::getInstance().createReaderFor(phil));
+
+    if (reader != nullptr)
+    {
+        int numSamples = (int)reader->lengthInSamples;
+        int numChannels = (int)reader->numChannels;
+        if (numChannels < 1) numChannels = 1;
+        if (numChannels > 2) numChannels = 2;
+
+        buffer.setSize(numChannels, numSamples);
+        reader->read(&buffer, 0, numSamples, 0, true, numChannels > 1);
+        length = numSamples;
+    }
 }
 
 //------------------------------------------------------------------------------
 void MetronomeProcessor::setAccentFile(const File& phil)
 {
-    int readAheadSize;
+    // Guard: only write staging buffer when audio thread is not consuming it.
+    // pendingClickReady == false means UI owns the staging buffer.
+    if (pendingClickReady[0].load(std::memory_order_acquire))
+        return; // Previous buffer not yet consumed by audio thread
 
     files[0] = phil;
 
-    // Unload the previous file source and delete it.
-    transportSource[0].stop();
-    transportSource[0].setSource(0);
-    soundFileSource[0] = 0;
-
-    AudioFormatReader* reader = AudioFormatManagerSingleton::getInstance().createReaderFor(phil);
-
-    if (reader != 0)
+    if (phil.existsAsFile())
     {
-        soundFileSource[0].reset(new AudioFormatReaderSource(reader, true));
-        soundFileSource[0]->setLooping(false);
-
-        if (soundFileSource[0]->getTotalLength() < 32768)
-            readAheadSize = 0;
-        else
-            readAheadSize = 32768;
-
-        // Plug it into our transport source.
-        transportSource[0].setSource(soundFileSource[0].get(),
-                                     readAheadSize, // Tells it to buffer this many samples ahead.
-                                     &(AudioThumbnailCacheSingleton::getInstance().getTimeSliceThread()));
+        loadFileIntoBuffer(phil, pendingClickBuffers[0], pendingClickBufferLength[0]);
+        pendingClickReady[0].store(true, std::memory_order_release);
     }
     else
-        files[0] = File();
+    {
+        pendingClickBuffers[0].setSize(0, 0);
+        pendingClickBufferLength[0] = 0;
+        pendingClickReady[0].store(true, std::memory_order_release);
+    }
 }
 
 //------------------------------------------------------------------------------
 void MetronomeProcessor::setClickFile(const File& phil)
 {
-    int readAheadSize;
+    // Guard: only write staging buffer when audio thread is not consuming it.
+    if (pendingClickReady[1].load(std::memory_order_acquire))
+        return; // Previous buffer not yet consumed by audio thread
 
     files[1] = phil;
 
-    // Unload the previous file source and delete it.
-    transportSource[1].stop();
-    transportSource[1].setSource(0);
-    soundFileSource[1] = 0;
-
-    AudioFormatReader* reader = AudioFormatManagerSingleton::getInstance().createReaderFor(phil);
-
-    if (reader != 0)
+    if (phil.existsAsFile())
     {
-        soundFileSource[1].reset(new AudioFormatReaderSource(reader, true));
-        soundFileSource[1]->setLooping(false);
-
-        if (soundFileSource[1]->getTotalLength() < 32768)
-            readAheadSize = 0;
-        else
-            readAheadSize = 32768;
-
-        // Plug it into our transport source.
-        transportSource[1].setSource(soundFileSource[1].get(),
-                                     readAheadSize, // Tells it to buffer this many samples ahead.
-                                     &(AudioThumbnailCacheSingleton::getInstance().getTimeSliceThread()));
+        loadFileIntoBuffer(phil, pendingClickBuffers[1], pendingClickBufferLength[1]);
+        pendingClickReady[1].store(true, std::memory_order_release);
     }
     else
-        files[1] = File();
+    {
+        pendingClickBuffers[1].setSize(0, 0);
+        pendingClickBufferLength[1] = 0;
+        pendingClickReady[1].store(true, std::memory_order_release);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -136,8 +135,8 @@ void MetronomeProcessor::changeListenerCallback(ChangeBroadcaster* source)
             {
                 if (!playing)
                 {
-                    clickCount = 0.0f;
-                    measureCount = 0;
+                    clickCount.store(0.0f);
+                    measureCount.store(0);
 
                     playing = true;
                 }
@@ -172,48 +171,51 @@ void MetronomeProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
 {
     int i;
     float* data;
-    bool skipTransport = false;
-    AudioSourceChannelInfo bufferInfo;
     const int numSamples = buffer.getNumSamples();
 
     jassert(buffer.getNumChannels() > 0);
 
     data = buffer.getWritePointer(0);
 
+    // Consume any pending click buffer updates from UI thread (lock-free)
+    for (int idx = 0; idx < 2; ++idx)
+    {
+        if (pendingClickReady[idx].load(std::memory_order_acquire))
+        {
+            std::swap(clickBuffers[idx], pendingClickBuffers[idx]);
+            clickBufferLength[idx] = pendingClickBufferLength[idx];
+            clickPlayPos[idx] = -1;
+            pendingClickReady[idx].store(false, std::memory_order_release);
+        }
+    }
+
     // Clear the buffer first.
     for (i = 0; i < numSamples; ++i)
         data[i] = 0.0f;
+
+    // Load cross-thread counters into locals for the per-sample loop.
+    float localClickCount = clickCount.load();
+    int localMeasureCount = measureCount.load();
 
     for (i = 0; i < numSamples; ++i)
     {
         if (playing)
         {
-            clickCount -= clickDec;
-            if (clickCount <= 0.0f)
+            localClickCount -= clickDec;
+            if (localClickCount <= 0.0f)
             {
                 sineX0 = 1.0f;
                 sineX1 = 0.0f;
 
                 // The accent.
-                if (!measureCount)
+                if (!localMeasureCount)
                 {
                     sineCoeff = 2.0f * sinf(3.1415926535897932384626433832795f * 880.0f * 2.0f / 44100.0f);
-                    measureCount = numerator;
+                    localMeasureCount = numerator.load();
                     isAccent = true;
 
-                    if (files[0] != File())
-                    {
-                        transportSource[0].setPosition(0.0);
-                        transportSource[0].start();
-
-                        // Fill out the transportSource's buffer.
-                        bufferInfo.buffer = &buffer;
-                        bufferInfo.startSample = i;
-                        bufferInfo.numSamples = numSamples - i;
-
-                        transportSource[0].getNextAudioBlock(bufferInfo);
-                        skipTransport = true;
-                    }
+                    if (clickBufferLength[0] > 0)
+                        clickPlayPos[0] = 0; // Trigger accent sample playback
                     else
                         sineEnv = 1.0f;
                 }
@@ -222,26 +224,15 @@ void MetronomeProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
                     sineCoeff = 2.0f * sinf(3.1415926535897932384626433832795f * 440.0f * 2.0f / 44100.0f);
                     isAccent = false;
 
-                    if (files[1] != File())
-                    {
-                        transportSource[1].setPosition(0.0);
-                        transportSource[1].start();
-
-                        // Fill out the transportSource's buffer.
-                        bufferInfo.buffer = &buffer;
-                        bufferInfo.startSample = i;
-                        bufferInfo.numSamples = numSamples - i;
-
-                        transportSource[1].getNextAudioBlock(bufferInfo);
-                        skipTransport = true;
-                    }
+                    if (clickBufferLength[1] > 0)
+                        clickPlayPos[1] = 0; // Trigger click sample playback
                     else
                         sineEnv = 1.0f;
                 }
 
-                --measureCount;
+                --localMeasureCount;
 
-                // Update clickCount.
+                // Update localClickCount.
                 {
                     AudioPlayHead* playHead = getPlayHead();
                     AudioPlayHead::CurrentPositionInfo posInfo;
@@ -252,19 +243,26 @@ void MetronomeProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
                         posInfo.bpm = 120.0f;
 
                     clickDec = (float)(1.0f / getSampleRate());
-                    clickCount += (float)(60.0 / posInfo.bpm) * (4.0f / denominator);
+                    localClickCount += (float)(60.0 / posInfo.bpm) * (4.0f / denominator.load());
                 }
             }
 
-            // if(isAccent && (files[0] != File()))
-            if (isAccent && (transportSource[0].isPlaying()))
+            // Play back preloaded click samples (RT-safe: just buffer reads)
+            bool samplePlaying = false;
+            for (int idx = 0; idx < 2; ++idx)
             {
+                if (clickPlayPos[idx] >= 0 && clickPlayPos[idx] < clickBufferLength[idx])
+                {
+                    data[i] += clickBuffers[idx].getSample(0, clickPlayPos[idx]);
+                    clickPlayPos[idx]++;
+                    if (clickPlayPos[idx] >= clickBufferLength[idx])
+                        clickPlayPos[idx] = -1; // Done playing
+                    samplePlaying = true;
+                }
             }
-            // else if(!isAccent && (files[1] !=File()))
-            else if (!isAccent && (transportSource[1].isPlaying()))
-            {
-            }
-            else if (sineEnv > 0.0f)
+
+            // Fall back to sine click if no sample is playing
+            if (!samplePlaying && sineEnv > 0.0f)
             {
                 sineX0 -= sineCoeff * sineX1;
                 sineX1 += sineCoeff * sineX0;
@@ -278,18 +276,9 @@ void MetronomeProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         }
     }
 
-    if (!skipTransport)
-    {
-        // Fill out the transportSource's buffer.
-        bufferInfo.buffer = &buffer;
-        bufferInfo.startSample = 0;
-        bufferInfo.numSamples = numSamples;
-
-        if (transportSource[0].isPlaying())
-            transportSource[0].getNextAudioBlock(bufferInfo);
-        if (transportSource[1].isPlaying())
-            transportSource[1].getNextAudioBlock(bufferInfo);
-    }
+    // Store locals back to atomics.
+    clickCount.store(localClickCount);
+    measureCount.store(localMeasureCount);
 }
 
 //------------------------------------------------------------------------------
@@ -324,10 +313,10 @@ float MetronomeProcessor::getParameter(int parameterIndex)
     switch (parameterIndex)
     {
     case Numerator:
-        retval = (float)numerator;
+        retval = (float)numerator.load();
         break;
     case Denominator:
-        retval = (float)denominator;
+        retval = (float)denominator.load();
         break;
     case SyncToMainTransport:
         retval = syncToMainTransport ? 1.0f : 0.0f;
@@ -365,8 +354,8 @@ void MetronomeProcessor::setParameter(int parameterIndex, float newValue)
         {
             if (!playing)
             {
-                clickCount = 0.0f;
-                measureCount = 0;
+                clickCount.store(0.0f);
+                measureCount.store(0);
 
                 playing = true;
             }
@@ -376,10 +365,10 @@ void MetronomeProcessor::setParameter(int parameterIndex, float newValue)
         }
         break;
     case Numerator:
-        numerator = (int)newValue;
+        numerator.store((int)newValue);
         break;
     case Denominator:
-        denominator = (int)newValue;
+        denominator.store((int)newValue);
         break;
     case SyncToMainTransport:
         if (newValue > 0.5f)
@@ -402,8 +391,8 @@ void MetronomeProcessor::getStateInformation(MemoryBlock& destData)
     xml.setAttribute("editorH", editorBounds.getHeight());
 
     xml.setAttribute("syncToMainTransport", syncToMainTransport);
-    xml.setAttribute("numerator", numerator);
-    xml.setAttribute("denominator", denominator);
+    xml.setAttribute("numerator", numerator.load());
+    xml.setAttribute("denominator", denominator.load());
     xml.setAttribute("accentFile", files[0].getFullPathName());
     xml.setAttribute("clickFile", files[1].getFullPathName());
 
@@ -425,8 +414,8 @@ void MetronomeProcessor::setStateInformation(const void* data, int sizeInBytes)
             editorBounds.setHeight(xmlState->getIntAttribute("editorH"));
 
             syncToMainTransport = xmlState->getBoolAttribute("syncToMainTransport");
-            numerator = xmlState->getIntAttribute("numerator");
-            denominator = xmlState->getIntAttribute("denominator");
+            numerator.store(xmlState->getIntAttribute("numerator"));
+            denominator.store(xmlState->getIntAttribute("denominator"));
             setAccentFile(File(xmlState->getStringAttribute("accentFile")));
             setClickFile(File(xmlState->getStringAttribute("clickFile")));
         }

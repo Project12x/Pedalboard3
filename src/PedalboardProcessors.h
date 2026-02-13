@@ -99,7 +99,7 @@ class LevelProcessor : public PedalboardProcessor
     ///	We have no parameters.
     const String getParameterName(int parameterIndex) { return "Level"; };
     ///	We have no parameters.
-    float getParameter(int parameterIndex) { return level; };
+    float getParameter(int parameterIndex) { return level.load(); };
     ///	We have no parameters.
     const String getParameterText(int parameterIndex);
     ///	We have no parameters.
@@ -121,7 +121,7 @@ class LevelProcessor : public PedalboardProcessor
 
   private:
     ///	The level parameter.
-    float level;
+    std::atomic<float> level{0.5f};
 
     ///	The editor's bounds.
     Rectangle<int> editorBounds;
@@ -310,7 +310,7 @@ class OutputToggleProcessor : public PedalboardProcessor
     ///	We have no parameters.
     const String getParameterName(int parameterIndex) { return "Output"; };
     ///	We have no parameters.
-    float getParameter(int parameterIndex) { return toggle ? 1.0f : 0.0f; };
+    float getParameter(int parameterIndex) { return toggle.load() ? 1.0f : 0.0f; };
     ///	We have no parameters.
     const String getParameterText(int parameterIndex);
     ///	We have no parameters.
@@ -332,7 +332,7 @@ class OutputToggleProcessor : public PedalboardProcessor
 
   private:
     ///	The toggle parameter.
-    bool toggle;
+    std::atomic<bool> toggle{false};
     ///	Used to fade between outputs.
     float fade;
 
@@ -356,9 +356,9 @@ class VuMeterProcessor : public PedalboardProcessor
     Point<int> getSize() { return Point<int>(64, 128); };
 
     ///	Returns the current left level.
-    float getLeftLevel() const { return levelLeft; };
+    float getLeftLevel() const { return levelLeft.load(); };
     ///	Returns the current right level.
-    float getRightLevel() const { return levelRight; };
+    float getRightLevel() const { return levelRight.load(); };
 
     ///	Updates the bounds of our editor window.
     void updateEditorBounds(const Rectangle<int>& bounds);
@@ -421,10 +421,10 @@ class VuMeterProcessor : public PedalboardProcessor
     void setStateInformation(const void* data, int sizeInBytes);
 
   private:
-    ///	The current level.
-    float levelLeft;
-    ///	The current level.
-    float levelRight;
+    ///	The current level (audio thread writes, UI thread reads).
+    std::atomic<float> levelLeft{0.0f};
+    ///	The current level (audio thread writes, UI thread reads).
+    std::atomic<float> levelRight{0.0f};
 
     ///	The editor's bounds.
     Rectangle<int> editorBounds;
@@ -448,6 +448,10 @@ class RecorderProcessor : public PedalboardProcessor, public ChangeListener, pub
     const File& getFile() const { return soundFile; };
     ///	Returns whether or not we're currently recording.
     bool isRecording() const { return recording.load(std::memory_order_relaxed); };
+
+    ///	Polls and processes pending parameter changes from the audio thread.
+    ///	Called from UI timer (AudioRecorderControl).
+    void processPendingChanges();
 
     ///	Returns the component which is added to the instance's PluginComponent.
     Component* getControls();
@@ -540,7 +544,13 @@ class RecorderProcessor : public PedalboardProcessor, public ChangeListener, pub
     ///	Safeguard in case the user tries to change the file while we're recording.
     std::atomic<bool> stopRecording{false};
     ///	Whether or not we're syncing to the main transport.
-    bool syncToMainTransport;
+    std::atomic<bool> syncToMainTransport{false};
+
+    ///	Set from any thread to request a record toggle on the message thread.
+    std::atomic<bool> pendingRecordToggle{false};
+
+    ///	Set from any thread to request a UI notification on the message thread.
+    std::atomic<bool> pendingUINotify{false};
 
     ///	The editor's bounds.
     Rectangle<int> editorBounds;
@@ -560,7 +570,7 @@ class MetronomeProcessor : public PedalboardProcessor, public ChangeListener, pu
     ~MetronomeProcessor();
 
     ///	Returns true if the metronome is currently playing.
-    bool isPlaying() const { return playing; };
+    bool isPlaying() const { return playing.load(); };
     ///	Sets the accent sound file to play.
     void setAccentFile(const File& phil);
     ///	Returns the accent sound file.
@@ -650,21 +660,29 @@ class MetronomeProcessor : public PedalboardProcessor, public ChangeListener, pu
     void setStateInformation(const void* data, int sizeInBytes);
 
   private:
-    ///	The transport sources which play the accent and click files.
-    AudioTransportSource transportSource[2];
-    ///	The accent and click sound file sources.
-    std::unique_ptr<AudioFormatReaderSource> soundFileSource[2];
+    ///	Preloaded click sample buffers (accent=0, click=1). Only accessed by audio thread.
+    juce::AudioBuffer<float> clickBuffers[2];
+    ///	Current playback position within each click buffer (-1 = not playing).
+    int clickPlayPos[2] = {-1, -1};
+    ///	Number of valid samples in each click buffer.
+    int clickBufferLength[2] = {0, 0};
+
+    ///	Staging buffers for lock-free UI->audio click buffer updates.
+    juce::AudioBuffer<float> pendingClickBuffers[2];
+    int pendingClickBufferLength[2] = {0, 0};
+    std::atomic<bool> pendingClickReady[2] = {{false}, {false}};
+
     ///	The files we're playing.
     File files[2];
 
     ///	If we're currently playing or not.
-    bool playing;
+    std::atomic<bool> playing{false};
     ///	Whether or not we're syncing to the main transport.
-    bool syncToMainTransport;
-    ///	The time signature numerator.
-    int numerator;
-    ///	The time signature denominator.
-    int denominator;
+    std::atomic<bool> syncToMainTransport{false};
+    ///	The time signature numerator (written by message thread, read by audio thread).
+    std::atomic<int> numerator;
+    ///	The time signature denominator (written by message thread, read by audio thread).
+    std::atomic<int> denominator;
 
     ///	Default click sound.
     float sineX0;
@@ -675,12 +693,12 @@ class MetronomeProcessor : public PedalboardProcessor, public ChangeListener, pu
     ///	The amplitude envelope for the default click.
     float sineEnv;
 
-    ///	Used to count down to the next click.
-    float clickCount;
-    ///	Used to decrement clickCount.
+    ///	Used to count down to the next click (written by message thread on play start, read/written by audio thread).
+    std::atomic<float> clickCount{0.0f};
+    ///	Used to decrement clickCount (audio-thread only).
     float clickDec;
-    ///	Used to count down to the next start of the measure.
-    int measureCount;
+    ///	Used to count down to the next start of the measure (written by message thread on play start, read/written by audio thread).
+    std::atomic<int> measureCount{0};
     ///	Whether we're currently playing the accent or the click.
     bool isAccent;
 
@@ -737,6 +755,11 @@ class LooperProcessor : public PedalboardProcessor,
     bool getAndClearMemoryError()
     {
         return memoryError.exchange(false, std::memory_order_relaxed);
+    }
+    /// Returns true and clears the flag if audio-thread state changed. Polled by UI timer.
+    bool checkAndClearStateChanged()
+    {
+        return stateChanged.exchange(false, std::memory_order_relaxed);
     }
     ///	Returns the current read position within the file.
     /*!
@@ -881,10 +904,12 @@ class LooperProcessor : public PedalboardProcessor,
     std::atomic<bool> autoPlay{false};
     ///	Set from audio thread when out-of-memory during recording.
     std::atomic<bool> memoryError{false};
+    ///	Set from audio thread when state changes (recording stopped, etc.). Polled by UI timer.
+    std::atomic<bool> stateChanged{false};
     ///	The output level of the looper's input.
-    float inputLevel;
+    std::atomic<float> inputLevel{1.0f};
     ///	The output level of the looper's loop.
-    float loopLevel;
+    std::atomic<float> loopLevel{1.0f};
 
     ///	Used to record the audio input.
     AudioFormatWriter::ThreadedWriter* threadWriter;
@@ -895,17 +920,17 @@ class LooperProcessor : public PedalboardProcessor,
     ///	The editor's bounds.
     Rectangle<int> editorBounds;
 
-    ///	The time signature numerator.
-    int numerator;
-    ///	The time signature denominator.
-    int denominator;
+    ///	The time signature numerator (written by message thread, read by audio thread).
+    std::atomic<int> numerator;
+    ///	The time signature denominator (written by message thread, read by audio thread).
+    std::atomic<int> denominator;
 
-    ///	Used to count down to the next click.
-    float clickCount;
-    ///	Used to decrement clickCount.
-    float clickDec;
-    ///	Used to count down to the next start of the measure.
-    int measureCount;
+    ///	Used to count down to the next click (written by message thread on record start, read/written by audio thread).
+    std::atomic<float> clickCount{0.0f};
+    ///	Used to decrement clickCount (written by message thread on record start, read/written by audio thread).
+    std::atomic<float> clickDec{0.0f};
+    ///	Used to count down to the next start of the measure (written by message thread on record start, read/written by audio thread).
+    std::atomic<int> measureCount{0};
 
     ///	The samplerate passed to prepareToPlay().
     double currentRate;

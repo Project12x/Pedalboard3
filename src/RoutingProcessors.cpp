@@ -327,8 +327,8 @@ void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMe
     auto* outR = buffer.getWritePointer(1);
 
     int numSamples = buffer.getNumSamples();
-    float gA = levelA;
-    float gB = levelB;
+    float gA = levelA.load();
+    float gB = levelB.load();
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -392,28 +392,28 @@ const String MixerProcessor::getOutputChannelName(int channelIndex) const
 
 void MixerProcessor::setLevelA(float level)
 {
-    levelA = level;
+    levelA.store(level);
 }
 void MixerProcessor::setLevelB(float level)
 {
-    levelB = level;
+    levelB.store(level);
 }
 
 float MixerProcessor::getParameter(int parameterIndex)
 {
     if (parameterIndex == LevelA)
-        return levelA;
+        return levelA.load();
     if (parameterIndex == LevelB)
-        return levelB;
+        return levelB.load();
     return 0.0f;
 }
 
 void MixerProcessor::setParameter(int parameterIndex, float newValue)
 {
     if (parameterIndex == LevelA)
-        levelA = newValue;
+        levelA.store(newValue);
     else if (parameterIndex == LevelB)
-        levelB = newValue;
+        levelB.store(newValue);
 }
 
 const String MixerProcessor::getParameterName(int parameterIndex)
@@ -433,8 +433,8 @@ const String MixerProcessor::getParameterText(int parameterIndex)
 void MixerProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("MixerSettings");
-    xml.setAttribute("levelA", levelA);
-    xml.setAttribute("levelB", levelB);
+    xml.setAttribute("levelA", levelA.load());
+    xml.setAttribute("levelB", levelB.load());
     copyXmlToBinary(xml, destData);
 }
 
@@ -443,7 +443,7 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
     std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName("MixerSettings"))
     {
-        levelA = (float)xmlState->getDoubleAttribute("levelA", 0.707);
-        levelB = (float)xmlState->getDoubleAttribute("levelB", 0.707);
+        levelA.store((float)xmlState->getDoubleAttribute("levelA", 0.707));
+        levelB.store((float)xmlState->getDoubleAttribute("levelB", 0.707));
     }
 }

@@ -134,17 +134,19 @@ void PluginField::loadFromXml(XmlElement* patch)
     {
         tempo = patch->getDoubleAttribute("tempo", 120.0);
 
-        signalPath->clear(false, false, false);
-        signalPath->restoreFromXml(*(patch->getChildByName("FILTERGRAPH")), oscManager);
+        if (auto* graphXml = patch->getChildByName("FILTERGRAPH"))
+            signalPath->restoreFromXml(*graphXml, oscManager);
+        else
+            signalPath->clear(audioInputEnabled, midiInputEnabled);
     }
     else
         signalPath->clear(audioInputEnabled, midiInputEnabled);
 
     // === FADE BACK IN ===
     // Start crossfade in after loading is complete
-    if (crossfader != nullptr)
+    if (auto* fadeInCrossfader = signalPath->getCrossfadeMixer())
     {
-        crossfader->startFadeIn(100); // 100ms fade in
+        fadeInCrossfader->startFadeIn(100); // 100ms fade in
     }
 
     // Add the filter components.
@@ -152,6 +154,7 @@ void PluginField::loadFromXml(XmlElement* patch)
         addFilter(i, false);
 
     // Update any plugin names.
+    if (patch)
     {
         XmlElement* userNamesXml = patch->getChildByName("UserNames");
 
@@ -276,6 +279,7 @@ void PluginField::loadFromXml(XmlElement* patch)
     }
 
     // Add the mappings.
+    if (patch)
     {
         XmlElement* mappingsXml = patch->getChildByName("Mappings");
 

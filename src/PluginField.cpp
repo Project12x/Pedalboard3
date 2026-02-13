@@ -394,36 +394,17 @@ void PluginField::mouseDown(const MouseEvent& e)
             {
                 // Copy the plugin description (don't take reference to temporary from getTypes())
                 PluginDescription pluginType = types.getReference(typeIndex);
-                spdlog::debug("[mouseDown menu] About to call signalPath->addFilter");
-                spdlog::default_logger()->flush();
 
                 signalPath->addFilter(&pluginType, (double)e.x, (double)e.y);
-
-                spdlog::debug("[mouseDown menu] signalPath->addFilter returned");
-                spdlog::default_logger()->flush();
 
                 // Make sure the plugin got created before we add a component for it.
                 if ((signalPath->getNumFilters() - 1) > pluginIndex)
                 {
                     pluginIndex = signalPath->getNumFilters() - 1;
 
-                    spdlog::debug("[mouseDown menu] About to call addFilter(pluginIndex)");
-                    spdlog::default_logger()->flush();
-
                     addFilter(pluginIndex);
-
-                    spdlog::debug("[mouseDown menu] addFilter returned, calling sendChangeMessage");
-                    spdlog::default_logger()->flush();
-
                     sendChangeMessage();
-
-                    spdlog::debug("[mouseDown menu] sendChangeMessage returned");
-                    spdlog::default_logger()->flush();
-
                     clearDoubleClickMessage();
-
-                    spdlog::debug("[mouseDown menu] clearDoubleClickMessage returned, updating recent plugins");
-                    spdlog::default_logger()->flush();
 
                     // Update recent plugins list
                     String pluginId = pluginType.createIdentifierString();
@@ -434,9 +415,6 @@ void PluginField::mouseDown(const MouseEvent& e)
                         recentPlugins.remove(recentPlugins.size() - 1);
                     }
                     settings.setStringArray("RecentPlugins", recentPlugins);
-
-                    spdlog::debug("[mouseDown menu] Recent plugins updated, menu handler complete");
-                    spdlog::default_logger()->flush();
                 }
             }
         }
@@ -1042,50 +1020,36 @@ void PluginField::setTempo(double val)
 //------------------------------------------------------------------------------
 void PluginField::addFilter(int index, bool broadcastChangeMessage)
 {
-    spdlog::debug("[PluginField::addFilter] Starting for index: {}", index);
-    spdlog::default_logger()->flush();
-
     int x, y;
     PluginComponent* plugin;
     AudioProcessorGraph::Node* node;
 
     if (index < signalPath->getNumFilters())
     {
-        spdlog::debug("[PluginField::addFilter] Getting node at index {}", index);
-        spdlog::default_logger()->flush();
-
         node = signalPath->getNode(index).get(); // JUCE 8: Node::Ptr
-
-        spdlog::debug("[PluginField::addFilter] Node: {}", node ? "valid" : "null");
-        spdlog::default_logger()->flush();
 
         // Skip creating UI for internal/hidden nodes
         auto processorName = node->getProcessor()->getName();
-        spdlog::debug("[PluginField::addFilter] Processor name: {}", processorName.toStdString());
-        spdlog::default_logger()->flush();
 
         if (processorName != "Midi Interceptor" && processorName != "SafetyLimiter" &&
             processorName != "Crossfade Mixer")
         {
-            spdlog::debug("[PluginField::addFilter] Creating PluginComponent...");
-            spdlog::default_logger()->flush();
+            // Hold the audio callback lock while creating the UI component.
+            // This prevents the audio thread from running processBlock on the
+            // new plugin concurrently, avoiding heap corruption from VST3 race.
+            {
+                const juce::ScopedLock sl(signalPath->getGraph().getCallbackLock());
 
-            // Make sure the plugin knows about the AudioPlayHead.
-            node->getProcessor()->setPlayHead(this);
-
-            plugin = new PluginComponent(node);
-
-            spdlog::debug("[PluginField::addFilter] PluginComponent created: {}", plugin ? "valid" : "null");
-            spdlog::default_logger()->flush();
+                // Make sure the plugin knows about the AudioPlayHead.
+                node->getProcessor()->setPlayHead(this);
+                plugin = new PluginComponent(node);
+            }
 
             x = signalPath->getNode(index)->properties.getWithDefault("x", 0);
             y = signalPath->getNode(index)->properties.getWithDefault("y", 0);
             plugin->setTopLeftPosition(x, y);
             plugin->addChangeListener(this);
             addAndMakeVisible(plugin);
-
-            spdlog::debug("[PluginField::addFilter] Component added to UI");
-            spdlog::default_logger()->flush();
 
             if (LogFile::getInstance().getIsLogging())
             {
@@ -1098,14 +1062,8 @@ void PluginField::addFilter(int index, bool broadcastChangeMessage)
             // To make sure the plugin field bounds are correct.
             changeListenerCallback(plugin);
 
-            spdlog::debug("[PluginField::addFilter] changeListenerCallback completed");
-            spdlog::default_logger()->flush();
-
             if (broadcastChangeMessage)
                 sendChangeMessage();
-
-            spdlog::debug("[PluginField::addFilter] Function complete");
-            spdlog::default_logger()->flush();
         }
     }
 }

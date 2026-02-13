@@ -31,7 +31,7 @@
 RecorderProcessor::RecorderProcessor()
     : threadWriter(0),
       thumbnail(512, AudioFormatManagerSingleton::getInstance(), AudioThumbnailCacheSingleton::getInstance()),
-      recording(false), stopRecording(false), syncToMainTransport(false), currentRate(44100.0)
+      currentRate(44100.0)
 {
     setPlayConfigDetails(2, 0, 0, 0);
 
@@ -136,7 +136,7 @@ void RecorderProcessor::changeListenerCallback(ChangeBroadcaster* source)
     if (source == MainTransport::getInstance())
     {
         spdlog::debug("[AudioRecorder] MainTransport callback: syncToMainTransport={}, transportState={}",
-                      syncToMainTransport, MainTransport::getInstance()->getState());
+                      syncToMainTransport.load(), MainTransport::getInstance()->getState());
 
         if (syncToMainTransport)
         {
@@ -288,32 +288,47 @@ void RecorderProcessor::setParameter(int parameterIndex, float newValue)
     case Record:
         if (newValue > 0.5f)
         {
-            if (!recording)
-                setFile(soundFile);
-
-            if (!recording && !stopRecording && threadWriter)
-                recording = true;
-            else if (recording)
-            {
-                stopRecording = true;
-
-                // Saves the file to disk.
-                setFile(File());
-
-                if (syncToMainTransport)
-                    MainTransport::getInstance()->transportFinished();
-            }
-            sendChangeMessage();
+            // Set atomic flag - UI timer will poll processPendingChanges() (RT-safe)
+            pendingRecordToggle.store(true, std::memory_order_relaxed);
         }
         break;
     case SyncToMainTransport:
-        if (newValue > 0.5f)
-            syncToMainTransport = true;
-        else
-            syncToMainTransport = false;
-        sendChangeMessage();
+        syncToMainTransport.store(newValue > 0.5f);
+        pendingUINotify.store(true, std::memory_order_relaxed);
         break;
     }
+}
+
+//------------------------------------------------------------------------------
+void RecorderProcessor::processPendingChanges()
+{
+    bool needsNotify = false;
+
+    if (pendingRecordToggle.exchange(false, std::memory_order_relaxed))
+    {
+        if (!recording.load())
+            setFile(soundFile);
+
+        if (!recording.load() && !stopRecording.load() && threadWriter)
+            recording.store(true);
+        else if (recording.load())
+        {
+            stopRecording.store(true);
+
+            // Saves the file to disk.
+            setFile(File());
+
+            if (syncToMainTransport.load())
+                MainTransport::getInstance()->transportFinished();
+        }
+        needsNotify = true;
+    }
+
+    if (pendingUINotify.exchange(false, std::memory_order_relaxed))
+        needsNotify = true;
+
+    if (needsNotify)
+        sendChangeMessage();
 }
 
 //------------------------------------------------------------------------------

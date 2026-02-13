@@ -20,7 +20,12 @@
 #include "Mapping.h"
 #include "BypassableInstance.h"
 #include "FilterGraph.h"
+#include "MidiAppFifo.h"
 
+MidiAppFifo* Mapping::paramFifo = nullptr;
+
+//------------------------------------------------------------------------------
+void Mapping::setParamFifo(MidiAppFifo* fifo) { paramFifo = fifo; }
 
 //------------------------------------------------------------------------------
 Mapping::Mapping(FilterGraph *graph, uint32 pluginId, int param)
@@ -41,9 +46,18 @@ Mapping::~Mapping() {}
 
 //------------------------------------------------------------------------------
 void Mapping::updateParameter(float val) {
-  AudioProcessor *filter =
-      filterGraph->getNodeForId(AudioProcessorGraph::NodeID(plugin))
-          ->getProcessor();
+  // Defer to message thread via lock-free FIFO (RT-safe).
+  if (paramFifo) {
+    paramFifo->writeParamChange(filterGraph, plugin, parameter, val);
+    return;
+  }
+
+  // Fallback: direct dispatch (non-RT-safe, only before MainPanel wires the FIFO).
+  jassert(paramFifo != nullptr); // If this fires, FIFO was never wired - check init order.
+  auto node = filterGraph->getNodeForId(AudioProcessorGraph::NodeID(plugin));
+  if (!node)
+    return;
+  auto* filter = node->getProcessor();
 
   if (parameter == -1) {
     BypassableInstance *bypassable = dynamic_cast<BypassableInstance *>(filter);

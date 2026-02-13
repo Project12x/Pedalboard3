@@ -218,6 +218,10 @@ void MidiFilePlayerControl::timerCallback()
         positionSlider->setValue(pos, dontSendNotification);
     }
 
+    // Poll audio-thread playback-finished flag and forward to message-thread listeners
+    if (processor->checkAndClearPlaybackFinished())
+        processor->sendChangeMessage();
+
     // Update play button icon if state changed
     bool currentlyPlaying = processor->isPlaying();
     if (currentlyPlaying != isPlaying)

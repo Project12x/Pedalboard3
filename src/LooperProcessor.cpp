@@ -27,8 +27,7 @@
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 LooperProcessor::LooperProcessor()
-    : playing(false), stopPlaying(false), recording(false), stopRecording(false), syncToMainTransport(false),
-      stopAfterBar(false), autoPlay(true), inputLevel(1.0f), loopLevel(1.0f), threadWriter(0),
+    : threadWriter(0),
       thumbnail(512, AudioFormatManagerSingleton::getInstance(), AudioThumbnailCacheSingleton::getInstance()),
       numerator(4), denominator(4), clickCount(0.0f), clickDec(0.0f), measureCount(0), currentRate(44100.0),
       justPaused(false), loopLength(0), loopPos(0), loopIndex(0), deleteLastBuffer(false), tempBufferWrite(0),
@@ -235,9 +234,9 @@ void LooperProcessor::handleAsyncUpdate()
             Thread::sleep(10);
         }
 
-        clickCount = 0.0f;
-        clickDec = 0.0f;
-        measureCount = 0;
+        clickCount.store(0.0f);
+        clickDec.store(0.0f);
+        measureCount.store(0);
         fadeOutCount = -1;
         if (autoPlay)
             autoPlayFade = 0.0f;
@@ -390,6 +389,8 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
     int fadeOutStart = 0;
     int samplesToRecord = buffer.getNumSamples();
     const int numSamples = buffer.getNumSamples();
+    const float curInputLevel = inputLevel.load();
+    const float curLoopLevel = loopLevel.load();
 
     jassert(buffer.getNumChannels() > 1);
 
@@ -407,16 +408,21 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
         // the bar.
         if (stopAfterBar)
         {
+            // Load cross-thread counters into locals for the per-sample loop.
+            float localClickCount = clickCount.load();
+            float localClickDec = clickDec.load();
+            int localMeasureCount = measureCount.load();
+
             for (i = 0; i < samplesToRecord; ++i)
             {
-                clickCount -= clickDec;
-                if (clickCount <= 0.0f)
+                localClickCount -= localClickDec;
+                if (localClickCount <= 0.0f)
                 {
                     AudioPlayHead* playHead = getPlayHead();
                     AudioPlayHead::CurrentPositionInfo posInfo;
 
-                    ++measureCount;
-                    if (measureCount == (numerator + 1))
+                    ++localMeasureCount;
+                    if (localMeasureCount == (numerator.load() + 1))
                     {
                         samplesToRecord = i;
                         stopRecording = true;
@@ -430,10 +436,15 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
                     else
                         posInfo.bpm = 120.0f;
 
-                    clickDec = (float)(1.0f / getSampleRate());
-                    clickCount += (float)(60.0 / posInfo.bpm) * (4.0f / denominator);
+                    localClickDec = (float)(1.0f / getSampleRate());
+                    localClickCount += (float)(60.0 / posInfo.bpm) * (4.0f / denominator.load());
                 }
             }
+
+            // Store locals back to atomics.
+            clickCount.store(localClickCount);
+            clickDec.store(localClickDec);
+            measureCount.store(localMeasureCount);
         }
 
         /// Write the audio data to the file.
@@ -494,7 +505,7 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
             stopRecording = false;
             if (autoPlay)
                 playing = true;
-            sendChangeMessage();
+            stateChanged.store(true, std::memory_order_relaxed);
 
             if (loopIndex < (loopBuffer.size() - 1))
                 deleteLastBuffer = true;
@@ -515,14 +526,14 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
         stopRecording = false;
         if (autoPlay)
             playing = true;
-        sendChangeMessage();
+        stateChanged.store(true, std::memory_order_relaxed);
 
         loopPos = 0;
         loopIndex = 0;
     }
 
     // Apply input level gain change.
-    buffer.applyGain(0, numSamples, inputLevel);
+    buffer.applyGain(0, numSamples, curInputLevel);
 
     if (playing && (loopLength > 0))
     {
@@ -548,8 +559,8 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
             for (j = 0; j < end2; ++j)
             {
                 tempf = 1.0f - ((float)(loopPos + j) / (float)FadeBufferSize);
-                data[0][j] += fadeOutBuffer[0][loopPos + j] * tempf * loopLevel;
-                data[1][j] += fadeOutBuffer[1][loopPos + j] * tempf * loopLevel;
+                data[0][j] += fadeOutBuffer[0][loopPos + j] * tempf * curLoopLevel;
+                data[1][j] += fadeOutBuffer[1][loopPos + j] * tempf * curLoopLevel;
             }
         }
 
@@ -559,8 +570,8 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
             if (fadeInCount <= (FadeBufferSize - 1))
             {
                 tempf = 1.0f - ((float)fadeInCount / (float)(FadeBufferSize - 1));
-                data[0][j] += fadeInBuffer[0][FadeBufferSize - 1 - fadeInCount] * tempf * loopLevel;
-                data[1][j] += fadeInBuffer[1][FadeBufferSize - 1 - fadeInCount] * tempf * loopLevel;
+                data[0][j] += fadeInBuffer[0][FadeBufferSize - 1 - fadeInCount] * tempf * curLoopLevel;
+                data[1][j] += fadeInBuffer[1][FadeBufferSize - 1 - fadeInCount] * tempf * curLoopLevel;
 
                 if ((FadeBufferSize - 1 - fadeInCount) == 127)
                     tempf = fadeInBuffer[0][127];
@@ -573,14 +584,14 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
         tempf = loopBuffer[loopIndex]->getWritePointer(0, 0)[0];
         if (autoPlayFade < 1.0f)
         {
-            buffer.addFromWithRamp(0, 0, loopBuffer[loopIndex]->getWritePointer(0, loopPos), i, 0.0f, loopLevel);
-            buffer.addFromWithRamp(1, 0, loopBuffer[loopIndex]->getWritePointer(1, loopPos), i, 0.0f, loopLevel);
+            buffer.addFromWithRamp(0, 0, loopBuffer[loopIndex]->getWritePointer(0, loopPos), i, 0.0f, curLoopLevel);
+            buffer.addFromWithRamp(1, 0, loopBuffer[loopIndex]->getWritePointer(1, loopPos), i, 0.0f, curLoopLevel);
             autoPlayFade = 1.0f;
         }
         else
         {
-            buffer.addFrom(0, 0, *(loopBuffer[loopIndex]), 0, loopPos, i, loopLevel);
-            buffer.addFrom(1, 0, *(loopBuffer[loopIndex]), 1, loopPos, i, loopLevel);
+            buffer.addFrom(0, 0, *(loopBuffer[loopIndex]), 0, loopPos, i, curLoopLevel);
+            buffer.addFrom(1, 0, *(loopBuffer[loopIndex]), 1, loopPos, i, curLoopLevel);
         }
         if (i < numSamples)
         {
@@ -598,13 +609,13 @@ void LooperProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMe
                 for (j = 0; j < end; ++j)
                 {
                     tempf = 1.0f - ((float)(loopPos + j) / (float)FadeBufferSize);
-                    data[0][i + j] += fadeOutBuffer[0][loopPos + j] * tempf * loopLevel;
-                    data[1][i + j] += fadeOutBuffer[1][loopPos + j] * tempf * loopLevel;
+                    data[0][i + j] += fadeOutBuffer[0][loopPos + j] * tempf * curLoopLevel;
+                    data[1][i + j] += fadeOutBuffer[1][loopPos + j] * tempf * curLoopLevel;
                 }
             }
 
-            buffer.addFrom(0, i, *(loopBuffer[loopIndex]), 0, loopPos, (numSamples - i), loopLevel);
-            buffer.addFrom(1, i, *(loopBuffer[loopIndex]), 1, loopPos, (numSamples - i), loopLevel);
+            buffer.addFrom(0, i, *(loopBuffer[loopIndex]), 0, loopPos, (numSamples - i), curLoopLevel);
+            buffer.addFrom(1, i, *(loopBuffer[loopIndex]), 1, loopPos, (numSamples - i), curLoopLevel);
             tempf = buffer.getWritePointer(0, 0)[0];
 
             loopPos = numSamples - i;
@@ -719,16 +730,16 @@ float LooperProcessor::getParameter(int parameterIndex)
         retval = autoPlay ? 1.0f : 0.0f;
         break;
     case BarNumerator:
-        retval = (float)numerator;
+        retval = (float)numerator.load();
         break;
     case BarDenominator:
-        retval = (float)denominator;
+        retval = (float)denominator.load();
         break;
     case InputLevel:
-        retval = inputLevel * 0.5f;
+        retval = inputLevel.load() * 0.5f;
         break;
     case LoopLevel:
-        retval = loopLevel * 0.5f;
+        retval = loopLevel.load() * 0.5f;
         break;
     }
 
@@ -815,16 +826,16 @@ void LooperProcessor::setParameter(int parameterIndex, float newValue)
         autoPlay = (newValue > 0.5f) ? true : false;
         break;
     case BarNumerator:
-        numerator = (int)newValue;
+        numerator.store((int)newValue);
         break;
     case BarDenominator:
-        denominator = (int)newValue;
+        denominator.store((int)newValue);
         break;
     case InputLevel:
-        inputLevel = newValue * 2.0f;
+        inputLevel.store(newValue * 2.0f);
         break;
     case LoopLevel:
-        loopLevel = newValue * 2.0f;
+        loopLevel.store(newValue * 2.0f);
         break;
     }
 }
@@ -838,10 +849,10 @@ void LooperProcessor::getStateInformation(MemoryBlock& destData)
     xml.setAttribute("syncToMainTransport", syncToMainTransport);
     xml.setAttribute("stopAfterBar", stopAfterBar);
     xml.setAttribute("autoPlay", autoPlay);
-    xml.setAttribute("barNumerator", numerator);
-    xml.setAttribute("barDenominator", denominator);
-    xml.setAttribute("inputLeve", inputLevel);
-    xml.setAttribute("loopLeve", loopLevel);
+    xml.setAttribute("barNumerator", numerator.load());
+    xml.setAttribute("barDenominator", denominator.load());
+    xml.setAttribute("inputLeve", inputLevel.load());
+    xml.setAttribute("loopLeve", loopLevel.load());
 
     xml.setAttribute("editorX", editorBounds.getX());
     xml.setAttribute("editorY", editorBounds.getY());
@@ -874,10 +885,10 @@ void LooperProcessor::setStateInformation(const void* data, int sizeInBytes)
             syncToMainTransport = xmlState->getBoolAttribute("syncToMainTransport", false);
             stopAfterBar = xmlState->getBoolAttribute("stopAfterBar", false);
             autoPlay = xmlState->getBoolAttribute("autoPlay", true);
-            numerator = xmlState->getIntAttribute("barNumerator", 4);
-            denominator = xmlState->getIntAttribute("barDenominator", 4);
-            inputLevel = (float)xmlState->getDoubleAttribute("inputLeve", 0.5);
-            loopLevel = (float)xmlState->getDoubleAttribute("loopLevel", 0.5);
+            numerator.store(xmlState->getIntAttribute("barNumerator", 4));
+            denominator.store(xmlState->getIntAttribute("barDenominator", 4));
+            inputLevel.store((float)xmlState->getDoubleAttribute("inputLeve", 0.5));
+            loopLevel.store((float)xmlState->getDoubleAttribute("loopLevel", 0.5));
         }
     }
 }

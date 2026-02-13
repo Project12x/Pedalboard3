@@ -42,58 +42,73 @@
 using namespace std;
 
 //------------------------------------------------------------------------------
-// Helper functions to count channels by iterating buses (Element-style pattern)
-// This is safer than deprecated getNumInputChannels()/getNumOutputChannels()
-// and works correctly with VST3 instruments that may have complex bus layouts.
-// Falls back to getTotalNumInputChannels/getTotalNumOutputChannels for
-// processors that don't use buses (like internal PedalboardProcessors).
-//
-// CRITICAL: Must unwrap BypassableInstance wrapper to get real plugin's buses!
-// AudioProcessor::getBusCount/getBus/getTotalNumChannels are NOT virtual,
-// so calling these on BypassableInstance returns the wrapper's empty bus state.
+// Helper functions to get channel counts and names.
+// For BypassableInstance-wrapped plugins, uses cached data populated at
+// construction time (before audio starts) to avoid racing the audio thread.
+// For unwrapped processors (internal PedalboardProcessors), queries directly.
 //------------------------------------------------------------------------------
 namespace
 {
-// Get the actual plugin - unwrap BypassableInstance if present
-AudioProcessor* getUnwrappedProcessor(AudioProcessor* proc)
-{
-    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
-        return bypassable->getPlugin();
-    return proc;
-}
-
 int countInputChannelsFromBuses(AudioProcessor* proc)
 {
-    // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
-    AudioProcessor* realProc = getUnwrappedProcessor(proc);
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedInputChannelCount();
 
+    // Internal processors - no BypassableInstance wrapper, safe to query directly
     int totalChannels = 0;
-    for (int busIdx = 0; busIdx < realProc->getBusCount(true); ++busIdx)
+    for (int busIdx = 0; busIdx < proc->getBusCount(true); ++busIdx)
     {
-        if (auto* bus = realProc->getBus(true, busIdx))
+        if (auto* bus = proc->getBus(true, busIdx))
             totalChannels += bus->getNumberOfChannels();
     }
-    // Fallback for processors without bus configuration (internal processors)
     if (totalChannels == 0)
-        totalChannels = realProc->getTotalNumInputChannels();
+        totalChannels = proc->getTotalNumInputChannels();
     return totalChannels;
 }
 
 int countOutputChannelsFromBuses(AudioProcessor* proc)
 {
-    // CRITICAL: Unwrap BypassableInstance to get real plugin's bus state
-    AudioProcessor* realProc = getUnwrappedProcessor(proc);
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedOutputChannelCount();
 
+    // Internal processors - no BypassableInstance wrapper, safe to query directly
     int totalChannels = 0;
-    for (int busIdx = 0; busIdx < realProc->getBusCount(false); ++busIdx)
+    for (int busIdx = 0; busIdx < proc->getBusCount(false); ++busIdx)
     {
-        if (auto* bus = realProc->getBus(false, busIdx))
+        if (auto* bus = proc->getBus(false, busIdx))
             totalChannels += bus->getNumberOfChannels();
     }
-    // Fallback for processors without bus configuration (internal processors)
     if (totalChannels == 0)
-        totalChannels = realProc->getTotalNumOutputChannels();
+        totalChannels = proc->getTotalNumOutputChannels();
     return totalChannels;
+}
+
+String getInputChannelNameSafe(AudioProcessor* proc, int index)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedInputChannelName(index);
+    return proc->getInputChannelName(index);
+}
+
+String getOutputChannelNameSafe(AudioProcessor* proc, int index)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedOutputChannelName(index);
+    return proc->getOutputChannelName(index);
+}
+
+bool acceptsMidiSafe(AudioProcessor* proc)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedAcceptsMidi();
+    return proc->acceptsMidi();
+}
+
+bool producesMidiSafe(AudioProcessor* proc)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
+        return bypassable->getCachedProducesMidi();
+    return proc->producesMidi();
 }
 } // namespace
 
@@ -130,10 +145,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     if (!proc)
         proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
 
-    spdlog::debug("[PluginComponent] Node: {}, bypassable={}, proc={}", node->getProcessor()->getName().toStdString(),
-                  bypassable != nullptr, proc != nullptr);
-
     pluginName = node->getProcessor()->getName();
+    spdlog::debug("[PluginComponent] creating '{}'", pluginName.toStdString());
 
     determineSize();
 
@@ -807,9 +820,6 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     if (!proc)
         proc = dynamic_cast<PedalboardProcessor*>(plugin);
 
-    spdlog::debug("[determineSize] Node: {}, bypassable={}, proc={}", pluginName.toStdString(), bypassable != nullptr,
-                  proc != nullptr);
-
     nameText.clear();
 
     // Determine plugin name bounds.
@@ -837,11 +847,13 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
     if (showLabels)
     {
+        int numIn = countInputChannelsFromBuses(plugin);
+        int numOut = countOutputChannelsFromBuses(plugin);
         // Determine plugin input channel name bounds.
         y = 35.0f;
         tempFont.setHeight(12.0f);
         tempFont.setStyleFlags(Font::plain);
-        for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
+        for (i = 0; i < numIn; ++i)
         {
             // Use numbered names for Audio Output (its inputs are device output channels)
             bool useNumberedNames = ignorePinNames || (pluginName == "Audio Output");
@@ -850,7 +862,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
-                g->addLineOfText(tempFont, plugin->getInputChannelName(i), 10.0f, y);
+                g->addLineOfText(tempFont, getInputChannelNameSafe(plugin, i), 10.0f, y);
                 bounds = g->getBoundingBox(0, -1, true);
 
                 inputText.add(g);
@@ -882,8 +894,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add input parameter/midi name.
-        if ((plugin->acceptsMidi() || (countInputChannelsFromBuses(plugin) > 0) ||
-             (countOutputChannelsFromBuses(plugin) > 0)) &&
+        if ((acceptsMidiSafe(plugin) || (numIn > 0) ||
+             (numOut > 0)) &&
             ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
         {
             // if(!ignorePinNames)
@@ -905,7 +917,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
         // Determine plugin output channel name bounds.
         y = 35.0f;
-        for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
+        for (i = 0; i < numOut; ++i)
         {
             // Use numbered names for Audio Input (its outputs are device input channels)
             bool useNumberedNames = ignorePinNames || (pluginName == "Audio Input");
@@ -914,7 +926,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
-                g->addLineOfText(tempFont, plugin->getOutputChannelName(i),
+                g->addLineOfText(tempFont, getOutputChannelNameSafe(plugin, i),
                                  0.0f, //(inputWidth + 20.0f),
                                  y);
                 bounds = g->getBoundingBox(0, -1, true);
@@ -950,7 +962,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add output parameter/midi name.
-        if (plugin->producesMidi() || (plugin->getName() == "OSC Input"))
+        if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
         {
             // if(!ignorePinNames)
             {
@@ -1104,7 +1116,7 @@ void PluginComponent::createPins()
         y += pinSpacing;
     }
 
-    if ((plugin->acceptsMidi() || (countInputChannelsFromBuses(plugin) > 0) ||
+    if ((acceptsMidiSafe(plugin) || (countInputChannelsFromBuses(plugin) > 0) ||
          (countOutputChannelsFromBuses(plugin) > 0)) &&
         ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
     {
@@ -1135,7 +1147,7 @@ void PluginComponent::createPins()
         y += pinSpacing;
     }
 
-    if (plugin->producesMidi() || (plugin->getName() == "OSC Input"))
+    if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
     {
         Point<int> pinPos;
 

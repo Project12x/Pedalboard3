@@ -51,6 +51,12 @@ class MidiFilePlayerProcessor : public PedalboardProcessor, public ChangeBroadca
     /// Returns whether looping is enabled.
     bool isLooping() const { return looping.load(); }
 
+    /// Returns true and clears the flag if playback finished on the audio thread.
+    bool checkAndClearPlaybackFinished()
+    {
+        return playbackFinished.exchange(false, std::memory_order_relaxed);
+    }
+
     /// Returns the BPM (beats per minute).
     double getBPM() const { return bpm.load(); }
     /// Sets the BPM.
@@ -135,6 +141,10 @@ class MidiFilePlayerProcessor : public PedalboardProcessor, public ChangeBroadca
     void setStateInformation(const void* data, int sizeInBytes) override;
 
   private:
+    /// Protects combinedSequence, nextEventIndex, lengthInSeconds, originalBPM
+    /// from concurrent UI mutation + audio thread reads.
+    juce::SpinLock sequenceLock;
+
     /// The MIDI file being played.
     File midiFile;
 
@@ -154,6 +164,9 @@ class MidiFilePlayerProcessor : public PedalboardProcessor, public ChangeBroadca
     std::atomic<bool> playing{false};
     std::atomic<bool> looping{true};
     std::atomic<double> bpm{120.0};
+
+    /// Set from audio thread when playback finishes. Polled by UI timer.
+    std::atomic<bool> playbackFinished{false};
 
     /// Current playback position in seconds.
     std::atomic<double> playheadSeconds{0.0};

@@ -23,10 +23,21 @@
 
 #include <JuceHeader.h>
 
+class FilterGraph;
+
 ///	A lock-free FIFO used to pass messages from the audio thread to the message thread.
 class MidiAppFifo
 {
   public:
+	///	A deferred parameter change queued from the audio thread.
+	struct PendingParamChange
+	{
+		FilterGraph* graph;
+		uint32 pluginId;
+		int paramIndex;   // -1 = bypass
+		float value;
+	};
+
 	///	Constructor.
 	MidiAppFifo();
 	///	Destructor.
@@ -48,16 +59,30 @@ class MidiAppFifo
 
 	///	Writes a patch change to the FIFO.
 	void writePatchChange(int index);
-	///	Reads a CommandID from the FIFO.
+	///	Reads a patch change from the FIFO.
 	int readPatchChange();
-	///	Returns the number of IDs waiting in the FIFO.
+	///	Returns the number of patch changes waiting in the FIFO.
 	int getNumWaitingPatchChange() const {return patchChangeFifo.getNumReady();};
+
+	///	Writes a deferred parameter change to the FIFO (audio thread).
+	void writeParamChange(FilterGraph* graph, uint32 pluginId, int paramIndex, float value);
+	///	Reads a deferred parameter change from the FIFO (message thread).
+	bool readParamChange(PendingParamChange& out);
+	///	Returns the number of parameter changes waiting in the FIFO.
+	int getNumWaitingParamChange() const {return paramChangeFifo.getNumReady();};
+
   private:
 	///	The size of the buffers.
 	enum
 	{
 		BufferSize = 1024
 	};
+
+	///	Protects all write operations for multi-producer safety.
+	///	AbstractFifo is SPSC; multiple threads (MIDI audio + OSC network) may
+	///	write concurrently, so we serialise the producer side with a SpinLock.
+	///	SpinLock is RT-safe (busy-wait, no OS blocking).
+	juce::SpinLock writeLock;
 
 	///	The CommandID fifo.
 	AbstractFifo idFifo;
@@ -71,8 +96,13 @@ class MidiAppFifo
 
 	///	The patch change fifo.
 	AbstractFifo patchChangeFifo;
-	///	The tempo buffer.
+	///	The patch change buffer.
 	int patchChangeBuffer[BufferSize];
+
+	///	The parameter change fifo.
+	AbstractFifo paramChangeFifo;
+	///	The parameter change buffer.
+	PendingParamChange paramChangeBuffer[BufferSize];
 };
 
 #endif

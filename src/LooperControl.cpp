@@ -266,6 +266,10 @@ void LooperControl::timerCallback()
 {
     if (playing)
         fileDisplay->setReadPointer((float)processor->getReadPosition());
+
+    // Poll audio-thread state changes and forward to message-thread listeners
+    if (processor->checkAndClearStateChanged())
+        processor->sendChangeMessage();
 }
 
 //------------------------------------------------------------------------------

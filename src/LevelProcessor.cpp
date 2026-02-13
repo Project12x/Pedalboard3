@@ -23,7 +23,7 @@
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-LevelProcessor::LevelProcessor() : level(0.5f)
+LevelProcessor::LevelProcessor()
 {
     setPlayConfigDetails(2, 2, 0, 0);
 }
@@ -72,10 +72,11 @@ void LevelProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMes
     dataLeft = buffer.getWritePointer(0);
     dataRight = buffer.getWritePointer(1);
 
+    const float currentLevel = level.load() * 2.0f;
     for (i = 0; i < buffer.getNumSamples(); ++i)
     {
-        dataLeft[i] = dataLeft[i] * level * 2.0f;
-        dataRight[i] = dataRight[i] * level * 2.0f;
+        dataLeft[i] = dataLeft[i] * currentLevel;
+        dataRight[i] = dataRight[i] * currentLevel;
     }
 }
 
@@ -90,7 +91,7 @@ const String LevelProcessor::getParameterText(int parameterIndex)
 {
     String retval;
 
-    retval << (level * 2.0f);
+    retval << (level.load() * 2.0f);
 
     return retval;
 }
@@ -98,7 +99,7 @@ const String LevelProcessor::getParameterText(int parameterIndex)
 //------------------------------------------------------------------------------
 void LevelProcessor::setParameter(int parameterIndex, float newValue)
 {
-    level = newValue;
+    level.store(newValue);
 }
 
 //------------------------------------------------------------------------------
@@ -106,7 +107,7 @@ void LevelProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("Pedalboard3LevelSettings");
 
-    xml.setAttribute("leve", level);
+    xml.setAttribute("leve", level.load());
 
     xml.setAttribute("editorX", editorBounds.getX());
     xml.setAttribute("editorY", editorBounds.getY());
@@ -130,7 +131,7 @@ void LevelProcessor::setStateInformation(const void* data, int sizeInBytes)
             editorBounds.setWidth(xmlState->getIntAttribute("editorW"));
             editorBounds.setHeight(xmlState->getIntAttribute("editorH"));
 
-            level = (float)xmlState->getDoubleAttribute("leve", 0.5);
+            level.store((float)xmlState->getDoubleAttribute("leve", 0.5));
         }
     }
 }

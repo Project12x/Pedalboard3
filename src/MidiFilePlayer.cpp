@@ -53,21 +53,20 @@ bool MidiFilePlayerProcessor::setFile(const File& file)
         return false;
     }
 
-    // Convert to seconds-based timestamps
+    // Convert to seconds-based timestamps (heavy work - outside lock)
     midi.convertTimestampTicksToSeconds();
 
-    // Clear existing data
-    trackSequences.clear();
-    trackMuteStates.clear();
-    numTracks = midi.getNumTracks();
+    // Build track data into locals (outside lock)
+    OwnedArray<MidiMessageSequence> newTrackSequences;
+    std::vector<bool> newTrackMuteStates;
+    int newNumTracks = midi.getNumTracks();
 
-    // Extract all tracks
     double maxTime = 0.0;
-    for (int i = 0; i < numTracks; ++i)
+    for (int i = 0; i < newNumTracks; ++i)
     {
         auto* seq = new MidiMessageSequence(*midi.getTrack(i));
-        trackSequences.add(seq);
-        trackMuteStates.push_back(false);
+        newTrackSequences.add(seq);
+        newTrackMuteStates.push_back(false);
 
         if (seq->getNumEvents() > 0)
         {
@@ -77,12 +76,9 @@ bool MidiFilePlayerProcessor::setFile(const File& file)
         }
     }
 
-    lengthInSeconds = maxTime;
-    midiFile = file;
-
-    // Try to extract tempo from MIDI file
-    originalBPM = 120.0;
-    for (int i = 0; i < numTracks; ++i)
+    // Extract tempo
+    double newOriginalBPM = 120.0;
+    for (int i = 0; i < newNumTracks; ++i)
     {
         auto* seq = midi.getTrack(i);
         for (int j = 0; j < seq->getNumEvents(); ++j)
@@ -90,19 +86,39 @@ bool MidiFilePlayerProcessor::setFile(const File& file)
             auto& event = *seq->getEventPointer(j);
             if (event.message.isTempoMetaEvent())
             {
-                originalBPM = 60.0 / event.message.getTempoSecondsPerQuarterNote();
+                newOriginalBPM = 60.0 / event.message.getTempoSecondsPerQuarterNote();
                 break;
             }
         }
     }
-    bpm.store(originalBPM);
 
-    // Rebuild combined sequence
-    rebuildCombinedSequence();
-    resetPlayhead();
+    // Build combined sequence (outside lock)
+    MidiMessageSequence newCombinedSequence;
+    for (int i = 0; i < newTrackSequences.size(); ++i)
+    {
+        if (!newTrackMuteStates[i])
+            newCombinedSequence.addSequence(*newTrackSequences[i], 0.0);
+    }
+    newCombinedSequence.sort();
+    newCombinedSequence.updateMatchedPairs();
+
+    // Brief lock to swap all state
+    {
+        const juce::SpinLock::ScopedLockType lock(sequenceLock);
+        trackSequences = std::move(newTrackSequences);
+        trackMuteStates = std::move(newTrackMuteStates);
+        numTracks = newNumTracks;
+        combinedSequence = std::move(newCombinedSequence);
+        lengthInSeconds = maxTime;
+        originalBPM = newOriginalBPM;
+        resetPlayhead();
+    }
+
+    midiFile = file;
+    bpm.store(newOriginalBPM);
 
     spdlog::info("[MidiFilePlayer] Loaded: {} ({} tracks, {:.2f}s, {:.1f} BPM)", file.getFileName().toStdString(),
-                 numTracks, lengthInSeconds, originalBPM);
+                 newNumTracks, maxTime, newOriginalBPM);
 
     sendChangeMessage();
     return true;
@@ -111,18 +127,19 @@ bool MidiFilePlayerProcessor::setFile(const File& file)
 //------------------------------------------------------------------------------
 void MidiFilePlayerProcessor::rebuildCombinedSequence()
 {
-    combinedSequence.clear();
-
+    // Build into local (outside lock for the heavy work)
+    MidiMessageSequence newCombined;
     for (int i = 0; i < trackSequences.size(); ++i)
     {
         if (!trackMuteStates[i])
-        {
-            combinedSequence.addSequence(*trackSequences[i], 0.0);
-        }
+            newCombined.addSequence(*trackSequences[i], 0.0);
     }
+    newCombined.sort();
+    newCombined.updateMatchedPairs();
 
-    combinedSequence.sort();
-    combinedSequence.updateMatchedPairs();
+    const juce::SpinLock::ScopedLockType lock(sequenceLock);
+    combinedSequence = std::move(newCombined);
+    nextEventIndex = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -171,6 +188,8 @@ void MidiFilePlayerProcessor::stop()
 //------------------------------------------------------------------------------
 void MidiFilePlayerProcessor::seekToPosition(double position)
 {
+    const juce::SpinLock::ScopedLockType lock(sequenceLock);
+
     double clampedPos = juce::jlimit(0.0, 1.0, position);
     double targetTime = clampedPos * lengthInSeconds;
     playheadSeconds.store(targetTime);
@@ -239,7 +258,12 @@ void MidiFilePlayerProcessor::prepareToPlay(double sampleRate, int estimatedSamp
 //------------------------------------------------------------------------------
 void MidiFilePlayerProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
-    if (!playing.load() || combinedSequence.getNumEvents() == 0)
+    if (!playing.load())
+        return;
+
+    const juce::SpinLock::ScopedLockType lock(sequenceLock);
+
+    if (combinedSequence.getNumEvents() == 0)
         return;
 
     int numSamples = buffer.getNumSamples();
@@ -292,8 +316,8 @@ void MidiFilePlayerProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer
         {
             playing.store(false);
             resetPlayhead();
-            // Notify UI of state change
-            MessageManager::callAsync([this]() { sendChangeMessage(); });
+            // Signal UI timer to broadcast change (RT-safe: no message posting)
+            playbackFinished.store(true, std::memory_order_relaxed);
         }
     }
 }

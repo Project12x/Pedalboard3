@@ -23,7 +23,7 @@
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-OutputToggleProcessor::OutputToggleProcessor() : toggle(false), fade(0.0f)
+OutputToggleProcessor::OutputToggleProcessor() : fade(0.0f)
 {
     setPlayConfigDetails(1, 2, 0, 0);
 }
@@ -72,11 +72,12 @@ void OutputToggleProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& 
     data[0] = buffer.getWritePointer(0);
     data[1] = buffer.getWritePointer(1);
 
+    const bool currentToggle = toggle.load();
     for (i = 0; i < buffer.getNumSamples(); ++i)
     {
-        if (!toggle && (fade > 0.0f))
+        if (!currentToggle && (fade > 0.0f))
             fade -= 0.001f;
-        else if (toggle && (fade < 1.0f))
+        else if (currentToggle && (fade < 1.0f))
             fade += 0.001f;
 
         tempf = data[0][i];
@@ -96,7 +97,7 @@ const String OutputToggleProcessor::getParameterText(int parameterIndex)
 {
     String retval;
 
-    if (toggle)
+    if (toggle.load())
         retval = "Output 1";
     else
         retval = "Output 2";
@@ -107,7 +108,7 @@ const String OutputToggleProcessor::getParameterText(int parameterIndex)
 //------------------------------------------------------------------------------
 void OutputToggleProcessor::setParameter(int parameterIndex, float newValue)
 {
-    toggle = newValue > 0.5f;
+    toggle.store(newValue > 0.5f);
 }
 
 //------------------------------------------------------------------------------
@@ -115,7 +116,7 @@ void OutputToggleProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("Pedalboard3OutputToggleSettings");
 
-    xml.setAttribute("toggle", toggle);
+    xml.setAttribute("toggle", toggle.load());
 
     xml.setAttribute("editorX", editorBounds.getX());
     xml.setAttribute("editorY", editorBounds.getY());
@@ -134,7 +135,7 @@ void OutputToggleProcessor::setStateInformation(const void* data, int sizeInByte
     {
         if (xmlState->hasTagName("Pedalboard3OutputToggleSettings"))
         {
-            toggle = xmlState->getBoolAttribute("toggle", false);
+            toggle.store(xmlState->getBoolAttribute("toggle", false));
 
             editorBounds.setX(xmlState->getIntAttribute("editorX"));
             editorBounds.setY(xmlState->getIntAttribute("editorY"));

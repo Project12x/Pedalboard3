@@ -63,6 +63,34 @@ FilterConnection::~FilterConnection() {}
 //==============================================================================
 const int FilterGraph::midiChannelNumber = 0x1000;
 
+void FilterGraph::createInfrastructureNodes()
+{
+    safetyLimiter = nullptr;
+    crossfadeMixer = nullptr;
+    safetyLimiterNodeId = {};
+    crossfadeMixerNodeId = {};
+
+    auto limiterProcessor = std::make_unique<SafetyLimiterProcessor>();
+    safetyLimiter = limiterProcessor.get();
+    auto safetyNode = graph.addNode(std::move(limiterProcessor), AudioProcessorGraph::NodeID(0xFFFFFF));
+    if (safetyNode)
+    {
+        safetyLimiterNodeId = safetyNode->nodeID;
+        safetyNode->properties.set("x", -100.0);
+        safetyNode->properties.set("y", -100.0);
+    }
+
+    auto crossfadeProcessor = std::make_unique<CrossfadeMixerProcessor>();
+    crossfadeMixer = crossfadeProcessor.get();
+    auto crossfadeNode = graph.addNode(std::move(crossfadeProcessor), AudioProcessorGraph::NodeID(0xFFFFFE));
+    if (crossfadeNode)
+    {
+        crossfadeMixerNodeId = crossfadeNode->nodeID;
+        crossfadeNode->properties.set("x", -100.0);
+        crossfadeNode->properties.set("y", -150.0);
+    }
+}
+
 FilterGraph::FilterGraph()
     : FileBasedDocument(filenameSuffix, filenameWildcard, "Load a filter graph", "Save a filter graph"), lastUID(0)
 {
@@ -87,29 +115,7 @@ FilterGraph::FilterGraph()
     // Use Raw method to avoid adding to undo history
     addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 400.0f, 100.0f);
 
-    // Initialize SafetyLimiter for audio protection
-    auto limiterProcessor = std::make_unique<SafetyLimiterProcessor>();
-    safetyLimiter = limiterProcessor.get(); // Keep raw pointer for state queries
-    auto safetyNode = graph.addNode(std::move(limiterProcessor), AudioProcessorGraph::NodeID(0xFFFFFF));
-    if (safetyNode)
-    {
-        safetyLimiterNodeId = safetyNode->nodeID;
-        // Position off-screen (not visible to user)
-        safetyNode->properties.set("x", -100.0);
-        safetyNode->properties.set("y", -100.0);
-    }
-
-    // Initialize CrossfadeMixer for glitch-free patch switching
-    auto crossfadeProcessor = std::make_unique<CrossfadeMixerProcessor>();
-    crossfadeMixer = crossfadeProcessor.get(); // Keep raw pointer for crossfade control
-    auto crossfadeNode = graph.addNode(std::move(crossfadeProcessor), AudioProcessorGraph::NodeID(0xFFFFFE));
-    if (crossfadeNode)
-    {
-        crossfadeMixerNodeId = crossfadeNode->nodeID;
-        // Position off-screen (not visible to user)
-        crossfadeNode->properties.set("x", -100.0);
-        crossfadeNode->properties.set("y", -150.0);
-    }
+    createInfrastructureNodes();
 
     // Position input nodes relative to each other based on actual heights
     repositionDefaultInputNodes();
@@ -423,114 +429,72 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
     auto& blacklist = PluginBlacklist::getInstance();
     if (blacklist.isBlacklisted(desc->fileOrIdentifier) || blacklist.isBlacklistedById(desc->createIdentifierString()))
     {
-        spdlog::warn("[addFilterRaw] Plugin is blacklisted, refusing to load: {} ({})", desc->name.toStdString(),
+        spdlog::warn("[addFilterRaw] Plugin is blacklisted: {} ({})", desc->name.toStdString(),
                      desc->fileOrIdentifier.toStdString());
         return AudioProcessorGraph::NodeID();
     }
 
-    spdlog::debug("[addFilterRaw] Adding plugin: {} (identifier: {})", desc->name.toStdString(),
-                  desc->fileOrIdentifier.toStdString());
-    spdlog::default_logger()->flush();
+    spdlog::debug("[addFilterRaw] Adding plugin: {}", desc->name.toStdString());
 
     String errorMessage;
     auto tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(*desc, 44100.0, 512, errorMessage);
 
-    spdlog::debug("[addFilterRaw] createPluginInstance returned: {}", tempInstance ? "valid" : "null");
     if (!tempInstance)
-        spdlog::error("[addFilterRaw] Error: {}", errorMessage.toStdString());
-    spdlog::default_logger()->flush();
-
-    if (tempInstance)
     {
-        AudioProcessor::BusesLayout stereoLayout;
-        stereoLayout.inputBuses.add(AudioChannelSet::stereo());
-        stereoLayout.outputBuses.add(AudioChannelSet::stereo());
-
-        if (tempInstance->checkBusesLayoutSupported(stereoLayout))
-            tempInstance->setBusesLayout(stereoLayout);
-
-        spdlog::debug("[addFilterRaw] Plugin channels: in={}, out={}", tempInstance->getTotalNumInputChannels(),
-                      tempInstance->getTotalNumOutputChannels());
-        spdlog::default_logger()->flush();
+        spdlog::error("[addFilterRaw] createPluginInstance failed: {}", errorMessage.toStdString());
+        return AudioProcessorGraph::NodeID();
     }
 
+    // Try stereo layout
+    AudioProcessor::BusesLayout stereoLayout;
+    stereoLayout.inputBuses.add(AudioChannelSet::stereo());
+    stereoLayout.outputBuses.add(AudioChannelSet::stereo());
+
+    if (tempInstance->checkBusesLayoutSupported(stereoLayout))
+        tempInstance->setBusesLayout(stereoLayout);
+
+    // Wrap external plugins in BypassableInstance; internal processors go directly
     std::unique_ptr<AudioProcessor> instance;
-    if (tempInstance)
+    if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
+        dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
+        dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
     {
-        spdlog::debug("[addFilterRaw] Checking if plugin needs wrapping...");
-        spdlog::default_logger()->flush();
-
-        if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
-            dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
-        {
-            spdlog::debug("[addFilterRaw] Using plugin directly (no BypassableInstance wrapper)");
-            instance = std::move(tempInstance);
-        }
-        else
-        {
-            spdlog::debug("[addFilterRaw] Wrapping in BypassableInstance");
-            instance = std::make_unique<BypassableInstance>(tempInstance.release());
-        }
-        spdlog::debug("[addFilterRaw] Wrapping complete");
-        spdlog::default_logger()->flush();
+        instance = std::move(tempInstance);
+    }
+    else
+    {
+        instance = std::make_unique<BypassableInstance>(tempInstance.release());
     }
 
+    // Lock the audio callback to prevent race with audio thread
     AudioProcessorGraph::Node::Ptr node;
-    if (instance)
     {
-        spdlog::debug("[addFilterRaw] Adding to graph...");
-        spdlog::default_logger()->flush();
-
-        // CRITICAL: Lock the audio callback to prevent race with audio thread
-        // This ensures the node is fully added before audio processing resumes
-        {
-            const juce::ScopedLock sl(graph.getCallbackLock());
-            node = graph.addNode(std::move(instance));
-        }
-
-        spdlog::debug("[addFilterRaw] addNode returned: {}", node ? "valid" : "null");
-        spdlog::default_logger()->flush();
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        node = graph.addNode(std::move(instance));
     }
 
     if (node != nullptr)
     {
-        spdlog::debug("[addFilterRaw] Setting node properties...");
-        spdlog::default_logger()->flush();
         node->properties.set("x", x);
-        spdlog::debug("[addFilterRaw] Set x property");
-        spdlog::default_logger()->flush();
         node->properties.set("y", y);
-        spdlog::debug("[addFilterRaw] Set y property, checking processor type...");
-        spdlog::default_logger()->flush();
 
         // Notify listeners that graph changed - creates UI components
-        spdlog::debug("[addFilterRaw] Properties set, calling changed()...");
-        spdlog::default_logger()->flush();
         try
         {
             changed();
-            spdlog::debug("[addFilterRaw] changed() completed successfully");
         }
         catch (const std::exception& e)
         {
             spdlog::error("[addFilterRaw] Exception in changed(): {}", e.what());
-            spdlog::default_logger()->flush();
         }
         catch (...)
         {
             spdlog::error("[addFilterRaw] Unknown exception in changed()");
-            spdlog::default_logger()->flush();
         }
 
-        spdlog::debug("[addFilterRaw] node pointer: {}", node ? "valid" : "null");
-        spdlog::default_logger()->flush();
-
         auto nodeId = node->nodeID;
-        spdlog::debug("[addFilterRaw] Successfully added node with ID: {}", nodeId.uid);
-        spdlog::default_logger()->flush();
-
+        spdlog::debug("[addFilterRaw] Added node ID={}", nodeId.uid);
         return nodeId;
     }
 
@@ -616,6 +580,7 @@ void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut, bool 
     // PluginWindow::closeAllCurrentlyOpenWindows();
 
     graph.clear();
+    createInfrastructureNodes();
 
     // Add nodes with temporary Y positions (will be repositioned below)
     if (addAudioIn)
@@ -892,14 +857,28 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
 {
     XmlElement* xml = new XmlElement("FILTERGRAPH");
 
-    int i;
-    for (i = 0; i < graph.getNumNodes(); ++i)
-        xml->addChildElement(createNodeXml(graph.getNode(i), oscManager));
+    int savedNodes = 0;
+    for (int i = 0; i < graph.getNumNodes(); ++i)
+    {
+        auto node = graph.getNode(i);
+        if (node == nullptr || isHiddenInfrastructureNode(node->nodeID))
+            continue;
+
+        if (auto* nodeXml = createNodeXml(node, oscManager))
+        {
+            xml->addChildElement(nodeXml);
+            ++savedNodes;
+        }
+    }
 
     // JUCE 8: getConnections returns vector
     auto connections = graph.getConnections();
+    int savedConnections = 0;
     for (const auto& fc : connections)
     {
+        if (isHiddenInfrastructureNode(fc.source.nodeID) || isHiddenInfrastructureNode(fc.destination.nodeID))
+            continue;
+
         XmlElement* e = new XmlElement("CONNECTION");
 
         e->setAttribute("srcFilter", (int)fc.source.nodeID.uid);
@@ -908,9 +887,10 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
         e->setAttribute("dstChannel", fc.destination.channelIndex);
 
         xml->addChildElement(e);
+        ++savedConnections;
     }
 
-    spdlog::info("[FilterGraph::createXml] Saved {} nodes and {} connections", graph.getNumNodes(), connections.size());
+    spdlog::info("[FilterGraph::createXml] Saved {} nodes and {} connections", savedNodes, savedConnections);
     return xml;
 }
 

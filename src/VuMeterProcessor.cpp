@@ -23,7 +23,7 @@
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-VuMeterProcessor::VuMeterProcessor() : levelLeft(0.0f), levelRight(0.0f)
+VuMeterProcessor::VuMeterProcessor()
 {
     setPlayConfigDetails(2, 0, 0, 0);
 }
@@ -72,26 +72,32 @@ void VuMeterProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiM
     dataLeft = buffer.getWritePointer(0);
     dataRight = buffer.getWritePointer(1);
 
+    float curLeft = levelLeft.load();
+    float curRight = levelRight.load();
+
     for (i = 0; i < buffer.getNumSamples(); ++i)
     {
-        if (fabsf(dataLeft[i]) > levelLeft)
-            levelLeft = fabsf(dataLeft[i]);
-        else if (levelLeft > 0.0f)
+        if (fabsf(dataLeft[i]) > curLeft)
+            curLeft = fabsf(dataLeft[i]);
+        else if (curLeft > 0.0f)
         {
-            levelLeft -= 0.00001f;
-            if (levelLeft < 0.0f)
-                levelLeft = 0.0f;
+            curLeft -= 0.00001f;
+            if (curLeft < 0.0f)
+                curLeft = 0.0f;
         }
 
-        if (fabsf(dataRight[i]) > levelRight)
-            levelRight = fabsf(dataRight[i]);
-        else if (levelRight > 0.0f)
+        if (fabsf(dataRight[i]) > curRight)
+            curRight = fabsf(dataRight[i]);
+        else if (curRight > 0.0f)
         {
-            levelRight -= 0.00001f;
-            if (levelRight < 0.0f)
-                levelRight = 0.0f;
+            curRight -= 0.00001f;
+            if (curRight < 0.0f)
+                curRight = 0.0f;
         }
     }
+
+    levelLeft.store(curLeft);
+    levelRight.store(curRight);
 }
 
 //------------------------------------------------------------------------------

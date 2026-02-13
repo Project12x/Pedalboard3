@@ -57,6 +57,9 @@
 #include "Vectors.h"
 #include "VirtualMidiInputProcessor.h"
 
+#include "BypassableInstance.h"
+#include "Mapping.h"
+
 #include <iostream>
 #include <sstream>
 
@@ -450,9 +453,13 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Add ToastOverlay for premium notifications
     addChildComponent(&ToastOverlay::getInstance());
 
+    // Wire the lock-free FIFO so MIDI/OSC mapping parameter changes are
+    // deferred from the audio thread to this timer on the message thread.
+    Mapping::setParamFifo(&midiAppFifo);
+
     // Start timers.
     startTimer(CpuTimer, 100);
-    startTimer(MidiAppTimer, 30);
+    startTimer(MidiAppTimer, 5);
 
     // To load the default patch.
     {
@@ -1443,6 +1450,7 @@ void MainPanel::timerCallback(int timerId)
         }*/
         break;
     case MidiAppTimer:
+        CrashProtection::getInstance().pingWatchdog();
         if (midiAppFifo.getNumWaitingID() > 0)
             commandManager->invokeDirectly(midiAppFifo.readID(), true);
         if (midiAppFifo.getNumWaitingTempo() > 0)
@@ -1479,6 +1487,34 @@ void MainPanel::timerCallback(int timerId)
                 else
                     warningBox->repaint();
                 startTimer(ProgramChangeTimer, 5 * 1000); // 5 seconds.
+            }
+        }
+        // Drain deferred parameter changes from MIDI/OSC mapping (audio thread).
+        {
+            MidiAppFifo::PendingParamChange pc;
+            while (midiAppFifo.readParamChange(pc))
+            {
+                if (pc.graph != &signalPath)
+                    continue;
+
+                auto node = pc.graph->getNodeForId(
+                    juce::AudioProcessorGraph::NodeID(pc.pluginId));
+                if (node)
+                {
+                    if (pc.paramIndex == -1)
+                    {
+                        auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
+                        if (bypassable)
+                            bypassable->setBypass(pc.value > 0.5f);
+                    }
+                    else
+                    {
+                        auto* processor = node->getProcessor();
+                        const int numParams = processor->getNumParameters();
+                        if (pc.paramIndex >= 0 && pc.paramIndex < numParams)
+                            processor->setParameter(pc.paramIndex, pc.value);
+                    }
+                }
             }
         }
         break;
@@ -1903,7 +1939,6 @@ void MainPanel::savePatch()
     PluginField* field = ((PluginField*)viewport->getViewedComponent());
 
     // Save current patch.
-    patch = field->getXml();
     patch = field->getXml();
     patch->setAttribute("name", patchComboBox->getItemText(lastCombo - 1));
 

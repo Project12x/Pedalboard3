@@ -14,7 +14,8 @@
 OscilloscopeProcessor::OscilloscopeProcessor()
 {
     circularBuffer.fill(0.0f);
-    displaySnapshot.fill(0.0f);
+    displayBuffers[0].fill(0.0f);
+    displayBuffers[1].fill(0.0f);
 }
 
 OscilloscopeProcessor::~OscilloscopeProcessor() = default;
@@ -32,8 +33,8 @@ void OscilloscopeProcessor::updateEditorBounds(const Rectangle<int>& bounds)
 
 void OscilloscopeProcessor::getDisplayBuffer(std::array<float, DISPLAY_SAMPLES>& output) const
 {
-    // Copy the pre-built snapshot - no race condition
-    output = displaySnapshot;
+    // Read from front buffer (last completed capture)
+    output = displayBuffers[frontBuffer.load()];
 }
 
 //==============================================================================
@@ -55,7 +56,10 @@ void OscilloscopeProcessor::prepareToPlay(double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     circularBuffer.fill(0.0f);
-    displaySnapshot.fill(0.0f);
+    displayBuffers[0].fill(0.0f);
+    displayBuffers[1].fill(0.0f);
+    frontBuffer.store(0);
+    backBuffer = 1;
     writePos = 0;
     lastSampleWasNegative = true;
     samplesSinceTrigger = DISPLAY_SAMPLES; // Start ready for new trigger
@@ -87,11 +91,18 @@ void OscilloscopeProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer&)
         }
         lastSampleWasNegative = isNegative;
 
-        // Build snapshot after trigger
+        // Build snapshot in back buffer after trigger
         if (samplesSinceTrigger < DISPLAY_SAMPLES)
         {
-            displaySnapshot[samplesSinceTrigger] = sample;
+            displayBuffers[backBuffer][samplesSinceTrigger] = sample;
             samplesSinceTrigger++;
+
+            // Capture complete - swap front/back buffers
+            if (samplesSinceTrigger >= DISPLAY_SAMPLES)
+            {
+                frontBuffer.store(backBuffer);
+                backBuffer = 1 - backBuffer;
+            }
         }
 
         writePos = (writePos + 1) % BUFFER_SIZE;

@@ -13,8 +13,11 @@ add_executable(Pedalboard3_Tests
     protection_test.cpp
     audio_thread_stress_test.cpp
     nam_processor_test.cpp
+    patch_switch_test.cpp
+    vst3_loading_test.cpp
     ../src/PluginPoolManager.cpp
     ../src/AudioSingletons.cpp
+    ../src/BypassableInstance.cpp
 )
 
 
@@ -43,6 +46,7 @@ target_compile_definitions(Pedalboard3_Tests PRIVATE
     PEDALBOARD3_TESTS
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_VST3=1
 )
 
 # Register tests with CTest

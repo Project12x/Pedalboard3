@@ -20,15 +20,59 @@
 
 #include "BypassableInstance.h"
 
+#include <spdlog/spdlog.h>
+
 //------------------------------------------------------------------------------
 BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
-    : plugin(plug), tempBuffer(2, 4096), bypass(false), bypassRamp(0.0f), midiChannel(0)
+    : plugin(plug), tempBuffer(2, 4096), bypassRamp(0.0f)
 {
     jassert(plugin);
 
     // Use modern bus layout API instead of deprecated setPlayConfigDetails
     auto layout = plugin->getBusesLayout();
     setBusesLayout(layout);
+
+    // Cache channel info NOW, before this node is added to the audio graph.
+    // Once the audio thread starts calling processBlock, querying the VST3
+    // plugin's bus state from the UI thread causes crashes (race condition).
+    cachedAcceptsMidi = plugin->acceptsMidi();
+    cachedProducesMidi = plugin->producesMidi();
+
+    cachedInputChannelCount = 0;
+    for (int busIdx = 0; busIdx < plugin->getBusCount(true); ++busIdx)
+    {
+        if (auto* bus = plugin->getBus(true, busIdx))
+        {
+            int numCh = bus->getNumberOfChannels();
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                auto chLayout = bus->getCurrentLayout();
+                cachedInputChannelNames.add(
+                    chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+            }
+            cachedInputChannelCount += numCh;
+        }
+    }
+    if (cachedInputChannelCount == 0)
+        cachedInputChannelCount = plugin->getTotalNumInputChannels();
+
+    cachedOutputChannelCount = 0;
+    for (int busIdx = 0; busIdx < plugin->getBusCount(false); ++busIdx)
+    {
+        if (auto* bus = plugin->getBus(false, busIdx))
+        {
+            int numCh = bus->getNumberOfChannels();
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                auto chLayout = bus->getCurrentLayout();
+                cachedOutputChannelNames.add(
+                    chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+            }
+            cachedOutputChannelCount += numCh;
+        }
+    }
+    if (cachedOutputChannelCount == 0)
+        cachedOutputChannelCount = plugin->getTotalNumOutputChannels();
 }
 
 //------------------------------------------------------------------------------
@@ -40,6 +84,12 @@ BypassableInstance::~BypassableInstance()
 //------------------------------------------------------------------------------
 void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock)
 {
+    spdlog::info("[BypassableInstance::prepareToPlay] ENTER for '{}' sr={} blockSize={}",
+                 plugin->getName().toStdString(), sampleRate, estimatedSamplesPerBlock);
+
+    // Mark as not prepared during reconfiguration
+    prepared.store(false);
+
     int numChannels;
 
     // Use modern channel count APIs
@@ -51,7 +101,8 @@ void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPe
     else
         numChannels = numOutputs;
 
-    jassert(numChannels > 0);
+    if (numChannels <= 0)
+        numChannels = 2; // Fallback to stereo to prevent zero-size buffer
 
     midiCollector.reset(sampleRate);
 
@@ -59,11 +110,17 @@ void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPe
     // that number by 2 to ensure we don't run out of space.
     tempBuffer.setSize(numChannels, (estimatedSamplesPerBlock * 2));
 
+    spdlog::info("[BypassableInstance::prepareToPlay] tempBuffer: ch={} samples={}, plugin: in={} out={}",
+                 tempBuffer.getNumChannels(), tempBuffer.getNumSamples(), numInputs, numOutputs);
+
     plugin->setPlayHead(getPlayHead());
     // Use modern bus layout instead of deprecated setPlayConfigDetails
     auto layout = plugin->getBusesLayout();
     plugin->setBusesLayout(layout);
     plugin->prepareToPlay(sampleRate, estimatedSamplesPerBlock);
+
+    prepared.store(true);
+    spdlog::info("[BypassableInstance::prepareToPlay] DONE");
 }
 
 //------------------------------------------------------------------------------
@@ -75,17 +132,30 @@ void BypassableInstance::releaseResources()
 //------------------------------------------------------------------------------
 void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
+    // Don't call into plugin before prepareToPlay completes
+    if (!prepared.load())
+        return;
+
     int i, j;
     float rampVal = bypassRamp;
     MidiBuffer tempMidi;
     MidiBuffer::Iterator it(midiMessages);
 
-    // Real-time safety: verify pre-allocated buffer is large enough (no allocation here)
-    jassert(buffer.getNumChannels() <= tempBuffer.getNumChannels());
-    jassert(buffer.getNumSamples() <= tempBuffer.getNumSamples());
+    const int bufferChannels = buffer.getNumChannels();
+    const int bufferSamples = buffer.getNumSamples();
+    const int pluginChannels = tempBuffer.getNumChannels();
+
+    // The graph may pass a buffer with fewer channels than the plugin expects
+    // (e.g., 0 channels for a synth with no input connections). We must provide
+    // a buffer with enough channels for the plugin to write its output.
+    const bool needTempForPlugin = (bufferChannels < pluginChannels);
+
+    // Hard bounds check on sample count
+    if (bufferSamples > tempBuffer.getNumSamples())
+        return;
 
     // Pass on any MIDI messages received via OSC.
-    midiCollector.removeNextBlockOfMessages(tempMidi, buffer.getNumSamples());
+    midiCollector.removeNextBlockOfMessages(tempMidi, bufferSamples);
     if (!midiMessages.isEmpty())
     {
         MidiMessage tempMess;
@@ -99,46 +169,68 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         }
     }
 
-    // Note: tempBuffer was pre-allocated in prepareToPlay() with 2x capacity
-    // No setSize() call here to avoid potential real-time allocation
+    if (needTempForPlugin)
+    {
+        // Copy whatever input channels exist into tempBuffer, zero the rest
+        for (i = 0; i < bufferChannels; ++i)
+            tempBuffer.copyFrom(i, 0, buffer, i, 0, bufferSamples);
+        for (i = bufferChannels; i < pluginChannels; ++i)
+            tempBuffer.clear(i, 0, bufferSamples);
 
-    // Fill out our temporary buffer correctly.
-    for (i = 0; i < buffer.getNumChannels(); ++i)
-        tempBuffer.copyFrom(i, 0, buffer, i, 0, buffer.getNumSamples());
+        // Process into tempBuffer (which has enough channels for the plugin)
+        AudioSampleBuffer pluginBuffer(tempBuffer.getArrayOfWritePointers(),
+                                       pluginChannels, bufferSamples);
+        plugin->processBlock(pluginBuffer, tempMidi);
 
-    // Get the plugin's audio.
-    plugin->processBlock(buffer, tempMidi);
+        // Copy back the channels that fit into the output buffer
+        for (i = 0; i < bufferChannels; ++i)
+            buffer.copyFrom(i, 0, tempBuffer, i, 0, bufferSamples);
+    }
+    else
+    {
+        // Normal path: buffer has enough channels
+        // Save original audio for bypass crossfade
+        for (i = 0; i < bufferChannels; ++i)
+            tempBuffer.copyFrom(i, 0, buffer, i, 0, bufferSamples);
+
+        // Get the plugin's audio.
+        plugin->processBlock(buffer, tempMidi);
+    }
 
     // Add any new midi data to midiMessages.
     if (!tempMidi.isEmpty())
         midiMessages.swapWith(tempMidi);
 
     // Add the correct (bypassed or un-bypassed) audio back to the buffer.
-    for (j = 0; j < buffer.getNumChannels(); ++j)
+    // Only apply bypass crossfade when we have the original audio saved
+    if (!needTempForPlugin)
     {
-        float* origData = tempBuffer.getWritePointer(j);
-        float* newData = buffer.getWritePointer(j);
-
-        rampVal = bypassRamp;
-        for (i = 0; i < buffer.getNumSamples(); ++i)
+        for (j = 0; j < bufferChannels; ++j)
         {
-            newData[i] = (origData[i] * rampVal) + (newData[i] * (1.0f - rampVal));
+            float* origData = tempBuffer.getWritePointer(j);
+            float* newData = buffer.getWritePointer(j);
 
-            if (bypass && (rampVal < 1.0f))
+            rampVal = bypassRamp;
+            for (i = 0; i < bufferSamples; ++i)
             {
-                rampVal += 0.001f;
-                if (rampVal > 1.0f)
-                    rampVal = 1.0f;
-            }
-            else if (!bypass && (rampVal > 0.0f))
-            {
-                rampVal -= 0.001f;
-                if (rampVal < 0.0f)
-                    rampVal = 0.0f;
+                newData[i] = (origData[i] * rampVal) + (newData[i] * (1.0f - rampVal));
+
+                if (bypass && (rampVal < 1.0f))
+                {
+                    rampVal += 0.001f;
+                    if (rampVal > 1.0f)
+                        rampVal = 1.0f;
+                }
+                else if (!bypass && (rampVal > 0.0f))
+                {
+                    rampVal -= 0.001f;
+                    if (rampVal < 0.0f)
+                        rampVal = 0.0f;
+                }
             }
         }
+        bypassRamp = rampVal;
     }
-    bypassRamp = rampVal;
 }
 
 //------------------------------------------------------------------------------
