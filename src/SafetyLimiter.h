@@ -70,6 +70,22 @@ class SafetyLimiterProcessor : public AudioProcessor
     // Audio activity detection for wire glow
     bool isAudioActive() const { return audioActive.load(); }
 
+    // Output level metering (peak with decay, read by UI for Audio Output VU)
+    float getOutputLevel(int channel) const
+    {
+        if (channel >= 0 && channel < 2)
+            return outputLevels[channel].load(std::memory_order_relaxed);
+        return 0.0f;
+    }
+
+    // Called from MeteringProcessorPlayer after graph processes.
+    // Updates output levels from the actual device output buffers (RT-safe).
+    void updateOutputLevelsFromDevice(const float* const* outputData, int numChannels, int numSamples);
+
+    // Static instance accessor for PluginComponent to read output levels
+    static SafetyLimiterProcessor* getInstance() { return instance; }
+    static void setInstance(SafetyLimiterProcessor* inst) { instance = inst; }
+
   private:
     //==============================================================================
     // Thresholds
@@ -106,6 +122,12 @@ class SafetyLimiterProcessor : public AudioProcessor
     float releaseCoeff = 0.0f; // Calculated in prepareToPlay
 
     double currentSampleRate = 44100.0;
+
+    // Output level metering (per-channel peak with decay)
+    std::atomic<float> outputLevels[2] = {{0.0f}, {0.0f}};
+    float outputDecayCoeff = 0.9995f; // ~300ms decay at 44100Hz, refined in prepareToPlay
+
+    static SafetyLimiterProcessor* instance;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SafetyLimiterProcessor)
 };

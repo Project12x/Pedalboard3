@@ -35,7 +35,28 @@
 class PluginListWindow;
 class StageView;
 class TunerProcessor;
+
 //[/Headers]
+
+//==============================================================================
+/// AudioProcessorPlayer subclass that taps device output buffers for VU metering.
+/// After the graph processes, the real output buffers contain final audio -
+/// we read them and update SafetyLimiterProcessor's output level atomics (RT-safe).
+class MeteringProcessorPlayer : public AudioProcessorPlayer
+{
+  public:
+    void audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
+                                         float* const* outputChannelData, int numOutputChannels, int numSamples,
+                                         const AudioIODeviceCallbackContext& context) override
+    {
+        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(inputChannelData, numInputChannels, outputChannelData,
+                                                              numOutputChannels, numSamples, context);
+
+        // Tap output levels from the real device output buffers
+        if (auto* limiter = SafetyLimiterProcessor::getInstance())
+            limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
+    }
+};
 
 //==============================================================================
 /**
@@ -263,8 +284,8 @@ class MainPanel : public Component,
     AudioDeviceManager deviceManager;
     ///	The graph representing the audio signal path.
     FilterGraph signalPath;
-    ///	Object used to 'play' the signalPath object.
-    AudioProcessorPlayer graphPlayer;
+    ///	Object used to 'play' the signalPath object (with output metering).
+    MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.
     KnownPluginList pluginList;
     ///	The socket we listen for OSC messages on.

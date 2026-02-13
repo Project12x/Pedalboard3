@@ -9,6 +9,8 @@
 
 #include "SafetyLimiter.h"
 
+SafetyLimiterProcessor* SafetyLimiterProcessor::instance = nullptr;
+
 SafetyLimiterProcessor::SafetyLimiterProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", AudioChannelSet::stereo(), true)
@@ -28,6 +30,10 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     // Release coefficient for ~50ms release time
     releaseCoeff = std::exp(-1.0f / static_cast<float>(sampleRate * 0.05));
 
+    // Output meter decay: ~300ms from peak to -60dB
+    double samplesFor300ms = sampleRate * 0.3;
+    outputDecayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
+
     // Reset state
     currentGain = 1.0f;
     dangerousGainCounter = 0;
@@ -35,6 +41,10 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     ultrasonicCounter = 0;
     ultrasonicEnergy = 0.0f;
     dcBlockerState[0] = dcBlockerState[1] = 0.0f;
+    outputLevels[0].store(0.0f, std::memory_order_relaxed);
+    outputLevels[1].store(0.0f, std::memory_order_relaxed);
+
+    setInstance(this);
 }
 
 void SafetyLimiterProcessor::releaseResources()
@@ -162,16 +172,31 @@ void SafetyLimiterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer
 
     limiting.store(limitingThisBlock);
 
-    // Audio activity detection for wire glow - check if buffer has meaningful signal
-    float rms = 0.0f;
-    for (int ch = 0; ch < jmin(numChannels, 2); ++ch)
+    // Note: Output level metering for the Audio Output VU is handled by
+    // MeteringProcessorPlayer::audioDeviceIOCallbackWithContext, which taps
+    // the real device output buffers after graph processing completes.
+}
+
+void SafetyLimiterProcessor::updateOutputLevelsFromDevice(const float* const* outputData, int numChannels, int numSamples)
+{
+    int chCount = jmin(numChannels, 2);
+    for (int ch = 0; ch < chCount; ++ch)
     {
-        const float* data = buffer.getReadPointer(ch);
+        if (outputData[ch] == nullptr)
+            continue;
+        float peak = outputLevels[ch].load(std::memory_order_relaxed);
         for (int i = 0; i < numSamples; ++i)
         {
-            rms += data[i] * data[i];
+            float s = std::abs(outputData[ch][i]);
+            if (s > peak)
+                peak = s;
+            else
+                peak *= outputDecayCoeff;
         }
+        if (peak < 1e-10f)
+            peak = 0.0f;
+        outputLevels[ch].store(peak, std::memory_order_relaxed);
     }
-    rms = std::sqrt(rms / (numSamples * jmin(numChannels, 2)));
-    audioActive.store(rms > 0.0001f); // ~-80dB noise floor
+    for (int ch = chCount; ch < 2; ++ch)
+        outputLevels[ch].store(0.0f, std::memory_order_relaxed);
 }

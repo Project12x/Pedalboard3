@@ -26,6 +26,7 @@
 #include "CrashProtection.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "SafetyLimiter.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "MappingsDialog.h"
@@ -414,16 +415,19 @@ void PluginComponent::timerUpdate()
                     }
                 }
             }
-            else // Audio Output
+            else // Audio Output - read from SafetyLimiter (processes all output audio)
             {
-                numChannels = tap->getNumOutputChannels();
-                for (int ch = 0; ch < numChannels && ch < 16; ++ch)
+                if (auto* limiter = SafetyLimiterProcessor::getInstance())
                 {
-                    float level = tap->getOutputLevel(ch);
-                    if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
+                    numChannels = 2;
+                    for (int ch = 0; ch < numChannels; ++ch)
                     {
-                        cachedMeterLevels[ch] = level;
-                        needsRepaint = true;
+                        float level = limiter->getOutputLevel(ch);
+                        if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
+                        {
+                            cachedMeterLevels[ch] = level;
+                            needsRepaint = true;
+                        }
                     }
                 }
             }
