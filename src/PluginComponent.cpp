@@ -510,7 +510,11 @@ void PluginComponent::timerUpdate()
 
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
         {
-            numChannels = 2;
+            AudioProcessor* plugin = node->getProcessor();
+            bool isInput = (pluginName == "Audio Input");
+            numChannels = isInput ? countOutputChannelsFromBuses(plugin)
+                                  : countInputChannelsFromBuses(plugin);
+            numChannels = jmin(numChannels, 16);
             for (int ch = 0; ch < numChannels; ++ch)
             {
                 float level = (pluginName == "Audio Input")
@@ -1235,9 +1239,55 @@ void PluginComponent::refreshPins()
     outputPins.clear();
     paramPins.clear();
 
+    // Remove existing gain sliders (Audio I/O nodes)
+    for (auto* slider : channelGainSliders)
+        removeChildComponent(slider);
+    channelGainSliders.clear(true);
+
     // Recalculate size and recreate pins
     determineSize();
     createPins();
+
+    // Recreate per-channel gain sliders for Audio I/O nodes
+    if (isAudioIONode())
+    {
+        AudioProcessor* plugin = node->getProcessor();
+        bool isInput = (pluginName == "Audio Input");
+        int numCh = isInput ? countOutputChannelsFromBuses(plugin)
+                            : countInputChannelsFromBuses(plugin);
+        auto& state = MasterGainState::getInstance();
+
+        const float meterStartY = 44.0f;
+        const float pinSpacing = 40.0f;
+        const int sliderHeight = 18;
+        const int pinMargin = 22;
+        const int edgeMargin = 8;
+        int sliderW = getWidth() - pinMargin - edgeMargin;
+
+        for (int ch = 0; ch < numCh && ch < MasterGainState::MaxChannels; ++ch)
+        {
+            auto* slider = new Slider("channelGain_" + String(ch));
+            slider->setSliderStyle(Slider::LinearBar);
+            slider->setRange(-60.0, 12.0, 0.1);
+            slider->setTextValueSuffix(" dB");
+            slider->setDoubleClickReturnValue(true, 0.0);
+            slider->setTooltip(String(isInput ? "Input" : "Output") + " Ch " + String(ch + 1) + " Gain");
+            slider->addListener(this);
+
+            int sliderY = (int)(meterStartY + ch * pinSpacing + 10.0f);
+            int sliderX = isInput ? edgeMargin : pinMargin;
+            slider->setBounds(sliderX, sliderY, sliderW, sliderHeight);
+
+            float initDb = isInput
+                ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+            slider->setValue(initDb, dontSendNotification);
+
+            addAndMakeVisible(slider);
+            channelGainSliders.add(slider);
+        }
+    }
+
     repaint();
 }
 
