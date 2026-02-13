@@ -9,17 +9,17 @@
 
 #include "VirtualMidiInputProcessor.h"
 
+#include <spdlog/spdlog.h>
+
 // Static instance pointer
 VirtualMidiInputProcessor* VirtualMidiInputProcessor::instance = nullptr;
 
 //==============================================================================
 VirtualMidiInputProcessor::VirtualMidiInputProcessor()
 {
-    // Register this as the active instance
-    setInstance(this);
-
-    // Configure as MIDI-only processor (no audio buses)
-    setPlayConfigDetails(0, 0, 44100.0, 512);
+    // Configure as MIDI-only: remove default stereo buses
+    AudioProcessor::BusesLayout emptyLayout;
+    setBusesLayout(emptyLayout);
 }
 
 VirtualMidiInputProcessor::~VirtualMidiInputProcessor()
@@ -31,8 +31,13 @@ VirtualMidiInputProcessor::~VirtualMidiInputProcessor()
 //==============================================================================
 void VirtualMidiInputProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    spdlog::info("[VirtualMidiInput] prepareToPlay sr={} blockSize={}", sampleRate, samplesPerBlock);
     currentSampleRate = sampleRate;
     midiCollector.reset(sampleRate);
+
+    // Register as the active instance when actually in the graph
+    // (not in constructor, to avoid temp instances during plugin enumeration)
+    setInstance(this);
 }
 
 void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
@@ -42,11 +47,38 @@ void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
 
     // Retrieve any MIDI messages that were added from the UI thread
     midiCollector.removeNextBlockOfMessages(midiMessages, buffer.getNumSamples());
+
+    // DEBUG: Periodic confirmation that processBlock is being called
+    ++processBlockCallCount;
+    if (processBlockCallCount == 1 || processBlockCallCount % 5000 == 0)
+    {
+        spdlog::info("[VirtualMidiInput] processBlock alive (call #{}, bufSamples={}, instance={})",
+                     processBlockCallCount, buffer.getNumSamples(),
+                     (instance == this) ? "CURRENT" : "STALE");
+    }
+
+    // DEBUG: Log when MIDI messages are produced
+    if (!midiMessages.isEmpty())
+    {
+        int count = 0;
+        for (const auto metadata : midiMessages)
+        {
+            ignoreUnused(metadata);
+            ++count;
+        }
+        spdlog::info("[VirtualMidiInput] processBlock output {} MIDI messages, bufSamples={}",
+                     count, buffer.getNumSamples());
+    }
 }
 
 //==============================================================================
 void VirtualMidiInputProcessor::addMidiMessage(const MidiMessage& msg)
 {
+    // DEBUG: Log incoming MIDI from virtual keyboard
+    if (msg.isNoteOn())
+        spdlog::info("[VirtualMidiInput] addMidiMessage: noteOn ch={} note={} vel={}",
+                     msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
+
     // Called from UI thread - MidiMessageCollector handles thread safety
     midiCollector.addMessageToQueue(msg);
 }

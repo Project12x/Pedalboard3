@@ -47,13 +47,13 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
     bool producesMidi() const override { return true; }
     double getTailLengthSeconds() const override { return 0.0; }
 
-    // No audio buses - MIDI only processor
+    // MIDI-only processor - no audio buses
     bool isBusesLayoutSupported(const AudioProcessor::BusesLayout& layouts) const override
     {
         return layouts.getMainInputChannels() == 0 && layouts.getMainOutputChannels() == 0;
     }
 
-    int getNumPrograms() override { return 0; }
+    int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
     void setCurrentProgram(int index) override {}
     const String getProgramName(int index) override { return ""; }
@@ -81,6 +81,9 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
     // Thread-safe MIDI message collection
     MidiMessageCollector midiCollector;
     double currentSampleRate = 44100.0;
+
+    // DEBUG: processBlock call counter for periodic logging
+    int processBlockCallCount = 0;
 
     // Static instance pointer for keyboard routing
     static VirtualMidiInputProcessor* instance;

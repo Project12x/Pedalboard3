@@ -41,6 +41,7 @@
 #include "SettingsManager.h"
 #include "SubGraphProcessor.h"
 #include "UndoActions.h"
+#include "VirtualMidiInputProcessor.h"
 
 #include <chrono>
 #include <iostream>
@@ -458,7 +459,8 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
     std::unique_ptr<AudioProcessor> instance;
     if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
         dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
-        dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
+        dynamic_cast<SubGraphProcessor*>(tempInstance.get()) ||
+        dynamic_cast<VirtualMidiInputProcessor*>(tempInstance.get()))
     {
         instance = std::move(tempInstance);
     }
@@ -513,6 +515,26 @@ bool FilterGraph::addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, 
 {
     AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
     const bool result = graph.addConnection(conn);
+
+    // DEBUG: Log connection attempts with channel info when failing
+    if (!result)
+    {
+        auto srcNode = graph.getNodeForId(sourceFilterUID);
+        auto dstNode = graph.getNodeForId(destFilterUID);
+        spdlog::warn("[addConnectionRaw] FAILED {}:{} -> {}:{} | src({} out={}) dst({} in={}) canConnect={}",
+                     (int)sourceFilterUID.uid, sourceFilterChannel, (int)destFilterUID.uid, destFilterChannel,
+                     srcNode ? srcNode->getProcessor()->getName().toStdString() : "NULL",
+                     srcNode ? srcNode->getProcessor()->getTotalNumOutputChannels() : -1,
+                     dstNode ? dstNode->getProcessor()->getName().toStdString() : "NULL",
+                     dstNode ? dstNode->getProcessor()->getTotalNumInputChannels() : -1,
+                     graph.canConnect(conn));
+    }
+    else
+    {
+        spdlog::info("[addConnectionRaw] OK {}:{} -> {}:{}", (int)sourceFilterUID.uid, sourceFilterChannel,
+                     (int)destFilterUID.uid, destFilterChannel);
+    }
+
     if (result)
         changed();
     return result;
@@ -798,7 +820,8 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     {
         if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
             dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
-            dynamic_cast<SubGraphProcessor*>(tempInstance.get()))
+            dynamic_cast<SubGraphProcessor*>(tempInstance.get()) ||
+            dynamic_cast<VirtualMidiInputProcessor*>(tempInstance.get()))
             instancePtr = std::move(tempInstance);
         else
         {

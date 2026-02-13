@@ -53,6 +53,22 @@ class FilterGraph : public FileBasedDocument {
 };
 ```
 
+### Infrastructure Nodes (Hidden)
+
+FilterGraph manages hidden "infrastructure" nodes that are always present but never shown to the user or saved to patch XML:
+
+- **SafetyLimiterProcessor** -- Final-stage limiter preventing clipping
+- **CrossfadeMixerProcessor** -- Handles glitch-free crossfade during patch switches
+
+These are created by `createInfrastructureNodes()`, which is called both in the constructor and after `graph.clear()`. The cached raw pointers (`safetyLimiter`, `crossfadeMixer`) and NodeIDs are refreshed each time.
+
+**Critical pattern:** Any code that calls `graph.clear()` invalidates all node pointers. After clearing, `createInfrastructureNodes()` must be called to rebuild infrastructure, and any cached pointers (e.g., in `PluginFieldPersistence`) must be reacquired via `getCrossfadeMixer()`.
+
+Infrastructure nodes are excluded from:
+
+- `createXml()` -- not saved to patch files (`isHiddenInfrastructureNode` check)
+- User-visible node iteration -- filtered by the same predicate
+
 ### PluginField (Canvas)
 
 Component that displays and allows editing of the plugin graph.
@@ -150,14 +166,78 @@ g.drawText(...);  // Now color is applied
 
 | Thread | Components |
 |--------|------------|
-| **Message Thread** | UI, plugin editors, callbacks |
-| **Audio Thread** | AudioProcessorGraph processing |
+| **Message Thread** | UI, plugin editors, timer callbacks, FIFO drain |
+| **Audio Thread** | `AudioProcessorGraph::processBlock`, `MidiInterceptor`, MIDI CC dispatch |
 | **OSC Thread** | Network message receiving |
 
-**Rules:**
-- Never allocate memory on audio thread
-- Use `Atomic<>` for cross-thread values
-- Use `AsyncUpdater` to trigger UI from audio thread
+**RT-Safety Rules (Audio Thread):**
+
+- No memory allocation (`new`, `String`, `std::vector` resize)
+- No locks (`CriticalSection`, `ScopedLock`) -- use `ScopedTryLock` if unavoidable
+- No file I/O (`LogFile`, `spdlog`, `File::existsAsFile`)
+- No message-thread calls (`sendChangeMessage`, `triggerAsyncUpdate`, `MessageManager`)
+- Use `std::atomic<>` for cross-thread scalars (float, bool, int, pointers)
+- Use lock-free FIFOs (`AbstractFifo`) to pass data to the message thread
+
+### Parameter Dispatch via FIFO
+
+MIDI/OSC-mapped parameter changes are dispatched through `MidiAppFifo` to avoid calling `setParameter()` on the audio thread (many processors do non-RT work in `setParameter`).
+
+```text
+Audio Thread                          Message Thread
+─────────────────                     ─────────────────
+MidiInterceptor::processBlock         MainPanel::timerCallback (5ms)
+  → midiCcReceived                      → midiAppFifo.readParamChange()
+    → Mapping::updateParameter            → node->getProcessor()->setParameter()
+      → midiAppFifo.writeParamChange()
+```
+
+**Key files:**
+
+- `MidiAppFifo.h/cpp` -- Lock-free FIFO with channels for CommandID, tempo, patch change, and parameter change
+- `Mapping.h/cpp` -- Static `paramFifo` pointer; `updateParameter()` queues to FIFO
+- `MainPanel.cpp` -- `MidiAppTimer` case drains parameter FIFO on message thread
+
+**Latency:** Up to 5ms for MIDI CC to parameter change. Audio-rate MIDI (note on/off) is unaffected.
+
+**FIFO capacity:** 1024 entries. Writes silently drop when full (burst CC floods). For continuous expression pedal use, consider increasing `BufferSize` or decreasing timer interval.
+
+### Double-Buffering Pattern (Display Data)
+
+For data written by the audio thread and read by the UI (e.g., oscilloscope waveforms):
+
+```cpp
+std::array<float, N> displayBuffers[2];
+std::atomic<int> frontBuffer{0};   // UI reads this index
+int backBuffer = 1;                // Audio writes (audio-thread-only)
+
+// Audio thread: write to back, swap on complete
+displayBuffers[backBuffer][i] = sample;
+if (captureComplete) {
+    frontBuffer.store(backBuffer);
+    backBuffer = 1 - backBuffer;
+}
+
+// UI thread: read from front
+output = displayBuffers[frontBuffer.load()];
+```
+
+### Atomic Scalars Pattern
+
+For simple cross-thread values (levels, flags):
+
+```cpp
+// Header
+std::atomic<float> level{0.0f};
+
+// Audio thread
+float cur = level.load();
+// ... compute ...
+level.store(cur);
+
+// UI thread
+float display = level.load();
+```
 
 ---
 
@@ -302,5 +382,5 @@ spdlog::default_logger()->flush();  // Force write before crash
 
 ---
 
-*Last updated: 2026-02-01*
+*Last updated: 2026-02-11*
 

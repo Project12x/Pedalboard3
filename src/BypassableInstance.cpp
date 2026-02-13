@@ -28,9 +28,31 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
 {
     jassert(plugin);
 
-    // Use modern bus layout API instead of deprecated setPlayConfigDetails
+    // The default AudioProcessor constructor creates 1 stereo input + 1 stereo output bus.
+    // Synth plugins (e.g. Vapor Keys, Surge XT) have 0 input buses + 1 stereo output bus.
+    // setBusesLayout requires matching bus counts, so remove excess buses first.
+    configuringBuses = true;
+    // Remove excess buses
+    while (getBusCount(true) > plugin->getBusCount(true))
+        removeBus(true);
+    while (getBusCount(false) > plugin->getBusCount(false))
+        removeBus(false);
+    // Add missing buses (for multi-bus plugins)
+    while (getBusCount(true) < plugin->getBusCount(true))
+        addBus(true);
+    while (getBusCount(false) < plugin->getBusCount(false))
+        addBus(false);
+    configuringBuses = false;
+
+    // Now bus counts match, so setBusesLayout will succeed
     auto layout = plugin->getBusesLayout();
     setBusesLayout(layout);
+
+    spdlog::info("[BypassableInstance] ctor '{}': plugin buses in={} out={}, wrapper in={} out={}, channels in={} out={}",
+                 plugin->getName().toStdString(),
+                 plugin->getBusCount(true), plugin->getBusCount(false),
+                 getBusCount(true), getBusCount(false),
+                 getTotalNumInputChannels(), getTotalNumOutputChannels());
 
     // Cache channel info NOW, before this node is added to the audio graph.
     // Once the audio thread starts calling processBlock, querying the VST3

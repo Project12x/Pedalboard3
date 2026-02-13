@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **RT-Safety: MIDI/OSC Parameter Dispatch** — All mapping-dispatched `setParameter()` calls now go through a lock-free FIFO (`MidiAppFifo`) and are drained on the message thread via the 5ms `MidiAppTimer`. This eliminates `sendChangeMessage`, `transportSource` ops, `triggerAsyncUpdate`, and other non-RT calls from the audio thread for FilePlayerProcessor, LooperProcessor, MetronomeProcessor, MidiFilePlayerProcessor, and all future processors.
+- **RT-Safety: MIDI CC Logging Removed from Audio Thread** — Removed `LogFile::logEvent` (CriticalSection + file I/O + `sendChangeMessage`) and `spdlog` calls from `MidiMappingManager::midiCcReceived`. Made `midiLearnCallback` pointer `std::atomic` for thread-safe access.
+- **RT-Safety: Metronome Staging Guard** — Moved `files[]` assignment after the `pendingClickReady` guard in `setAccentFile`/`setClickFile`, preventing state desync when the audio thread hasn't consumed the previous pending buffer.
+- **RT-Safety: VuMeter Atomic Floats** — Changed `levelLeft`/`levelRight` from plain `float` to `std::atomic<float>` with proper `.load()`/`.store()` in `processBlock` and UI getters.
+- **RT-Safety: Oscilloscope Double-Buffering** — Replaced unsynchronized `displaySnapshot` with a double-buffer scheme. Audio writes to the back buffer and atomically swaps the front index on capture complete; UI reads from the front buffer.
+- **RT-Safety: Null Node Dereference** — Added null check on `getNodeForId` return in `Mapping::updateParameter` fallback path.
+- **Crash: Stale CrossfadeMixer Pointer on Patch Switch** — `PluginField::loadFromXml` cached a `CrossfadeMixer*` then cleared/restored the graph (destroying all nodes), then called `startFadeIn` on the now-dangling pointer. Fix: `FilterGraph::clear()` now calls `createInfrastructureNodes()` to rebuild hidden infrastructure after `graph.clear()`, and `PluginFieldPersistence` reacquires the crossfader pointer after restore.
+- **Crash: Infrastructure Nodes Persisted to Patch XML** — Hidden runtime-only nodes (SafetyLimiter, CrossfadeMixer) and their connections were being saved into patch XML, causing duplicate/ghost nodes on reload. Fix: `FilterGraph::createXml` now skips `isHiddenInfrastructureNode` nodes and connections.
+- **Crash: FIFO Parameter Dispatch During Patch Transition** — Deferred parameter events from the old graph could dispatch to the new graph's nodes after a patch switch, hitting wrong processors or out-of-range parameter indices. Fix: FIFO drain now checks `pc.graph == &signalPath` and bounds-checks `paramIndex < numParams`.
+- **Memory Leak: Duplicate `getXml()` Call in Patch Save** — `MainPanel::savePatch` called `field->getXml()` twice, leaking one `XmlElement`. Removed the redundant call.
+
+### Known Issues
+
+- **FIFO Silent Drop** — FIFO writes silently drop when full (1024 entries). In practice this requires ~200K+ entries/sec to trigger, far beyond MIDI bandwidth.
+- **FIFO Fallback Path** — `Mapping::updateParameter` retains a direct `setParameter` fallback when the FIFO is not wired (before `MainPanel` constructor runs). Guarded by `jassert` in debug builds. This is an init-order guard, not a runtime path.
+
 ### Added
 - **Effect Rack (SubGraphProcessor)** â€“ Nested plugin hosting within a single node
   - `SubGraphProcessor` wraps internal `AudioProcessorGraph`

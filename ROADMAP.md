@@ -170,13 +170,20 @@ A focused roadmap for current development. For historical completed phases, see 
 | 6C.3 | AudioRecorder MIDI trigger | Planned |
 | 6C.4 | Start minimized | Planned |
 | 6C.5 | Home key mapping | Planned |
+| 6C.6 | Stale CrossfadeMixer pointer on patch switch (use-after-free) | Done |
+| 6C.7 | Infrastructure nodes leaking into patch XML | Done |
+| 6C.8 | FIFO param dispatch safety during patch transitions | Done |
+| 6C.9 | Duplicate getXml() memory leak in savePatch | Done |
 
 ### 6D: Code Refactoring
 | # | Task | Status |
 |---|------|--------|
 | 6D.1 | Split PedalboardProcessors | Planned |
 | 6D.2 | Global loadSVGFromMemory() | Planned |
-| 6D.3 | Atomic cross-thread vars | Planned |
+| 6D.3 | Atomic cross-thread vars | Done |
+| 6D.4 | RT-safe MIDI/OSC parameter dispatch (FIFO) | Done |
+| 6D.5 | Remove non-RT logging from audio path | Done |
+| 6D.6 | Oscilloscope/VuMeter thread-safe display | Done |
 
 ### 6E: Legacy UX (Niall's ToDo.txt)
 | # | Task | Status |
@@ -341,4 +348,4 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-11*

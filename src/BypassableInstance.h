@@ -115,6 +115,21 @@ class BypassableInstance : public AudioPluginInstance
     bool getCachedAcceptsMidi() const { return cachedAcceptsMidi; }
     bool getCachedProducesMidi() const { return cachedProducesMidi; }
 
+    /// Delegate bus layout support to the inner plugin.
+    /// The default AudioProcessor::isBusesLayoutSupported only accepts 1-2 channel
+    /// main buses, which rejects synths with 0 inputs and 2 outputs.
+    bool isBusesLayoutSupported(const BusesLayout& layout) const override
+    {
+        return plugin->checkBusesLayoutSupported(layout);
+    }
+
+    /// Allow bus add/removal during construction so we can match the inner plugin's
+    /// bus configuration (e.g., synths have 0 input buses but the default
+    /// AudioProcessor constructor creates 1 input + 1 output bus, or multi-bus
+    /// plugins that need more than the default 1+1).
+    bool canRemoveBus(bool isInput) const override { return configuringBuses; }
+    bool canAddBus(bool isInput) const override { return configuringBuses; }
+
     ///	Returns the length of the plugin's tail.
     double getTailLengthSeconds() const { return plugin->getTailLengthSeconds(); };
     ///	Returns true if the plugin wants MIDI input.
@@ -275,6 +290,9 @@ class BypassableInstance : public AudioPluginInstance
     /// Set to true after prepareToPlay completes. Prevents processBlock
     /// from calling into the plugin before it's ready.
     std::atomic<bool> prepared{false};
+
+    /// True during constructor while reconfiguring buses to match inner plugin.
+    bool configuringBuses = false;
 };
 
 #endif
