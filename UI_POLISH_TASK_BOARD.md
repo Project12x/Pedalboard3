@@ -1,4 +1,11 @@
-﻿# UI Polish Task Board (2-Week Sprint)
+# UI Polish Task Board (2-Week Sprint)
+> [!WARNING]
+> **Deprecated on 2026-02-13.**
+> This document is retained for historical context only.
+> Active UI polish planning has moved to `UI_POLISH_ROADMAP_UPGRADE.md`.
+
+> [!NOTE]
+> Completed baseline items from this board were folded into the upgrade roadmap and are not duplicated there.
 
 **Sprint:** UI Polish Sprint  
 **Dates:** Feb 9, 2026 to Feb 20, 2026  
@@ -222,3 +229,4 @@
 - Hidden behavior regressions if visual refactors touch command flow.
 
 Mitigation: keep daily PRs small, screenshot-backed, and test-gated.
+

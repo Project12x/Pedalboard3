@@ -1,4 +1,11 @@
-﻿# 2-Week UI Polish Implementation Plan (Handoff)
+# 2-Week UI Polish Implementation Plan (Handoff)
+> [!WARNING]
+> **Deprecated on 2026-02-13.**
+> This handoff is retained for historical context only.
+> Active UI polish planning has moved to `UI_POLISH_ROADMAP_UPGRADE.md`.
+
+> [!NOTE]
+> Historical sequencing from this file is incorporated into the upgrade roadmap.
 
 **Project:** Pedalboard3  
 **Window:** Monday, February 9, 2026 to Friday, February 20, 2026 (10 working days)  
@@ -250,3 +257,4 @@
 5. Cleanup + QA.
 
 This sequence minimizes rework and keeps visual decisions centralized.
+

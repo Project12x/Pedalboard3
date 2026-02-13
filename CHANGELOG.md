@@ -28,7 +28,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **FIFO Fallback Path** — `Mapping::updateParameter` retains a direct `setParameter` fallback when the FIFO is not wired (before `MainPanel` constructor runs). Guarded by `jassert` in debug builds. This is an init-order guard, not a runtime path.
 
 ### Added
-- **Effect Rack (SubGraphProcessor)** â€“ Nested plugin hosting within a single node
+- **Master Gain Controls** — RT-safe per-channel gain for Audio Input/Output nodes
+  - `MasterGainState` singleton with atomic gain values (dB) for up to 16 channels
+  - Gain applied in `MeteringProcessorPlayer::audioDeviceIOCallbackWithContext` (pre-graph for input, post-graph for output)
+  - Per-channel gain sliders on Audio I/O node components
+  - Master IN/OUT gain sliders in footer toolbar (responsive layout with breakpoints)
+  - Master IN/OUT gain sliders in Stage View (performance mode)
+  - All slider instances sync via `MasterGainState` atomics (~30fps timer)
+  - Double-click to reset to 0 dB; range -60 to +12 dB
+  - Gain persisted via `SettingsManager` across sessions
+- **Professional VU Meters** — Upgraded metering across all views
+  - Green-to-yellow-to-red horizontal gradient fill
+  - Peak hold indicators with ~2s hold then multiplicative decay
+  - dB scale tick marks at -48, -24, -12, -6, -3, 0 dB
+  - Glow/bloom effect when levels exceed -6 dB
+  - Thicker meter bars (8px on nodes, 10px in Stage View)
+  - Input metering via `SafetyLimiterProcessor::updateInputLevelsFromDevice`
+- **Effect Rack (SubGraphProcessor)** â€" Nested plugin hosting within a single node
   - `SubGraphProcessor` wraps internal `AudioProcessorGraph`
   - `SubGraphEditorComponent` provides rack editor UI with viewport/canvas
   - Available via right-click â†’ Pedalboard â†’ Effect Rack

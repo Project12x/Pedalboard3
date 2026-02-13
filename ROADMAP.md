@@ -141,6 +141,8 @@ A focused roadmap for current development. For historical completed phases, see 
 ## Phase 6: Stability & Polish
 
 ### 6A: Premium UI/UX Polish
+
+> Active execution plan: `UI_POLISH_ROADMAP_UPGRADE.md` (`UI_POLISH_TASK_BOARD.md` and `UI_POLISH_2_WEEK_HANDOFF.md` are deprecated).
 | # | Task | Status |
 |---|------|--------|
 | 6A.4 | blend2d vectors | Planned |
@@ -156,6 +158,8 @@ A focused roadmap for current development. For historical completed phases, see 
 | 6A.15 | Recent files quick access | Planned |
 | 6A.17 | CPU meter redesign | Planned |
 | 6A.18 | Plugin bypass visual feedback | Planned |
+| 6A.19 | Master gain controls (Audio I/O) | Done |
+| 6A.20 | Professional VU meters (gradient, peak hold, glow) | Done |
 
 ### 6B: Testing & Protection
 | # | Task | Status |
@@ -348,4 +352,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-13*
+

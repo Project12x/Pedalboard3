@@ -250,6 +250,8 @@ float display = level.load();
 | `SettingsManager` | **NEW** JSON-based settings (`settings.json`) |
 | `PropertiesSingleton` | ~~Legacy~~ (deprecated, being removed) |
 | `ColourScheme` | Current theme colors |
+| `MasterGainState` | Atomic per-channel gain (dB) for Audio I/O |
+| `SafetyLimiterProcessor` | Output/input level metering + safety limiting |
 
 ---
 
@@ -274,6 +276,60 @@ cmake -B build -G "Visual Studio 17 2022"
 # Build
 cmake --build build --config Release
 ```
+
+---
+
+## Master Gain and Metering Architecture
+
+### MasterGainState Singleton
+
+Thread-safe gain state shared between audio thread and all UI surfaces.
+
+```cpp
+class MasterGainState {
+public:
+    static constexpr int MaxChannels = 16;
+    std::atomic<float> inputChannelGainDb[MaxChannels];   // Per-channel, default 0
+    std::atomic<float> outputChannelGainDb[MaxChannels];
+    std::atomic<float> masterInputGainDb{0.0f};           // Master bus
+    std::atomic<float> masterOutputGainDb{0.0f};
+
+    float getInputGainLinear(int ch) const;   // Decibels::decibelsToGain
+    float getOutputGainLinear(int ch) const;
+    void loadFromSettings();  // SettingsManager on startup
+    void saveToSettings();    // SettingsManager on shutdown
+};
+```
+
+**Key files:** `MasterGainState.h`, `MasterGainState.cpp`
+
+### MeteringProcessorPlayer
+
+Subclasses `AudioProcessorPlayer` to apply gain and tap real device buffers.
+
+```text
+audioDeviceIOCallbackWithContext:
+  1. Read per-channel input gain from MasterGainState
+  2. Copy input to inputGainBuffer, scale by gain (inputChannelData is const)
+  3. Update input levels → SafetyLimiterProcessor::updateInputLevelsFromDevice
+  4. Call parent (graph processes)
+  5. Read per-channel output gain, scale output buffers in-place
+  6. Update output levels → SafetyLimiterProcessor::updateOutputLevelsFromDevice
+```
+
+**Key file:** `MainPanel.h` (inner class `MeteringProcessorPlayer`)
+
+### UI Slider Synchronization
+
+All gain slider instances read from `MasterGainState` atomics on their timers:
+
+| Surface | Timer | Rate | Guard |
+|---------|-------|------|-------|
+| PluginComponent | `timerUpdate()` | ~30fps | `!slider->isMouseButtonDown()` |
+| MainPanel footer | `CpuTimer` | ~10fps | `!slider->isMouseButtonDown()` |
+| StageView | `timerCallback()` | 30fps | `!slider->isMouseButtonDown()` |
+
+When a slider is dragged, it writes to `MasterGainState`. On next tick, all other sliders pick up the new value.
 
 ---
 
@@ -382,5 +438,5 @@ spdlog::default_logger()->flush();  // Force write before crash
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-13*
 
