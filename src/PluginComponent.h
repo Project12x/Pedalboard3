@@ -186,6 +186,10 @@ class PluginComponent : public Component,
     float cachedMeterLevels[16]{};
     /// Number of channels for cached meter levels
     int cachedMeterChannelCount{0};
+    /// Peak hold levels for VU meters (normalized 0.0-1.0)
+    float peakHoldLevels[16]{};
+    /// Peak hold countdown timers (frames remaining before decay)
+    int peakHoldCounters[16]{};
 
     /// Per-channel gain sliders for Audio I/O nodes
     OwnedArray<Slider> channelGainSliders;

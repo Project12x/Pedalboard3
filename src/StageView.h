@@ -81,6 +81,11 @@ class StageView : public Component, public Button::Listener, public Slider::List
     // Cached VU meter levels (stereo)
     float cachedInputLevels[2]{};
     float cachedOutputLevels[2]{};
+    // Peak hold for VU meters (normalized 0.0-1.0)
+    float peakHoldInput[2]{};
+    float peakHoldOutput[2]{};
+    int peakHoldInputCounters[2]{};
+    int peakHoldOutputCounters[2]{};
 
     // Drawing helpers
     void drawPatchDisplay(Graphics& g, Rectangle<float> bounds);

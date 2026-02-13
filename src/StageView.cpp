@@ -149,8 +149,45 @@ void StageView::timerCallback()
                 cachedOutputLevels[ch] = outLevel;
                 needsRepaint = true;
             }
+
+            // Update peak hold for input
+            float inDb = (inLevel > 0.001f) ? 20.0f * std::log10(inLevel) : -60.0f;
+            float inNorm = jlimit(0.0f, 1.0f, (inDb + 60.0f) / 60.0f);
+            if (inNorm >= peakHoldInput[ch])
+            {
+                peakHoldInput[ch] = inNorm;
+                peakHoldInputCounters[ch] = 60;
+            }
+            else if (peakHoldInputCounters[ch] > 0)
+                --peakHoldInputCounters[ch];
+            else
+            {
+                peakHoldInput[ch] *= 0.92f;
+                if (peakHoldInput[ch] < 0.01f) peakHoldInput[ch] = 0.0f;
+            }
+
+            // Update peak hold for output
+            float outDb = (outLevel > 0.001f) ? 20.0f * std::log10(outLevel) : -60.0f;
+            float outNorm = jlimit(0.0f, 1.0f, (outDb + 60.0f) / 60.0f);
+            if (outNorm >= peakHoldOutput[ch])
+            {
+                peakHoldOutput[ch] = outNorm;
+                peakHoldOutputCounters[ch] = 60;
+            }
+            else if (peakHoldOutputCounters[ch] > 0)
+                --peakHoldOutputCounters[ch];
+            else
+            {
+                peakHoldOutput[ch] *= 0.92f;
+                if (peakHoldOutput[ch] < 0.01f) peakHoldOutput[ch] = 0.0f;
+            }
         }
     }
+
+    // Always repaint if peak hold indicators are active
+    if (peakHoldInput[0] > 0.0f || peakHoldInput[1] > 0.0f ||
+        peakHoldOutput[0] > 0.0f || peakHoldOutput[1] > 0.0f)
+        needsRepaint = true;
 
     // Sync master gain sliders from MasterGainState (when not being dragged)
     {
@@ -206,17 +243,22 @@ void StageView::paint(Graphics& g)
     {
         auto& fonts = FontManager::getInstance();
         float footerY = (float)getHeight() - footerHeight;
-        float meterH = 8.0f;
+        float meterH = 10.0f;
         float meterW = 140.0f;
         float labelW = 40.0f;
         float startX = 30.0f;
 
-        // Helper lambda to draw a stereo VU meter
-        auto drawVU = [&](float x, float y, const String& label, float level0, float level1)
+        const Colour colGreen(0xFF00E676);
+        const Colour colYellow(0xFFFFEB3B);
+        const Colour colRed(0xFFFF5252);
+
+        // Helper lambda to draw a stereo VU meter with gradient, peak hold, glow, and tick marks
+        auto drawVU = [&](float x, float y, const String& label, float level0, float level1,
+                          const float* peakHold, const int* peakCounters)
         {
             g.setColour(Colours::white.withAlpha(0.6f));
             g.setFont(fonts.getUIFont(14.0f, true));
-            g.drawText(label, x, y, labelW, 28.0f, Justification::centredRight);
+            g.drawText(label, x, y, labelW, 32.0f, Justification::centredRight);
 
             for (int ch = 0; ch < 2; ++ch)
             {
@@ -224,7 +266,6 @@ void StageView::paint(Graphics& g)
                 float my = y + ch * (meterH + 4.0f) + 4.0f;
                 float mx = x + labelW + 6.0f;
 
-                // Convert to dB scale
                 float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
                 float normalized = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
 
@@ -232,26 +273,62 @@ void StageView::paint(Graphics& g)
                 g.setColour(Colour(0xFF2a2a3e));
                 g.fillRoundedRectangle(mx, my, meterW, meterH, 3.0f);
 
-                // Level bar
+                // Gradient-filled level bar
                 if (normalized > 0.0f)
                 {
-                    Colour barColour;
-                    if (level >= 1.0f)
-                        barColour = Colour(0xFFFF5252);
-                    else if (normalized > 0.75f)
-                        barColour = Colour(0xFFFFEB3B);
-                    else
-                        barColour = Colour(0xFF00E676);
+                    float barWidth = meterW * normalized;
 
-                    g.setColour(barColour);
-                    g.fillRoundedRectangle(mx, my, meterW * normalized, meterH, 3.0f);
+                    // Glow effect when hot
+                    if (normalized > 0.9f)
+                    {
+                        float glowAlpha = (normalized - 0.9f) * 3.0f;
+                        Colour glowCol = (level >= 1.0f)
+                            ? colRed.withAlpha(glowAlpha)
+                            : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                        g.setColour(glowCol);
+                        g.fillRoundedRectangle(mx - 1.0f, my - 1.0f, barWidth + 2.0f, meterH + 2.0f, 4.0f);
+                    }
+
+                    // Green-to-yellow-to-red gradient
+                    ColourGradient gradient(colGreen, mx, my, colRed, mx + meterW, my, false);
+                    gradient.addColour(0.65, colYellow);
+                    g.setGradientFill(gradient);
+
+                    g.saveState();
+                    g.reduceClipRegion(Rectangle<int>((int)mx, (int)my, (int)(barWidth + 1.0f), (int)(meterH + 1.0f)));
+                    g.fillRoundedRectangle(mx, my, meterW, meterH, 3.0f);
+                    g.restoreState();
+                }
+
+                // Peak hold indicator
+                if (peakHold[ch] > 0.01f)
+                {
+                    float peakX = mx + meterW * peakHold[ch];
+                    Colour peakCol = (peakHold[ch] > 0.95f) ? colRed
+                                   : (peakHold[ch] > 0.65f) ? colYellow
+                                   : colGreen.brighter(0.3f);
+                    float alpha = (peakCounters[ch] > 0) ? 1.0f : jmax(0.3f, peakHold[ch]);
+                    g.setColour(peakCol.withAlpha(alpha));
+                    g.fillRect(peakX - 1.5f, my, 3.0f, meterH);
+                }
+
+                // dB scale tick marks
+                g.setColour(Colours::white.withAlpha(0.12f));
+                const float dbMarks[] = { -48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f };
+                for (float db : dbMarks)
+                {
+                    float tickNorm = (db + 60.0f) / 60.0f;
+                    float tickX = mx + meterW * tickNorm;
+                    g.drawVerticalLine((int)tickX, my, my + meterH);
                 }
             }
         };
 
-        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1]);
+        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1],
+               peakHoldInput, peakHoldInputCounters);
         drawVU(startX + labelW + meterW + 30.0f + 160.0f, footerY + 4.0f, "OUT",
-               cachedOutputLevels[0], cachedOutputLevels[1]);
+               cachedOutputLevels[0], cachedOutputLevels[1],
+               peakHoldOutput, peakHoldOutputCounters);
     }
 }
 

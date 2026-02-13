@@ -368,59 +368,87 @@ void PluginComponent::paint(Graphics& g)
     // Draw horizontal VU meters for Audio I/O nodes (full width)
     if (isAudioIONode() && cachedMeterChannelCount > 0)
     {
-        const float pinMargin = 22.0f;    // Space for pin on one side
-        const float edgeMargin = 8.0f;    // Space on the other side
-        const float meterWidth = w - pinMargin - edgeMargin;  // Full width minus margins
-        const float meterHeight = 6.0f;   // Compact height per channel
-        const float meterStartY = 32.0f;  // Below device name subtitle
-        const float pinSpacing = 36.0f;   // Match Audio I/O pin spacing
+        const float pinMargin = 22.0f;
+        const float edgeMargin = 8.0f;
+        const float meterWidth = w - pinMargin - edgeMargin;
+        const float meterHeight = 8.0f;
+        const float meterStartY = 32.0f;
+        const float pinSpacing = 36.0f;
 
         for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
         {
             float level = cachedMeterLevels[ch];
-
-            // Convert linear to normalized dB scale (-60 to 0 dB)
             float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
             float normalizedLevel = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
 
-            // Position meter - full width horizontal bars
-            float x, y;
-            if (pluginName == "Audio Input")
-            {
-                // Output pins are on the right, meter starts from left edge
-                x = edgeMargin;
-                y = meterStartY + ch * pinSpacing;
-            }
-            else // Audio Output
-            {
-                // Input pins are on the left, meter starts after pin
-                x = pinMargin;
-                y = meterStartY + ch * pinSpacing;
-            }
+            float mx = (pluginName == "Audio Input") ? edgeMargin : pinMargin;
+            float my = meterStartY + ch * pinSpacing;
 
-            // Meter background (dark track)
+            // Meter background
             g.setColour(colours["Plugin Background"].darker(0.5f));
-            g.fillRoundedRectangle(x, y, meterWidth, meterHeight, 2.0f);
+            g.fillRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f);
 
-            // Meter bar with gradient color based on level (horizontal fill)
+            // Gradient-filled meter bar
             if (normalizedLevel > 0.0f)
             {
                 float barWidth = meterWidth * normalizedLevel;
-                Colour barColour;
-                if (level >= 1.0f)
-                    barColour = colours["VU Meter Over Colour"];
-                else if (normalizedLevel > 0.75f)
-                    barColour = colours["VU Meter Upper Colour"];
-                else
-                    barColour = colours["VU Meter Lower Colour"];
 
-                g.setColour(barColour);
-                g.fillRoundedRectangle(x, y, barWidth, meterHeight, 2.0f);
+                // Glow effect when level is hot (> -6 dB = 0.9 normalized)
+                if (normalizedLevel > 0.9f)
+                {
+                    float glowAlpha = (normalizedLevel - 0.9f) * 3.0f; // 0 to 0.3
+                    Colour glowColour = (level >= 1.0f)
+                        ? Colours::red.withAlpha(glowAlpha)
+                        : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                    g.setColour(glowColour);
+                    g.fillRoundedRectangle(mx - 1.0f, my - 1.0f, barWidth + 2.0f, meterHeight + 2.0f, 3.0f);
+                }
+
+                // Green-to-yellow-to-red gradient across full meter width
+                ColourGradient gradient(
+                    colours["VU Meter Lower Colour"], mx, my,
+                    colours["VU Meter Over Colour"], mx + meterWidth, my, false);
+                gradient.addColour(0.65, colours["VU Meter Upper Colour"]);
+                g.setGradientFill(gradient);
+
+                // Clip to actual level width
+                g.saveState();
+                g.reduceClipRegion(Rectangle<int>((int)mx, (int)my, (int)(barWidth + 1.0f), (int)(meterHeight + 1.0f)));
+                g.fillRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f);
+                g.restoreState();
             }
 
-            // Subtle border for definition
+            // Peak hold indicator
+            if (peakHoldLevels[ch] > 0.01f)
+            {
+                float peakX = mx + meterWidth * peakHoldLevels[ch];
+                // Color based on peak position
+                Colour peakColour;
+                if (peakHoldLevels[ch] > 0.95f)
+                    peakColour = colours["VU Meter Over Colour"];
+                else if (peakHoldLevels[ch] > 0.65f)
+                    peakColour = colours["VU Meter Upper Colour"];
+                else
+                    peakColour = colours["VU Meter Lower Colour"].brighter(0.3f);
+
+                float alpha = (peakHoldCounters[ch] > 0) ? 1.0f : jmax(0.3f, peakHoldLevels[ch]);
+                g.setColour(peakColour.withAlpha(alpha));
+                g.fillRect(peakX - 1.0f, my, 2.0f, meterHeight);
+            }
+
+            // dB scale tick marks
+            g.setColour(colours["Plugin Border"].withAlpha(0.25f));
+            const float dbMarks[] = { -48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f };
+            for (float db : dbMarks)
+            {
+                float tickNorm = (db + 60.0f) / 60.0f;
+                float tickX = mx + meterWidth * tickNorm;
+                g.drawVerticalLine((int)tickX, my, my + meterHeight);
+            }
+
+            // Border
             g.setColour(colours["Plugin Border"].withAlpha(0.3f));
-            g.drawRoundedRectangle(x, y, meterWidth, meterHeight, 2.0f, 0.5f);
+            g.drawRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f, 0.5f);
         }
     }
 }
@@ -462,7 +490,33 @@ void PluginComponent::timerUpdate()
         }
 
         cachedMeterChannelCount = numChannels;
-        if (needsRepaint)
+
+        // Update peak hold indicators
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            float levelDb = (cachedMeterLevels[ch] > 0.001f)
+                ? 20.0f * std::log10(cachedMeterLevels[ch]) : -60.0f;
+            float normalized = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
+
+            if (normalized >= peakHoldLevels[ch])
+            {
+                peakHoldLevels[ch] = normalized;
+                peakHoldCounters[ch] = 60; // Hold for ~2 seconds at 30fps
+            }
+            else if (peakHoldCounters[ch] > 0)
+            {
+                --peakHoldCounters[ch];
+            }
+            else
+            {
+                // Decay peak hold after hold period
+                peakHoldLevels[ch] *= 0.92f;
+                if (peakHoldLevels[ch] < 0.01f)
+                    peakHoldLevels[ch] = 0.0f;
+            }
+        }
+
+        if (needsRepaint || peakHoldLevels[0] > 0.0f || peakHoldLevels[1] > 0.0f)
             repaint();
 
         // Sync per-channel gain sliders from MasterGainState (when not being dragged)
