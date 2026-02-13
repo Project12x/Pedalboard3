@@ -337,7 +337,7 @@ void PluginField::loadFromXml(XmlElement* patch)
             {
                 String tempstr = comp->getNode()->getProcessor()->getName();
 
-                if (tempstr == "Midi Input")
+                if (tempstr == "MIDI Input")
                     midiInput = comp->getParamPin(0);
                 else if (tempstr == "OSC Input")
                     oscInput = comp->getParamPin(0);
@@ -523,7 +523,7 @@ void PluginField::clear()
 
             for (i = 0; i < signalPath->getNumFilters(); ++i)
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+                if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
                     midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
                 else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
                 {

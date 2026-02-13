@@ -92,7 +92,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
             for (i = 0; i < signalPath->getNumFilters(); ++i)
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+                if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
                     midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
                 else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
                 {
@@ -512,31 +512,35 @@ void PluginField::mouseUp(const MouseEvent& e)
 //------------------------------------------------------------------------------
 void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
 {
-    // Zoom with scroll wheel
-    float zoomDelta = wheel.deltaY * 0.1f;
-    float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
-
-    if (newZoom != zoomLevel)
+    // Ctrl+wheel = zoom, plain wheel = scroll via viewport
+    if (e.mods.isCtrlDown())
     {
-        // Get mouse position relative to this component for zoom centering
-        auto mousePos = e.getPosition();
+        float zoomDelta = wheel.deltaY * 0.1f;
+        float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
 
-        // Calculate the point we're zooming towards in unscaled coordinates
-        float scaleRatio = newZoom / zoomLevel;
-
-        zoomLevel = newZoom;
-        setTransform(AffineTransform::scale(zoomLevel));
-
-        // Adjust viewport to zoom towards mouse position
-        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        if (newZoom != zoomLevel)
         {
-            auto currentPos = viewport->getViewPosition();
-            int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
-            int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
-            viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
-        }
+            auto mousePos = e.getPosition();
+            float scaleRatio = newZoom / zoomLevel;
 
-        repaint();
+            zoomLevel = newZoom;
+            setTransform(AffineTransform::scale(zoomLevel));
+
+            if (auto* viewport = findParentComponentOfClass<Viewport>())
+            {
+                auto currentPos = viewport->getViewPosition();
+                int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
+                int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
+                viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
+            }
+
+            repaint();
+        }
+    }
+    else
+    {
+        // Pass to parent for viewport scrolling
+        Component::mouseWheelMove(e, wheel);
     }
 }
 
@@ -545,13 +549,13 @@ void PluginField::fitToScreen()
 {
     if (auto* viewport = findParentComponentOfClass<Viewport>())
     {
-        // Find bounding box of all visible nodes
+        // Find bounding box of plugin nodes only (not connections or other children)
         Rectangle<int> bounds;
         bool first = true;
 
         for (int i = 0; i < getNumChildComponents(); ++i)
         {
-            if (auto* comp = getChildComponent(i))
+            if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
             {
                 if (first)
                 {
@@ -565,26 +569,39 @@ void PluginField::fitToScreen()
             }
         }
 
-        if (!first && !bounds.isEmpty())
+        float viewWidth = static_cast<float>(viewport->getViewWidth());
+        float viewHeight = static_cast<float>(viewport->getViewHeight());
+
+        if (!first && !bounds.isEmpty() && viewWidth > 0 && viewHeight > 0)
         {
             // Add padding
             bounds = bounds.expanded(50);
 
-            // Calculate zoom to fit
-            float viewWidth = static_cast<float>(viewport->getViewWidth());
-            float viewHeight = static_cast<float>(viewport->getViewHeight());
             float boundsWidth = static_cast<float>(bounds.getWidth());
             float boundsHeight = static_cast<float>(bounds.getHeight());
 
             float zoomToFit = jmin(viewWidth / boundsWidth, viewHeight / boundsHeight);
             zoomLevel = jlimit(minZoom, maxZoom, zoomToFit);
 
-            setTransform(AffineTransform::scale(zoomLevel));
-
             // Center the view on the nodes
-            int centeredX = static_cast<int>(bounds.getCentreX() * zoomLevel - viewWidth / 2);
-            int centeredY = static_cast<int>(bounds.getCentreY() * zoomLevel - viewHeight / 2);
-            viewport->setViewPosition(jmax(0, centeredX), jmax(0, centeredY));
+            int centeredX = jmax(0, static_cast<int>(bounds.getCentreX() * zoomLevel - viewWidth / 2));
+            int centeredY = jmax(0, static_cast<int>(bounds.getCentreY() * zoomLevel - viewHeight / 2));
+
+            // Ensure the field is large enough that the viewport can scroll to
+            // the centered position. Without this, the viewport clamps setViewPosition
+            // because the field's visual size (field * zoom) is too small.
+            int requiredW = static_cast<int>((centeredX + viewWidth) / zoomLevel) + 1;
+            int requiredH = static_cast<int>((centeredY + viewHeight) / zoomLevel) + 1;
+            if (requiredW > getWidth() || requiredH > getHeight())
+                setSize(jmax(getWidth(), requiredW), jmax(getHeight(), requiredH));
+
+            setTransform(AffineTransform::scale(zoomLevel));
+            viewport->setViewPosition(centeredX, centeredY);
+
+            spdlog::debug("[fitToScreen] bounds=({},{} {}x{}) view={}x{} zoom={:.2f} field={}x{} scroll=({},{})",
+                          bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
+                          (int)viewWidth, (int)viewHeight, zoomLevel,
+                          getWidth(), getHeight(), centeredX, centeredY);
 
             repaint();
         }
@@ -598,14 +615,20 @@ void PluginField::changeListenerCallback(ChangeBroadcaster* source)
 
     if (pluginComp)
     {
+        // Ensure the field extends well beyond the node edges so the viewport
+        // has room to scroll/center without hitting the boundary.
+        const int padding = 500;
         Point<int> fieldSize(getWidth(), getHeight());
         Point<int> pluginPos = pluginComp->getPosition();
         Point<int> pluginSize(pluginComp->getWidth(), pluginComp->getHeight());
 
-        if ((pluginPos.getX() + pluginSize.getX()) > fieldSize.getX())
-            fieldSize.setX((pluginPos.getX() + pluginSize.getX()));
-        if ((pluginPos.getY() + pluginSize.getY()) > fieldSize.getY())
-            fieldSize.setY((pluginPos.getY() + pluginSize.getY()));
+        int neededW = pluginPos.getX() + pluginSize.getX() + padding;
+        int neededH = pluginPos.getY() + pluginSize.getY() + padding;
+
+        if (neededW > fieldSize.getX())
+            fieldSize.setX(neededW);
+        if (neededH > fieldSize.getY())
+            fieldSize.setY(neededH);
 
         setSize(fieldSize.getX(), fieldSize.getY());
         repaint();
@@ -853,7 +876,7 @@ void PluginField::enableMidiInput(bool val)
         for (i = (getNumChildComponents() - 1); i >= 0; --i)
         {
             PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "Midi Input")
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "MIDI Input")
             {
                 delete removeChildComponent(i);
             }
@@ -862,7 +885,7 @@ void PluginField::enableMidiInput(bool val)
         // Now delete the Midi Input filter from signal path
         for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
         {
-            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+            if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
             {
                 deleteFilter(signalPath->getNode(i).get());
             }
@@ -883,7 +906,7 @@ void PluginField::enableMidiInput(bool val)
         bool midiInputExists = false;
         for (i = 0; i < signalPath->getNumFilters(); ++i)
         {
-            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+            if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
             {
                 midiInputExists = true;
                 break;
@@ -895,8 +918,8 @@ void PluginField::enableMidiInput(bool val)
             InternalPluginFormat internalFormat;
 
             // Add the filter to the signal path.
-            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f,
-                                  120.0f);
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 540.0f,
+                                  760.0f);
 
             // Add the associated PluginComponent.
             addFilter(signalPath->getNumFilters() - 1);
@@ -917,7 +940,7 @@ void PluginField::enableMidiInput(bool val)
 
                     for (i = 0; i < signalPath->getNumFilters(); ++i)
                     {
-                        if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+                        if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
                             midiInput = signalPath->getNode(i)->nodeID;
                         else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
                         {
@@ -1335,7 +1358,7 @@ void PluginField::deleteConnection()
 
                     // It's a Midi connection, so delete any associated Midi
                     // mappings for the destination plugin.
-                    if (tempstr == "Midi Input")
+                    if (tempstr == "MIDI Input")
                     {
                         multimap<uint32, Mapping*>::iterator it;
 
@@ -1390,7 +1413,7 @@ void PluginField::enableMidiForNode(AudioProcessorGraph::Node* node, bool val)
     {
         auto midiInputNode = signalPath->getNode(i);
 
-        if (midiInputNode->getProcessor()->getName() == "Midi Input")
+        if (midiInputNode->getProcessor()->getName() == "MIDI Input")
         {
             midiInput = midiInputNode.get();
             break;
@@ -1399,7 +1422,7 @@ void PluginField::enableMidiForNode(AudioProcessorGraph::Node* node, bool val)
     // Just in case.
     if (midiInput)
     {
-        if (midiInput->getProcessor()->getName() != "Midi Input")
+        if (midiInput->getProcessor()->getName() != "MIDI Input")
             return;
     }
     else
@@ -1433,7 +1456,7 @@ bool PluginField::getMidiEnabledForNode(AudioProcessorGraph::Node* node) const
     {
         auto midiInputNode = signalPath->getNode(i);
 
-        if (midiInputNode->getProcessor()->getName() == "Midi Input")
+        if (midiInputNode->getProcessor()->getName() == "MIDI Input")
         {
             midiInput = midiInputNode.get();
             break;

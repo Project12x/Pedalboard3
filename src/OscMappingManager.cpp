@@ -441,7 +441,12 @@ StringArray OscMappingManager::getReceivedAddresses() const
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-OscInput::OscInput() {}
+OscInput::OscInput()
+{
+    // Configure as no-audio, no-MIDI: remove default stereo buses
+    AudioProcessor::BusesLayout emptyLayout;
+    setBusesLayout(emptyLayout);
+}
 
 //------------------------------------------------------------------------------
 OscInput::~OscInput() {}

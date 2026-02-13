@@ -6,31 +6,45 @@
 
 ## Current Focus: Phase 6 - Stability & Polish
 
-**Status:** 🚀 In Progress  
-**Last Updated:** 2026-02-05
+**Status:** In Progress
+**Last Updated:** 2026-02-11
 
 ### Phase 6 Progress
 
 **Plugin Scan Protection (Complete):**
-- ✅ PluginBlacklist singleton with SettingsManager persistence
-- ✅ CrashProtection with SEH wrappers and Watchdog thread
-- ✅ FilterGraph integration (blocks blacklisted plugins at load)
-- ✅ BlacklistWindow UI for manual management (Options → Plugin Blacklist)
-- ✅ Out-of-process scanner (Complete)
-- ⏳ Timeout logic for hung scans (pending)
+- Done: PluginBlacklist singleton with SettingsManager persistence
+- Done: CrashProtection with SEH wrappers and Watchdog thread
+- Done: FilterGraph integration (blocks blacklisted plugins at load)
+- Done: BlacklistWindow UI for manual management (Options > Plugin Blacklist)
+- Done: Out-of-process scanner (Complete)
+- Pending: Timeout logic for hung scans
 
 **Monolith Sharding (Complete):**
-- ✅ PedalboardProcessors.cpp → 7 files
-- ✅ PedalboardProcessorEditors.cpp → 6 files
-- ✅ PluginField.cpp → extracted persistence
-- ✅ PluginComponent.cpp → extracted connections
+- Done: PedalboardProcessors.cpp split into 7 files
+- Done: PedalboardProcessorEditors.cpp split into 6 files
+- Done: PluginField.cpp extracted persistence
+- Done: PluginComponent.cpp extracted connections
+
+**Infrastructure Node Polish (Complete):**
+- Done: JUCE 8 "MIDI Input" name mismatch fixed across codebase
+- Done: MIDI Input and Virtual MIDI Input nodes sized identically
+- Done: Virtual MIDI Input: removed edit/bypass/mappings buttons
+- Done: OSC Input: removed spurious audio/MIDI pins
+- Done: Default node positions updated to centered layout
+- Done: Node positions no longer overwritten by device changes
+
+**Canvas & Viewport (Complete):**
+- Done: Fit-to-screen properly centers nodes on startup
+- Done: PluginField sized with padding for smooth viewport scrolling
+- Done: Ctrl+wheel zoom, plain wheel scroll
+- Done: fitToScreen excludes connection objects from bounding box
 
 ### Previous Wins (Feb 2026)
 
-- ✅ **Effect Rack Feature Complete** - Phase 5Q milestone achieved
-- ✅ **OSC Position Persistence** - Fixed node drift on patch load
-- ✅ **Southwest Cable Fix** - Two-Phase Transform pattern
-- ✅ **Sub-Graph Connection Fix** - Clear before restore pattern
+- Done: **Effect Rack Feature Complete** - Phase 5Q milestone achieved
+- Done: **OSC Position Persistence** - Fixed node drift on patch load
+- Done: **Southwest Cable Fix** - Two-Phase Transform pattern
+- Done: **Sub-Graph Connection Fix** - Clear before restore pattern
 
 ---
 
@@ -98,4 +112,4 @@
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-11*

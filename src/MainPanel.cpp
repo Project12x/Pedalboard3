@@ -505,6 +505,14 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
             commandManager->invokeDirectly(FileNew, true);
     }
 
+    // Defer fitToScreen until after the message loop processes all pending
+    // resize/layout events so the viewport has its final dimensions.
+    MessageManager::callAsync([this]()
+    {
+        if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+            pluginField->fitToScreen();
+    });
+
     // Set up crash protection auto-save callback
     CrashProtection::getInstance().setAutoSaveCallback(
         [this]()

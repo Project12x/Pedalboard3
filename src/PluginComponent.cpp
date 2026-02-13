@@ -165,8 +165,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
         titleLabel->setBounds(18, 3, getWidth() - 23, 20);
 
-    if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
-        (pluginName != "OSC Input"))
+    if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
+        (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
         std::unique_ptr<Drawable> closeUp(
             JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbutton_svg, Vectors::closefilterbutton_svgSize));
@@ -381,8 +381,9 @@ void PluginComponent::paint(Graphics& g)
     g.fillRect(3.0f, headerHeight + 2.0f, w - 6.0f, 1.0f);
 
     // === FOOTER SEPARATOR (above edit/bypass buttons) ===
-    if ((pluginName != "Audio Input") && (pluginName != "Midi Input") &&
-        (pluginName != "Audio Output") && (pluginName != "OSC Input"))
+    if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") &&
+        (pluginName != "Audio Output") && (pluginName != "OSC Input") &&
+        (pluginName != "Virtual MIDI Input"))
     {
         float footerY = h - 36.0f;
         g.setColour(colours["Plugin Border"].withAlpha(0.4f));
@@ -988,8 +989,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     nameWidth = bounds.getWidth();
 
     // Add on space for the close button if necessary.
-    if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
-        (pluginName != "OSC Input"))
+    if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
+        (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
         nameWidth += 20.0f;
     }
@@ -1182,7 +1183,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         if (proc && minH < procH + 60.0f)
             minH = procH + 60.0f;
 
-        if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
+        if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
             h = (int)minH;
@@ -1190,7 +1191,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         else if (proc)
             h = (int)minH;
 
-        if ((pluginName != "Audio Input") && (pluginName != "Midi Input") && (pluginName != "Audio Output") &&
+        if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
             h = jmax((int)minH, h + 70);
@@ -1210,6 +1211,19 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             w = (int)(compSize.getX() + 24.0f);
 
         h = compSize.getY() + 52;
+    }
+
+    // Enforce matching size for MIDI input node pair
+    if (pluginName == "MIDI Input" || pluginName == "Virtual MIDI Input")
+    {
+        // Compute common width from the longer name so both nodes are identical
+        Font midiFont = FontManager::getInstance().getUIFont(15.0f, true);
+        int refWidth = (int)(midiFont.getStringWidthFloat("Virtual MIDI Input") + 40.0f);
+        spdlog::info("[determineSize] '{}': w={} h={} refWidth={} nameWidth={:.1f}",
+                     pluginName.toStdString(), w, h, refWidth, nameWidth);
+        w = jmax(w, refWidth);
+        h = 92;
+        spdlog::info("[determineSize] '{}': FINAL w={} h={}", pluginName.toStdString(), w, h);
     }
 
     if (onlyUpdateWidth)

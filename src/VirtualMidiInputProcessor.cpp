@@ -86,10 +86,10 @@ void VirtualMidiInputProcessor::addMidiMessage(const MidiMessage& msg)
 //==============================================================================
 Component* VirtualMidiInputProcessor::getControls()
 {
-    // Simple label indicating this receives from virtual keyboard
     auto* label = new Label("info", "Virtual Keyboard");
-    label->setJustificationType(Justification::centred);
-    label->setColour(Label::textColourId, Colours::white);
+    label->setJustificationType(Justification::centredRight);
+    label->setFont(Font(FontOptions().withHeight(11.0f)));
+    label->setColour(Label::textColourId, Colours::white.withAlpha(0.7f));
     return label;
 }
 

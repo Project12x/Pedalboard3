@@ -72,16 +72,26 @@ Infrastructure nodes are excluded from:
 ### PluginField (Canvas)
 
 Component that displays and allows editing of the plugin graph.
+
 - Manages `PluginComponent` children (one per node)
 - Handles drag-and-drop plugin loading
 - Draws connection cables
+- Lives inside a `Viewport` in `MainPanel`
+
+**Canvas sizing:** The PluginField must always be larger than the bounding box of all nodes, with generous padding (500px). Without this, the Viewport cannot scroll to center content or reach nodes near the edges. `changeListenerCallback()` grows the field as nodes are added/moved. `fitToScreen()` also ensures the field is large enough before setting the scroll position.
+
+**Zoom:** `zoomLevel` is applied via `setTransform(AffineTransform::scale(zoomLevel))`. Ctrl+wheel zooms, plain wheel scrolls. `fitToScreen()` computes the zoom to fit all `PluginComponent` instances (excluding connections and hidden nodes) with 50px padding.
+
+**Infrastructure node exclusion pattern:** Several places in `PluginComponent` and `PluginField` check node names to exclude infrastructure nodes from buttons, sizing, and UI features. The canonical set is: `"Audio Input"`, `"Audio Output"`, `"MIDI Input"`, `"Virtual MIDI Input"`, `"OSC Input"`. Note: JUCE 8 uses `"MIDI Input"` (all caps), not `"Midi Input"`.
 
 ### PluginComponent (Plugin Node)
 
 UI for a single plugin in the graph.
+
 - Shows plugin name, bypass button
 - Connection pins for audio/MIDI
 - Opens plugin editor on double-click
+- Per-channel gain sliders and VU meters on Audio I/O nodes
 
 ---
 
@@ -438,5 +448,5 @@ spdlog::default_logger()->flush();  // Force write before crash
 
 ---
 
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-11*
 

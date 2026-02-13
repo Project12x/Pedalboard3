@@ -235,6 +235,11 @@ class OscInput : public AudioPluginInstance
 	bool silenceInProducesSilenceOut() const {return true;};
 	///	Returns the length of the plugin's tail.
 	double getTailLengthSeconds() const {return 0.0;};
+	///	No audio buses.
+	bool isBusesLayoutSupported(const AudioProcessor::BusesLayout& layouts) const override
+	{
+		return layouts.getMainInputChannels() == 0 && layouts.getMainOutputChannels() == 0;
+	}
 	///	We don't want any Midi input.
 	bool acceptsMidi() const {return false;};
 	///	And we don't need to output it.
