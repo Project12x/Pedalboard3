@@ -1335,6 +1335,7 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(false, uid, i, false, largePin);
+        pin->setTooltip(getInputChannelNameSafe(plugin, i));
         pinPos.setXY(pinXOffset, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
@@ -1351,6 +1352,7 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(false, uid, AudioProcessorGraph::midiChannelIndex, true);
+        pin->setTooltip("MIDI In");
         pinPos.setXY(-8, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
@@ -1366,6 +1368,7 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(true, uid, i, false, largePin);
+        pin->setTooltip(getOutputChannelNameSafe(plugin, i));
         pinPos.setXY(pinXOffsetRight, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
@@ -1380,6 +1383,7 @@ void PluginComponent::createPins()
         Point<int> pinPos;
 
         pin = new PluginPinComponent(true, uid, AudioProcessorGraph::midiChannelIndex, true);
+        pin->setTooltip("MIDI Out");
         pinPos.setXY(getWidth() - 6, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);

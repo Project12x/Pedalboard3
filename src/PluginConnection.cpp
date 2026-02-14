@@ -219,6 +219,9 @@ void PluginConnection::setDestination(PluginPinComponent* d)
     if (destination)
         ((PluginComponent*)destination->getParentComponent())->addChangeListener(this);
 
+    if (source && destination)
+        setTooltip(String(paramCon ? "MIDI" : "Audio") + " connection");
+
     if (source && destination && parentCanvas)
     {
         Point<int> sourcePoint(source->getX() + 7, source->getY() + 8);

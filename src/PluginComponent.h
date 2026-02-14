@@ -201,7 +201,7 @@ class PluginComponent : public Component,
 
 //------------------------------------------------------------------------------
 ///	Component representing an input or output pin for a plugin.
-class PluginPinComponent : public Component
+class PluginPinComponent : public Component, public SettableTooltipClient
 {
   public:
     ///	Constructor.
@@ -293,7 +293,7 @@ class PluginEditorWindow : public DocumentWindow
 
 //------------------------------------------------------------------------------
 ///	Component representing a connection between two plugins.
-class PluginConnection : public Component, public ChangeListener
+class PluginConnection : public Component, public ChangeListener, public SettableTooltipClient
 {
   public:
     ///	Constructor.
