@@ -300,6 +300,11 @@ void PluginComponent::paint(Graphics& g)
     float h = (float)getHeight();
     const float cornerRadius = 8.0f;
 
+    // === DROP SHADOW (melatonin_blur, cached per path bounds) ===
+    Path nodePath;
+    nodePath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
+    nodeShadow.render(g, nodePath);
+
     // === MAIN FILL (gradient for premium feel) ===
     Colour bgTop = colours["Plugin Background"].brighter(0.08f);
     Colour bgBottom = colours["Plugin Background"].darker(0.08f);
@@ -432,12 +437,14 @@ void PluginComponent::paint(Graphics& g)
                 // Glow effect when level is hot (> -6 dB = 0.9 normalized)
                 if (normalizedLevel > 0.9f)
                 {
-                    float glowAlpha = (normalizedLevel - 0.9f) * 3.0f; // 0 to 0.3
+                    float glowAlpha = jlimit(0.0f, 1.0f, (normalizedLevel - 0.9f) * 3.0f);
                     Colour glowColour = (level >= 1.0f)
                         ? Colours::red.withAlpha(glowAlpha)
                         : Colours::orange.withAlpha(glowAlpha * 0.7f);
-                    g.setColour(glowColour);
-                    g.fillRoundedRectangle(mx - 1.0f, my - 1.0f, barWidth + 2.0f, meterHeight + 2.0f, 3.0f);
+                    Path meterBar;
+                    meterBar.addRoundedRectangle(mx, my, barWidth, meterHeight, 2.0f);
+                    melatonin::DropShadow meterGlow{glowColour, 6, {0, 0}};
+                    meterGlow.render(g, meterBar);
                 }
 
                 // Green-to-yellow-to-red gradient across full meter width
@@ -1388,6 +1395,8 @@ void PluginComponent::createPins()
 PluginPinComponent::PluginPinComponent(bool dir, uint32 id, int chan, bool param, bool large)
     : Component(), direction(dir), uid(id), channel(chan), parameterPin(param), largePin(large)
 {
+    setRepaintsOnMouseActivity(true);
+
     if (largePin)
         setSize(18, 20); // Larger pins for Audio I/O nodes
     else
@@ -1409,6 +1418,15 @@ void PluginPinComponent::paint(Graphics& g)
     // Get base color
     Colour baseColour = parameterPin ? ColourScheme::getInstance().colours["Parameter Connection"]
                                      : ColourScheme::getInstance().colours["Audio Connection"];
+
+    // === Hover glow (melatonin_blur) ===
+    if (isMouseOver())
+    {
+        Path pinCircle;
+        pinCircle.addEllipse(0.0f, 0.0f, (float)getWidth(), (float)getHeight());
+        melatonin::DropShadow pinGlow{baseColour.withAlpha(0.6f), 6, {0, 0}};
+        pinGlow.render(g, pinCircle);
+    }
 
     // === 3D Gradient sphere effect ===
     ColourGradient sphereGrad(baseColour.brighter(0.4f), cx - radius * 0.3f, cy - radius * 0.3f,

@@ -24,6 +24,7 @@
 #include "c0xHeaders.h"
 
 #include <JuceHeader.h>
+#include <melatonin_blur/melatonin_blur.h>
 #include <map>
 
 class PresetBar;
@@ -193,6 +194,9 @@ class PluginComponent : public Component,
 
     /// Per-channel gain sliders for Audio I/O nodes
     OwnedArray<Slider> channelGainSliders;
+
+    /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
+    melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};
 };
 
 //------------------------------------------------------------------------------

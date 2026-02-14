@@ -22,6 +22,8 @@
 #include "PluginField.h"
 #include "SubGraphEditorComponent.h"
 
+#include <melatonin_blur/melatonin_blur.h>
+
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -104,6 +106,13 @@ void PluginConnection::paint(Graphics& g)
         }
     }
     */
+
+    // === Selection glow (soft halo around selected cables) ===
+    if (selected)
+    {
+        melatonin::DropShadow cableGlow{cableColour.withAlpha(0.4f), 8, {0, 0}};
+        cableGlow.render(g, glowPath);
+    }
 
     // === Gradient fill from source to destination (bidirectional) ===
     Colour startCol = cableColour.brighter(selected ? 0.6f : 0.25f);
