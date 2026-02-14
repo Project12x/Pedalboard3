@@ -512,8 +512,13 @@ void PluginField::mouseUp(const MouseEvent& e)
 //------------------------------------------------------------------------------
 void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
 {
-    // Ctrl+wheel = zoom, plain wheel = scroll via viewport
+    // Plain wheel = zoom, Ctrl+wheel = scroll via viewport
     if (e.mods.isCtrlDown())
+    {
+        // Ctrl+wheel = scroll via viewport
+        Component::mouseWheelMove(e, wheel);
+    }
+    else
     {
         float zoomDelta = wheel.deltaY * 0.1f;
         float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
@@ -536,11 +541,6 @@ void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& w
 
             repaint();
         }
-    }
-    else
-    {
-        // Pass to parent for viewport scrolling
-        Component::mouseWheelMove(e, wheel);
     }
 }
 
