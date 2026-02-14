@@ -67,6 +67,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **FilterGraph Unit Tests** â€“ Phase 6B testing expansion
   - 6 test cases: node management, connection management, position, infrastructure detection
   - 71 assertions covering add/remove/query operations and mutation testing
+- **MIDI Mapping Unit Tests** — Phase 6B testing expansion
+  - 15 test cases: CC normalization, custom/inverted range mapping, latch/toggle, channel filtering, multi-mapping dispatch, XML round-trip, MidiAppFifo, MIDI learn, register/unregister lifecycle, edge cases
+  - 746 assertions (including existing MIDI integration tests)
+  - Tests real MidiAppFifo for parameter, CommandID, tempo, and patch change FIFOs
 - **Expanded Integration Tests** â€“ End-to-end and mutation test coverage
   - Signal path: effect chain processing, bypass behavior
   - Plugin lifecycle: load/unload, editor reopen

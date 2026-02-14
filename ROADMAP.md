@@ -167,7 +167,7 @@ A focused roadmap for current development. For historical completed phases, see 
 ### 6B: Testing & Protection
 | # | Task | Status |
 |---|------|--------|
-| 6B.2 | MIDI mapping tests | Planned |
+| 6B.2 | MIDI mapping tests | Done |
 | 6B.4 | Tracy profiler | Planned |
 
 ### 6C: Bug Fixes (Legacy)
