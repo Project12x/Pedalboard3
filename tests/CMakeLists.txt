@@ -15,7 +15,9 @@ add_executable(Pedalboard3_Tests
     nam_processor_test.cpp
     patch_switch_test.cpp
     vst3_loading_test.cpp
+    midi_mapping_test.cpp
     ../src/PluginPoolManager.cpp
+    ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
 )
