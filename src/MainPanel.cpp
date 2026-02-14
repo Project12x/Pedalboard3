@@ -417,11 +417,16 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     }
     deviceManager.addChangeListener(this);
 
-    // Setup midi.
+    // Setup midi: global callback receives from ALL enabled MIDI inputs.
+    // In JUCE 8, per-device callbacks with specific identifiers don't fire;
+    // empty identifier is required to receive from all enabled devices.
+    deviceManager.addMidiInputCallback({}, &graphPlayer);
+
+    // On first launch (no saved audio state), auto-enable all MIDI devices.
+    if (!savedAudioState)
     {
-        auto midiDevices = MidiInput::getAvailableDevices(); // JUCE 8: Array<MidiDeviceInfo>
-        for (const auto& device : midiDevices)
-            deviceManager.addMidiInputCallback(device.identifier, &graphPlayer);
+        for (const auto& device : MidiInput::getAvailableDevices())
+            deviceManager.setMidiInputDeviceEnabled(device.identifier, true);
     }
 
     // Setup virtual MIDI keyboard
@@ -540,7 +545,6 @@ MainPanel::~MainPanel()
     keyboardState.removeListener(this);
 
     int i;
-    auto midiDevices = MidiInput::getAvailableDevices(); // JUCE 8: Array<MidiDeviceInfo>
 
     // Logger::setCurrentLogger(0);
 
@@ -553,8 +557,7 @@ MainPanel::~MainPanel()
         DeviceMeterTap::setInstance(nullptr);
     }
     deviceManager.removeAudioCallback(&graphPlayer);
-    for (const auto& device : midiDevices)
-        deviceManager.removeMidiInputCallback(device.identifier, &graphPlayer);
+    deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
     signalPath.clear(false, false, false);
 

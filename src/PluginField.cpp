@@ -1284,13 +1284,14 @@ void PluginField::releaseConnection(int x, int y)
                     if (p->getParameterPin())
                     {
                         // Only open mappings window for CC mapping connections
-                        // (Midi Input, OSC Input), not for direct MIDI note routing
-                        // (Virtual MIDI Input → synth)
+                        // (OSC Input), not for direct MIDI note routing
+                        // (MIDI Input, Virtual MIDI Input → synth)
                         auto sourceNode =
                             signalPath->getNodeForId(AudioProcessorGraph::NodeID(outputPin->getUid()));
                         bool isDirectMidiSource =
                             sourceNode != nullptr &&
-                            dynamic_cast<VirtualMidiInputProcessor*>(sourceNode->getProcessor()) != nullptr;
+                            (dynamic_cast<VirtualMidiInputProcessor*>(sourceNode->getProcessor()) != nullptr ||
+                             sourceNode->getProcessor()->getName() == "MIDI Input");
 
                         if (!isDirectMidiSource)
                         {
