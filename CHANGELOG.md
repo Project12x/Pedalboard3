@@ -8,8 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Master Bus Insert Rack** — Global effect rack at the device output level, powered by SubGraphProcessor. Accessible via the "FX" button in the footer toolbar between the input/output gain sliders. Opens in a dialog window for plugin management. State persists globally (not per-patch).
+- **Master Bus Processor** — New `MasterBusProcessor` wraps a `SubGraphProcessor` for processing all audio at the device callback level, between the graph output and output gain stage.
+
 ### Fixed
 
+- **Bypass Not Saved in Patches** — Plugin bypass state was never serialized to patch XML. Toggling bypass, saving, and reloading a patch would reset all plugins to un-bypassed. Added `bypass` attribute to `createNodeXml()` and restore in `createNodeFromXml()`. Backward-compatible (missing attribute defaults to false).
 - **JUCE 8 MIDI Input Name Mismatch** — JUCE 8 renamed the internal processor from "Midi Input" to "MIDI Input" (all caps). The codebase still compared against the old name, causing MIDI node sizing, toggle duplicate detection, and delete-on-disable to silently fail. Fixed across PluginComponent, PluginField, FilterGraph, and PluginFieldPersistence.
 - **MIDI Node Size Mismatch** — "MIDI Input" and "Virtual MIDI Input" nodes had different dimensions. Both now use a shared width computed from the longer name's font metrics, with matching height (92px).
 - **MIDI Toggle Spawning Duplicates** — Options > MIDI Input toggle created a new MIDI Input node each time because the duplicate check compared against the wrong name string. Root cause: same JUCE 8 name mismatch.
