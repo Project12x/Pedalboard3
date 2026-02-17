@@ -15,8 +15,12 @@
 #ifndef MASTERGAINSTATE_H_INCLUDED
 #define MASTERGAINSTATE_H_INCLUDED
 
+#include "MasterBusProcessor.h"
+
 #include <JuceHeader.h>
 #include <atomic>
+#include <memory>
+
 
 class MasterGainState
 {
@@ -28,6 +32,8 @@ class MasterGainState
         static MasterGainState instance;
         return instance;
     }
+
+    ~MasterGainState();
 
     // --- Master gain (footer sliders) ---
     // Gain in dB. Range: -60 to +12, default 0.
@@ -64,23 +70,22 @@ class MasterGainState
     }
 
     // --- Combined gain (master * per-channel) for audio thread ---
-    float getInputGainLinear(int ch) const
-    {
-        return getMasterInputGainLinear() * getInputChannelGainLinear(ch);
-    }
+    float getInputGainLinear(int ch) const { return getMasterInputGainLinear() * getInputChannelGainLinear(ch); }
 
-    float getOutputGainLinear(int ch) const
-    {
-        return getMasterOutputGainLinear() * getOutputChannelGainLinear(ch);
-    }
+    float getOutputGainLinear(int ch) const { return getMasterOutputGainLinear() * getOutputChannelGainLinear(ch); }
 
     void loadFromSettings();
     void saveToSettings();
+
+    // Master bus insert rack (created lazily on first access)
+    MasterBusProcessor& getMasterBus();
 
   private:
     MasterGainState() = default;
     MasterGainState(const MasterGainState&) = delete;
     MasterGainState& operator=(const MasterGainState&) = delete;
+
+    std::unique_ptr<MasterBusProcessor> masterBus;
 };
 
 #endif // MASTERGAINSTATE_H_INCLUDED

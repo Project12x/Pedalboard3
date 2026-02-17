@@ -26,12 +26,14 @@
 #include "ColourScheme.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "MasterBusProcessor.h"
 #include "MasterGainState.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
 
 #include <JuceHeader.h>
+
 
 class PluginListWindow;
 class StageView;
@@ -56,12 +58,17 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             int maxCh = jmax(device->getActiveInputChannels().countNumberOfSetBits(),
                              device->getActiveOutputChannels().countNumberOfSetBits());
             inputGainBuffer.setSize(jmax(maxCh, 2), device->getCurrentBufferSizeSamples() * 2);
+            masterBusBuffer.setSize(jmax(maxCh, 2), device->getCurrentBufferSizeSamples() * 2);
+
+            // Prepare master bus insert rack
+            auto& gainState = MasterGainState::getInstance();
+            gainState.getMasterBus().prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
         }
     }
 
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
-                                         float* const* outputChannelData, int numOutputChannels, int numSamples,
-                                         const AudioIODeviceCallbackContext& context) override
+                                          float* const* outputChannelData, int numOutputChannels, int numSamples,
+                                          const AudioIODeviceCallbackContext& context) override
     {
         auto& gainState = MasterGainState::getInstance();
 
@@ -74,8 +81,8 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             for (int ch = 0; ch < chCount; ++ch)
             {
                 float gain = gainState.getInputGainLinear(ch);
-                if (inputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f
-                    && numSamples <= inputGainBuffer.getNumSamples())
+                if (inputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f &&
+                    numSamples <= inputGainBuffer.getNumSamples())
                 {
                     float* dest = inputGainBuffer.getWritePointer(ch);
                     const float* src = inputChannelData[ch];
@@ -97,7 +104,25 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 
         // Process graph with (possibly gained) input
         AudioProcessorPlayer::audioDeviceIOCallbackWithContext(actualInput, numInputChannels, outputChannelData,
-                                                              numOutputChannels, numSamples, context);
+                                                               numOutputChannels, numSamples, context);
+
+        // Process master bus insert rack (between graph output and output gain)
+        {
+            int chCount = jmin(numOutputChannels, masterBusBuffer.getNumChannels());
+            if (chCount > 0 && numSamples <= masterBusBuffer.getNumSamples())
+            {
+                // Wrap output pointers into an AudioBuffer for processBlock
+                for (int ch = 0; ch < chCount; ++ch)
+                    masterBusBuffer.copyFrom(ch, 0, outputChannelData[ch], numSamples);
+
+                MidiBuffer emptyMidi;
+                gainState.getMasterBus().processBlock(masterBusBuffer, emptyMidi);
+
+                // Copy processed data back to output
+                for (int ch = 0; ch < chCount; ++ch)
+                    FloatVectorOperations::copy(outputChannelData[ch], masterBusBuffer.getReadPointer(ch), numSamples);
+            }
+        }
 
         // Apply per-channel output gain (master * channel). Output buffers are writable.
         for (int ch = 0; ch < numOutputChannels; ++ch)
@@ -121,6 +146,7 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 
   private:
     AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
+    AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
     const float* gainedInputPtrs[MaxChannels] = {};
 };
 

@@ -313,9 +313,11 @@ target_sources(Pedalboard3 PRIVATE
     src/SubGraphEditorComponent.cpp
     src/SubGraphEditorComponent.h
     
-    # Master Gain
+    # Master Gain / Master Bus
     src/MasterGainState.cpp
     src/MasterGainState.h
+    src/MasterBusProcessor.cpp
+    src/MasterBusProcessor.h
 
     # MIDI Handling
     src/MidiMappingManager.cpp
