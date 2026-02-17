@@ -106,16 +106,19 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
                                                                numOutputChannels, numSamples, context);
 
         // Process master bus insert rack (between graph output and output gain)
+        // Only when user has inserted plugins - empty rack is pure passthrough
+        auto& masterBus = gainState.getMasterBus();
+        if (masterBus.hasPluginsCached() && !masterBus.isBypassed())
         {
             int chCount = jmin(numOutputChannels, masterBusBuffer.getNumChannels());
             if (chCount > 0 && numSamples <= masterBusBuffer.getNumSamples())
             {
-                // Wrap output pointers into an AudioBuffer for processBlock
+                // Copy output to pre-allocated buffer for processBlock
                 for (int ch = 0; ch < chCount; ++ch)
                     masterBusBuffer.copyFrom(ch, 0, outputChannelData[ch], numSamples);
 
                 MidiBuffer emptyMidi;
-                gainState.getMasterBus().processBlock(masterBusBuffer, emptyMidi);
+                masterBus.processBlock(masterBusBuffer, emptyMidi);
 
                 // Copy processed data back to output
                 for (int ch = 0; ch < chCount; ++ch)
