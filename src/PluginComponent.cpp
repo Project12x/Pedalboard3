@@ -1248,13 +1248,22 @@ bool PluginComponent::isAudioIONode() const
 //------------------------------------------------------------------------------
 void PluginComponent::refreshPins()
 {
-    // Remove all existing pins
+    // Remove and delete all existing pins
     for (auto* pin : inputPins)
+    {
         removeChildComponent(pin);
+        delete pin;
+    }
     for (auto* pin : outputPins)
+    {
         removeChildComponent(pin);
+        delete pin;
+    }
     for (auto* pin : paramPins)
+    {
         removeChildComponent(pin);
+        delete pin;
+    }
 
     inputPins.clear();
     outputPins.clear();

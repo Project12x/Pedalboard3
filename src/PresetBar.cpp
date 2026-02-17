@@ -82,7 +82,7 @@ PresetBar::PresetBar(PluginComponent* comp) : presetsComboBox(0), presetsLabel(0
     importButton->addListener(this);
 
     fillOutComboBox();
-    presetsComboBox->setSelectedId(proc->getCurrentProgram() + 1, true);
+    presetsComboBox->setSelectedId(proc->getCurrentProgram() + 1, dontSendNotification);
     lastComboBox = presetsComboBox->getSelectedId();
 
     //[/UserPreSize]

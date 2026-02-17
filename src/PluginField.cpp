@@ -1170,7 +1170,50 @@ void PluginField::updateProcessorName(uint32 id, const String& val)
 //------------------------------------------------------------------------------
 void PluginField::refreshAudioIOPins()
 {
-    // Refresh pins on Audio Input and Audio Output components
+    // Collect Audio I/O node IDs
+    std::vector<uint32> ioNodeIds;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+        {
+            if (auto* node = comp->getNode())
+            {
+                if (auto* ioProc = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor()))
+                {
+                    auto type = ioProc->getType();
+                    if (type == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode ||
+                        type == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode)
+                    {
+                        ioNodeIds.push_back(node->nodeID.uid);
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove UI connections that reference Audio I/O nodes (pins are about to be deleted)
+    for (int i = getNumChildComponents() - 1; i >= 0; --i)
+    {
+        if (auto* conn = dynamic_cast<PluginConnection*>(getChildComponent(i)))
+        {
+            auto* src = conn->getSource();
+            auto* dst = conn->getDestination();
+            uint32 srcId = src ? src->getUid() : 0;
+            uint32 dstId = dst ? dst->getUid() : 0;
+
+            for (auto id : ioNodeIds)
+            {
+                if (srcId == id || dstId == id)
+                {
+                    removeChildComponent(conn);
+                    delete conn;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Refresh pins on Audio I/O components
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
@@ -1189,6 +1232,78 @@ void PluginField::refreshAudioIOPins()
             }
         }
     }
+
+    // Rebuild UI connections from graph state for Audio I/O nodes
+    for (auto ioId : ioNodeIds)
+    {
+        auto graphConns = signalPath->getConnectionsForNode(AudioProcessorGraph::NodeID(ioId));
+        for (const auto& conn : graphConns)
+        {
+            // Find source and destination PluginComponents and their pins
+            PluginComponent* srcComp = nullptr;
+            PluginComponent* dstComp = nullptr;
+
+            for (int i = 0; i < getNumChildComponents(); ++i)
+            {
+                if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+                {
+                    if (comp->getNode() && comp->getNode()->nodeID == conn.source.nodeID)
+                        srcComp = comp;
+                    if (comp->getNode() && comp->getNode()->nodeID == conn.destination.nodeID)
+                        dstComp = comp;
+                }
+            }
+
+            if (!srcComp || !dstComp)
+                continue;
+
+            // Find the correct pins by channel
+            PluginPinComponent* srcPin = nullptr;
+            PluginPinComponent* dstPin = nullptr;
+
+            int srcChan = conn.source.channelIndex;
+            int dstChan = conn.destination.channelIndex;
+
+            if (srcChan == AudioProcessorGraph::midiChannelIndex)
+            {
+                for (int p = 0; p < srcComp->getNumParamPins(); ++p)
+                {
+                    if (srcComp->getParamPin(p)->getDirection()) // output param pin
+                    {
+                        srcPin = srcComp->getParamPin(p);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (srcChan < srcComp->getNumOutputPins())
+                    srcPin = srcComp->getOutputPin(srcChan);
+            }
+
+            if (dstChan == AudioProcessorGraph::midiChannelIndex)
+            {
+                for (int p = 0; p < dstComp->getNumParamPins(); ++p)
+                {
+                    if (!dstComp->getParamPin(p)->getDirection()) // input param pin
+                    {
+                        dstPin = dstComp->getParamPin(p);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (dstChan < dstComp->getNumInputPins())
+                    dstPin = dstComp->getInputPin(dstChan);
+            }
+
+            if (srcPin && dstPin)
+                addAndMakeVisible(new PluginConnection(srcPin, dstPin));
+        }
+    }
+
+    moveConnectionsBehind();
     repaint();
 }
 

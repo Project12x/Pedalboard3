@@ -1,6 +1,6 @@
 # UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
 
-**Last updated:** 2026-02-13 (gain controls + VU meters done)  
+**Last updated:** 2026-02-13  
 **Status:** Active  
 **Supersedes:** `UI_POLISH_TASK_BOARD.md`, `UI_POLISH_2_WEEK_HANDOFF.md`
 
