@@ -70,224 +70,6 @@ class SplitterControl : public Component, public Button::Listener
 };
 
 //==============================================================================
-// Channel strip editor for MixerProcessor
-class MixerEditor : public AudioProcessorEditor, private Timer
-{
-  public:
-    MixerEditor(MixerProcessor& proc) : AudioProcessorEditor(proc), mixer(proc)
-    {
-        setSize(230, 340);
-
-        for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
-        {
-            // Gain fader (vertical, dB scale)
-            auto& f = faders[ch];
-            f.setSliderStyle(Slider::LinearVertical);
-            f.setTextBoxStyle(Slider::TextBoxBelow, false, 50, 16);
-            f.setRange(-60.0, 12.0, 0.1);
-            f.setValue(mixer.getChannelGainDb(ch), dontSendNotification);
-            f.onValueChange = [this, ch]() { mixer.setChannelGainDb(ch, static_cast<float>(faders[ch].getValue())); };
-            addAndMakeVisible(f);
-
-            // Pan knob (rotary)
-            auto& p = panKnobs[ch];
-            p.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-            p.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            p.setRange(-1.0, 1.0, 0.01);
-            p.setDoubleClickReturnValue(true, 0.0);
-            p.setValue(mixer.getChannelPan(ch), dontSendNotification);
-            p.onValueChange = [this, ch]() { mixer.setChannelPan(ch, static_cast<float>(panKnobs[ch].getValue())); };
-            addAndMakeVisible(p);
-
-            // Mute button
-            auto& m = muteButtons[ch];
-            m.setButtonText("M");
-            m.setClickingTogglesState(true);
-            m.setToggleState(mixer.getChannelMute(ch), dontSendNotification);
-            m.onClick = [this, ch]() { mixer.setChannelMute(ch, muteButtons[ch].getToggleState()); };
-            addAndMakeVisible(m);
-
-            // Solo button
-            auto& s = soloButtons[ch];
-            s.setButtonText("S");
-            s.setClickingTogglesState(true);
-            s.setToggleState(mixer.getChannelSolo(ch), dontSendNotification);
-            s.onClick = [this, ch]() { mixer.setChannelSolo(ch, soloButtons[ch].getToggleState()); };
-            addAndMakeVisible(s);
-
-            // Phase invert button
-            auto& ph = phaseButtons[ch];
-            ph.setButtonText(CharPointer_UTF8("\xc3\x98")); // "O-slash" as phase symbol
-            ph.setClickingTogglesState(true);
-            ph.setToggleState(mixer.getChannelPhaseInvert(ch), dontSendNotification);
-            ph.onClick = [this, ch]() { mixer.setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
-            addAndMakeVisible(ph);
-        }
-
-        startTimerHz(30);
-    }
-
-    ~MixerEditor() override { stopTimer(); }
-
-    void resized() override
-    {
-        auto area = getLocalBounds().reduced(4);
-        int stripW = area.getWidth() / 2;
-
-        for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
-        {
-            auto strip = area.removeFromLeft(stripW).reduced(2);
-
-            // Phase button at top
-            phaseButtons[ch].setBounds(strip.removeFromTop(22).reduced(2, 0));
-            strip.removeFromTop(2);
-
-            // VU meter area (reserved for paint)
-            vuAreas[ch] = strip.removeFromTop(100);
-            strip.removeFromTop(2);
-
-            // Gain fader
-            faders[ch].setBounds(strip.removeFromTop(110));
-            strip.removeFromTop(2);
-
-            // Pan knob
-            panKnobs[ch].setBounds(strip.removeFromTop(42));
-            strip.removeFromTop(2);
-
-            // Mute + Solo in a row
-            auto btnRow = strip.removeFromTop(24);
-            int btnW = btnRow.getWidth() / 2;
-            muteButtons[ch].setBounds(btnRow.removeFromLeft(btnW).reduced(2, 0));
-            soloButtons[ch].setBounds(btnRow.reduced(2, 0));
-        }
-    }
-
-    void paint(Graphics& g) override
-    {
-        auto& cs = ColourScheme::getInstance();
-        g.fillAll(cs.colours["Plugin Background"]);
-        g.setColour(cs.colours["Plugin Border"]);
-        g.drawRect(getLocalBounds(), 1);
-
-        // Draw channel labels
-        g.setFont(12.0f);
-        g.setColour(cs.colours["Text Colour"]);
-        int stripW = (getWidth() - 8) / 2;
-        g.drawText("A", 4, getHeight() - 18, stripW, 16, Justification::centred);
-        g.drawText("B", 4 + stripW, getHeight() - 18, stripW, 16, Justification::centred);
-
-        // Draw VU meters for each channel
-        for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
-        {
-            drawVuMeter(g, ch, cs);
-        }
-    }
-
-  private:
-    MixerProcessor& mixer;
-    Slider faders[MixerProcessor::NumChannels];
-    Slider panKnobs[MixerProcessor::NumChannels];
-    TextButton muteButtons[MixerProcessor::NumChannels];
-    TextButton soloButtons[MixerProcessor::NumChannels];
-    TextButton phaseButtons[MixerProcessor::NumChannels];
-    Rectangle<int> vuAreas[MixerProcessor::NumChannels];
-
-    void timerCallback() override
-    {
-        // Sync button colors for mute/solo state
-        for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
-        {
-            // Color mute button red when active
-            muteButtons[ch].setColour(TextButton::buttonOnColourId, Colours::red);
-            // Color solo button yellow when active
-            soloButtons[ch].setColour(TextButton::buttonOnColourId, Colour(0xFFCCAA00));
-            // Color phase button orange when active
-            phaseButtons[ch].setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
-        }
-        repaint(); // Repaint VU meters
-    }
-
-    void drawVuMeter(Graphics& g, int ch, ColourScheme& cs)
-    {
-        auto area = vuAreas[ch];
-        if (area.isEmpty())
-            return;
-
-        // Background
-        g.setColour(Colour(0xFF0A0A14));
-        g.fillRect(area);
-
-        // Draw L and R bars
-        int barW = (area.getWidth() - 6) / 2;
-        auto leftBar = area.withWidth(barW).translated(2, 0).reduced(0, 2);
-        auto rightBar = leftBar.translated(barW + 2, 0);
-
-        float vuL = mixer.channels[ch].vuLevelL.load(std::memory_order_relaxed);
-        float vuR = mixer.channels[ch].vuLevelR.load(std::memory_order_relaxed);
-        float peakL = mixer.channels[ch].peakL.load(std::memory_order_relaxed);
-        float peakR = mixer.channels[ch].peakR.load(std::memory_order_relaxed);
-
-        drawSingleBar(g, leftBar, vuL, peakL, cs);
-        drawSingleBar(g, rightBar, vuR, peakR, cs);
-
-        // Draw dB scale ticks
-        g.setFont(9.0f);
-        g.setColour(cs.colours["Text Colour"].withAlpha(0.5f));
-        const float dbMarks[] = {0.0f, -6.0f, -12.0f, -24.0f, -48.0f};
-        for (float db : dbMarks)
-        {
-            float norm = jlimit(0.0f, 1.0f, (db + 60.0f) / 72.0f); // -60 to +12 range
-            int y = area.getBottom() - static_cast<int>(norm * area.getHeight());
-            g.drawHorizontalLine(y, static_cast<float>(area.getX()), static_cast<float>(area.getX() + 3));
-            g.drawHorizontalLine(y, static_cast<float>(area.getRight() - 3), static_cast<float>(area.getRight()));
-        }
-
-        // Border
-        g.setColour(cs.colours["Plugin Border"]);
-        g.drawRect(area, 1);
-    }
-
-    void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
-    {
-        // Convert to dB and normalize to 0-1 range (-60 to +12)
-        float vuDb = Decibels::gainToDecibels(vuLevel, -60.0f);
-        float norm = jlimit(0.0f, 1.0f, (vuDb + 60.0f) / 72.0f);
-        int fillH = static_cast<int>(norm * bar.getHeight());
-
-        // Gradient fill: green -> yellow -> red
-        float hFull = static_cast<float>(bar.getHeight());
-        float yellowThreshold = 48.0f / 72.0f; // -12 dB
-        float redThreshold = 60.0f / 72.0f;    // 0 dB
-
-        for (int y = bar.getBottom() - fillH; y < bar.getBottom(); ++y)
-        {
-            float frac = 1.0f - static_cast<float>(y - bar.getY()) / hFull;
-            Colour barCol;
-            if (frac >= redThreshold)
-                barCol = cs.colours["VU Meter Over Colour"];
-            else if (frac >= yellowThreshold)
-                barCol = cs.colours["VU Meter Upper Colour"];
-            else
-                barCol = cs.colours["VU Meter Lower Colour"];
-            g.setColour(barCol);
-            g.drawHorizontalLine(y, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
-        }
-
-        // Peak hold indicator
-        float peakDb = Decibels::gainToDecibels(peakLevel, -60.0f);
-        float peakNorm = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 72.0f);
-        if (peakNorm > 0.001f)
-        {
-            int peakY = bar.getBottom() - static_cast<int>(peakNorm * bar.getHeight());
-            g.setColour(Colours::white);
-            g.drawHorizontalLine(peakY, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
-        }
-    }
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MixerEditor)
-};
-
-//==============================================================================
 // SplitterProcessor Implementation
 //==============================================================================
 
@@ -472,7 +254,7 @@ void MixerProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/)
 
 Component* MixerProcessor::getControls()
 {
-    // Lightweight inline control for the node panel
+    // Full channel strip control embedded in the node panel
     class MixerControl : public Component, private Timer
     {
       public:
@@ -480,25 +262,56 @@ Component* MixerProcessor::getControls()
         {
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
             {
+                // Gain fader (vertical, dB scale)
                 auto& f = faders[ch];
-                f.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-                f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+                f.setSliderStyle(Slider::LinearVertical);
+                f.setTextBoxStyle(Slider::TextBoxBelow, false, 50, 16);
                 f.setRange(-60.0, 12.0, 0.1);
                 f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
                 f.onValueChange = [this, ch]()
                 { processor->setChannelGainDb(ch, static_cast<float>(faders[ch].getValue())); };
                 addAndMakeVisible(f);
+
+                // Pan knob (rotary)
+                auto& p = panKnobs[ch];
+                p.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+                p.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+                p.setRange(-1.0, 1.0, 0.01);
+                p.setDoubleClickReturnValue(true, 0.0);
+                p.setValue(processor->getChannelPan(ch), dontSendNotification);
+                p.onValueChange = [this, ch]()
+                { processor->setChannelPan(ch, static_cast<float>(panKnobs[ch].getValue())); };
+                addAndMakeVisible(p);
+
+                // Mute button
+                auto& m = muteButtons[ch];
+                m.setButtonText("M");
+                m.setClickingTogglesState(true);
+                m.setColour(TextButton::buttonOnColourId, Colours::red);
+                m.setToggleState(processor->getChannelMute(ch), dontSendNotification);
+                m.onClick = [this, ch]() { processor->setChannelMute(ch, muteButtons[ch].getToggleState()); };
+                addAndMakeVisible(m);
+
+                // Solo button
+                auto& s = soloButtons[ch];
+                s.setButtonText("S");
+                s.setClickingTogglesState(true);
+                s.setColour(TextButton::buttonOnColourId, Colour(0xFFCCAA00));
+                s.setToggleState(processor->getChannelSolo(ch), dontSendNotification);
+                s.onClick = [this, ch]() { processor->setChannelSolo(ch, soloButtons[ch].getToggleState()); };
+                addAndMakeVisible(s);
+
+                // Phase invert button
+                auto& ph = phaseButtons[ch];
+                ph.setButtonText(CharPointer_UTF8("\xc3\x98")); // O-slash as phase symbol
+                ph.setClickingTogglesState(true);
+                ph.setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
+                ph.setToggleState(processor->getChannelPhaseInvert(ch), dontSendNotification);
+                ph.onClick = [this, ch]() { processor->setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
+                addAndMakeVisible(ph);
             }
 
-            addAndMakeVisible(labelA);
-            labelA.setText("A", dontSendNotification);
-            labelA.setJustificationType(Justification::centred);
-
-            addAndMakeVisible(labelB);
-            labelB.setText("B", dontSendNotification);
-            labelB.setJustificationType(Justification::centred);
-
-            startTimerHz(15);
+            startTimerHz(30);
         }
 
         ~MixerControl() override { stopTimer(); }
@@ -506,14 +319,34 @@ Component* MixerProcessor::getControls()
         void resized() override
         {
             auto area = getLocalBounds().reduced(4);
-            int w = area.getWidth() / 2;
+            int stripW = area.getWidth() / 2;
 
-            auto left = area.removeFromLeft(w);
-            labelA.setBounds(left.removeFromBottom(16));
-            faders[0].setBounds(left.reduced(2));
+            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            {
+                auto strip = area.removeFromLeft(stripW).reduced(2);
 
-            labelB.setBounds(area.removeFromBottom(16));
-            faders[1].setBounds(area.reduced(2));
+                // Phase button at top
+                phaseButtons[ch].setBounds(strip.removeFromTop(22).reduced(2, 0));
+                strip.removeFromTop(2);
+
+                // VU meter area (reserved for paint)
+                vuAreas[ch] = strip.removeFromTop(100);
+                strip.removeFromTop(2);
+
+                // Gain fader
+                faders[ch].setBounds(strip.removeFromTop(110));
+                strip.removeFromTop(2);
+
+                // Pan knob
+                panKnobs[ch].setBounds(strip.removeFromTop(42));
+                strip.removeFromTop(2);
+
+                // Mute + Solo in a row
+                auto btnRow = strip.removeFromTop(24);
+                int btnW = btnRow.getWidth() / 2;
+                muteButtons[ch].setBounds(btnRow.removeFromLeft(btnW).reduced(2, 0));
+                soloButtons[ch].setBounds(btnRow.reduced(2, 0));
+            }
         }
 
         void timerCallback() override { repaint(); }
@@ -521,43 +354,104 @@ Component* MixerProcessor::getControls()
         void paint(Graphics& g) override
         {
             auto& cs = ColourScheme::getInstance();
-            g.fillAll(cs.colours["Plugin Background"]);
-            g.setColour(cs.colours["Plugin Border"]);
-            g.drawRect(getLocalBounds(), 1);
 
-            // Mini VU bars
-            int w = (getWidth() - 8) / 2;
+            // Draw channel labels at bottom
+            g.setFont(12.0f);
+            g.setColour(cs.colours["Text Colour"]);
+            int stripW = (getWidth() - 8) / 2;
+            g.drawText("A", 4, getHeight() - 18, stripW, 16, Justification::centred);
+            g.drawText("B", 4 + stripW, getHeight() - 18, stripW, 16, Justification::centred);
+
+            // Draw VU meters for each channel
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
-            {
-                float vuL = processor->channels[ch].vuLevelL.load(std::memory_order_relaxed);
-                float vuR = processor->channels[ch].vuLevelR.load(std::memory_order_relaxed);
-                float avg = (vuL + vuR) * 0.5f;
-                float db = Decibels::gainToDecibels(avg, -60.0f);
-                float norm = jlimit(0.0f, 1.0f, (db + 60.0f) / 72.0f);
-
-                int x = 4 + ch * (w + 4);
-                int barH = 4;
-                int barY = getHeight() - 4;
-                int fillW = static_cast<int>(norm * w);
-
-                g.setColour(Colour(0xFF0A0A14));
-                g.fillRect(x, barY - barH, w, barH);
-
-                if (norm < 0.67f)
-                    g.setColour(cs.colours["VU Meter Lower Colour"]);
-                else if (norm < 0.83f)
-                    g.setColour(cs.colours["VU Meter Upper Colour"]);
-                else
-                    g.setColour(cs.colours["VU Meter Over Colour"]);
-
-                g.fillRect(x, barY - barH, fillW, barH);
-            }
+                drawVuMeter(g, ch, cs);
         }
 
       private:
         MixerProcessor* processor;
         Slider faders[MixerProcessor::NumChannels];
-        Label labelA, labelB;
+        Slider panKnobs[MixerProcessor::NumChannels];
+        TextButton muteButtons[MixerProcessor::NumChannels];
+        TextButton soloButtons[MixerProcessor::NumChannels];
+        TextButton phaseButtons[MixerProcessor::NumChannels];
+        Rectangle<int> vuAreas[MixerProcessor::NumChannels];
+
+        void drawVuMeter(Graphics& g, int ch, ColourScheme& cs)
+        {
+            auto area = vuAreas[ch];
+            if (area.isEmpty())
+                return;
+
+            // Background
+            g.setColour(Colour(0xFF0A0A14));
+            g.fillRect(area);
+
+            // Draw L and R bars
+            int barW = (area.getWidth() - 6) / 2;
+            auto leftBar = area.withWidth(barW).translated(2, 0).reduced(0, 2);
+            auto rightBar = leftBar.translated(barW + 2, 0);
+
+            float vuL = processor->channels[ch].vuLevelL.load(std::memory_order_relaxed);
+            float vuR = processor->channels[ch].vuLevelR.load(std::memory_order_relaxed);
+            float peakL = processor->channels[ch].peakL.load(std::memory_order_relaxed);
+            float peakR = processor->channels[ch].peakR.load(std::memory_order_relaxed);
+
+            drawSingleBar(g, leftBar, vuL, peakL, cs);
+            drawSingleBar(g, rightBar, vuR, peakR, cs);
+
+            // Draw dB scale ticks
+            g.setFont(9.0f);
+            g.setColour(cs.colours["Text Colour"].withAlpha(0.5f));
+            const float dbMarks[] = {0.0f, -6.0f, -12.0f, -24.0f, -48.0f};
+            for (float db : dbMarks)
+            {
+                float norm = jlimit(0.0f, 1.0f, (db + 60.0f) / 72.0f);
+                int y = area.getBottom() - static_cast<int>(norm * area.getHeight());
+                g.drawHorizontalLine(y, static_cast<float>(area.getX()), static_cast<float>(area.getX() + 3));
+                g.drawHorizontalLine(y, static_cast<float>(area.getRight() - 3), static_cast<float>(area.getRight()));
+            }
+
+            // Border
+            g.setColour(cs.colours["Plugin Border"]);
+            g.drawRect(area, 1);
+        }
+
+        void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
+        {
+            float vuDb = Decibels::gainToDecibels(vuLevel, -60.0f);
+            float norm = jlimit(0.0f, 1.0f, (vuDb + 60.0f) / 72.0f);
+            int fillH = static_cast<int>(norm * bar.getHeight());
+
+            float hFull = static_cast<float>(bar.getHeight());
+            float yellowThreshold = 48.0f / 72.0f; // -12 dB
+            float redThreshold = 60.0f / 72.0f;    // 0 dB
+
+            for (int y = bar.getBottom() - fillH; y < bar.getBottom(); ++y)
+            {
+                float frac = 1.0f - static_cast<float>(y - bar.getY()) / hFull;
+                Colour barCol;
+                if (frac >= redThreshold)
+                    barCol = cs.colours["VU Meter Over Colour"];
+                else if (frac >= yellowThreshold)
+                    barCol = cs.colours["VU Meter Upper Colour"];
+                else
+                    barCol = cs.colours["VU Meter Lower Colour"];
+                g.setColour(barCol);
+                g.drawHorizontalLine(y, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
+            }
+
+            // Peak hold indicator
+            float peakDb = Decibels::gainToDecibels(peakLevel, -60.0f);
+            float peakNorm = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 72.0f);
+            if (peakNorm > 0.001f)
+            {
+                int peakY = bar.getBottom() - static_cast<int>(peakNorm * bar.getHeight());
+                g.setColour(Colours::white);
+                g.drawHorizontalLine(peakY, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
+            }
+        }
+
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MixerControl)
     };
 
     return new MixerControl(this);
@@ -708,7 +602,7 @@ void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midi
 
 AudioProcessorEditor* MixerProcessor::createEditor()
 {
-    return new MixerEditor(*this);
+    return nullptr; // Uses getControls() instead
 }
 
 void MixerProcessor::fillInPluginDescription(PluginDescription& description) const
