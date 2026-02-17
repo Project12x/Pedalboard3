@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Gain Smoothing** — Master input/output gain now uses `SmoothedValue<float, Multiplicative>` with a 50ms ramp to eliminate zipper noise during gain changes. Pre-computed ramp buffers ensure correct smoothing rate independent of channel count.
 - **VU Meter Ballistics** — New `VuMeterDsp` class provides standard 300ms VU integration (IEC 60268-17) using a 2-pole cascaded lowpass filter. Integrated into `SafetyLimiterProcessor` alongside existing peak metering. VU levels exposed via `getOutputVuLevel()`/`getInputVuLevel()`.
+- **VU Meter UI Wiring** — Meter bars in PluginComponent (Audio I/O nodes) and StageView now display VU ballistic levels for smooth response, while peak hold indicators retain instantaneous peak detection. Professional DAW-style metering: smooth VU body + sharp peak pip.
 - **Master Bus Insert Rack** — Global effect rack at the device output level, powered by SubGraphProcessor. Accessible via the "FX" button in the footer toolbar between the input/output gain sliders. Opens in a dialog window for plugin management. State persists globally (not per-patch).
 - **Master Bus Processor** — New `MasterBusProcessor` wraps a `SubGraphProcessor` for processing all audio at the device callback level, between the graph output and output gain stage.
 
