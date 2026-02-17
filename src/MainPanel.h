@@ -62,6 +62,9 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             // Prepare master bus insert rack
             auto& gainState = MasterGainState::getInstance();
             gainState.getMasterBus().prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
+
+            // Initialize gain smoothing at device sample rate
+            gainState.prepareSmoothing(device->getCurrentSampleRate());
         }
     }
 
@@ -71,22 +74,35 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
     {
         auto& gainState = MasterGainState::getInstance();
 
-        // Apply per-channel input gain (master * channel). inputChannelData is
-        // const, so we copy to a pre-allocated buffer and scale per-channel.
+        // Update smoothed gain targets from atomic dB values (once per block)
+        gainState.updateSmoothedTargets();
+
+        // Pre-compute smoothed master input gain ramp (one value per sample).
+        // This ensures the ramp advances at the correct rate regardless of
+        // how many channels reference it.
+        float smoothedInputRamp[8192];
+        jassert(numSamples <= 8192);
+        for (int i = 0; i < numSamples; ++i)
+            smoothedInputRamp[i] = gainState.smoothedInputGain.getNextValue();
+
+        // Apply per-channel input gain. inputChannelData is const, so we copy
+        // to a pre-allocated buffer and multiply by smoothed master * channel gain.
         const float* const* actualInput = inputChannelData;
-        bool anyInputGain = false;
         {
-            int chCount = jmin(numInputChannels, inputGainBuffer.getNumChannels());
+            bool anyInputGain = false;
+            int chCount = jmin(numInputChannels, (int)MaxChannels);
             for (int ch = 0; ch < chCount; ++ch)
             {
-                float gain = gainState.getInputGainLinear(ch);
-                if (inputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f &&
-                    numSamples <= inputGainBuffer.getNumSamples())
+                float channelGain = gainState.getInputChannelGainLinear(ch);
+                bool needsGain = gainState.smoothedInputGain.isSmoothing() ||
+                                 std::abs(channelGain * smoothedInputRamp[numSamples - 1] - 1.0f) > 0.0001f;
+
+                if (inputChannelData[ch] != nullptr && needsGain && numSamples <= inputGainBuffer.getNumSamples())
                 {
                     float* dest = inputGainBuffer.getWritePointer(ch);
                     const float* src = inputChannelData[ch];
                     for (int i = 0; i < numSamples; ++i)
-                        dest[i] = src[i] * gain;
+                        dest[i] = src[i] * smoothedInputRamp[i] * channelGain;
                     gainedInputPtrs[ch] = dest;
                     anyInputGain = true;
                 }
@@ -126,15 +142,23 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             }
         }
 
-        // Apply per-channel output gain (master * channel). Output buffers are writable.
+        // Pre-compute smoothed master output gain ramp (same pattern as input)
+        float smoothedOutputRamp[8192];
+        for (int i = 0; i < numSamples; ++i)
+            smoothedOutputRamp[i] = gainState.smoothedOutputGain.getNextValue();
+
+        // Apply per-channel output gain with smoothing. Output buffers are writable.
         for (int ch = 0; ch < numOutputChannels; ++ch)
         {
-            float gain = gainState.getOutputGainLinear(ch);
-            if (outputChannelData[ch] != nullptr && std::abs(gain - 1.0f) > 0.0001f)
+            float channelGain = gainState.getOutputChannelGainLinear(ch);
+            bool needsGain = gainState.smoothedOutputGain.isSmoothing() ||
+                             std::abs(channelGain * smoothedOutputRamp[numSamples - 1] - 1.0f) > 0.0001f;
+
+            if (outputChannelData[ch] != nullptr && needsGain)
             {
                 float* data = outputChannelData[ch];
                 for (int i = 0; i < numSamples; ++i)
-                    data[i] *= gain;
+                    data[i] *= smoothedOutputRamp[i] * channelGain;
             }
         }
 

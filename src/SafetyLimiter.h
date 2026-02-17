@@ -10,8 +10,11 @@
 #ifndef SAFETYLIMITER_H_INCLUDED
 #define SAFETYLIMITER_H_INCLUDED
 
+#include "VuMeterDsp.h"
+
 #include <JuceHeader.h>
 #include <atomic>
+
 
 /**
     SafetyLimiterProcessor
@@ -86,6 +89,20 @@ class SafetyLimiterProcessor : public AudioProcessor
         return 0.0f;
     }
 
+    // VU-ballistic level (300ms integration, read by UI for VU meter display)
+    float getOutputVuLevel(int channel) const
+    {
+        if (channel >= 0 && channel < 2)
+            return outputVuLevels[channel].load(std::memory_order_relaxed);
+        return 0.0f;
+    }
+    float getInputVuLevel(int channel) const
+    {
+        if (channel >= 0 && channel < 2)
+            return inputVuLevels[channel].load(std::memory_order_relaxed);
+        return 0.0f;
+    }
+
     // Called from MeteringProcessorPlayer after graph processes (RT-safe).
     void updateOutputLevelsFromDevice(const float* const* outputData, int numChannels, int numSamples);
     // Called from MeteringProcessorPlayer before graph processes (RT-safe).
@@ -136,6 +153,12 @@ class SafetyLimiterProcessor : public AudioProcessor
     std::atomic<float> outputLevels[2] = {{0.0f}, {0.0f}};
     std::atomic<float> inputLevels[2] = {{0.0f}, {0.0f}};
     float outputDecayCoeff = 0.9995f; // ~300ms decay at 44100Hz, refined in prepareToPlay
+
+    // VU meter DSP (2-pole lowpass, 300ms integration per IEC 60268-17)
+    VuMeterDsp inputVu[2];
+    VuMeterDsp outputVu[2];
+    std::atomic<float> inputVuLevels[2] = {{0.0f}, {0.0f}};
+    std::atomic<float> outputVuLevels[2] = {{0.0f}, {0.0f}};
 
     static SafetyLimiterProcessor* instance;
 

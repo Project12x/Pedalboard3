@@ -16,6 +16,22 @@
 // (unique_ptr<MasterBusProcessor> in header needs this for proper deletion)
 MasterGainState::~MasterGainState() = default;
 
+void MasterGainState::prepareSmoothing(double sampleRate)
+{
+    // 50ms ramp eliminates zipper noise on fader moves
+    smoothedInputGain.reset(sampleRate, 0.05);
+    smoothedOutputGain.reset(sampleRate, 0.05);
+    // Snap to current values immediately (no ramp on first block)
+    smoothedInputGain.setCurrentAndTargetValue(getMasterInputGainLinear());
+    smoothedOutputGain.setCurrentAndTargetValue(getMasterOutputGainLinear());
+}
+
+void MasterGainState::updateSmoothedTargets()
+{
+    smoothedInputGain.setTargetValue(getMasterInputGainLinear());
+    smoothedOutputGain.setTargetValue(getMasterOutputGainLinear());
+}
+
 void MasterGainState::loadFromSettings()
 {
     auto& settings = SettingsManager::getInstance();

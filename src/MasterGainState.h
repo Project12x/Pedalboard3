@@ -21,6 +21,7 @@
 #include <atomic>
 #include <memory>
 
+using namespace juce;
 
 class MasterGainState
 {
@@ -49,6 +50,17 @@ class MasterGainState
     {
         return Decibels::decibelsToGain(masterOutputGainDb.load(std::memory_order_relaxed), -60.0f);
     }
+
+    // --- Smoothed gain (called from audio thread) ---
+    // Multiplicative smoothing gives logarithmic curve, ideal for gain.
+    SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedInputGain{1.0f};
+    SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedOutputGain{1.0f};
+
+    // Call from audioDeviceAboutToStart to set ramp length
+    void prepareSmoothing(double sampleRate);
+
+    // Call at the start of each audio block to update targets from atomics
+    void updateSmoothedTargets();
 
     // --- Per-channel gain (node sliders) ---
     // Gain in dB. Range: -60 to +12, default 0.
