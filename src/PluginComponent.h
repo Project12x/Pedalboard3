@@ -24,8 +24,9 @@
 #include "c0xHeaders.h"
 
 #include <JuceHeader.h>
-#include <melatonin_blur/melatonin_blur.h>
 #include <map>
+#include <melatonin_blur/melatonin_blur.h>
+
 
 class PresetBar;
 class PluginEditorWindow;
@@ -183,8 +184,10 @@ class PluginComponent : public Component,
     ///	Any cached presets we have.
     std::map<int, shared_ptr<MemoryBlock>> cachedPresets;
 
-    /// Cached meter levels for Audio I/O nodes (linear 0.0-1.0+)
+    /// Cached meter levels for Audio I/O nodes (VU ballistic, linear)
     float cachedMeterLevels[16]{};
+    /// Cached peak levels for peak hold indicator (instantaneous peak, linear)
+    float cachedPeakLevels[16]{};
     /// Number of channels for cached meter levels
     int cachedMeterChannelCount{0};
     /// Peak hold levels for VU meters (normalized 0.0-1.0)

@@ -78,9 +78,12 @@ class StageView : public Component, public Button::Listener, public Slider::List
     std::unique_ptr<Slider> inputGainSlider;
     std::unique_ptr<Slider> outputGainSlider;
 
-    // Cached VU meter levels (stereo)
+    // Cached VU meter levels (VU ballistic, stereo)
     float cachedInputLevels[2]{};
     float cachedOutputLevels[2]{};
+    // Cached peak levels for peak hold indicator (instantaneous, stereo)
+    float cachedInputPeakLevels[2]{};
+    float cachedOutputPeakLevels[2]{};
     // Peak hold for VU meters (normalized 0.0-1.0)
     float peakHoldInput[2]{};
     float peakHoldOutput[2]{};

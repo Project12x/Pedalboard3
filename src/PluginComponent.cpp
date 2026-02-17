@@ -22,25 +22,26 @@
 
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
-#include "IconManager.h"
 #include "CrashProtection.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
-#include "MasterGainState.h"
-#include "SafetyLimiter.h"
 #include "FontManager.h"
+#include "IconManager.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "MappingsDialog.h"
+#include "MasterGainState.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
 #include "PresetBar.h"
+#include "SafetyLimiter.h"
 #include "SettingsManager.h"
 #include "SubGraphEditorComponent.h"
 #include "Vectors.h"
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
+
 
 using namespace std;
 
@@ -240,8 +241,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     {
         AudioProcessor* plugin = node->getProcessor();
         bool isInput = (pluginName == "Audio Input");
-        int numCh = isInput ? countOutputChannelsFromBuses(plugin)
-                            : countInputChannelsFromBuses(plugin);
+        int numCh = isInput ? countOutputChannelsFromBuses(plugin) : countInputChannelsFromBuses(plugin);
         auto& state = MasterGainState::getInstance();
 
         const float meterStartY = 44.0f;
@@ -268,9 +268,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             slider->setBounds(sliderX, sliderY, sliderW, sliderHeight);
 
             // Sync initial value from MasterGainState per-channel
-            float initDb = isInput
-                ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
-                : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+            float initDb = isInput ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                                   : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
             slider->setValue(initDb, dontSendNotification);
 
             addAndMakeVisible(slider);
@@ -335,9 +334,8 @@ void PluginComponent::paint(Graphics& g)
     }
     {
         Path headerPath;
-        headerPath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, headerHeight,
-                                       cornerRadius, cornerRadius,
-                                       true, true, false, false);
+        headerPath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, headerHeight, cornerRadius, cornerRadius, true, true,
+                                       false, false);
         g.fillPath(headerPath);
     }
 
@@ -365,8 +363,7 @@ void PluginComponent::paint(Graphics& g)
             icon = iconManager.getSpeakerIcon(colours["Text Colour"]);
 
         if (icon)
-            icon->drawWithin(g, Rectangle<float>(iconX, iconY, iconSize, iconSize),
-                             RectanglePlacement::centred, 1.0f);
+            icon->drawWithin(g, Rectangle<float>(iconX, iconY, iconSize, iconSize), RectanglePlacement::centred, 1.0f);
 
         // Draw device name subtitle
         if (auto* tap = DeviceMeterTap::getInstance())
@@ -386,9 +383,8 @@ void PluginComponent::paint(Graphics& g)
     g.fillRect(3.0f, headerHeight + 2.0f, w - 6.0f, 1.0f);
 
     // === FOOTER SEPARATOR (above edit/bypass buttons) ===
-    if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") &&
-        (pluginName != "Audio Output") && (pluginName != "OSC Input") &&
-        (pluginName != "Virtual MIDI Input"))
+    if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
+        (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
         float footerY = h - 36.0f;
         g.setColour(colours["Plugin Border"].withAlpha(0.4f));
@@ -438,9 +434,8 @@ void PluginComponent::paint(Graphics& g)
                 if (normalizedLevel > 0.9f)
                 {
                     float glowAlpha = jlimit(0.0f, 1.0f, (normalizedLevel - 0.9f) * 3.0f);
-                    Colour glowColour = (level >= 1.0f)
-                        ? Colours::red.withAlpha(glowAlpha)
-                        : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                    Colour glowColour = (level >= 1.0f) ? Colours::red.withAlpha(glowAlpha)
+                                                        : Colours::orange.withAlpha(glowAlpha * 0.7f);
                     Path meterBar;
                     meterBar.addRoundedRectangle(mx, my, barWidth, meterHeight, 2.0f);
                     melatonin::DropShadow meterGlow{glowColour, 6, {0, 0}};
@@ -448,9 +443,8 @@ void PluginComponent::paint(Graphics& g)
                 }
 
                 // Green-to-yellow-to-red gradient across full meter width
-                ColourGradient gradient(
-                    colours["VU Meter Lower Colour"], mx, my,
-                    colours["VU Meter Over Colour"], mx + meterWidth, my, false);
+                ColourGradient gradient(colours["VU Meter Lower Colour"], mx, my, colours["VU Meter Over Colour"],
+                                        mx + meterWidth, my, false);
                 gradient.addColour(0.65, colours["VU Meter Upper Colour"]);
                 g.setGradientFill(gradient);
 
@@ -481,7 +475,7 @@ void PluginComponent::paint(Graphics& g)
 
             // dB scale tick marks
             g.setColour(colours["Plugin Border"].withAlpha(0.25f));
-            const float dbMarks[] = { -48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f };
+            const float dbMarks[] = {-48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f};
             for (float db : dbMarks)
             {
                 float tickNorm = (db + 60.0f) / 60.0f;
@@ -520,19 +514,23 @@ void PluginComponent::timerUpdate()
         {
             AudioProcessor* plugin = node->getProcessor();
             bool isInput = (pluginName == "Audio Input");
-            numChannels = isInput ? countOutputChannelsFromBuses(plugin)
-                                  : countInputChannelsFromBuses(plugin);
+            numChannels = isInput ? countOutputChannelsFromBuses(plugin) : countInputChannelsFromBuses(plugin);
             numChannels = jmin(numChannels, 16);
             for (int ch = 0; ch < numChannels; ++ch)
             {
-                float level = (pluginName == "Audio Input")
-                    ? limiter->getInputLevel(ch)
-                    : limiter->getOutputLevel(ch);
-                if (std::abs(level - cachedMeterLevels[ch]) > 0.001f)
+                // VU ballistic level for smooth meter bar
+                float vuLevel =
+                    (pluginName == "Audio Input") ? limiter->getInputVuLevel(ch) : limiter->getOutputVuLevel(ch);
+                if (std::abs(vuLevel - cachedMeterLevels[ch]) > 0.001f)
                 {
-                    cachedMeterLevels[ch] = level;
+                    cachedMeterLevels[ch] = vuLevel;
                     needsRepaint = true;
                 }
+
+                // Peak level for peak hold indicator (sharp, instantaneous)
+                float peakLevel =
+                    (pluginName == "Audio Input") ? limiter->getInputLevel(ch) : limiter->getOutputLevel(ch);
+                cachedPeakLevels[ch] = peakLevel;
             }
         }
 
@@ -541,9 +539,9 @@ void PluginComponent::timerUpdate()
         // Update peak hold indicators
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            float levelDb = (cachedMeterLevels[ch] > 0.001f)
-                ? 20.0f * std::log10(cachedMeterLevels[ch]) : -60.0f;
-            float normalized = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
+            // Peak hold uses peak (not VU) for accurate transient capture
+            float peakDb = (cachedPeakLevels[ch] > 0.001f) ? 20.0f * std::log10(cachedPeakLevels[ch]) : -60.0f;
+            float normalized = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 60.0f);
 
             if (normalized >= peakHoldLevels[ch])
             {
@@ -576,9 +574,8 @@ void PluginComponent::timerUpdate()
                 auto* slider = channelGainSliders[ch];
                 if (slider != nullptr && !slider->isMouseButtonDown())
                 {
-                    float currentDb = isInput
-                        ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
-                        : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+                    float currentDb = isInput ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                                              : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
 
                     if (std::abs((float)slider->getValue() - currentDb) > 0.01f)
                         slider->setValue(currentDb, dontSendNotification);
@@ -932,7 +929,8 @@ void PluginComponent::openMappingsWindow()
                        parent->getMappingsForPlugin(node->nodeID.uid), parent);
 
     tempstr << node->getProcessor()->getName() << " Mappings";
-    JuceHelperStuff::showModalDialog(tempstr, &dlg, getParentComponent(), ColourScheme::getInstance().colours["Dialog Background"], false, true);
+    JuceHelperStuff::showModalDialog(tempstr, &dlg, getParentComponent(),
+                                     ColourScheme::getInstance().colours["Dialog Background"], false, true);
 }
 
 //------------------------------------------------------------------------------
@@ -1061,8 +1059,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add input parameter/midi name.
-        if ((acceptsMidiSafe(plugin) || (numIn > 0) ||
-             (numOut > 0)) &&
+        if ((acceptsMidiSafe(plugin) || (numIn > 0) || (numOut > 0)) &&
             ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
         {
             // if(!ignorePinNames)
@@ -1226,8 +1223,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         // Compute common width from the longer name so both nodes are identical
         Font midiFont = FontManager::getInstance().getUIFont(15.0f, true);
         int refWidth = (int)(midiFont.getStringWidthFloat("Virtual MIDI Input") + 40.0f);
-        spdlog::info("[determineSize] '{}': w={} h={} refWidth={} nameWidth={:.1f}",
-                     pluginName.toStdString(), w, h, refWidth, nameWidth);
+        spdlog::info("[determineSize] '{}': w={} h={} refWidth={} nameWidth={:.1f}", pluginName.toStdString(), w, h,
+                     refWidth, nameWidth);
         w = jmax(w, refWidth);
         h = 92;
         spdlog::info("[determineSize] '{}': FINAL w={} h={}", pluginName.toStdString(), w, h);
@@ -1283,8 +1280,7 @@ void PluginComponent::refreshPins()
     {
         AudioProcessor* plugin = node->getProcessor();
         bool isInput = (pluginName == "Audio Input");
-        int numCh = isInput ? countOutputChannelsFromBuses(plugin)
-                            : countInputChannelsFromBuses(plugin);
+        int numCh = isInput ? countOutputChannelsFromBuses(plugin) : countInputChannelsFromBuses(plugin);
         auto& state = MasterGainState::getInstance();
 
         const float meterStartY = 44.0f;
@@ -1308,9 +1304,8 @@ void PluginComponent::refreshPins()
             int sliderX = isInput ? edgeMargin : pinMargin;
             slider->setBounds(sliderX, sliderY, sliderW, sliderHeight);
 
-            float initDb = isInput
-                ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
-                : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+            float initDb = isInput ? state.inputChannelGainDb[ch].load(std::memory_order_relaxed)
+                                   : state.outputChannelGainDb[ch].load(std::memory_order_relaxed);
             slider->setValue(initDb, dontSendNotification);
 
             addAndMakeVisible(slider);

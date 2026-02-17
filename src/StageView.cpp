@@ -140,18 +140,25 @@ void StageView::timerCallback()
     {
         for (int ch = 0; ch < 2; ++ch)
         {
-            float inLevel = limiter->getInputLevel(ch);
-            float outLevel = limiter->getOutputLevel(ch);
-            if (std::abs(inLevel - cachedInputLevels[ch]) > 0.001f ||
-                std::abs(outLevel - cachedOutputLevels[ch]) > 0.001f)
+            // VU ballistic levels for smooth meter bar
+            float inVuLevel = limiter->getInputVuLevel(ch);
+            float outVuLevel = limiter->getOutputVuLevel(ch);
+            if (std::abs(inVuLevel - cachedInputLevels[ch]) > 0.001f ||
+                std::abs(outVuLevel - cachedOutputLevels[ch]) > 0.001f)
             {
-                cachedInputLevels[ch] = inLevel;
-                cachedOutputLevels[ch] = outLevel;
+                cachedInputLevels[ch] = inVuLevel;
+                cachedOutputLevels[ch] = outVuLevel;
                 needsRepaint = true;
             }
 
-            // Update peak hold for input
-            float inDb = (inLevel > 0.001f) ? 20.0f * std::log10(inLevel) : -60.0f;
+            // Peak levels for peak hold indicator (sharp, instantaneous)
+            float inPeak = limiter->getInputLevel(ch);
+            float outPeak = limiter->getOutputLevel(ch);
+            cachedInputPeakLevels[ch] = inPeak;
+            cachedOutputPeakLevels[ch] = outPeak;
+
+            // Update peak hold for input (from peak, not VU)
+            float inDb = (inPeak > 0.001f) ? 20.0f * std::log10(inPeak) : -60.0f;
             float inNorm = jlimit(0.0f, 1.0f, (inDb + 60.0f) / 60.0f);
             if (inNorm >= peakHoldInput[ch])
             {
@@ -163,11 +170,12 @@ void StageView::timerCallback()
             else
             {
                 peakHoldInput[ch] *= 0.92f;
-                if (peakHoldInput[ch] < 0.01f) peakHoldInput[ch] = 0.0f;
+                if (peakHoldInput[ch] < 0.01f)
+                    peakHoldInput[ch] = 0.0f;
             }
 
-            // Update peak hold for output
-            float outDb = (outLevel > 0.001f) ? 20.0f * std::log10(outLevel) : -60.0f;
+            // Update peak hold for output (from peak, not VU)
+            float outDb = (outPeak > 0.001f) ? 20.0f * std::log10(outPeak) : -60.0f;
             float outNorm = jlimit(0.0f, 1.0f, (outDb + 60.0f) / 60.0f);
             if (outNorm >= peakHoldOutput[ch])
             {
@@ -179,14 +187,14 @@ void StageView::timerCallback()
             else
             {
                 peakHoldOutput[ch] *= 0.92f;
-                if (peakHoldOutput[ch] < 0.01f) peakHoldOutput[ch] = 0.0f;
+                if (peakHoldOutput[ch] < 0.01f)
+                    peakHoldOutput[ch] = 0.0f;
             }
         }
     }
 
     // Always repaint if peak hold indicators are active
-    if (peakHoldInput[0] > 0.0f || peakHoldInput[1] > 0.0f ||
-        peakHoldOutput[0] > 0.0f || peakHoldOutput[1] > 0.0f)
+    if (peakHoldInput[0] > 0.0f || peakHoldInput[1] > 0.0f || peakHoldOutput[0] > 0.0f || peakHoldOutput[1] > 0.0f)
         needsRepaint = true;
 
     // Sync master gain sliders from MasterGainState (when not being dragged)
@@ -217,8 +225,8 @@ void StageView::paint(Graphics& g)
     auto bounds = getLocalBounds().toFloat();
 
     // Dark background with subtle gradient
-    g.setGradientFill(ColourGradient(colours["Stage Background Top"], 0, 0,
-                                     colours["Stage Background Bottom"], 0, bounds.getHeight(), false));
+    g.setGradientFill(ColourGradient(colours["Stage Background Top"], 0, 0, colours["Stage Background Bottom"], 0,
+                                     bounds.getHeight(), false));
     g.fillAll();
 
     // Layout areas
@@ -252,8 +260,8 @@ void StageView::paint(Graphics& g)
         const Colour colRed = colours["VU Meter Over Colour"].withAlpha(1.0f);
 
         // Helper lambda to draw a stereo VU meter with gradient, peak hold, glow, and tick marks
-        auto drawVU = [&](float x, float y, const String& label, float level0, float level1,
-                          const float* peakHold, const int* peakCounters)
+        auto drawVU = [&](float x, float y, const String& label, float level0, float level1, const float* peakHold,
+                          const int* peakCounters)
         {
             g.setColour(Colours::white.withAlpha(0.6f));
             g.setFont(fonts.getUIFont(14.0f, true));
@@ -281,9 +289,8 @@ void StageView::paint(Graphics& g)
                     if (normalized > 0.9f)
                     {
                         float glowAlpha = (normalized - 0.9f) * 3.0f;
-                        Colour glowCol = (level >= 1.0f)
-                            ? colRed.withAlpha(glowAlpha)
-                            : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                        Colour glowCol =
+                            (level >= 1.0f) ? colRed.withAlpha(glowAlpha) : Colours::orange.withAlpha(glowAlpha * 0.7f);
                         g.setColour(glowCol);
                         g.fillRoundedRectangle(mx - 1.0f, my - 1.0f, barWidth + 2.0f, meterH + 2.0f, 4.0f);
                     }
@@ -303,9 +310,9 @@ void StageView::paint(Graphics& g)
                 if (peakHold[ch] > 0.01f)
                 {
                     float peakX = mx + meterW * peakHold[ch];
-                    Colour peakCol = (peakHold[ch] > 0.95f) ? colRed
-                                   : (peakHold[ch] > 0.65f) ? colYellow
-                                   : colGreen.brighter(0.3f);
+                    Colour peakCol = (peakHold[ch] > 0.95f)   ? colRed
+                                     : (peakHold[ch] > 0.65f) ? colYellow
+                                                              : colGreen.brighter(0.3f);
                     float alpha = (peakCounters[ch] > 0) ? 1.0f : jmax(0.3f, peakHold[ch]);
                     g.setColour(peakCol.withAlpha(alpha));
                     g.fillRect(peakX - 1.5f, my, 3.0f, meterH);
@@ -313,7 +320,7 @@ void StageView::paint(Graphics& g)
 
                 // dB scale tick marks
                 g.setColour(Colours::white.withAlpha(0.12f));
-                const float dbMarks[] = { -48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f };
+                const float dbMarks[] = {-48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f};
                 for (float db : dbMarks)
                 {
                     float tickNorm = (db + 60.0f) / 60.0f;
@@ -323,11 +330,10 @@ void StageView::paint(Graphics& g)
             }
         };
 
-        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1],
-               peakHoldInput, peakHoldInputCounters);
-        drawVU(startX + labelW + meterW + 30.0f + 160.0f, footerY + 4.0f, "OUT",
-               cachedOutputLevels[0], cachedOutputLevels[1],
-               peakHoldOutput, peakHoldOutputCounters);
+        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1], peakHoldInput,
+               peakHoldInputCounters);
+        drawVU(startX + labelW + meterW + 30.0f + 160.0f, footerY + 4.0f, "OUT", cachedOutputLevels[0],
+               cachedOutputLevels[1], peakHoldOutput, peakHoldOutputCounters);
     }
 }
 
