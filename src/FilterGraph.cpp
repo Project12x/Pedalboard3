@@ -136,8 +136,8 @@ void FilterGraph::setDeviceChannelCounts(int numInputs, int numOutputs)
 
     if (graph.setBusesLayout(layout))
     {
-        spdlog::info("[FilterGraph] Graph bus layout set successfully: {} in, {} out",
-                     graph.getTotalNumInputChannels(), graph.getTotalNumOutputChannels());
+        spdlog::info("[FilterGraph] Graph bus layout set successfully: {} in, {} out", graph.getTotalNumInputChannels(),
+                     graph.getTotalNumOutputChannels());
     }
     else
     {
@@ -153,7 +153,8 @@ void FilterGraph::repositionDefaultInputNodes()
     for (int i = 0; i < getNumFilters(); ++i)
     {
         auto node = getNode(i);
-        if (!node) continue;
+        if (!node)
+            continue;
         auto name = node->getProcessor()->getName();
 
         if (name == "Audio Input")
@@ -503,8 +504,7 @@ bool FilterGraph::addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, 
                      srcNode ? srcNode->getProcessor()->getName().toStdString() : "NULL",
                      srcNode ? srcNode->getProcessor()->getTotalNumOutputChannels() : -1,
                      dstNode ? dstNode->getProcessor()->getName().toStdString() : "NULL",
-                     dstNode ? dstNode->getProcessor()->getTotalNumInputChannels() : -1,
-                     graph.canConnect(conn));
+                     dstNode ? dstNode->getProcessor()->getTotalNumInputChannels() : -1, graph.canConnect(conn));
     }
     else
     {
@@ -741,6 +741,7 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
     {
         e->setAttribute("oscMIDIAddress", oscManager.getMIDIProcessorAddress(bypassable));
         e->setAttribute("MIDIChannel", bypassable->getMIDIChannel());
+        e->setAttribute("bypass", bypassable->getBypass());
     }
 
     PluginDescription pd;
@@ -845,6 +846,7 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
             oscManager.registerMIDIProcessor(midiAddress, bypassable);
 
         bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
+        bypassable->setBypass(xml.getBoolAttribute("bypass", false));
     }
 
     node->getProcessor()->setCurrentProgram(xml.getIntAttribute("program"));
