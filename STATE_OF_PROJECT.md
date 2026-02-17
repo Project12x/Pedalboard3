@@ -46,6 +46,15 @@
 - Done: **Southwest Cable Fix** - Two-Phase Transform pattern
 - Done: **Sub-Graph Connection Fix** - Clear before restore pattern
 
+**Master Bus & Mixer (Complete - Feb 17 2026):**
+- Done: Bypass persistence in patch XML (forward/backward compatible)
+- Done: MasterBusProcessor insert rack (SubGraph-based, device callback level)
+- Done: Master bus UI (FX button in footer, dialog window rack editor)
+- Done: RT-safe hasPlugins atomic cache via ChangeListener
+- Done: Gain smoothing (SmoothedValue, 50ms multiplicative ramp)
+- Done: VU meter ballistics (VuMeterDsp, 300ms IEC 60268-17)
+- Done: Dual metering UI (VU bar + peak hold indicator)
+
 ---
 
 ## Effect Rack Status
@@ -99,6 +108,9 @@
 | Settings Persistence | ✅ JSON |
 | Theme System | ✅ Complete |
 | Effect Rack | ✅ Phase 5Q Complete |
+| Master Bus Insert | ✅ Complete |
+| Gain Smoothing | ✅ Complete |
+| VU Metering | ✅ Complete |
 | MIDI Mapping | ⚠️ Legacy (works) |
 | OSC Mapping | ⚠️ Legacy (works) |
 
@@ -115,4 +127,4 @@
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-17*

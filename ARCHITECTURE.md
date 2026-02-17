@@ -260,8 +260,8 @@ float display = level.load();
 | `SettingsManager` | **NEW** JSON-based settings (`settings.json`) |
 | `PropertiesSingleton` | ~~Legacy~~ (deprecated, being removed) |
 | `ColourScheme` | Current theme colors |
-| `MasterGainState` | Atomic per-channel gain (dB) for Audio I/O |
-| `SafetyLimiterProcessor` | Output/input level metering + safety limiting |
+| `MasterGainState` | Atomic per-channel gain (dB), SmoothedValue gain ramps, master bus insert rack |
+| `SafetyLimiterProcessor` | Output/input peak + VU level metering, safety limiting |
 
 ---
 
@@ -304,30 +304,61 @@ public:
     std::atomic<float> masterInputGainDb{0.0f};           // Master bus
     std::atomic<float> masterOutputGainDb{0.0f};
 
-    float getInputGainLinear(int ch) const;   // Decibels::decibelsToGain
-    float getOutputGainLinear(int ch) const;
-    void loadFromSettings();  // SettingsManager on startup
-    void saveToSettings();    // SettingsManager on shutdown
+    // Gain smoothing (50ms multiplicative ramp, zipper-free)
+    SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedInputGain;
+    SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedOutputGain;
+    void prepareSmoothing(double sampleRate);  // Called from audioDeviceAboutToStart
+    void updateSmoothedTargets();              // Called once per audio block
+
+    // Master bus insert rack (global, not per-patch)
+    MasterBusProcessor& getMasterBus();
 };
 ```
 
 **Key files:** `MasterGainState.h`, `MasterGainState.cpp`
 
+### MasterBusProcessor
+
+Global insert rack at the device output level, between graph output and output gain.
+Wraps a `SubGraphProcessor` for recursive plugin hosting.
+
+- **Audio path:** Processes in `MeteringProcessorPlayer` callback, after graph, before output gain
+- **RT safety:** `hasPluginsCached()` reads `std::atomic<bool>`, updated via `ChangeListener` on message thread
+- **Bypass:** `setBypass()`/`isBypassed()` — empty rack is automatic passthrough
+- **State:** Persisted globally via `SettingsManager`, not per-patch
+
+**Key files:** `MasterBusProcessor.h`, `MasterBusProcessor.cpp`
+
 ### MeteringProcessorPlayer
 
-Subclasses `AudioProcessorPlayer` to apply gain and tap real device buffers.
+Subclasses `AudioProcessorPlayer` to apply smoothed gain, master bus insert, and tap real device buffers.
 
 ```text
 audioDeviceIOCallbackWithContext:
-  1. Read per-channel input gain from MasterGainState
-  2. Copy input to inputGainBuffer, scale by gain (inputChannelData is const)
-  3. Update input levels → SafetyLimiterProcessor::updateInputLevelsFromDevice
+  1. updateSmoothedTargets() — sync atomic dB → SmoothedValue targets
+  2. Pre-compute smoothedInputRamp[numSamples] (one value per sample)
+  3. Copy input to inputGainBuffer, scale by smoothed gain * channel gain
   4. Call parent (graph processes)
-  5. Read per-channel output gain, scale output buffers in-place
-  6. Update output levels → SafetyLimiterProcessor::updateOutputLevelsFromDevice
+  5. Process master bus insert rack (if has plugins and not bypassed)
+  6. Pre-compute smoothedOutputRamp[numSamples]
+  7. Scale output buffers in-place by smoothed gain * channel gain
+  8. Tap levels → SafetyLimiterProcessor (peak + VU metering)
 ```
 
 **Key file:** `MainPanel.h` (inner class `MeteringProcessorPlayer`)
+
+### VU Metering
+
+Dual metering system: **peak** (existing) + **VU ballistic** (IEC 60268-17).
+
+| Meter Type | Class | Integration Time | Use |
+|------------|-------|-------------------|-----|
+| Peak | Direct `std::abs` with decay | ~300ms decay | Peak hold indicator (thin line) |
+| VU | `VuMeterDsp` (2-pole lowpass) | 300ms rise to 99% | Meter bar body (smooth) |
+
+Both run in `SafetyLimiterProcessor::updateInputLevelsFromDevice()`/`updateOutputLevelsFromDevice()`, called from the device audio callback. Results stored in `std::atomic<float>` arrays read by UI.
+
+**Key files:** `VuMeterDsp.h`, `SafetyLimiter.h`, `SafetyLimiter.cpp`
 
 ### UI Slider Synchronization
 
@@ -448,5 +479,5 @@ spdlog::default_logger()->flush();  // Force write before crash
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-17*
 
