@@ -472,7 +472,95 @@ void MixerProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/)
 
 Component* MixerProcessor::getControls()
 {
-    return nullptr; // Use createEditor() instead
+    // Lightweight inline control for the node panel
+    class MixerControl : public Component, private Timer
+    {
+      public:
+        MixerControl(MixerProcessor* proc) : processor(proc)
+        {
+            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            {
+                auto& f = faders[ch];
+                f.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+                f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+                f.setRange(-60.0, 12.0, 0.1);
+                f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
+                f.onValueChange = [this, ch]()
+                { processor->setChannelGainDb(ch, static_cast<float>(faders[ch].getValue())); };
+                addAndMakeVisible(f);
+            }
+
+            addAndMakeVisible(labelA);
+            labelA.setText("A", dontSendNotification);
+            labelA.setJustificationType(Justification::centred);
+
+            addAndMakeVisible(labelB);
+            labelB.setText("B", dontSendNotification);
+            labelB.setJustificationType(Justification::centred);
+
+            startTimerHz(15);
+        }
+
+        ~MixerControl() override { stopTimer(); }
+
+        void resized() override
+        {
+            auto area = getLocalBounds().reduced(4);
+            int w = area.getWidth() / 2;
+
+            auto left = area.removeFromLeft(w);
+            labelA.setBounds(left.removeFromBottom(16));
+            faders[0].setBounds(left.reduced(2));
+
+            labelB.setBounds(area.removeFromBottom(16));
+            faders[1].setBounds(area.reduced(2));
+        }
+
+        void timerCallback() override { repaint(); }
+
+        void paint(Graphics& g) override
+        {
+            auto& cs = ColourScheme::getInstance();
+            g.fillAll(cs.colours["Plugin Background"]);
+            g.setColour(cs.colours["Plugin Border"]);
+            g.drawRect(getLocalBounds(), 1);
+
+            // Mini VU bars
+            int w = (getWidth() - 8) / 2;
+            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            {
+                float vuL = processor->channels[ch].vuLevelL.load(std::memory_order_relaxed);
+                float vuR = processor->channels[ch].vuLevelR.load(std::memory_order_relaxed);
+                float avg = (vuL + vuR) * 0.5f;
+                float db = Decibels::gainToDecibels(avg, -60.0f);
+                float norm = jlimit(0.0f, 1.0f, (db + 60.0f) / 72.0f);
+
+                int x = 4 + ch * (w + 4);
+                int barH = 4;
+                int barY = getHeight() - 4;
+                int fillW = static_cast<int>(norm * w);
+
+                g.setColour(Colour(0xFF0A0A14));
+                g.fillRect(x, barY - barH, w, barH);
+
+                if (norm < 0.67f)
+                    g.setColour(cs.colours["VU Meter Lower Colour"]);
+                else if (norm < 0.83f)
+                    g.setColour(cs.colours["VU Meter Upper Colour"]);
+                else
+                    g.setColour(cs.colours["VU Meter Over Colour"]);
+
+                g.fillRect(x, barY - barH, fillW, barH);
+            }
+        }
+
+      private:
+        MixerProcessor* processor;
+        Slider faders[MixerProcessor::NumChannels];
+        Label labelA, labelB;
+    };
+
+    return new MixerControl(this);
 }
 
 void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midiMessages*/)
