@@ -34,7 +34,6 @@
 
 #include <JuceHeader.h>
 
-
 class PluginListWindow;
 class StageView;
 class TunerProcessor;
@@ -504,6 +503,7 @@ class MainPanel : public Component,
     Slider* outputGainSlider;
     Label* inputGainLabel;
     Label* outputGainLabel;
+    TextButton* masterInsertButton;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

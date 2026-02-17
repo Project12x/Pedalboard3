@@ -26,17 +26,19 @@
 #include "AudioSingletons.h"
 #include "BlacklistWindow.h"
 #include "BranchesLAF.h"
+#include "BypassableInstance.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
 #include "FontManager.h"
+#include "IRLoaderProcessor.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
-#include "SafePluginScanner.h"
-#include "IRLoaderProcessor.h"
 #include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
+#include "Mapping.h"
+#include "MasterGainState.h"
 #include "MidiFilePlayer.h"
 #include "MidiUtilityProcessors.h"
 #include "NAMProcessor.h"
@@ -48,9 +50,10 @@
 #include "PluginPoolManager.h"
 #include "PreferencesDialog.h"
 #include "RoutingProcessors.h"
-#include "MasterGainState.h"
+#include "SafePluginScanner.h"
 #include "SettingsManager.h"
 #include "StageView.h"
+#include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
 #include "ToastOverlay.h"
 #include "ToneGeneratorProcessor.h"
@@ -58,9 +61,6 @@
 #include "UserPresetWindow.h"
 #include "Vectors.h"
 #include "VirtualMidiInputProcessor.h"
-
-#include "BypassableInstance.h"
-#include "Mapping.h"
 
 #include <iostream>
 #include <sstream>
@@ -90,8 +90,8 @@ class PluginListWindow : public DocumentWindow
         if (useSafeScanner)
         {
             // Use our safe scanner with out-of-process support
-            setContentOwned(new SafePluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
-                                                        deadMansPedalFile, nullptr),
+            setContentOwned(new SafePluginListComponent(AudioPluginFormatManagerSingleton::getInstance(),
+                                                        knownPluginList, deadMansPedalFile, nullptr),
                             true);
         }
         else
@@ -103,7 +103,7 @@ class PluginListWindow : public DocumentWindow
         }
 
         setResizable(true, false);
-        centreWithSize(500, 500);  // Slightly larger for better UX
+        centreWithSize(500, 500); // Slightly larger for better UX
         setUsingNativeTitleBar(true);
         getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 
@@ -233,6 +233,11 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     outputGainSlider->setTooltip("Master Output Gain");
     outputGainSlider->textFromValueFunction = [](double v) { return "OUT " + String(v, 1) + " dB"; };
     outputGainSlider->addListener(this);
+
+    addAndMakeVisible(masterInsertButton = new TextButton("masterInsertButton"));
+    masterInsertButton->setButtonText("FX");
+    masterInsertButton->setTooltip("Master Bus Insert Rack");
+    masterInsertButton->addListener(this);
 
     //[UserPreSize]
 
@@ -512,11 +517,12 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     // Defer fitToScreen until after the message loop processes all pending
     // resize/layout events so the viewport has its final dimensions.
-    MessageManager::callAsync([this]()
-    {
-        if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
-            pluginField->fitToScreen();
-    });
+    MessageManager::callAsync(
+        [this]()
+        {
+            if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+                pluginField->fitToScreen();
+        });
 
     // Set up crash protection auto-save callback
     CrashProtection::getInstance().setAutoSaveCallback(
@@ -602,6 +608,8 @@ MainPanel::~MainPanel()
     inputGainLabel = nullptr;
     delete outputGainLabel;
     outputGainLabel = nullptr;
+    delete masterInsertButton;
+    masterInsertButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -694,15 +702,17 @@ void MainPanel::resized()
         const int gap = 4;
         const int minSliderW = 50;
 
-        // Full layout: [IN label][slider][gap][OUT label][slider]
-        int fullW = labelW * 2 + gap * 3 + minSliderW * 2;
-        // Compact layout: [slider][gap][slider] (no labels, self-labeled via textFromValue)
-        int compactW = gap * 2 + minSliderW * 2;
+        // Full layout: [IN label][slider][FX][gap][OUT label][slider]
+        int fullW = labelW * 2 + gap * 3 + minSliderW * 2 + 28;
+        // Compact layout: [slider][FX][gap][slider] (no labels)
+        int compactW = gap * 2 + minSliderW * 2 + 28;
+
+        const int fxBtnW = 28;
 
         if (gainAreaW >= fullW)
         {
             // Full layout with labels
-            int sliderW = (gainAreaW - labelW * 2 - gap * 3) / 2;
+            int sliderW = (gainAreaW - labelW * 2 - gap * 3 - fxBtnW) / 2;
 
             int x = transportEndX + gap;
             inputGainLabel->setVisible(true);
@@ -711,6 +721,9 @@ void MainPanel::resized()
             inputGainSlider->setVisible(true);
             inputGainSlider->setBounds(x, gainY, sliderW, 24);
             x += sliderW + gap;
+            masterInsertButton->setVisible(true);
+            masterInsertButton->setBounds(x, gainY, fxBtnW, 24);
+            x += fxBtnW + gap;
             outputGainLabel->setVisible(true);
             outputGainLabel->setBounds(x, gainY, labelW, 24);
             x += labelW;
@@ -719,8 +732,8 @@ void MainPanel::resized()
         }
         else if (gainAreaW >= compactW)
         {
-            // Compact layout: sliders only (self-labeled "IN 0.0 dB" / "OUT 0.0 dB")
-            int sliderW = (gainAreaW - gap * 2) / 2;
+            // Compact layout: sliders + FX button (self-labeled "IN 0.0 dB" / "OUT 0.0 dB")
+            int sliderW = (gainAreaW - gap * 2 - fxBtnW) / 2;
 
             inputGainLabel->setVisible(false);
             outputGainLabel->setVisible(false);
@@ -729,6 +742,9 @@ void MainPanel::resized()
             inputGainSlider->setVisible(true);
             inputGainSlider->setBounds(x, gainY, sliderW, 24);
             x += sliderW + gap;
+            masterInsertButton->setVisible(true);
+            masterInsertButton->setBounds(x, gainY, fxBtnW, 24);
+            x += fxBtnW + gap;
             outputGainSlider->setVisible(true);
             outputGainSlider->setBounds(x, gainY, sliderW, 24);
         }
@@ -739,6 +755,7 @@ void MainPanel::resized()
             outputGainLabel->setVisible(false);
             inputGainSlider->setVisible(false);
             outputGainSlider->setVisible(false);
+            masterInsertButton->setVisible(false);
         }
     }
 
@@ -784,6 +801,22 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
     {
         if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
             pluginField->fitToScreen();
+    }
+    else if (buttonThatWasClicked == masterInsertButton)
+    {
+        auto& gainState = MasterGainState::getInstance();
+        auto& masterBus = gainState.getMasterBus();
+        auto* editor = new SubGraphEditorComponent(*masterBus.getRack());
+        editor->setSize(600, 400);
+
+        DialogWindow::LaunchOptions opts;
+        opts.content.setOwned(editor);
+        opts.dialogTitle = "Master Bus Insert Rack";
+        opts.dialogBackgroundColour = Colours::darkgrey;
+        opts.escapeKeyTriggersCloseButton = true;
+        opts.useNativeTitleBar = true;
+        opts.resizable = true;
+        opts.launchAsync();
     }
 
     //[/UserbuttonClicked_Post]
@@ -1637,8 +1670,7 @@ void MainPanel::timerCallback(int timerId)
                 if (pc.graph != &signalPath)
                     continue;
 
-                auto node = pc.graph->getNodeForId(
-                    juce::AudioProcessorGraph::NodeID(pc.pluginId));
+                auto node = pc.graph->getNodeForId(juce::AudioProcessorGraph::NodeID(pc.pluginId));
                 if (node)
                 {
                     if (pc.paramIndex == -1)
