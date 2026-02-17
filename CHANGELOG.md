@@ -15,6 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **VU Meter UI Wiring** — Meter bars in PluginComponent (Audio I/O nodes) and StageView now display VU ballistic levels for smooth response, while peak hold indicators retain instantaneous peak detection. Professional DAW-style metering: smooth VU body + sharp peak pip.
 - **Master Bus Insert Rack** — Global effect rack at the device output level, powered by SubGraphProcessor. Accessible via the "FX" button in the footer toolbar between the input/output gain sliders. Opens in a dialog window for plugin management. State persists globally (not per-patch).
 - **Master Bus Processor** — New `MasterBusProcessor` wraps a `SubGraphProcessor` for processing all audio at the device callback level, between the graph output and output gain stage.
+- **Mixer Plugin Upgrade** — Complete rewrite of the internal Mixer plugin:
+  - Per-channel gain (dB), pan (-3dB equal-power law), mute, solo-in-place, phase invert
+  - `SmoothedValue` gain ramps (50ms) with multiplicative smoothing to eliminate zipper noise
+  - VU metering per channel (L/R) using filtered RMS with peak hold indicators
+  - Channel strip editor with vertical gain faders (-60 to +12 dB), rotary pan knobs, mute/solo/phase toggle buttons with color feedback, and dual VU meter bars with dB scale ticks
+  - Backward-compatible state serialization (reads old `levelA`/`levelB` format)
 
 ### Fixed
 

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "PedalboardProcessors.h"
+#include "VuMeterDsp.h"
 
 #include <JuceHeader.h>
 
@@ -77,6 +78,11 @@ class SplitterProcessor : public PedalboardProcessor
     Mixes two stereo pairs (A and B) into one stereo output.
     Input:  4 channels (Stereo A + Stereo B)
     Output: 2 channels (Stereo Mix)
+
+    Features:
+    - Per-channel gain (dB), pan (equal-power -3dB law), mute, solo, phase invert
+    - SmoothedValue gain ramps (50ms, zipper-free)
+    - VU metering per channel (IEC 60268-17, 300ms integration)
 */
 class MixerProcessor : public PedalboardProcessor
 {
@@ -86,10 +92,10 @@ class MixerProcessor : public PedalboardProcessor
 
     // PedalboardProcessor overrides
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(100, 100); }
+    Point<int> getSize() override { return Point<int>(230, 340); }
 
     // AudioProcessor overrides
-    void prepareToPlay(double sampleRate, int samplesPerBlock) override {}
+    void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
     void processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages) override;
 
@@ -116,21 +122,46 @@ class MixerProcessor : public PedalboardProcessor
 
     void fillInPluginDescription(PluginDescription& description) const override;
 
-    // Parameters
-    void setLevelA(float level);
-    float getLevelA() const { return levelA.load(); }
+    //==========================================================================
+    // Per-channel state (A = 0, B = 1)
+    static constexpr int NumChannels = 2;
 
-    void setLevelB(float level);
-    float getLevelB() const { return levelB.load(); }
-
-    // Parameter handling
-    enum Parameters
+    struct ChannelState
     {
-        LevelA = 0,
-        LevelB,
-        NumParameters
+        std::atomic<float> gainDb{0.0f}; // -60 to +12 dB
+        std::atomic<float> pan{0.0f};    // -1.0 (L) to +1.0 (R)
+        std::atomic<bool> mute{false};
+        std::atomic<bool> solo{false};
+        std::atomic<bool> phaseInvert{false};
+        // VU metering (written on audio thread, read by UI)
+        VuMeterDsp vuL, vuR;
+        std::atomic<float> vuLevelL{0.0f}, vuLevelR{0.0f};
+        std::atomic<float> peakL{0.0f}, peakR{0.0f};
     };
 
+    ChannelState channels[NumChannels];
+
+    // Convenience accessors
+    float getChannelGainDb(int ch) const { return channels[ch].gainDb.load(std::memory_order_relaxed); }
+    void setChannelGainDb(int ch, float db) { channels[ch].gainDb.store(db, std::memory_order_relaxed); }
+    float getChannelPan(int ch) const { return channels[ch].pan.load(std::memory_order_relaxed); }
+    void setChannelPan(int ch, float p) { channels[ch].pan.store(p, std::memory_order_relaxed); }
+    bool getChannelMute(int ch) const { return channels[ch].mute.load(std::memory_order_relaxed); }
+    void setChannelMute(int ch, bool m) { channels[ch].mute.store(m, std::memory_order_relaxed); }
+    bool getChannelSolo(int ch) const { return channels[ch].solo.load(std::memory_order_relaxed); }
+    void setChannelSolo(int ch, bool s) { channels[ch].solo.store(s, std::memory_order_relaxed); }
+    bool getChannelPhaseInvert(int ch) const { return channels[ch].phaseInvert.load(std::memory_order_relaxed); }
+    void setChannelPhaseInvert(int ch, bool p) { channels[ch].phaseInvert.store(p, std::memory_order_relaxed); }
+
+    // Legacy parameter interface (for MIDI mapping compatibility)
+    enum Parameters
+    {
+        ParamGainA = 0,
+        ParamGainB,
+        ParamPanA,
+        ParamPanB,
+        NumParameters
+    };
     int getNumParameters() override { return NumParameters; }
     float getParameter(int parameterIndex) override;
     void setParameter(int parameterIndex, float newValue) override;
@@ -138,8 +169,9 @@ class MixerProcessor : public PedalboardProcessor
     const String getParameterText(int parameterIndex) override;
 
   private:
-    std::atomic<float> levelA{0.707f};
-    std::atomic<float> levelB{0.707f};
+    // Gain smoothing (50ms multiplicative ramp)
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> smoothedGain[NumChannels];
+    float peakDecayCoeff = 0.9995f;
 
     Rectangle<int> editorBounds;
 
