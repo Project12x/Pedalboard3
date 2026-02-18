@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Fixed
+
+- **Token Audit Pass 1** - Replaced hardcoded `Colours::black` label text in MainPanel (3 labels) and `Colours::darkgrey` dialog background with `ColourScheme` tokens. Replaced 13 `Colours::white` text callsites in StageView with `"Text Colour"` token - white text was invisible on Daylight theme where stage backgrounds are light grey.
+
 ### Changed
 
 - **Tech Debt Cleanup** — Fixed duplicate `mute.store()` bug in `StripState::resetDefaults()` (both mixer and splitter) where `solo` was never reset. Removed 28-line deliberation comment block from `DawSplitterProcessor::processBlock`. Fixed duplicate doc comment in `PedalboardProcessors.h`. Hoisted `numStrips_` atomic load out of `prepareToPlay` loop in both processors (was redundantly loaded 32x per call).
