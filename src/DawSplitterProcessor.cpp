@@ -100,11 +100,11 @@ void DawSplitterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBloc
     computeVuDecay(sampleRate);
 
     // Init ALL MaxStrips DSP instances (cheap, avoids any runtime allocation)
+    int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < MaxStrips; ++i)
     {
         stripDsp_[static_cast<size_t>(i)].init(sampleRate);
 
-        int n = numStrips_.load(std::memory_order_acquire);
         if (i < n)
         {
             float gainLin =
@@ -213,35 +213,8 @@ void DawSplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& 
         }
         else
         {
-            // Mono Pan (applied to mono output? No, splitter usually just sums to mono.
-            // But if we want to support panning a mono output within the stereo field...
-            // wait, this is a splitter. The output IS the destination.
-            // The user said: "Pan can exist for both. for mono, it sets placement in the stereo bus."
-            // BUT DawSplitterProcessor outputs N discrete channels.
-            // If strip S is mono, it outputs to channel C. Panning implies it goes to C and C+1?
-            // No, that would be a stereo strip.
-            //
-            // Re-reading user: "Splitter behavior: stereo output strip = 2 output channels"
-            // "Pan can exist for both... for mono, it sets placement in the stereo bus" -> meaningful for Mixer, but
-            // for Splitter? If I have a mono output pin, I can't pan it "in the stereo bus" because the "bus" is just
-            // that 1 pin connected to something else.
-            //
-            // However, if the mono strip is feeding a stereo destination *downstream*, the splitter doesn't know that.
-            //
-            // Let's stick to the classic interpretation:
-            // Stereo Strip: L/R pairs. Pan behaves as balance between L/R pins.
-            // Mono Strip: Sum L+R to 1 pin. Pan is... maybe not useful here?
-            // Or maybe it determines the mix of input L/R that goes to the mono output?
-            // "for mono, it sets placement in the stereo bus" <-- This applies to mixer input->master.
-            // For Splitter (input->outputs), maybe pan controls the *input* balance fed to the strip?
-            //
-            // Let's assume for Mono Splitter Strip: Sum L+R. Maybe Pan adjusts L vs R contribution?
-            // For now, I'll stick to simple Sum L+R for mono, and Balance for Stereo.
-            //
-            // Actually, wait. User: "Mixer behavior - it should consume 2 input channels... same for stereo output
-            // strip 2 output channels." "Pan can exist for both... for mono, it sets placement in the stereo bus" -
-            // context implies Mixer. For Splitter, let's implement Balance for Stereo. For Mono, we'll just sum.
-
+            // Mono splitter: sum L+R to single output. Pan not applicable
+            // (downstream routing determines stereo placement).
             panL = 1.0f;
             panR = 1.0f;
         }

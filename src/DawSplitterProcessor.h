@@ -60,7 +60,6 @@ class DawSplitterProcessor : public PedalboardProcessor
             gainDb.store(0.0f, std::memory_order_relaxed);
             pan.store(0.0f, std::memory_order_relaxed);
             mute.store(false, std::memory_order_relaxed);
-            mute.store(false, std::memory_order_relaxed);
             solo.store(false, std::memory_order_relaxed);
             stereo.store(false, std::memory_order_relaxed);
             phaseInvert.store(false, std::memory_order_relaxed);

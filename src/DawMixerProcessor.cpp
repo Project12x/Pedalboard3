@@ -105,12 +105,12 @@ void DawMixerProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     computeVuDecay(sampleRate);
 
     // Init ALL MaxStrips DSP instances (cheap, avoids any runtime allocation)
+    int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < MaxStrips; ++i)
     {
         stripDsp_[static_cast<size_t>(i)].init(sampleRate);
 
         // Snap smoothed gain to current value for active strips
-        int n = numStrips_.load(std::memory_order_acquire);
         if (i < n)
         {
             float gainLin =

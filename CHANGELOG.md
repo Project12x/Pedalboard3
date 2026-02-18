@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Changed
+
+- **Tech Debt Cleanup** — Fixed duplicate `mute.store()` bug in `StripState::resetDefaults()` (both mixer and splitter) where `solo` was never reset. Removed 28-line deliberation comment block from `DawSplitterProcessor::processBlock`. Fixed duplicate doc comment in `PedalboardProcessors.h`. Hoisted `numStrips_` atomic load out of `prepareToPlay` loop in both processors (was redundantly loaded 32x per call).
+
 - **Gain Smoothing** — Master input/output gain now uses `SmoothedValue<float, Multiplicative>` with a 50ms ramp to eliminate zipper noise during gain changes. Pre-computed ramp buffers ensure correct smoothing rate independent of channel count.
 - **VU Meter Ballistics** — New `VuMeterDsp` class provides standard 300ms VU integration (IEC 60268-17) using a 2-pole cascaded lowpass filter. Integrated into `SafetyLimiterProcessor` alongside existing peak metering. VU levels exposed via `getOutputVuLevel()`/`getInputVuLevel()`.
 - **VU Meter UI Wiring** — Meter bars in PluginComponent (Audio I/O nodes) and StageView now display VU ballistic levels for smooth response, while peak hold indicators retain instantaneous peak detection. Professional DAW-style metering: smooth VU body + sharp peak pip.

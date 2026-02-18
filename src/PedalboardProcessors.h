@@ -25,7 +25,6 @@
 #include <stdint.h>
 #include <vector>
 
-
 class LooperControl;
 
 //------------------------------------------------------------------------------
@@ -44,7 +43,6 @@ class PedalboardProcessor : public AudioPluginInstance
     ///	Returns the size of the controls component.
     virtual Point<int> getSize() = 0;
 
-    /// Pin layout info for aligning pins with strip rows.
     /// Pin layout info for aligning pins with strip rows.
     struct PinLayout
     {
