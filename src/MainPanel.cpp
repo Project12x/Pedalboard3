@@ -139,7 +139,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     patchLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     patchLabel->setJustificationType(Justification::centredLeft);
     patchLabel->setEditable(false, false, false);
-    patchLabel->setColour(TextEditor::textColourId, Colours::black);
+    patchLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     patchLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(prevPatch = new TextButton("prevPatch"));
@@ -173,7 +173,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
-    cpuLabel->setColour(TextEditor::textColourId, Colours::black);
+    cpuLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     cpuLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(playButton = new DrawableButton("playButton", DrawableButton::ImageOnButtonBackground));
@@ -186,7 +186,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     tempoLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     tempoLabel->setJustificationType(Justification::centredLeft);
     tempoLabel->setEditable(false, false, false);
-    tempoLabel->setColour(TextEditor::textColourId, Colours::black);
+    tempoLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     tempoLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(tempoEditor = new TextEditor("tempoEditor"));
@@ -823,7 +823,7 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
         DialogWindow::LaunchOptions opts;
         opts.content.setOwned(editor);
         opts.dialogTitle = "Master Bus Insert Rack";
-        opts.dialogBackgroundColour = Colours::darkgrey;
+        opts.dialogBackgroundColour = ColourScheme::getInstance().colours["Dialog Background"];
         opts.escapeKeyTriggersCloseButton = true;
         opts.useNativeTitleBar = true;
         opts.resizable = true;

@@ -28,27 +28,27 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     prevButton = std::make_unique<TextButton>("<< PREV");
     prevButton->addListener(this);
     prevButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
-    prevButton->setColour(TextButton::textColourOffId, Colours::white);
+    prevButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(prevButton.get());
 
     nextButton = std::make_unique<TextButton>("NEXT >>");
     nextButton->addListener(this);
     nextButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
-    nextButton->setColour(TextButton::textColourOffId, Colours::white);
+    nextButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(nextButton.get());
 
     // Panic button
     panicButton = std::make_unique<TextButton>("PANIC");
     panicButton->addListener(this);
     panicButton->setColour(TextButton::buttonColourId, Colours::darkred);
-    panicButton->setColour(TextButton::textColourOffId, Colours::white);
+    panicButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(panicButton.get());
 
     // Exit button
     exitButton = std::make_unique<TextButton>("EXIT");
     exitButton->addListener(this);
     exitButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.3f));
-    exitButton->setColour(TextButton::textColourOffId, Colours::white.withAlpha(0.8f));
+    exitButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));
     addAndMakeVisible(exitButton.get());
 
     // Tuner toggle
@@ -58,8 +58,8 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     tunerToggleButton->setToggleState(true, dontSendNotification);
     tunerToggleButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
     tunerToggleButton->setColour(TextButton::buttonOnColourId, colours["Tuner Active Colour"]);
-    tunerToggleButton->setColour(TextButton::textColourOffId, Colours::white.withAlpha(0.7f));
-    tunerToggleButton->setColour(TextButton::textColourOnId, Colours::white);
+    tunerToggleButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.7f));
+    tunerToggleButton->setColour(TextButton::textColourOnId, colours["Text Colour"]);
     addAndMakeVisible(tunerToggleButton.get());
 
     // Master gain sliders (larger for live use)
@@ -263,7 +263,7 @@ void StageView::paint(Graphics& g)
         auto drawVU = [&](float x, float y, const String& label, float level0, float level1, const float* peakHold,
                           const int* peakCounters)
         {
-            g.setColour(Colours::white.withAlpha(0.6f));
+            g.setColour(colours["Text Colour"].withAlpha(0.6f));
             g.setFont(fonts.getUIFont(14.0f, true));
             g.drawText(label, x, y, labelW, 32.0f, Justification::centredRight);
 
@@ -340,9 +340,10 @@ void StageView::paint(Graphics& g)
 void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
 
     // "STAGE MODE" title
-    g.setColour(Colours::white.withAlpha(0.5f));
+    g.setColour(colours["Text Colour"].withAlpha(0.5f));
     g.setFont(fonts.getUIFont(16.0f, true));
     g.drawText("STAGE MODE", bounds.reduced(20, 0), Justification::centredLeft);
 
@@ -356,10 +357,11 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
 void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
     auto centre = bounds.getCentre();
 
     // Large patch name
-    g.setColour(Colours::white);
+    g.setColour(colours["Text Colour"]);
     g.setFont(fonts.getUIFont(72.0f, true));
 
     // Truncate long names
@@ -372,14 +374,14 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     // Next Patch Preview
     if (nextPatchName.isNotEmpty())
     {
-        g.setColour(Colours::white.withAlpha(0.5f));
+        g.setColour(colours["Text Colour"].withAlpha(0.5f));
         g.setFont(fonts.getUIFont(32.0f));
         g.drawText("NEXT: " + nextPatchName, bounds.removeFromBottom(140).withTrimmedBottom(60),
                    Justification::centredTop);
     }
     else
     {
-        g.setColour(Colours::white.withAlpha(0.3f));
+        g.setColour(colours["Text Colour"].withAlpha(0.3f));
         g.setFont(fonts.getUIFont(24.0f));
         g.drawText("(End of Set)", bounds.removeFromBottom(140).withTrimmedBottom(60), Justification::centredTop);
     }
@@ -387,7 +389,7 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     // Patch position indicator
     if (totalPatchCount > 0)
     {
-        g.setColour(Colours::white.withAlpha(0.5f));
+        g.setColour(colours["Text Colour"].withAlpha(0.5f));
         g.setFont(fonts.getMonoFont(24.0f));
         String posStr = String(currentPatchIndex + 1) + " / " + String(totalPatchCount);
         // Positioned slightly lower
@@ -409,7 +411,7 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 
     if (tunerProcessor == nullptr || !tunerProcessor->isPitchDetected())
     {
-        g.setColour(Colours::white.withAlpha(0.25f));
+        g.setColour(colours["Text Colour"].withAlpha(0.25f));
         g.setFont(fonts.getUIFont(32.0f));
         g.drawText("Waiting for signal...", bounds, Justification::centred);
         return;
@@ -439,7 +441,7 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     g.fillRoundedRectangle(barX, barY, barWidth, barHeight, 6.0f);
 
     // Center marker
-    g.setColour(Colours::white.withAlpha(0.5f));
+    g.setColour(colours["Text Colour"].withAlpha(0.5f));
     g.fillRect(centreX - 1.5f, barY - 4, 3.0f, barHeight + 8);
 
     // Indicator position
