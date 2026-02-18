@@ -21,9 +21,8 @@
 #define PEDALBOARDPROCESSORS_H_
 
 #include <JuceHeader.h>
-#include <stdint.h>
 #include <atomic>
-
+#include <stdint.h>
 
 class LooperControl;
 
@@ -42,6 +41,18 @@ class PedalboardProcessor : public AudioPluginInstance
     virtual Component* getControls() = 0;
     ///	Returns the size of the controls component.
     virtual Point<int> getSize() = 0;
+
+    /// Pin layout info for aligning pins with strip rows.
+    struct PinLayout
+    {
+        int startY;  ///< Y offset from PluginComponent top for the first pin.
+        int spacing; ///< Y spacing between consecutive pins.
+    };
+
+    /// Returns pin layout for input (left) pins.  Override for custom alignment.
+    virtual PinLayout getInputPinLayout() const { return {34, 22}; }
+    /// Returns pin layout for output (right) pins. Override for custom alignment.
+    virtual PinLayout getOutputPinLayout() const { return {34, 22}; }
 };
 
 //------------------------------------------------------------------------------
@@ -697,7 +708,8 @@ class MetronomeProcessor : public PedalboardProcessor, public ChangeListener, pu
     std::atomic<float> clickCount{0.0f};
     ///	Used to decrement clickCount (audio-thread only).
     float clickDec;
-    ///	Used to count down to the next start of the measure (written by message thread on play start, read/written by audio thread).
+    ///	Used to count down to the next start of the measure (written by message thread on play start, read/written by
+    ///audio thread).
     std::atomic<int> measureCount{0};
     ///	Whether we're currently playing the accent or the click.
     bool isAccent;
@@ -747,20 +759,20 @@ class LooperProcessor : public PedalboardProcessor,
         return soundFile;
     };
     ///	Returns whether or not we're currently playing.
-    bool isPlaying() const { return (playing.load(std::memory_order_relaxed) && !stopPlaying.load(std::memory_order_relaxed)); };
+    bool isPlaying() const
+    {
+        return (playing.load(std::memory_order_relaxed) && !stopPlaying.load(std::memory_order_relaxed));
+    };
     ///	Returns whether or not we're currently recording.
-    bool isRecording() const { return (recording.load(std::memory_order_relaxed) && !stopRecording.load(std::memory_order_relaxed)); };
+    bool isRecording() const
+    {
+        return (recording.load(std::memory_order_relaxed) && !stopRecording.load(std::memory_order_relaxed));
+    };
 
     /// Returns true and clears the flag if an out-of-memory error occurred during recording.
-    bool getAndClearMemoryError()
-    {
-        return memoryError.exchange(false, std::memory_order_relaxed);
-    }
+    bool getAndClearMemoryError() { return memoryError.exchange(false, std::memory_order_relaxed); }
     /// Returns true and clears the flag if audio-thread state changed. Polled by UI timer.
-    bool checkAndClearStateChanged()
-    {
-        return stateChanged.exchange(false, std::memory_order_relaxed);
-    }
+    bool checkAndClearStateChanged() { return stateChanged.exchange(false, std::memory_order_relaxed); }
     ///	Returns the current read position within the file.
     /*!
         \return 0->1
@@ -929,7 +941,8 @@ class LooperProcessor : public PedalboardProcessor,
     std::atomic<float> clickCount{0.0f};
     ///	Used to decrement clickCount (written by message thread on record start, read/written by audio thread).
     std::atomic<float> clickDec{0.0f};
-    ///	Used to count down to the next start of the measure (written by message thread on record start, read/written by audio thread).
+    ///	Used to count down to the next start of the measure (written by message thread on record start, read/written by
+    ///audio thread).
     std::atomic<int> measureCount{0};
 
     ///	The samplerate passed to prepareToPlay().

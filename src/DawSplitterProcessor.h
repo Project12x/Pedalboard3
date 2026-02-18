@@ -107,6 +107,21 @@ class DawSplitterProcessor : public PedalboardProcessor
     Component* getControls() override;
     Point<int> getSize() override;
 
+    // Pin alignment: input pins in input row, output pins match strip rows
+    PinLayout getInputPinLayout() const override
+    {
+        // Input row starts at: controls y(24) + header(24) = 48
+        // 2 stereo input pins centered in the 44px input row
+        // First pin center at 48 + 11 = 59, startY = 59 - 8 = 51
+        return {51, 22};
+    }
+    PinLayout getOutputPinLayout() const override
+    {
+        // Strip rows start after input row: 48 + 44 = 92
+        // Pin center at strip center: 92 + 22 = 114, startY = 114 - 8 = 106
+        return {106, 44};
+    }
+
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}

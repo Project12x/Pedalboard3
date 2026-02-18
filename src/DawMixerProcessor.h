@@ -109,6 +109,25 @@ class DawMixerProcessor : public PedalboardProcessor
     Component* getControls() override;
     Point<int> getSize() override;
 
+    // Pin alignment: input pins match strip rows, output pins at master row
+    PinLayout getInputPinLayout() const override
+    {
+        // Strip rows start at: controls y(24) + header(24) = 48
+        // Pin center should be at strip center: 48 + stripHeight/2 = 70
+        // Pin top = center - pinHeight/2 = 70 - 8 = 62
+        return {62, 44};
+    }
+    PinLayout getOutputPinLayout() const override
+    {
+        // Master row is after all strips: 48 + N*44
+        // 2 stereo output pins centered in the master row (44px)
+        int n = numStrips_.load(std::memory_order_acquire);
+        int masterRowTop = 48 + n * 44;
+        // First pin center at masterRowTop + 11, second at masterRowTop + 33
+        // → startY = masterRowTop + 11 - 8 = masterRowTop + 3
+        return {masterRowTop + 3, 22};
+    }
+
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}

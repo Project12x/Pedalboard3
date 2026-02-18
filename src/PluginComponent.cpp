@@ -1345,12 +1345,29 @@ void PluginComponent::createPins()
 
     // Use larger pins and spacing for Audio I/O nodes
     const bool largePin = isAudioIONode();
-    const int pinSpacing = largePin ? 40 : 22;
-    const int pinStartY = largePin ? 40 : 34;
+
+    // Check for PedalboardProcessor custom pin layout (mixer/splitter alignment)
+    PedalboardProcessor::PinLayout inputLayout{largePin ? 40 : 34, largePin ? 40 : 22};
+    PedalboardProcessor::PinLayout outputLayout{largePin ? 40 : 34, largePin ? 40 : 22};
+
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(plugin))
+    {
+        if (auto* pbProc = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
+        {
+            inputLayout = pbProc->getInputPinLayout();
+            outputLayout = pbProc->getOutputPinLayout();
+        }
+    }
+    else if (auto* pbProc = dynamic_cast<PedalboardProcessor*>(plugin))
+    {
+        inputLayout = pbProc->getInputPinLayout();
+        outputLayout = pbProc->getOutputPinLayout();
+    }
+
     const int pinXOffset = largePin ? -10 : -8;
     const int pinXOffsetRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
 
-    y = pinStartY;
+    y = inputLayout.startY;
     for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
@@ -1363,7 +1380,7 @@ void PluginComponent::createPins()
 
         inputPins.add(pin);
 
-        y += pinSpacing;
+        y += inputLayout.spacing;
     }
 
     if ((acceptsMidiSafe(plugin) || (countInputChannelsFromBuses(plugin) > 0) ||
@@ -1383,7 +1400,7 @@ void PluginComponent::createPins()
         y += 22;
     }
 
-    y = pinStartY;
+    y = outputLayout.startY;
     for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
     {
         Point<int> pinPos;
@@ -1396,7 +1413,7 @@ void PluginComponent::createPins()
 
         outputPins.add(pin);
 
-        y += pinSpacing;
+        y += outputLayout.spacing;
     }
 
     if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
