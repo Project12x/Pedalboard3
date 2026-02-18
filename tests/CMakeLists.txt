@@ -16,6 +16,8 @@ add_executable(Pedalboard3_Tests
     patch_switch_test.cpp
     vst3_loading_test.cpp
     midi_mapping_test.cpp
+    mixer_splitter_test.cpp
+    master_bus_test.cpp
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp

@@ -42,7 +42,6 @@
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
 
-
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -56,35 +55,28 @@ namespace
 int countInputChannelsFromBuses(AudioProcessor* proc)
 {
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
-        return bypassable->getCachedInputChannelCount();
-
-    // Internal processors - no BypassableInstance wrapper, safe to query directly
-    int totalChannels = 0;
-    for (int busIdx = 0; busIdx < proc->getBusCount(true); ++busIdx)
     {
-        if (auto* bus = proc->getBus(true, busIdx))
-            totalChannels += bus->getNumberOfChannels();
+        // PedalboardProcessor subclasses (DawMixer, DawSplitter) dynamically change
+        // channel count via setPlayConfigDetails. The cached count from construction
+        // time is stale. Query the inner plugin directly for current count.
+        if (auto* inner = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
+            return inner->getTotalNumInputChannels();
+        return bypassable->getCachedInputChannelCount();
     }
-    if (totalChannels == 0)
-        totalChannels = proc->getTotalNumInputChannels();
-    return totalChannels;
+
+    return proc->getTotalNumInputChannels();
 }
 
 int countOutputChannelsFromBuses(AudioProcessor* proc)
 {
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
-        return bypassable->getCachedOutputChannelCount();
-
-    // Internal processors - no BypassableInstance wrapper, safe to query directly
-    int totalChannels = 0;
-    for (int busIdx = 0; busIdx < proc->getBusCount(false); ++busIdx)
     {
-        if (auto* bus = proc->getBus(false, busIdx))
-            totalChannels += bus->getNumberOfChannels();
+        if (auto* inner = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
+            return inner->getTotalNumOutputChannels();
+        return bypassable->getCachedOutputChannelCount();
     }
-    if (totalChannels == 0)
-        totalChannels = proc->getTotalNumOutputChannels();
-    return totalChannels;
+
+    return proc->getTotalNumOutputChannels();
 }
 
 String getInputChannelNameSafe(AudioProcessor* proc, int index)
@@ -1274,6 +1266,31 @@ void PluginComponent::refreshPins()
     // Recalculate size and recreate pins
     determineSize();
     createPins();
+
+    // Reposition the internal PedalboardProcessor control component if present
+    // (mirrors the positioning logic in the constructor)
+    if (auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor()))
+    {
+        Point<int> compSize = proc->getSize();
+        // Find the control component among our children and reposition it
+        for (int ci = 0; ci < getNumChildComponents(); ++ci)
+        {
+            auto* child = getChildComponent(ci);
+            // Skip pins, buttons, labels, sliders - the control is the large internal component
+            if (dynamic_cast<PluginPinComponent*>(child) != nullptr)
+                continue;
+            if (child == titleLabel || child == editButton || child == mappingsButton || child == bypassButton ||
+                child == deleteButton)
+                continue;
+            if (dynamic_cast<Slider*>(child) != nullptr)
+                continue;
+            // This should be the PedalboardProcessor's control component
+            int cx = (getWidth() / 2) - (compSize.getX() / 2);
+            child->setTopLeftPosition(cx, 24);
+            child->setSize(compSize.getX(), compSize.getY());
+            break;
+        }
+    }
 
     // Recreate per-channel gain sliders for Audio I/O nodes
     if (isAudioIONode())

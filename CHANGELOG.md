@@ -21,8 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - VU metering per channel (L/R) using filtered RMS with peak hold indicators
   - Channel strip editor with vertical gain faders (-60 to +12 dB), rotary pan knobs, mute/solo/phase toggle buttons with color feedback, and dual VU meter bars with dB scale ticks
   - Backward-compatible state serialization (reads old `levelA`/`levelB` format)
+- **DAW Splitter Plugin** — New `DawSplitterProcessor`: 1 stereo input to N mono outputs with per-strip gain, mute, solo, phase invert, and mono VU metering. Mirror of `DawMixerProcessor` with dynamic strip add/remove via editor UI.
 
 ### Fixed
+
+- **Mixer/Splitter Pin Count Not Scaling** — Input/output pins on DawMixerProcessor and DawSplitterProcessor nodes were stuck at the initial channel count because `BypassableInstance` caches channel counts at construction time. `countInputChannelsFromBuses`/`countOutputChannelsFromBuses` now detect `PedalboardProcessor` inside the wrapper and query the inner plugin's current `getTotalNumChannels()` directly.
+- **Mixer/Splitter VU Meters Showing Stereo for Mono Strips** — Strip VU bars were using the stereo `paintHorizontalVU` function. Replaced with `paintMonoVU` for mono strips. Master/input rows correctly retain stereo VU display.
 
 - **Bypass Not Saved in Patches** — Plugin bypass state was never serialized to patch XML. Toggling bypass, saving, and reloading a patch would reset all plugins to un-bypassed. Added `bypass` attribute to `createNodeXml()` and restore in `createNodeFromXml()`. Backward-compatible (missing attribute defaults to false).
 - **JUCE 8 MIDI Input Name Mismatch** — JUCE 8 renamed the internal processor from "Midi Input" to "MIDI Input" (all caps). The codebase still compared against the old name, causing MIDI node sizing, toggle duplicate detection, and delete-on-disable to silently fail. Fixed across PluginComponent, PluginField, FilterGraph, and PluginFieldPersistence.

@@ -79,6 +79,8 @@ class InternalPluginFormat : public AudioPluginFormat
         midiFilePlayerProcFilter,
         subGraphProcFilter,
         virtualMidiInputProcFilter,
+        dawMixerProcFilter,
+        dawSplitterProcFilter,
 
         endOfFilterTypes
     };
@@ -152,6 +154,8 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription midiFilePlayerProcDesc;
     PluginDescription subGraphProcDesc;
     PluginDescription virtualMidiInputProcDesc;
+    PluginDescription dawMixerProcDesc;
+    PluginDescription dawSplitterProcDesc;
 };
 
 #endif

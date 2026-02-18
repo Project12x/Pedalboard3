@@ -23,8 +23,7 @@
 #include <spdlog/spdlog.h>
 
 //------------------------------------------------------------------------------
-BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
-    : plugin(plug), tempBuffer(2, 4096), bypassRamp(0.0f)
+BypassableInstance::BypassableInstance(AudioPluginInstance* plug) : plugin(plug), tempBuffer(2, 4096), bypassRamp(0.0f)
 {
     jassert(plugin);
 
@@ -48,11 +47,10 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
     auto layout = plugin->getBusesLayout();
     setBusesLayout(layout);
 
-    spdlog::info("[BypassableInstance] ctor '{}': plugin buses in={} out={}, wrapper in={} out={}, channels in={} out={}",
-                 plugin->getName().toStdString(),
-                 plugin->getBusCount(true), plugin->getBusCount(false),
-                 getBusCount(true), getBusCount(false),
-                 getTotalNumInputChannels(), getTotalNumOutputChannels());
+    spdlog::info(
+        "[BypassableInstance] ctor '{}': plugin buses in={} out={}, wrapper in={} out={}, channels in={} out={}",
+        plugin->getName().toStdString(), plugin->getBusCount(true), plugin->getBusCount(false), getBusCount(true),
+        getBusCount(false), getTotalNumInputChannels(), getTotalNumOutputChannels());
 
     // Cache channel info NOW, before this node is added to the audio graph.
     // Once the audio thread starts calling processBlock, querying the VST3
@@ -69,8 +67,7 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
             for (int ch = 0; ch < numCh; ++ch)
             {
                 auto chLayout = bus->getCurrentLayout();
-                cachedInputChannelNames.add(
-                    chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+                cachedInputChannelNames.add(chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
             }
             cachedInputChannelCount += numCh;
         }
@@ -87,8 +84,7 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
             for (int ch = 0; ch < numCh; ++ch)
             {
                 auto chLayout = bus->getCurrentLayout();
-                cachedOutputChannelNames.add(
-                    chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+                cachedOutputChannelNames.add(chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
             }
             cachedOutputChannelCount += numCh;
         }
@@ -200,8 +196,7 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
             tempBuffer.clear(i, 0, bufferSamples);
 
         // Process into tempBuffer (which has enough channels for the plugin)
-        AudioSampleBuffer pluginBuffer(tempBuffer.getArrayOfWritePointers(),
-                                       pluginChannels, bufferSamples);
+        AudioSampleBuffer pluginBuffer(tempBuffer.getArrayOfWritePointers(), pluginChannels, bufferSamples);
         plugin->processBlock(pluginBuffer, tempMidi);
 
         // Copy back the channels that fit into the output buffer
@@ -212,7 +207,10 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     {
         // Normal path: buffer has enough channels
         // Save original audio for bypass crossfade
-        for (i = 0; i < bufferChannels; ++i)
+        // Clamp to tempBuffer's capacity to prevent overrun if plugin changed
+        // its channel count after prepareToPlay
+        const int safeCopyChannels = jmin(bufferChannels, pluginChannels);
+        for (i = 0; i < safeCopyChannels; ++i)
             tempBuffer.copyFrom(i, 0, buffer, i, 0, bufferSamples);
 
         // Get the plugin's audio.
@@ -227,7 +225,8 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     // Only apply bypass crossfade when we have the original audio saved
     if (!needTempForPlugin)
     {
-        for (j = 0; j < bufferChannels; ++j)
+        const int safeCrossfadeChannels = jmin(bufferChannels, pluginChannels);
+        for (j = 0; j < safeCrossfadeChannels; ++j)
         {
             float* origData = tempBuffer.getWritePointer(j);
             float* newData = buffer.getWritePointer(j);

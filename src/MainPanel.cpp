@@ -29,6 +29,8 @@
 #include "BypassableInstance.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
+#include "DawMixerProcessor.h"
+#include "DawSplitterProcessor.h"
 #include "FontManager.h"
 #include "IRLoaderProcessor.h"
 #include "Images.h"
@@ -390,6 +392,14 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         KeyboardSplitProcessor keyboardSplit;
         keyboardSplit.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        DawMixerProcessor dawMixer;
+        dawMixer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        DawSplitterProcessor dawSplitter;
+        dawSplitter.fillInPluginDescription(desc);
         pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);

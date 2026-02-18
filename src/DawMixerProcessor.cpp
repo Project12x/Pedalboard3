@@ -1,0 +1,730 @@
+//  DawMixerProcessor.cpp - DAW-style N-channel mixing console node.
+//  --------------------------------------------------------------------------
+
+#include "DawMixerProcessor.h"
+
+#include "PluginComponent.h"
+
+//==============================================================================
+// DawMixerProcessor
+//==============================================================================
+
+DawMixerProcessor::DawMixerProcessor()
+{
+    // Initialize default strips
+    for (int i = 0; i < DefaultStrips; ++i)
+        strips_[static_cast<size_t>(i)].resetDefaults(i);
+
+    numStrips_.store(DefaultStrips, std::memory_order_release);
+    updateChannelConfig();
+}
+
+DawMixerProcessor::~DawMixerProcessor() {}
+
+void DawMixerProcessor::updateChannelConfig()
+{
+    int numInputChannels = numStrips_.load(std::memory_order_acquire); // 1 mono channel per strip
+    int numOutputChannels = 2;                                         // stereo master
+    setPlayConfigDetails(numInputChannels, numOutputChannels, getSampleRate(), getBlockSize());
+}
+
+// Lock-free: just bump the atomic counter + init defaults. No allocation.
+void DawMixerProcessor::addStrip()
+{
+    int n = numStrips_.load(std::memory_order_acquire);
+    if (n >= MaxStrips)
+        return;
+
+    // Init the new strip's defaults (message thread only writes to strips_[n])
+    strips_[static_cast<size_t>(n)].resetDefaults(n);
+
+    // Init DSP for the new strip
+    if (currentSampleRate_ > 0.0)
+        stripDsp_[static_cast<size_t>(n)].init(currentSampleRate_);
+
+    // Publish the new count -- audio thread will see this and include the new strip
+    numStrips_.store(n + 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+// Lock-free: just decrement the atomic counter. No deallocation.
+void DawMixerProcessor::removeStrip()
+{
+    int n = numStrips_.load(std::memory_order_acquire);
+    if (n <= 1)
+        return;
+
+    // Just shrink the active count -- audio thread will stop reading beyond n-1
+    numStrips_.store(n - 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+DawMixerProcessor::StripState* DawMixerProcessor::getStrip(int index)
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+const DawMixerProcessor::StripState* DawMixerProcessor::getStrip(int index) const
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+//==============================================================================
+// DSP
+//==============================================================================
+
+void DawMixerProcessor::computeVuDecay(double sampleRate)
+{
+    currentSampleRate_ = sampleRate;
+    // Peak decay: ~300ms from peak to -60dB
+    double samplesFor300ms = sampleRate * 0.3;
+    peakDecay_ = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
+}
+
+void DawMixerProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    computeVuDecay(sampleRate);
+
+    // Init ALL MaxStrips DSP instances (cheap, avoids any runtime allocation)
+    for (int i = 0; i < MaxStrips; ++i)
+    {
+        stripDsp_[static_cast<size_t>(i)].init(sampleRate);
+
+        // Snap smoothed gain to current value for active strips
+        int n = numStrips_.load(std::memory_order_acquire);
+        if (i < n)
+        {
+            float gainLin =
+                Decibels::decibelsToGain(strips_[static_cast<size_t>(i)].gainDb.load(std::memory_order_relaxed));
+            stripDsp_[static_cast<size_t>(i)].smoothedGain.setCurrentAndTargetValue(gainLin);
+        }
+    }
+
+    // Master gain
+    smoothedMasterGain_.reset(sampleRate, GainRampSeconds);
+    float mGain = Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed));
+    smoothedMasterGain_.setCurrentAndTargetValue(mGain);
+
+    // Master VU
+    masterVuDspL_.init(static_cast<float>(sampleRate));
+    masterVuDspR_.init(static_cast<float>(sampleRate));
+
+    // Pre-allocate temp buffer for mixing
+    tempBuffer_.setSize(2, samplesPerBlock, false, true, true);
+}
+
+void DawMixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midi*/)
+{
+    const int numSamples = buffer.getNumSamples();
+    const int ns = numStrips_.load(std::memory_order_acquire);
+    const int totalInputChannels = buffer.getNumChannels(); // clamp to actual buffer, not declared
+
+    if (ns == 0 || numSamples == 0)
+    {
+        buffer.clear();
+        return;
+    }
+
+    // tempBuffer_ sized in prepareToPlay -- assert never exceeded on RT thread
+    jassert(tempBuffer_.getNumSamples() >= numSamples);
+
+    tempBuffer_.clear();
+
+    // Solo detection
+    bool anySolo = false;
+    for (int s = 0; s < ns; ++s)
+    {
+        if (strips_[static_cast<size_t>(s)].solo.load(std::memory_order_relaxed))
+        {
+            anySolo = true;
+            break;
+        }
+    }
+
+    float* mixL = tempBuffer_.getWritePointer(0);
+    float* mixR = tempBuffer_.getWritePointer(1);
+
+    // Process each strip (mono input -> stereo master via pan)
+    for (int s = 0; s < ns; ++s)
+    {
+        auto& strip = strips_[static_cast<size_t>(s)];
+        auto& dsp = stripDsp_[static_cast<size_t>(s)];
+
+        // Each strip is a single mono channel
+        if (s >= totalInputChannels)
+            continue;
+
+        const float* src = buffer.getReadPointer(s);
+
+        // Read atomic state once per block
+        bool mute = strip.mute.load(std::memory_order_relaxed);
+        bool solo = strip.solo.load(std::memory_order_relaxed);
+        bool phaseInv = strip.phaseInvert.load(std::memory_order_relaxed);
+        float pan = strip.pan.load(std::memory_order_relaxed);
+        float gainDb = strip.gainDb.load(std::memory_order_relaxed);
+        bool effectiveMute = mute || (anySolo && !solo);
+
+        // Update smoothed gain target
+        float gainLin = Decibels::decibelsToGain(gainDb);
+        dsp.smoothedGain.setTargetValue(gainLin);
+
+        // Pan law: equal-power -3dB (mono -> stereo)
+        float panL = std::sqrt(0.5f * (1.0f - pan));
+        float panR = std::sqrt(0.5f * (1.0f + pan));
+
+        // Peak metering state (post-pan L/R for VU display)
+        float peakL = strip.peakL.load(std::memory_order_relaxed);
+        float peakR = strip.peakR.load(std::memory_order_relaxed);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float gain = dsp.smoothedGain.getNextValue();
+            float sample = src[i];
+
+            if (phaseInv)
+                sample = -sample;
+
+            sample *= gain;
+
+            // Pan mono signal to stereo
+            float l = sample * panL;
+            float r = sample * panR;
+
+            // Peak (post-gain, pre-mute -- shows signal even when muted)
+            float absL = std::abs(l);
+            float absR = std::abs(r);
+            peakL = (absL > peakL) ? absL : peakL * peakDecay_;
+            peakR = (absR > peakR) ? absR : peakR * peakDecay_;
+
+            if (!effectiveMute)
+            {
+                mixL[i] += l;
+                mixR[i] += r;
+            }
+        }
+
+        if (peakL < 1e-10f)
+            peakL = 0.0f;
+        if (peakR < 1e-10f)
+            peakR = 0.0f;
+        strip.peakL.store(peakL, std::memory_order_relaxed);
+        strip.peakR.store(peakR, std::memory_order_relaxed);
+        strip.vuL.store(peakL, std::memory_order_relaxed);
+        strip.vuR.store(peakR, std::memory_order_relaxed);
+    }
+
+    // Master bus
+    float mGainDb = masterGainDb.load(std::memory_order_relaxed);
+    float mGainLin = Decibels::decibelsToGain(mGainDb);
+    smoothedMasterGain_.setTargetValue(mGainLin);
+    bool mMute = masterMute.load(std::memory_order_relaxed);
+
+    float masterPkL = masterPeakL.load(std::memory_order_relaxed);
+    float masterPkR = masterPeakR.load(std::memory_order_relaxed);
+
+    float* outL = buffer.getWritePointer(0);
+    float* outR = buffer.getWritePointer(1);
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        float gain = smoothedMasterGain_.getNextValue();
+        float l = mixL[i] * gain;
+        float r = mixR[i] * gain;
+
+        if (mMute)
+        {
+            l = 0.0f;
+            r = 0.0f;
+        }
+
+        outL[i] = l;
+        outR[i] = r;
+
+        float absL = std::abs(l);
+        float absR = std::abs(r);
+        masterPkL = (absL > masterPkL) ? absL : masterPkL * peakDecay_;
+        masterPkR = (absR > masterPkR) ? absR : masterPkR * peakDecay_;
+    }
+
+    if (masterPkL < 1e-10f)
+        masterPkL = 0.0f;
+    if (masterPkR < 1e-10f)
+        masterPkR = 0.0f;
+    masterPeakL.store(masterPkL, std::memory_order_relaxed);
+    masterPeakR.store(masterPkR, std::memory_order_relaxed);
+    masterVuL.store(masterPkL, std::memory_order_relaxed);
+    masterVuR.store(masterPkR, std::memory_order_relaxed);
+
+    // Clear unused output channels
+    for (int ch = 2; ch < buffer.getNumChannels(); ++ch)
+        buffer.clear(ch, 0, numSamples);
+}
+
+//==============================================================================
+// UI -- Horizontal Strip Row
+//==============================================================================
+
+class DawStripRow : public Component
+{
+  public:
+    DawStripRow(DawMixerProcessor* proc, int stripIndex) : processor(proc), index(stripIndex)
+    {
+        phaseBtn.setButtonText(CharPointer_UTF8("\xc3\x98"));
+        phaseBtn.setClickingTogglesState(true);
+        phaseBtn.setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
+        phaseBtn.onClick = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+                s->phaseInvert.store(phaseBtn.getToggleState(), std::memory_order_relaxed);
+        };
+        addAndMakeVisible(phaseBtn);
+
+        muteBtn.setButtonText("M");
+        muteBtn.setClickingTogglesState(true);
+        muteBtn.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteBtn.onClick = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+                s->mute.store(muteBtn.getToggleState(), std::memory_order_relaxed);
+        };
+        addAndMakeVisible(muteBtn);
+
+        soloBtn.setButtonText("S");
+        soloBtn.setClickingTogglesState(true);
+        soloBtn.setColour(TextButton::buttonOnColourId, Colour(0xFFCCAA00));
+        soloBtn.onClick = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+                s->solo.store(soloBtn.getToggleState(), std::memory_order_relaxed);
+        };
+        addAndMakeVisible(soloBtn);
+
+        fader.setSliderStyle(Slider::LinearHorizontal);
+        fader.setTextBoxStyle(Slider::TextBoxRight, false, 48, 18);
+        fader.setRange(DawMixerProcessor::MinGainDb, DawMixerProcessor::MaxGainDb, 0.1);
+        fader.setDoubleClickReturnValue(true, 0.0);
+        fader.setSkewFactorFromMidPoint(-12.0);
+        fader.onValueChange = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+                s->gainDb.store(static_cast<float>(fader.getValue()), std::memory_order_relaxed);
+        };
+        addAndMakeVisible(fader);
+
+        panKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+        panKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+        panKnob.setRange(-1.0, 1.0, 0.01);
+        panKnob.setDoubleClickReturnValue(true, 0.0);
+        panKnob.onValueChange = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+                s->pan.store(static_cast<float>(panKnob.getValue()), std::memory_order_relaxed);
+        };
+        addAndMakeVisible(panKnob);
+
+        nameLabel.setFont(Font(11.0f));
+        nameLabel.setJustificationType(Justification::centredLeft);
+        nameLabel.setColour(Label::textColourId, Colours::white);
+        addAndMakeVisible(nameLabel);
+
+        syncFromProcessor();
+    }
+
+    void syncFromProcessor()
+    {
+        if (auto* s = processor->getStrip(index))
+        {
+            fader.setValue(s->gainDb.load(std::memory_order_relaxed), dontSendNotification);
+            panKnob.setValue(s->pan.load(std::memory_order_relaxed), dontSendNotification);
+            muteBtn.setToggleState(s->mute.load(std::memory_order_relaxed), dontSendNotification);
+            soloBtn.setToggleState(s->solo.load(std::memory_order_relaxed), dontSendNotification);
+            phaseBtn.setToggleState(s->phaseInvert.load(std::memory_order_relaxed), dontSendNotification);
+            nameLabel.setText(s->name, dontSendNotification);
+        }
+    }
+
+    void resized() override
+    {
+        auto r = getLocalBounds().reduced(2, 1);
+        int halfH = r.getHeight() / 2;
+        auto row1 = r.removeFromTop(halfH);
+        auto row2 = r;
+
+        // Row 1: [name 40] [Phase 22] [M 22] [S 22] [gap 4] [VU rest]
+        nameLabel.setBounds(row1.removeFromLeft(40));
+        phaseBtn.setBounds(row1.removeFromLeft(22));
+        muteBtn.setBounds(row1.removeFromLeft(22));
+        soloBtn.setBounds(row1.removeFromLeft(22));
+        row1.removeFromLeft(4);
+        vuArea = row1;
+
+        // Row 2: [fader rest] [pan 28]
+        panKnob.setBounds(row2.removeFromRight(28));
+        fader.setBounds(row2);
+    }
+
+    void paint(Graphics& g) override
+    {
+        g.setColour(Colour(0xFF2A2A2A));
+        g.fillRect(getLocalBounds());
+        g.setColour(Colour(0xFF404040));
+        g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
+
+        if (auto* s = processor->getStrip(index))
+        {
+            float peak = s->peakL.load(std::memory_order_relaxed);
+            paintMonoVU(g, vuArea, peak);
+        }
+    }
+
+    static void paintMonoVU(Graphics& g, Rectangle<int> area, float peak)
+    {
+        if (area.isEmpty())
+            return;
+        auto bar = area.reduced(0, 2);
+
+        float dbVal = Decibels::gainToDecibels(peak, -60.0f);
+        float norm = jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
+        g.setColour(Colour(0xFF1A1A1A));
+        g.fillRect(bar);
+        int fillW = static_cast<int>(norm * bar.getWidth());
+        auto filled = bar.withWidth(fillW);
+        if (dbVal > 0.0f)
+            g.setColour(Colours::red);
+        else if (dbVal > -6.0f)
+            g.setColour(Colours::orange);
+        else if (dbVal > -18.0f)
+            g.setColour(Colour(0xFF00CC00));
+        else
+            g.setColour(Colour(0xFF008800));
+        g.fillRect(filled);
+    }
+
+  private:
+    DawMixerProcessor* processor;
+    int index;
+    TextButton phaseBtn, muteBtn, soloBtn;
+    Slider fader, panKnob;
+    Label nameLabel;
+    Rectangle<int> vuArea;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawStripRow)
+};
+
+//==============================================================================
+// Master strip row (output)
+class DawMasterRow : public Component
+{
+  public:
+    DawMasterRow(DawMixerProcessor* proc) : processor(proc)
+    {
+        muteBtn.setButtonText("M");
+        muteBtn.setClickingTogglesState(true);
+        muteBtn.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteBtn.onClick = [this]()
+        { processor->masterMute.store(muteBtn.getToggleState(), std::memory_order_relaxed); };
+        addAndMakeVisible(muteBtn);
+
+        fader.setSliderStyle(Slider::LinearHorizontal);
+        fader.setTextBoxStyle(Slider::TextBoxRight, false, 48, 18);
+        fader.setRange(DawMixerProcessor::MinGainDb, DawMixerProcessor::MaxGainDb, 0.1);
+        fader.setDoubleClickReturnValue(true, 0.0);
+        fader.setSkewFactorFromMidPoint(-12.0);
+        fader.setValue(processor->masterGainDb.load(std::memory_order_relaxed), dontSendNotification);
+        fader.onValueChange = [this]()
+        { processor->masterGainDb.store(static_cast<float>(fader.getValue()), std::memory_order_relaxed); };
+        addAndMakeVisible(fader);
+
+        nameLabel.setText("Master", dontSendNotification);
+        nameLabel.setFont(Font(11.0f));
+        nameLabel.setJustificationType(Justification::centredLeft);
+        nameLabel.setColour(Label::textColourId, Colour(0xFFFFCC00));
+        addAndMakeVisible(nameLabel);
+    }
+
+    void resized() override
+    {
+        auto r = getLocalBounds().reduced(2, 1);
+        int halfH = r.getHeight() / 2;
+        auto row1 = r.removeFromTop(halfH);
+        auto row2 = r;
+        nameLabel.setBounds(row1.removeFromLeft(46));
+        muteBtn.setBounds(row1.removeFromLeft(22));
+        row1.removeFromLeft(4);
+        vuArea = row1;
+        fader.setBounds(row2);
+    }
+
+    void paint(Graphics& g) override
+    {
+        g.setColour(Colour(0xFF333333));
+        g.fillRect(getLocalBounds());
+        g.setColour(Colour(0xFF606060));
+        g.drawHorizontalLine(0, 0.0f, static_cast<float>(getWidth()));
+        float peakL = processor->masterPeakL.load(std::memory_order_relaxed);
+        float peakR = processor->masterPeakR.load(std::memory_order_relaxed);
+        paintStereoVU(g, vuArea, peakL, peakR);
+    }
+
+    static void paintStereoVU(Graphics& g, Rectangle<int> area, float peakL, float peakR)
+    {
+        if (area.isEmpty())
+            return;
+        int halfH = area.getHeight() / 2;
+        auto barL = area.removeFromTop(halfH).reduced(0, 1);
+        auto barR = area.reduced(0, 1);
+
+        auto drawBar = [&](Rectangle<int> bar, float peak)
+        {
+            float dbVal = Decibels::gainToDecibels(peak, -60.0f);
+            float norm = jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
+            g.setColour(Colour(0xFF1A1A1A));
+            g.fillRect(bar);
+            int fillW = static_cast<int>(norm * bar.getWidth());
+            auto filled = bar.withWidth(fillW);
+            if (dbVal > 0.0f)
+                g.setColour(Colours::red);
+            else if (dbVal > -6.0f)
+                g.setColour(Colours::orange);
+            else if (dbVal > -18.0f)
+                g.setColour(Colour(0xFF00CC00));
+            else
+                g.setColour(Colour(0xFF008800));
+            g.fillRect(filled);
+        };
+
+        drawBar(barL, peakL);
+        drawBar(barR, peakR);
+    }
+
+  private:
+    DawMixerProcessor* processor;
+    TextButton muteBtn;
+    Slider fader;
+    Label nameLabel;
+    Rectangle<int> vuArea;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawMasterRow)
+};
+
+//==============================================================================
+// Main control -- returned by getControls()
+class DawMixerControl : public Component, private Timer
+{
+  public:
+    DawMixerControl(DawMixerProcessor* proc) : processor(proc)
+    {
+        titleLabel.setText("DAW Mixer", dontSendNotification);
+        titleLabel.setFont(Font(13.0f, Font::bold));
+        titleLabel.setColour(Label::textColourId, Colours::white);
+        titleLabel.setJustificationType(Justification::centredLeft);
+        addAndMakeVisible(titleLabel);
+
+        addBtn.setButtonText("+");
+        addBtn.onClick = [this]() { addStripClicked(); };
+        addAndMakeVisible(addBtn);
+
+        removeBtn.setButtonText("-");
+        removeBtn.onClick = [this]() { removeStripClicked(); };
+        addAndMakeVisible(removeBtn);
+
+        masterRow = std::make_unique<DawMasterRow>(processor);
+        addAndMakeVisible(masterRow.get());
+
+        rebuildStrips();
+        startTimerHz(24);
+    }
+
+    ~DawMixerControl() override { stopTimer(); }
+
+    void rebuildStrips()
+    {
+        stripRows.clear();
+        int n = processor->getNumStrips();
+        for (int i = 0; i < n; ++i)
+        {
+            auto* row = new DawStripRow(processor, i);
+            addAndMakeVisible(row);
+            stripRows.add(row);
+        }
+
+        // Resize ourselves to match the new strip count
+        auto newSize = processor->getSize();
+        setSize(newSize.getX(), newSize.getY());
+
+        resized();
+    }
+
+    void resized() override
+    {
+        auto r = getLocalBounds();
+        auto header = r.removeFromTop(24);
+        removeBtn.setBounds(header.removeFromRight(24));
+        addBtn.setBounds(header.removeFromRight(24));
+        titleLabel.setBounds(header);
+        masterRow->setBounds(r.removeFromBottom(stripRowHeight));
+        for (auto* row : stripRows)
+            row->setBounds(r.removeFromTop(stripRowHeight));
+    }
+
+    void paint(Graphics& g) override { g.fillAll(Colour(0xFF222222)); }
+
+  private:
+    static constexpr int stripRowHeight = 44;
+    DawMixerProcessor* processor;
+    Label titleLabel;
+    TextButton addBtn, removeBtn;
+    OwnedArray<DawStripRow> stripRows;
+    std::unique_ptr<DawMasterRow> masterRow;
+
+    void addStripClicked()
+    {
+        processor->addStrip();
+        rebuildStrips();
+        notifyParentResize();
+    }
+
+    void removeStripClicked()
+    {
+        processor->removeStrip();
+        rebuildStrips();
+        notifyParentResize();
+    }
+
+    void notifyParentResize()
+    {
+        // Walk up the component tree to find the PluginComponent that hosts us
+        if (auto* pc = findParentComponentOfClass<PluginComponent>())
+            pc->refreshPins();
+    }
+
+    void timerCallback() override
+    {
+        for (auto* row : stripRows)
+            row->repaint();
+        masterRow->repaint();
+    }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawMixerControl)
+};
+
+Component* DawMixerProcessor::getControls()
+{
+    return new DawMixerControl(this);
+}
+
+Point<int> DawMixerProcessor::getSize()
+{
+    int n = numStrips_.load(std::memory_order_acquire);
+    int height = 24 + (n + 1) * 44; // header + strips + master
+    return Point<int>(340, jmax(160, height));
+}
+
+//==============================================================================
+// State Serialization
+//==============================================================================
+
+void DawMixerProcessor::getStateInformation(MemoryBlock& destData)
+{
+    XmlElement xml("DawMixer");
+    xml.setAttribute("version", 1);
+
+    int n = numStrips_.load(std::memory_order_acquire);
+    xml.setAttribute("numStrips", n);
+    xml.setAttribute("masterGain", (double)masterGainDb.load(std::memory_order_relaxed));
+    xml.setAttribute("masterMute", masterMute.load(std::memory_order_relaxed) ? 1 : 0);
+
+    for (int i = 0; i < n; ++i)
+    {
+        auto& s = strips_[static_cast<size_t>(i)];
+        auto* stripXml = xml.createNewChildElement("Strip");
+        stripXml->setAttribute("i", i);
+        stripXml->setAttribute("gain", (double)s.gainDb.load(std::memory_order_relaxed));
+        stripXml->setAttribute("pan", (double)s.pan.load(std::memory_order_relaxed));
+        stripXml->setAttribute("mute", s.mute.load(std::memory_order_relaxed) ? 1 : 0);
+        stripXml->setAttribute("solo", s.solo.load(std::memory_order_relaxed) ? 1 : 0);
+        stripXml->setAttribute("phase", s.phaseInvert.load(std::memory_order_relaxed) ? 1 : 0);
+        stripXml->setAttribute("name", s.name);
+    }
+
+    copyXmlToBinary(xml, destData);
+}
+
+void DawMixerProcessor::setStateInformation(const void* data, int sizeInBytes)
+{
+    auto xml = getXmlFromBinary(data, sizeInBytes);
+    if (!xml || xml->getTagName() != "DawMixer")
+        return;
+
+    int n = xml->getIntAttribute("numStrips", DefaultStrips);
+    n = jlimit(1, MaxStrips, n);
+
+    // Reset all strips then restore saved state
+    for (int i = 0; i < n; ++i)
+        strips_[static_cast<size_t>(i)].resetDefaults(i);
+
+    numStrips_.store(n, std::memory_order_release);
+
+    masterGainDb.store(static_cast<float>(xml->getDoubleAttribute("masterGain", 0.0)), std::memory_order_relaxed);
+    masterMute.store(xml->getIntAttribute("masterMute", 0) != 0, std::memory_order_relaxed);
+
+    for (auto* stripXml : xml->getChildWithTagNameIterator("Strip"))
+    {
+        int i = stripXml->getIntAttribute("i", -1);
+        if (i >= 0 && i < n)
+        {
+            auto& s = strips_[static_cast<size_t>(i)];
+            float g = static_cast<float>(stripXml->getDoubleAttribute("gain", 0.0));
+            s.gainDb.store(g, std::memory_order_relaxed);
+            float p = static_cast<float>(stripXml->getDoubleAttribute("pan", 0.0));
+            s.pan.store(p, std::memory_order_relaxed);
+            bool m = stripXml->getIntAttribute("mute", 0) != 0;
+            s.mute.store(m, std::memory_order_relaxed);
+            bool solo = stripXml->getIntAttribute("solo", 0) != 0;
+            s.solo.store(solo, std::memory_order_relaxed);
+            s.phaseInvert.store(stripXml->getIntAttribute("phase", 0) != 0, std::memory_order_relaxed);
+            s.name = stripXml->getStringAttribute("name", "Ch " + String(i + 1));
+        }
+    }
+
+    updateChannelConfig();
+}
+
+//==============================================================================
+// Plugin Description
+//==============================================================================
+
+bool DawMixerProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+{
+    if (layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
+        return false;
+    return true;
+}
+
+const String DawMixerProcessor::getInputChannelName(int channelIndex) const
+{
+    if (channelIndex < numStrips_.load(std::memory_order_acquire))
+        return strips_[static_cast<size_t>(channelIndex)].name;
+    return "Input " + String(channelIndex + 1);
+}
+
+const String DawMixerProcessor::getOutputChannelName(int channelIndex) const
+{
+    return channelIndex == 0 ? "Master L" : "Master R";
+}
+
+void DawMixerProcessor::fillInPluginDescription(PluginDescription& description) const
+{
+    description.name = getName();
+    description.descriptiveName = "DAW-style N-channel mixer";
+    description.pluginFormatName = "Internal";
+    description.category = "Built-in";
+    description.manufacturerName = "Pedalboard";
+    description.version = "1.0";
+    description.fileOrIdentifier = getName();
+    description.isInstrument = false;
+    description.numInputChannels = getTotalNumInputChannels();
+    description.numOutputChannels = getTotalNumOutputChannels();
+}
