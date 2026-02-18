@@ -23,6 +23,7 @@
 #include "BypassableInstance.h"
 #include "ColourScheme.h"
 #include "FilterGraph.h"
+#include "FontManager.h"
 #include "InternalFilters.h"
 #include "LogFile.h"
 #include "MainTransport.h"
@@ -32,8 +33,10 @@
 #include "PedalboardProcessors.h"
 #include "PluginComponent.h"
 #include "SettingsManager.h"
+#include "VirtualMidiInputProcessor.h"
 
 #include <set>
+#include <spdlog/spdlog.h>
 #include <tuple>
 
 using namespace std;
@@ -62,8 +65,9 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
         p.fillInPluginDescription(desc);
 
-        // Use Raw method to avoid adding to undo history
-        signalPath->addFilterRaw(&desc, 10, 215);
+        // Position OSC Input below Virtual MIDI Input based on actual node heights
+        float oscY = signalPath->getNextInputNodeY();
+        signalPath->addFilterRaw(&desc, 50, oscY);
     }
 
     // Setup gui.
@@ -79,7 +83,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
         p.fillInPluginDescription(desc);
 
         // Use Raw method to avoid adding to undo history
-        signalPath->addFilterRaw(&desc, 100, 100);
+        signalPath->addFilterRaw(&desc, 50, 350);
 
         // And connect it up to the midi input.
         {
@@ -88,7 +92,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
             for (i = 0; i < signalPath->getNumFilters(); ++i)
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
+                if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
                     midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
                 else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
                 {
@@ -135,13 +139,65 @@ PluginField::~PluginField()
 //------------------------------------------------------------------------------
 void PluginField::paint(Graphics& g)
 {
-    g.fillAll(ColourScheme::getInstance().colours["Field Background"]);
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat();
+
+    // === Gradient background ===
+    Colour bgCol = colours["Field Background"];
+    ColourGradient bgGrad(bgCol.brighter(0.08f), 0.0f, 0.0f, bgCol.darker(0.15f), 0.0f, bounds.getHeight(), false);
+    g.setGradientFill(bgGrad);
+    g.fillRect(bounds);
+
+    // === Grid pattern ===
+    float gridSize = 30.0f;
+    Colour gridCol = colours["Plugin Border"].withAlpha(0.15f);
+    g.setColour(gridCol);
+
+    // Vertical lines
+    for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
+    {
+        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
+    }
+
+    // Horizontal lines
+    for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
+    {
+        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+    }
 
     if (displayDoubleClickMessage)
     {
-        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.5f));
-        g.drawText("<double-click to add processor>", 400, 230, 300, 30, Justification(Justification::centredLeft),
-                   false);
+        // Draw hint at center of visible viewport area (not canvas center)
+        float centerX, centerY;
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            auto viewArea = viewport->getViewArea();
+            centerX = viewArea.getCentreX();
+            centerY = viewArea.getCentreY();
+        }
+        else
+        {
+            centerX = bounds.getCentreX();
+            centerY = bounds.getCentreY();
+        }
+
+        // Primary instruction text
+        g.setFont(FontManager::getInstance().getUIFont(18.0f));
+        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.6f));
+
+        String hintText = "Double-click to add a plugin";
+        auto textWidth = g.getCurrentFont().getStringWidth(hintText);
+        g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
+                   Justification::centred, false);
+
+        // Secondary hint
+        g.setFont(FontManager::getInstance().getUIFont(13.0f));
+        g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.35f));
+
+        String subHint = "or drag & drop VST/preset files";
+        auto subWidth = g.getCurrentFont().getStringWidth(subHint);
+        g.drawText(subHint, (int)(centerX - subWidth / 2), (int)(centerY + 18), subWidth + 20, 24,
+                   Justification::centred, false);
     }
 }
 
@@ -162,8 +218,12 @@ void PluginField::mouseDown(const MouseEvent& e)
         StringArray favorites = settings.getStringArray("PluginFavorites");
         StringArray recentPlugins = settings.getStringArray("RecentPlugins");
 
-        // Collect all plugin types
+        // Collect all plugin types (internal plugins are already in KnownPluginList)
         auto types = pluginList->getTypes();
+
+        // Add Effect Rack (SubGraphProcessor) - it may not be in KnownPluginList
+        InternalPluginFormat internalFormat;
+        types.add(*internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
 
         // Build lookup map: pluginIdentifier -> index
         std::map<String, int> identifierToIndex;
@@ -335,6 +395,7 @@ void PluginField::mouseDown(const MouseEvent& e)
             {
                 // Copy the plugin description (don't take reference to temporary from getTypes())
                 PluginDescription pluginType = types.getReference(typeIndex);
+
                 signalPath->addFilter(&pluginType, (double)e.x, (double)e.y);
 
                 // Make sure the plugin got created before we add a component for it.
@@ -343,9 +404,7 @@ void PluginField::mouseDown(const MouseEvent& e)
                     pluginIndex = signalPath->getNumFilters() - 1;
 
                     addFilter(pluginIndex);
-
                     sendChangeMessage();
-
                     clearDoubleClickMessage();
 
                     // Update recent plugins list
@@ -361,6 +420,192 @@ void PluginField::mouseDown(const MouseEvent& e)
             }
         }
     }
+    else
+    {
+        // Single click on empty canvas - begin panning
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            isPanning = true;
+            panStartMouse = e.getScreenPosition();
+            panStartScroll = viewport->getViewPosition();
+            setMouseCursor(MouseCursor::DraggingHandCursor);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseDrag(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        if (auto* viewport = findParentComponentOfClass<Viewport>())
+        {
+            Point<int> delta = panStartMouse - e.getScreenPosition();
+            Point<int> targetPosition = panStartScroll + delta;
+
+            // Expand canvas if we're trying to pan beyond current bounds
+            int currentWidth = getWidth();
+            int currentHeight = getHeight();
+            int viewWidth = viewport->getViewWidth();
+            int viewHeight = viewport->getViewHeight();
+
+            // Calculate how much we need to expand
+            int neededWidth = targetPosition.x + viewWidth;
+            int neededHeight = targetPosition.y + viewHeight;
+
+            bool sizeChanged = false;
+            if (neededWidth > currentWidth)
+            {
+                currentWidth = neededWidth + 200; // Add some buffer
+                sizeChanged = true;
+            }
+            if (neededHeight > currentHeight)
+            {
+                currentHeight = neededHeight + 200; // Add some buffer
+                sizeChanged = true;
+            }
+
+            if (sizeChanged)
+            {
+                setSize(currentWidth, currentHeight);
+            }
+
+            // Expand canvas upward/leftward if trying to pan past origin
+            if (targetPosition.x < 0)
+            {
+                int expandBy = -targetPosition.x + 100;
+                setSize(getWidth() + expandBy, getHeight());
+                // Move all child components right
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX() + expandBy,
+                                                             getChildComponent(i)->getY());
+                panStartScroll.setX(panStartScroll.x + expandBy);
+                targetPosition.setX(100);
+            }
+            if (targetPosition.y < 0)
+            {
+                int expandBy = -targetPosition.y + 100;
+                setSize(getWidth(), getHeight() + expandBy);
+                // Move all child components down
+                for (int i = 0; i < getNumChildComponents(); ++i)
+                    getChildComponent(i)->setTopLeftPosition(getChildComponent(i)->getX(),
+                                                             getChildComponent(i)->getY() + expandBy);
+                panStartScroll.setY(panStartScroll.y + expandBy);
+                targetPosition.setY(100);
+            }
+
+            viewport->setViewPosition(targetPosition);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseUp(const MouseEvent& e)
+{
+    if (isPanning)
+    {
+        isPanning = false;
+        setMouseCursor(MouseCursor::NormalCursor);
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wheel)
+{
+    // Plain wheel = zoom, Ctrl+wheel = scroll via viewport
+    if (e.mods.isCtrlDown())
+    {
+        // Ctrl+wheel = scroll via viewport
+        Component::mouseWheelMove(e, wheel);
+    }
+    else
+    {
+        float zoomDelta = wheel.deltaY * 0.1f;
+        float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
+
+        if (newZoom != zoomLevel)
+        {
+            auto mousePos = e.getPosition();
+            float scaleRatio = newZoom / zoomLevel;
+
+            zoomLevel = newZoom;
+            setTransform(AffineTransform::scale(zoomLevel));
+
+            if (auto* viewport = findParentComponentOfClass<Viewport>())
+            {
+                auto currentPos = viewport->getViewPosition();
+                int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
+                int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
+                viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
+            }
+
+            repaint();
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::fitToScreen()
+{
+    if (auto* viewport = findParentComponentOfClass<Viewport>())
+    {
+        // Find bounding box of plugin nodes only (not connections or other children)
+        Rectangle<int> bounds;
+        bool first = true;
+
+        for (int i = 0; i < getNumChildComponents(); ++i)
+        {
+            if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+            {
+                if (first)
+                {
+                    bounds = comp->getBounds();
+                    first = false;
+                }
+                else
+                {
+                    bounds = bounds.getUnion(comp->getBounds());
+                }
+            }
+        }
+
+        float viewWidth = static_cast<float>(viewport->getViewWidth());
+        float viewHeight = static_cast<float>(viewport->getViewHeight());
+
+        if (!first && !bounds.isEmpty() && viewWidth > 0 && viewHeight > 0)
+        {
+            // Add padding
+            bounds = bounds.expanded(50);
+
+            float boundsWidth = static_cast<float>(bounds.getWidth());
+            float boundsHeight = static_cast<float>(bounds.getHeight());
+
+            float zoomToFit = jmin(viewWidth / boundsWidth, viewHeight / boundsHeight);
+            zoomLevel = jlimit(minZoom, maxZoom, zoomToFit);
+
+            // Center the view on the nodes
+            int centeredX = jmax(0, static_cast<int>(bounds.getCentreX() * zoomLevel - viewWidth / 2));
+            int centeredY = jmax(0, static_cast<int>(bounds.getCentreY() * zoomLevel - viewHeight / 2));
+
+            // Ensure the field is large enough that the viewport can scroll to
+            // the centered position. Without this, the viewport clamps setViewPosition
+            // because the field's visual size (field * zoom) is too small.
+            int requiredW = static_cast<int>((centeredX + viewWidth) / zoomLevel) + 1;
+            int requiredH = static_cast<int>((centeredY + viewHeight) / zoomLevel) + 1;
+            if (requiredW > getWidth() || requiredH > getHeight())
+                setSize(jmax(getWidth(), requiredW), jmax(getHeight(), requiredH));
+
+            setTransform(AffineTransform::scale(zoomLevel));
+            viewport->setViewPosition(centeredX, centeredY);
+
+            spdlog::debug("[fitToScreen] bounds=({},{} {}x{}) view={}x{} zoom={:.2f} field={}x{} scroll=({},{})",
+                          bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
+                          (int)viewWidth, (int)viewHeight, zoomLevel,
+                          getWidth(), getHeight(), centeredX, centeredY);
+
+            repaint();
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -370,14 +615,20 @@ void PluginField::changeListenerCallback(ChangeBroadcaster* source)
 
     if (pluginComp)
     {
+        // Ensure the field extends well beyond the node edges so the viewport
+        // has room to scroll/center without hitting the boundary.
+        const int padding = 500;
         Point<int> fieldSize(getWidth(), getHeight());
         Point<int> pluginPos = pluginComp->getPosition();
         Point<int> pluginSize(pluginComp->getWidth(), pluginComp->getHeight());
 
-        if ((pluginPos.getX() + pluginSize.getX()) > fieldSize.getX())
-            fieldSize.setX((pluginPos.getX() + pluginSize.getX()));
-        if ((pluginPos.getY() + pluginSize.getY()) > fieldSize.getY())
-            fieldSize.setY((pluginPos.getY() + pluginSize.getY()));
+        int neededW = pluginPos.getX() + pluginSize.getX() + padding;
+        int neededH = pluginPos.getY() + pluginSize.getY() + padding;
+
+        if (neededW > fieldSize.getX())
+            fieldSize.setX(neededW);
+        if (neededH > fieldSize.getY())
+            fieldSize.setY(neededH);
 
         setSize(fieldSize.getX(), fieldSize.getY());
         repaint();
@@ -421,8 +672,8 @@ bool PluginField::isInterestedInFileDrag(const StringArray& files)
         }
 #endif
         // If they're sound files.
-        else if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
-                 files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
+        if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
+            files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
         {
             retval = true;
             break;
@@ -451,8 +702,8 @@ void PluginField::filesDropped(const StringArray& files, int x, int y)
             pluginsInArray = true;
 #endif
         // If they're sound files.
-        else if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
-                 files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
+        if (files[i].endsWith(".wav") || files[i].endsWith(".aif") || files[i].endsWith(".aiff") ||
+            files[i].endsWith(".ogg") || files[i].endsWith(".flac") || files[i].endsWith(".wma"))
         {
             soundsInArray = true;
         }
@@ -551,34 +802,49 @@ void PluginField::enableAudioInput(bool val)
 
     if (!val)
     {
-        // Delete the filter(s) in the signal path.
-        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
-        {
-            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
-                deleteFilter(signalPath->getNode(i).get()); // JUCE 8: Node::Ptr
-        }
-
-        // Delete the associated "Audio Input" PluginComponent(s).
+        // Delete the associated "Audio Input" PluginComponent(s) first
         for (i = (getNumChildComponents() - 1); i >= 0; --i)
         {
             PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-            if (comp)
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "Audio Input")
             {
-                if (comp->getNode()->getProcessor()->getName() == "Audio Input")
-                    delete removeChildComponent(i);
+                delete removeChildComponent(i);
+            }
+        }
+
+        // Now delete the filter(s) in the signal path
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
+            {
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
     else
     {
-        InternalPluginFormat internalFormat;
+        // Check if Audio Input already exists
+        bool audioInputExists = false;
+        for (i = 0; i < signalPath->getNumFilters(); ++i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Audio Input")
+            {
+                audioInputExists = true;
+                break;
+            }
+        }
 
-        // Add the filter to the signal path.
-        signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        if (!audioInputExists)
+        {
+            InternalPluginFormat internalFormat;
 
-        // Add the associated PluginComponent.
-        addFilter(signalPath->getNumFilters() - 1);
+            // Add the filter to the signal path.
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f,
+                                  10.0f);
+
+            // Add the associated PluginComponent.
+            addFilter(signalPath->getNumFilters() - 1);
+        }
     }
 }
 
@@ -586,7 +852,6 @@ void PluginField::enableAudioInput(bool val)
 void PluginField::enableMidiInput(bool val)
 {
     int i;
-    AudioProcessorGraph::Node* tempNode = 0;
     multimap<uint32, Mapping*>::iterator it;
 
     midiInputEnabled = val;
@@ -607,77 +872,86 @@ void PluginField::enableMidiInput(bool val)
                 ++it;
         }
 
-        // Midi Input filter.
+        // Delete Midi Input PluginComponent first (before deleting the filter)
+        for (i = (getNumChildComponents() - 1); i >= 0; --i)
         {
-            // Delete filter.
-            for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "MIDI Input")
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
-                {
-                    tempNode = signalPath->getNode(i).get(); // JUCE 8: Node::Ptr
-                    deleteFilter(tempNode);
-                }
-            }
-
-            // Delete PluginComponent.
-            for (i = (getNumChildComponents() - 1); i >= 0; --i)
-            {
-                PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-                if (comp)
-                {
-                    if (comp->getNode() == tempNode)
-                        delete removeChildComponent(i);
-                }
+                delete removeChildComponent(i);
             }
         }
-        // Midi Interceptor filter.
+
+        // Now delete the Midi Input filter from signal path
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
         {
-            // Delete filter.
-            for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+            if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
             {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
-                    deleteFilter(signalPath->getNode(i).get()); // JUCE 8: Node::Ptr
+                deleteFilter(signalPath->getNode(i).get());
+            }
+        }
+
+        // Delete Midi Interceptor filter
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+            {
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
     else
     {
-        InternalPluginFormat internalFormat;
-
-        // Add the filter to the signal path.
-        signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
-
-        // Add the associated PluginComponent.
-        addFilter(signalPath->getNumFilters() - 1);
-
-        // Add the Midi Interceptor too.
+        // Check if MIDI Input already exists
+        bool midiInputExists = false;
+        for (i = 0; i < signalPath->getNumFilters(); ++i)
         {
-            MidiInterceptor p;
-            PluginDescription desc;
-
-            p.fillInPluginDescription(desc);
-
-            signalPath->addFilter(&desc, 100, 100);
-
-            // And connect it up to the midi input.
+            if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
             {
-                AudioProcessorGraph::NodeID midiInput;
-                AudioProcessorGraph::NodeID midiInterceptor;
+                midiInputExists = true;
+                break;
+            }
+        }
 
-                for (i = 0; i < signalPath->getNumFilters(); ++i)
+        if (!midiInputExists)
+        {
+            InternalPluginFormat internalFormat;
+
+            // Add the filter to the signal path.
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 540.0f,
+                                  760.0f);
+
+            // Add the associated PluginComponent.
+            addFilter(signalPath->getNumFilters() - 1);
+
+            // Add the Midi Interceptor too.
+            {
+                MidiInterceptor p;
+                PluginDescription desc;
+
+                p.fillInPluginDescription(desc);
+
+                signalPath->addFilter(&desc, 100, 100);
+
+                // And connect it up to the midi input.
                 {
-                    if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
-                        midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                    else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+                    AudioProcessorGraph::NodeID midiInput;
+                    AudioProcessorGraph::NodeID midiInterceptor;
+
+                    for (i = 0; i < signalPath->getNumFilters(); ++i)
                     {
-                        midiInterceptor = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                        dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())
-                            ->setManager(&midiManager);
+                        if (signalPath->getNode(i)->getProcessor()->getName() == "MIDI Input")
+                            midiInput = signalPath->getNode(i)->nodeID;
+                        else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
+                        {
+                            midiInterceptor = signalPath->getNode(i)->nodeID;
+                            dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())
+                                ->setManager(&midiManager);
+                        }
                     }
+                    signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
+                                              AudioProcessorGraph::midiChannelIndex);
                 }
-                signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
-                                          AudioProcessorGraph::midiChannelIndex);
             }
         }
     }
@@ -688,7 +962,6 @@ void PluginField::enableOscInput(bool val)
 {
     int i;
     multimap<uint32, Mapping*>::iterator it;
-    AudioProcessorGraph::Node* tempNode = 0;
 
     oscInputEnabled = val;
 
@@ -708,38 +981,51 @@ void PluginField::enableOscInput(bool val)
                 ++it;
         }
 
-        // Delete filter.
+        // Delete PluginComponent first (before deleting the filter)
+        for (i = (getNumChildComponents() - 1); i >= 0; --i)
+        {
+            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "OSC Input")
+            {
+                delete removeChildComponent(i);
+            }
+        }
+
+        // Now delete the filter
         for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
         {
             if (signalPath->getNode(i)->getProcessor()->getName() == "OSC Input")
             {
-                tempNode = signalPath->getNode(i).get(); // JUCE 8: Node::Ptr
-                deleteFilter(tempNode);
-            }
-        }
-
-        // Delete PluginComponent.
-        for (i = (getNumChildComponents() - 1); i >= 0; --i)
-        {
-            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-            if (comp)
-            {
-                if (comp->getNode() == tempNode)
-                    delete removeChildComponent(i);
+                deleteFilter(signalPath->getNode(i).get());
             }
         }
     }
     else
     {
-        OscInput p;
-        PluginDescription desc;
+        // Check if OSC Input already exists (e.g., from loaded patch)
+        bool oscExists = false;
+        for (int j = 0; j < signalPath->getNumFilters(); ++j)
+        {
+            if (signalPath->getNode(j)->getProcessor()->getName() == "OSC Input")
+            {
+                oscExists = true;
+                break;
+            }
+        }
 
-        p.fillInPluginDescription(desc);
+        if (!oscExists)
+        {
+            OscInput p;
+            PluginDescription desc;
 
-        signalPath->addFilter(&desc, 10, 215);
+            p.fillInPluginDescription(desc);
 
-        addFilter(signalPath->getNumFilters() - 1);
+            // Position OSC Input below Virtual MIDI Input based on actual node heights
+            float oscY = signalPath->getNextInputNodeY();
+            signalPath->addFilter(&desc, 50, oscY);
+
+            addFilter(signalPath->getNumFilters() - 1);
+        }
     }
 }
 
@@ -766,12 +1052,23 @@ void PluginField::addFilter(int index, bool broadcastChangeMessage)
     {
         node = signalPath->getNode(index).get(); // JUCE 8: Node::Ptr
 
-        if (node->getProcessor()->getName() != "Midi Interceptor")
-        {
-            // Make sure the plugin knows about the AudioPlayHead.
-            node->getProcessor()->setPlayHead(this);
+        // Skip creating UI for internal/hidden nodes
+        auto processorName = node->getProcessor()->getName();
 
-            plugin = new PluginComponent(node);
+        if (processorName != "Midi Interceptor" && processorName != "SafetyLimiter" &&
+            processorName != "Crossfade Mixer")
+        {
+            // Hold the audio callback lock while creating the UI component.
+            // This prevents the audio thread from running processBlock on the
+            // new plugin concurrently, avoiding heap corruption from VST3 race.
+            {
+                const juce::ScopedLock sl(signalPath->getGraph().getCallbackLock());
+
+                // Make sure the plugin knows about the AudioPlayHead.
+                node->getProcessor()->setPlayHead(this);
+                plugin = new PluginComponent(node);
+            }
+
             x = signalPath->getNode(index)->properties.getWithDefault("x", 0);
             y = signalPath->getNode(index)->properties.getWithDefault("y", 0);
             plugin->setTopLeftPosition(x, y);
@@ -871,6 +1168,146 @@ void PluginField::updateProcessorName(uint32 id, const String& val)
 }
 
 //------------------------------------------------------------------------------
+void PluginField::refreshAudioIOPins()
+{
+    // Collect Audio I/O node IDs
+    std::vector<uint32> ioNodeIds;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+        {
+            if (auto* node = comp->getNode())
+            {
+                if (auto* ioProc = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor()))
+                {
+                    auto type = ioProc->getType();
+                    if (type == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode ||
+                        type == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode)
+                    {
+                        ioNodeIds.push_back(node->nodeID.uid);
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove UI connections that reference Audio I/O nodes (pins are about to be deleted)
+    for (int i = getNumChildComponents() - 1; i >= 0; --i)
+    {
+        if (auto* conn = dynamic_cast<PluginConnection*>(getChildComponent(i)))
+        {
+            auto* src = conn->getSource();
+            auto* dst = conn->getDestination();
+            uint32 srcId = src ? src->getUid() : 0;
+            uint32 dstId = dst ? dst->getUid() : 0;
+
+            for (auto id : ioNodeIds)
+            {
+                if (srcId == id || dstId == id)
+                {
+                    removeChildComponent(conn);
+                    delete conn;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Refresh pins on Audio I/O components
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+        {
+            if (auto* node = comp->getNode())
+            {
+                if (auto* ioProc = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor()))
+                {
+                    auto type = ioProc->getType();
+                    if (type == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode ||
+                        type == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode)
+                    {
+                        comp->refreshPins();
+                    }
+                }
+            }
+        }
+    }
+
+    // Rebuild UI connections from graph state for Audio I/O nodes
+    for (auto ioId : ioNodeIds)
+    {
+        auto graphConns = signalPath->getConnectionsForNode(AudioProcessorGraph::NodeID(ioId));
+        for (const auto& conn : graphConns)
+        {
+            // Find source and destination PluginComponents and their pins
+            PluginComponent* srcComp = nullptr;
+            PluginComponent* dstComp = nullptr;
+
+            for (int i = 0; i < getNumChildComponents(); ++i)
+            {
+                if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+                {
+                    if (comp->getNode() && comp->getNode()->nodeID == conn.source.nodeID)
+                        srcComp = comp;
+                    if (comp->getNode() && comp->getNode()->nodeID == conn.destination.nodeID)
+                        dstComp = comp;
+                }
+            }
+
+            if (!srcComp || !dstComp)
+                continue;
+
+            // Find the correct pins by channel
+            PluginPinComponent* srcPin = nullptr;
+            PluginPinComponent* dstPin = nullptr;
+
+            int srcChan = conn.source.channelIndex;
+            int dstChan = conn.destination.channelIndex;
+
+            if (srcChan == AudioProcessorGraph::midiChannelIndex)
+            {
+                for (int p = 0; p < srcComp->getNumParamPins(); ++p)
+                {
+                    if (srcComp->getParamPin(p)->getDirection()) // output param pin
+                    {
+                        srcPin = srcComp->getParamPin(p);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (srcChan < srcComp->getNumOutputPins())
+                    srcPin = srcComp->getOutputPin(srcChan);
+            }
+
+            if (dstChan == AudioProcessorGraph::midiChannelIndex)
+            {
+                for (int p = 0; p < dstComp->getNumParamPins(); ++p)
+                {
+                    if (!dstComp->getParamPin(p)->getDirection()) // input param pin
+                    {
+                        dstPin = dstComp->getParamPin(p);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (dstChan < dstComp->getNumInputPins())
+                    dstPin = dstComp->getInputPin(dstChan);
+            }
+
+            if (srcPin && dstPin)
+                addAndMakeVisible(new PluginConnection(srcPin, dstPin));
+        }
+    }
+
+    moveConnectionsBehind();
+    repaint();
+}
+
+//------------------------------------------------------------------------------
 void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 {
     if (source)
@@ -879,6 +1316,8 @@ void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 
         connection->setSize(10, 12);
         addAndMakeVisible(connection);
+        connection->toFront(false);                         // Bring dragging connection to front
+        connection->setInterceptsMouseClicks(false, false); // Don't intercept mouse while dragging
         draggingConnection = connection;
 
         sendChangeMessage();
@@ -895,9 +1334,13 @@ void PluginField::dragConnection(int x, int y)
 
         if (p)
         {
-            if (p->getParameterPin() == draggingConnection->getParameterConnection())
+            const PluginPinComponent* s = draggingConnection->getSource();
+
+            // Snap to pin if: same type (audio/param) AND opposite direction
+            if (p->getParameterPin() == draggingConnection->getParameterConnection() &&
+                p->getDirection() != s->getDirection())
             {
-                Point<int> tempPoint(p->getX() + 5, p->getY() + 6);
+                Point<int> tempPoint(p->getX() + 7, p->getY() + 8);
 
                 tempPoint = getLocalPoint(p->getParentComponent(), tempPoint);
                 draggingConnection->drag(tempPoint.getX(), tempPoint.getY());
@@ -926,18 +1369,24 @@ void PluginField::releaseConnection(int x, int y)
 
         if (p)
         {
-            if (!p->getDirection())
+            const PluginPinComponent* s = draggingConnection->getSource();
+
+            // Accept connection if source and destination have opposite directions
+            if (p->getDirection() != s->getDirection())
             {
-                // draggingConnection->setDestination(p);
-
-                const PluginPinComponent* s = draggingConnection->getSource();
-                // const PluginPinComponent *d = draggingConnection->getDestination();
-
+                // Check that both pins are same type (audio or parameter)
                 if ((s->getParameterPin() && p->getParameterPin()) || (!s->getParameterPin() && !p->getParameterPin()))
                 {
-                    signalPath->addConnection(AudioProcessorGraph::NodeID(s->getUid()), s->getChannel(),
-                                              AudioProcessorGraph::NodeID(p->getUid()), p->getChannel());
+                    // Determine which pin is output and which is input
+                    const PluginPinComponent* outputPin = s->getDirection() ? s : p;
+                    const PluginPinComponent* inputPin = s->getDirection() ? p : s;
+
+                    // Always connect output -> input
+                    signalPath->addConnection(AudioProcessorGraph::NodeID(outputPin->getUid()), outputPin->getChannel(),
+                                              AudioProcessorGraph::NodeID(inputPin->getUid()), inputPin->getChannel());
                     draggingConnection->setDestination(p);
+                    draggingConnection->setInterceptsMouseClicks(
+                        true, true); // Re-enable mouse clicks for finalized connection
 
                     // If we should be connecting all the outputs and inputs of the two
                     // plugins (user holding down shift).
@@ -949,10 +1398,23 @@ void PluginField::releaseConnection(int x, int y)
 
                     if (p->getParameterPin())
                     {
-                        PluginComponent* pComp = dynamic_cast<PluginComponent*>(p->getParentComponent());
+                        // Only open mappings window for CC mapping connections
+                        // (OSC Input), not for direct MIDI note routing
+                        // (MIDI Input, Virtual MIDI Input → synth)
+                        auto sourceNode =
+                            signalPath->getNodeForId(AudioProcessorGraph::NodeID(outputPin->getUid()));
+                        bool isDirectMidiSource =
+                            sourceNode != nullptr &&
+                            (dynamic_cast<VirtualMidiInputProcessor*>(sourceNode->getProcessor()) != nullptr ||
+                             sourceNode->getProcessor()->getName() == "MIDI Input");
 
-                        if (pComp && autoMappingsWindow)
-                            pComp->openMappingsWindow();
+                        if (!isDirectMidiSource)
+                        {
+                            PluginComponent* pComp = dynamic_cast<PluginComponent*>(p->getParentComponent());
+
+                            if (pComp && autoMappingsWindow)
+                                pComp->openMappingsWindow();
+                        }
                     }
                     moveConnectionsBehind();
 
@@ -960,9 +1422,16 @@ void PluginField::releaseConnection(int x, int y)
                 }
                 else
                 {
+                    // Type mismatch (audio vs parameter)
                     removeChildComponent(draggingConnection);
                     delete draggingConnection;
                 }
+            }
+            else
+            {
+                // Same direction (input-to-input or output-to-output) - reject
+                removeChildComponent(draggingConnection);
+                delete draggingConnection;
             }
         }
         else
@@ -1005,7 +1474,7 @@ void PluginField::deleteConnection()
 
                     // It's a Midi connection, so delete any associated Midi
                     // mappings for the destination plugin.
-                    if (tempstr == "Midi Input")
+                    if (tempstr == "MIDI Input")
                     {
                         multimap<uint32, Mapping*>::iterator it;
 
@@ -1060,7 +1529,7 @@ void PluginField::enableMidiForNode(AudioProcessorGraph::Node* node, bool val)
     {
         auto midiInputNode = signalPath->getNode(i);
 
-        if (midiInputNode->getProcessor()->getName() == "Midi Input")
+        if (midiInputNode->getProcessor()->getName() == "MIDI Input")
         {
             midiInput = midiInputNode.get();
             break;
@@ -1069,24 +1538,24 @@ void PluginField::enableMidiForNode(AudioProcessorGraph::Node* node, bool val)
     // Just in case.
     if (midiInput)
     {
-        if (midiInput->getProcessor()->getName() != "Midi Input")
+        if (midiInput->getProcessor()->getName() != "MIDI Input")
             return;
     }
     else
         return;
 
     // Check if there's a connection.
-    connection = (signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex,
-                                                   node->nodeID, AudioProcessorGraph::midiChannelIndex) != 0);
-    if (val)
+    connection = signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex,
+                                                  node->nodeID, AudioProcessorGraph::midiChannelIndex);
+    if (val && connection)
     {
-        // If there's a connection, remove it.
+        // Override is on and connection exists - remove it.
         signalPath->removeConnection(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
                                      AudioProcessorGraph::midiChannelIndex);
     }
-    else
+    else if (!val && !connection)
     {
-        // If there's not a connection, add it.
+        // Override is off and no connection - add it.
         signalPath->addConnection(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
                                   AudioProcessorGraph::midiChannelIndex);
     }
@@ -1103,7 +1572,7 @@ bool PluginField::getMidiEnabledForNode(AudioProcessorGraph::Node* node) const
     {
         auto midiInputNode = signalPath->getNode(i);
 
-        if (midiInputNode->getProcessor()->getName() == "Midi Input")
+        if (midiInputNode->getProcessor()->getName() == "MIDI Input")
         {
             midiInput = midiInputNode.get();
             break;
@@ -1116,7 +1585,7 @@ bool PluginField::getMidiEnabledForNode(AudioProcessorGraph::Node* node) const
         return false;
     else
         return signalPath->getConnectionBetween(midiInput->nodeID, AudioProcessorGraph::midiChannelIndex, node->nodeID,
-                                                AudioProcessorGraph::midiChannelIndex) != 0;
+                                                AudioProcessorGraph::midiChannelIndex);
 }
 
 //------------------------------------------------------------------------------
@@ -1172,675 +1641,6 @@ void PluginField::socketDataArrived(char* data, int32 dataSize)
 
         oscManager.messageReceived(&message);
     }
-}
-
-//------------------------------------------------------------------------------
-XmlElement* PluginField::getXml() const
-{
-    int i;
-    map<uint32, String>::const_iterator it2;
-    multimap<uint32, Mapping*>::const_iterator it;
-    XmlElement* retval = new XmlElement("Patch");
-    XmlElement* mappingsXml = new XmlElement("Mappings");
-    XmlElement* userNamesXml = new XmlElement("UserNames");
-
-    // Update saved window positions.
-    for (i = 0; i < getNumChildComponents(); ++i)
-    {
-        PluginComponent* plugin = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-        if (plugin)
-            plugin->saveWindowState();
-    }
-
-    // Set the patch tempo.
-    retval->setAttribute("tempo", tempo);
-
-    // Add FilterGraph.
-    retval->addChildElement(signalPath->createXml(oscManager));
-
-    // Add Mappings.
-    for (it = mappings.begin(); it != mappings.end(); ++it)
-        mappingsXml->addChildElement(it->second->getXml());
-    retval->addChildElement(mappingsXml);
-
-    // Add user names.
-    for (it2 = userNames.begin(); it2 != userNames.end(); ++it2)
-    {
-        XmlElement* nameXml = new XmlElement("Name");
-
-        nameXml->setAttribute("id", (int)it2->first);
-        nameXml->setAttribute("va", it2->second);
-
-        userNamesXml->addChildElement(nameXml);
-    }
-    retval->addChildElement(userNamesXml);
-
-    return retval;
-}
-
-#ifdef __APPLE__
-struct NodeAndId
-{
-    AudioProcessorGraph::Node* node;
-    uint32 id;
-};
-#endif
-
-//------------------------------------------------------------------------------
-void PluginField::loadFromXml(XmlElement* patch)
-{
-    int i, j;
-    Array<uint32> paramConnections;
-
-    // Delete all the filter and connection components.
-    {
-        // If we don't do this, the connections will try to contact their pins,
-        // which may have already been deleted.
-        for (i = (getNumChildComponents() - 1); i >= 0; --i)
-        {
-            PluginConnection* connection = dynamic_cast<PluginConnection*>(getChildComponent(i));
-
-            if (connection)
-            {
-                removeChildComponent(connection);
-                delete connection;
-            }
-        }
-    }
-    deleteAllChildren();
-    repaint();
-
-    // Wipe userNames.
-    userNames.clear();
-
-    // Clear and possibly load the signal path.
-    clearMappings();
-    if (patch)
-    {
-        tempo = patch->getDoubleAttribute("tempo", 120.0);
-
-        signalPath->clear(false, false, false);
-        signalPath->restoreFromXml(*(patch->getChildByName("FILTERGRAPH")), oscManager);
-    }
-    else
-        signalPath->clear(audioInputEnabled, midiInputEnabled);
-
-    // Add the filter components.
-    for (i = 0; i < signalPath->getNumFilters(); ++i)
-        addFilter(i, false);
-
-    // Update any plugin names.
-    {
-        XmlElement* userNamesXml = patch->getChildByName("UserNames");
-
-        if (userNamesXml)
-        {
-            forEachXmlChildElement(*userNamesXml, e)
-            {
-                if (e->hasTagName("Name"))
-                {
-                    uint32 id = e->getIntAttribute("id");
-                    String name = e->getStringAttribute("va");
-
-                    for (i = 0; i < getNumChildComponents(); ++i)
-                    {
-                        PluginComponent* pluginComp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-                        if (pluginComp)
-                        {
-                            if (pluginComp->getNode()->nodeID.uid == id)
-                            {
-                                pluginComp->setUserName(name);
-                                userNames[id] = name;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Add the audio/midi connections.
-    {
-#ifndef __APPLE__ // Stupid gcc...
-        struct NodeAndId
-        {
-            AudioProcessorGraph::Node::Ptr node; // JUCE 8: Use smart pointer
-            uint32 id;
-        };
-#endif
-        Array<NodeAndId> tempNodes;
-
-        // Stick all the nodes and their ids in an array.
-        for (i = 0; i < signalPath->getNumFilters(); ++i)
-        {
-            NodeAndId n;
-
-            n.node = signalPath->getNode(i);
-            n.id = n.node->nodeID.uid; // JUCE 8: NodeID struct
-            tempNodes.add(n);
-        }
-
-        // Add the audio/midi connections.
-        for (const auto& connection : signalPath->getConnections())
-        {
-            AudioProcessorGraph::Node* sourceNode = nullptr;
-            AudioProcessorGraph::Node* destNode = nullptr;
-            PluginComponent* sourceComp = 0;
-            PluginComponent* destComp = 0;
-            PluginPinComponent* sourcePin;
-            PluginPinComponent* destPin;
-
-            // Fill out sourceNode and destNode.
-            for (j = 0; j < tempNodes.size(); ++j)
-            {
-                if (tempNodes[j].id == connection.source.nodeID.uid)
-                    sourceNode = tempNodes[j].node.get();
-                else if (tempNodes[j].id == connection.destination.nodeID.uid)
-                    destNode = tempNodes[j].node.get();
-            }
-
-            if (!sourceNode || !destNode)
-            {
-                jassertfalse;
-                continue;
-            }
-            else if (destNode->getProcessor()->getName() == "Midi Interceptor")
-                continue;
-
-            // Now get the source and destination components.
-            for (j = 0; j < getNumChildComponents(); ++j)
-            {
-                PluginComponent* pluginComp = dynamic_cast<PluginComponent*>(getChildComponent(j));
-
-                if (pluginComp)
-                {
-                    if (pluginComp->getNode() == sourceNode)
-                        sourceComp = pluginComp;
-                    else if (pluginComp->getNode() == destNode)
-                        destComp = pluginComp;
-                }
-            }
-
-            if (!sourceComp || !destComp)
-            {
-                jassertfalse;
-                continue;
-            }
-
-            if ((connection.source.channelIndex == connection.destination.channelIndex) &&
-                (connection.source.channelIndex == AudioProcessorGraph::midiChannelIndex))
-            {
-                sourcePin = sourceComp->getParamPin(0);
-                destPin = destComp->getParamPin(0);
-
-                paramConnections.add(connection.destination.nodeID.uid);
-            }
-            else
-            {
-                sourcePin = sourceComp->getOutputPin(connection.source.channelIndex);
-                destPin = destComp->getInputPin(connection.destination.channelIndex);
-            }
-
-            if (!sourcePin || !destPin)
-            {
-                jassertfalse;
-                continue;
-            }
-
-            addAndMakeVisible(new PluginConnection(sourcePin, destPin));
-        }
-    }
-
-    // Add the mappings.
-    {
-        XmlElement* mappingsXml = patch->getChildByName("Mappings");
-
-        if (mappingsXml)
-        {
-            forEachXmlChildElement(*mappingsXml, e)
-            {
-                if (e->hasTagName("MidiMapping"))
-                {
-                    MidiMapping* mapping = new MidiMapping(&midiManager, signalPath, e);
-                    midiManager.registerMapping(mapping->getCc(), mapping);
-
-                    mappings.insert(make_pair(mapping->getPluginId(), mapping));
-                }
-                else if (e->hasTagName("OscMapping"))
-                {
-                    OscMapping* mapping = new OscMapping(&oscManager, signalPath, e);
-                    oscManager.registerMapping(mapping->getAddress(), mapping);
-
-                    mappings.insert(make_pair(mapping->getPluginId(), mapping));
-                }
-            }
-        }
-    }
-
-    // Connect the Midi Interceptor to the MidiMappingManager.
-    if (midiInputEnabled)
-    {
-        MidiInterceptor* interceptor = 0;
-
-        for (i = 0; i < signalPath->getNumFilters(); ++i)
-        {
-            interceptor = dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor());
-
-            if (interceptor)
-            {
-                interceptor->setManager(&midiManager);
-                break;
-            }
-        }
-    }
-
-    // Add in any parameter mapping connections.
-    {
-        multimap<uint32, Mapping*>::iterator it;
-        PluginPinComponent* midiInput = 0;
-        PluginPinComponent* oscInput = 0;
-
-        // Get the Midi Input and OSC Input pins.
-        for (i = 0; i < getNumChildComponents(); ++i)
-        {
-            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-            if (comp)
-            {
-                String tempstr = comp->getNode()->getProcessor()->getName();
-
-                if (tempstr == "Midi Input")
-                    midiInput = comp->getParamPin(0);
-                else if (tempstr == "OSC Input")
-                    oscInput = comp->getParamPin(0);
-            }
-        }
-
-        /*jassert(midiInput);
-        jassert(oscInput);*/
-
-        if (midiInputEnabled && midiInput)
-        {
-            // Add a connection for each Midi mapping, checking that we don't already
-            // have an identical one.
-            for (it = mappings.begin(); it != mappings.end(); ++it)
-            {
-                MidiMapping* midiMapping = dynamic_cast<MidiMapping*>(it->second);
-
-                if (midiMapping)
-                {
-                    uint32 uid = midiMapping->getPluginId();
-
-                    if (!paramConnections.contains(uid))
-                    {
-                        // Find the PluginComponent matching this uid.
-                        for (i = 0; i < getNumChildComponents(); ++i)
-                        {
-                            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-                            if (comp)
-                            {
-                                if (comp->getNode()->nodeID.uid == uid)
-                                {
-                                    PluginPinComponent* paramInput = 0;
-
-                                    for (j = 0; j < comp->getNumParamPins(); ++j)
-                                    {
-                                        if (!comp->getParamPin(j)->getDirection())
-                                        {
-                                            paramInput = comp->getParamPin(j);
-                                            break;
-                                        }
-                                    }
-
-                                    jassert(paramInput);
-
-                                    addAndMakeVisible(new PluginConnection(midiInput, paramInput));
-                                    paramConnections.add(uid);
-
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (oscInputEnabled && oscInput)
-        {
-            // Ditto for the osc mappings.
-            paramConnections.clear();
-            for (it = mappings.begin(); it != mappings.end(); ++it)
-            {
-                OscMapping* oscMapping = dynamic_cast<OscMapping*>(it->second);
-
-                if (oscMapping)
-                {
-                    uint32 uid = oscMapping->getPluginId();
-
-                    if (!paramConnections.contains(uid))
-                    {
-                        // Find the PluginComponent matching this uid.
-                        for (i = 0; i < getNumChildComponents(); ++i)
-                        {
-                            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-
-                            if (comp)
-                            {
-                                if (comp->getNode()->nodeID.uid == uid)
-                                {
-                                    PluginPinComponent* paramInput = 0;
-
-                                    for (j = 0; j < comp->getNumParamPins(); ++j)
-                                    {
-                                        if (!comp->getParamPin(j)->getDirection())
-                                        {
-                                            paramInput = comp->getParamPin(j);
-                                            break;
-                                        }
-                                    }
-
-                                    jassert(paramInput);
-
-                                    addAndMakeVisible(new PluginConnection(oscInput, paramInput));
-                                    paramConnections.add(uid);
-
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Make sure any disabled inputs/outputs don't get accidentally re-enabled.
-    if (!audioInputEnabled)
-        enableAudioInput(audioInputEnabled);
-    if (!midiInputEnabled)
-        enableMidiInput(midiInputEnabled);
-    if (!oscInputEnabled)
-        enableOscInput(oscInputEnabled);
-
-    moveConnectionsBehind();
-    repaint();
-}
-
-//------------------------------------------------------------------------------
-void PluginField::clear()
-{
-    int i;
-
-    // Delete all the filter and connection components.
-    {
-        // If we don't do this, the connections will try to contact their pins,
-        // which may have already been deleted.
-        for (i = (getNumChildComponents() - 1); i >= 0; --i)
-        {
-            PluginConnection* connection = dynamic_cast<PluginConnection*>(getChildComponent(i));
-
-            if (connection)
-            {
-                removeChildComponent(connection);
-                delete connection;
-            }
-        }
-    }
-    deleteAllChildren();
-    repaint();
-
-    // Wipe userNames.
-    userNames.clear();
-
-    // Clear any mappings.
-    clearMappings();
-
-    // Clear the signal path.
-    signalPath->clear(audioInputEnabled, midiInputEnabled);
-
-    // Add OSC input.
-    if (oscInputEnabled)
-    {
-        OscInput p;
-        PluginDescription desc;
-
-        p.fillInPluginDescription(desc);
-
-        signalPath->addFilter(&desc, 10, 215);
-    }
-
-    // Setup gui.
-    for (i = 0; i < signalPath->getNumFilters(); ++i)
-        addFilter(i);
-
-    // Add MidiInterceptor.
-    if (midiInputEnabled)
-    {
-        MidiInterceptor p;
-        PluginDescription desc;
-
-        p.fillInPluginDescription(desc);
-
-        signalPath->addFilter(&desc, 100, 100);
-
-        // And connect it up to the midi input.
-        {
-            AudioProcessorGraph::NodeID midiInput;
-            AudioProcessorGraph::NodeID midiInterceptor;
-
-            for (i = 0; i < signalPath->getNumFilters(); ++i)
-            {
-                if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Input")
-                    midiInput = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                else if (signalPath->getNode(i)->getProcessor()->getName() == "Midi Interceptor")
-                {
-                    midiInterceptor = signalPath->getNode(i)->nodeID; // JUCE 8: NodeID struct
-                    dynamic_cast<MidiInterceptor*>(signalPath->getNode(i)->getProcessor())->setManager(&midiManager);
-                }
-            }
-            signalPath->addConnection(midiInput, AudioProcessorGraph::midiChannelIndex, midiInterceptor,
-                                      AudioProcessorGraph::midiChannelIndex);
-        }
-    }
-
-    repaint();
-}
-
-//------------------------------------------------------------------------------
-void PluginField::clearDoubleClickMessage()
-{
-    displayDoubleClickMessage = false;
-    repaint();
-}
-
-//------------------------------------------------------------------------------
-void PluginField::syncWithGraph()
-{
-    // Build a set of all NodeIDs in the graph
-    std::set<uint32> graphNodeIds;
-    for (int i = 0; i < signalPath->getNumFilters(); ++i)
-    {
-        auto node = signalPath->getNode(i);
-        if (node != nullptr)
-            graphNodeIds.insert(node->nodeID.uid);
-    }
-
-    // Helper lambda to safely get uid from PluginComponent
-    // Uses the pins which store uid as a member (not a pointer that can dangle)
-    auto getComponentUid = [](PluginComponent* comp) -> uint32
-    {
-        if (comp->getNumInputPins() > 0)
-            return comp->getInputPin(0)->getUid();
-        if (comp->getNumOutputPins() > 0)
-            return comp->getOutputPin(0)->getUid();
-        if (comp->getNumParamPins() > 0)
-            return comp->getParamPin(0)->getUid();
-        return 0;
-    };
-
-    // Find PluginComponents that no longer have a corresponding graph node
-    std::vector<PluginComponent*> toRemove;
-    for (int i = 0; i < getNumChildComponents(); ++i)
-    {
-        PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-        if (comp != nullptr)
-        {
-            uint32 uid = getComponentUid(comp);
-            if (uid != 0 && graphNodeIds.find(uid) == graphNodeIds.end())
-            {
-                toRemove.push_back(comp);
-            }
-        }
-    }
-
-    // Remove orphan PluginComponents
-    for (auto* comp : toRemove)
-    {
-        comp->removeChangeListener(this);
-        removeChildComponent(comp);
-        delete comp;
-    }
-
-    // Find graph nodes that don't have a PluginComponent
-    std::set<uint32> uiNodeIds;
-    for (int i = 0; i < getNumChildComponents(); ++i)
-    {
-        PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
-        if (comp != nullptr)
-        {
-            uint32 uid = getComponentUid(comp);
-            if (uid != 0)
-                uiNodeIds.insert(uid);
-        }
-    }
-
-    for (int i = 0; i < signalPath->getNumFilters(); ++i)
-    {
-        auto node = signalPath->getNode(i);
-        if (node != nullptr && uiNodeIds.find(node->nodeID.uid) == uiNodeIds.end())
-        {
-            // Add missing PluginComponent
-            addFilter(i, false);
-        }
-    }
-
-    // Sync connections: remove UI connections not in graph, add graph connections not in UI
-    auto graphConnections = signalPath->getConnections();
-
-    // Build set of graph connections for fast lookup
-    std::set<std::tuple<uint32, int, uint32, int>> graphConnSet;
-    for (const auto& conn : graphConnections)
-    {
-        graphConnSet.insert(std::make_tuple(conn.source.nodeID.uid, conn.source.channelIndex,
-                                            conn.destination.nodeID.uid, conn.destination.channelIndex));
-    }
-
-    // Build set of UI connections
-    std::set<std::tuple<uint32, int, uint32, int>> uiConnSet;
-    std::vector<PluginConnection*> connectionsToRemove;
-    for (int i = 0; i < getNumChildComponents(); ++i)
-    {
-        PluginConnection* conn = dynamic_cast<PluginConnection*>(getChildComponent(i));
-        if (conn != nullptr)
-        {
-            auto* src = conn->getSource();
-            auto* dest = conn->getDestination();
-
-            if (src != nullptr && dest != nullptr)
-            {
-                auto key = std::make_tuple(src->getUid(), src->getChannel(), dest->getUid(), dest->getChannel());
-                uiConnSet.insert(key);
-
-                // Check if this UI connection exists in graph
-                if (graphConnSet.find(key) == graphConnSet.end())
-                {
-                    connectionsToRemove.push_back(conn);
-                }
-            }
-            else
-            {
-                // Invalid connection, remove it
-                connectionsToRemove.push_back(conn);
-            }
-        }
-    }
-
-    // Remove UI connections that aren't in graph
-    for (auto* conn : connectionsToRemove)
-    {
-        removeChildComponent(conn);
-        delete conn;
-    }
-
-    // Add graph connections that aren't in UI
-    for (const auto& conn : graphConnections)
-    {
-        auto key = std::make_tuple(conn.source.nodeID.uid, conn.source.channelIndex, conn.destination.nodeID.uid,
-                                   conn.destination.channelIndex);
-
-        if (uiConnSet.find(key) == uiConnSet.end())
-        {
-            // Find the source and destination PluginComponents and their pins
-            PluginComponent* sourceComp = nullptr;
-            PluginComponent* destComp = nullptr;
-
-            for (int i = 0; i < getNumChildComponents(); ++i)
-            {
-                PluginComponent* pc = dynamic_cast<PluginComponent*>(getChildComponent(i));
-                if (pc != nullptr)
-                {
-                    if (pc->getNumOutputPins() > 0 && pc->getOutputPin(0)->getUid() == conn.source.nodeID.uid)
-                        sourceComp = pc;
-                    if (pc->getNumInputPins() > 0 && pc->getInputPin(0)->getUid() == conn.destination.nodeID.uid)
-                        destComp = pc;
-                }
-            }
-
-            if (sourceComp != nullptr && destComp != nullptr)
-            {
-                PluginPinComponent* sourcePin = nullptr;
-                PluginPinComponent* destPin = nullptr;
-
-                // Find the source pin by channel
-                bool isMidiChannel = (conn.source.channelIndex == AudioProcessorGraph::midiChannelIndex);
-                if (isMidiChannel)
-                {
-                    sourcePin = sourceComp->getParamPin(0);
-                    destPin = destComp->getParamPin(0);
-                }
-                else
-                {
-                    if (conn.source.channelIndex < sourceComp->getNumOutputPins())
-                        sourcePin = sourceComp->getOutputPin(conn.source.channelIndex);
-                    if (conn.destination.channelIndex < destComp->getNumInputPins())
-                        destPin = destComp->getInputPin(conn.destination.channelIndex);
-                }
-
-                if (sourcePin != nullptr && destPin != nullptr)
-                {
-                    addAndMakeVisible(new PluginConnection(sourcePin, destPin));
-                }
-            }
-        }
-    }
-
-    repaint();
-}
-
-//------------------------------------------------------------------------------
-void PluginField::clearMappings()
-{
-    multimap<uint32, Mapping*>::iterator it;
-
-    for (it = mappings.begin(); it != mappings.end(); ++it)
-        delete it->second;
-
-    mappings.clear();
 }
 
 //------------------------------------------------------------------------------

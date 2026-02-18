@@ -24,6 +24,8 @@
 #include "MainPanel.h"
 #include "SettingsManager.h"
 
+#include <spdlog/spdlog.h>
+
 
 using namespace std;
 
@@ -193,7 +195,7 @@ XmlElement* MidiAppMapping::getXml() const
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiMappingManager::MidiMappingManager(ApplicationCommandManager* manager) : appManager(manager), midiLearnCallback(0)
+MidiMappingManager::MidiMappingManager(ApplicationCommandManager* manager) : appManager(manager)
 {
 }
 
@@ -220,43 +222,14 @@ MidiMappingManager::~MidiMappingManager()
 //------------------------------------------------------------------------------
 void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secondsSinceStart)
 {
-    if (LogFile::getInstance().getIsLogging())
-    {
-        String tempstr;
+    // Use tryLock on the audio path: if the UI is mutating mappings, skip this CC
+    // rather than blocking the audio thread.
+    const juce::ScopedTryLock sl(mappingsLock);
+    if (!sl.isLocked())
+        return;
 
-        if (message.isController())
-        {
-            tempstr << "MIDI CC message received: CC=" << message.getControllerNumber();
-            tempstr << " val=" << message.getControllerValue();
-            tempstr << " chan=" << message.getChannel();
-        }
-        else if (message.isNoteOn())
-        {
-            tempstr << "MIDI Note On message received: note=" << message.getNoteNumber();
-            tempstr << " vel=" << (int)message.getVelocity();
-            tempstr << " chan=" << message.getChannel();
-        }
-        else if (message.isNoteOff())
-        {
-            tempstr << "MIDI Note Off message received: note=" << message.getNoteNumber();
-            tempstr << " vel=" << (int)message.getVelocity();
-            tempstr << " chan=" << message.getChannel();
-        }
-        else if (message.isProgramChange())
-        {
-            tempstr << "MIDI Program Change message received: prog=" << message.getProgramChangeNumber();
-        }
-        else
-        {
-            int i;
-
-            tempstr << "MIDI message received: ";
-            for (i = 0; i < message.getRawDataSize(); ++i)
-                tempstr << String::toHexString(message.getRawData()[i]);
-        }
-
-        LogFile::getInstance().logEvent("MIDI", tempstr);
-    }
+    // NOTE: LogFile::logEvent was removed from this audio-thread path because it
+    // does String allocation, CriticalSection lock, file I/O, and sendChangeMessage.
 
     if (message.isController())
     {
@@ -267,10 +240,13 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
         int value = message.getControllerValue();
         int messageChan = message.getChannel();
 
-        if (midiLearnCallback)
         {
-            midiLearnCallback->midiCcReceived(cc);
-            midiLearnCallback = 0;
+            MidiLearnCallback* cb = midiLearnCallback.load();
+            if (cb)
+            {
+                cb->midiCcReceived(cc);
+                midiLearnCallback.store(nullptr);
+            }
         }
 
         // Check if it matches any MidiMappings.
@@ -293,7 +269,9 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
                 if (panel)
                 {
                     if (id != MainPanel::TransportTapTempo)
+                    {
                         panel->invokeCommandFromOtherThread(id);
+                    }
                     else
                     {
                         double tempo = tapHelper.updateTempo(secondsSinceStart);
@@ -351,6 +329,7 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
 //------------------------------------------------------------------------------
 void MidiMappingManager::registerMapping(int midiCc, MidiMapping* mapping)
 {
+    const juce::ScopedLock sl(mappingsLock);
     jassert(mapping);
 
     mappings.insert(make_pair(midiCc, mapping));
@@ -359,6 +338,7 @@ void MidiMappingManager::registerMapping(int midiCc, MidiMapping* mapping)
 //------------------------------------------------------------------------------
 void MidiMappingManager::unregisterMapping(MidiMapping* mapping)
 {
+    const juce::ScopedLock sl(mappingsLock);
     multimap<int, MidiMapping*>::iterator it;
 
     jassert(mapping);
@@ -366,16 +346,16 @@ void MidiMappingManager::unregisterMapping(MidiMapping* mapping)
     for (it = mappings.begin(); it != mappings.end();)
     {
         if (it->second == mapping)
-            mappings.erase(it++); // Pass the current iterator to erase, then increment it before erase() is executed,
-                                  // so it's not invalidated by the erase() call.
+            mappings.erase(it++);
         else
-            ++it; // Pre-increment because it should be more efficient.
+            ++it;
     }
 }
 
 //------------------------------------------------------------------------------
 void MidiMappingManager::registerAppMapping(MidiAppMapping* mapping)
 {
+    const juce::ScopedLock sl(mappingsLock);
     jassert(mapping);
 
     appMappings.insert(make_pair(mapping->getCc(), mapping));
@@ -384,6 +364,7 @@ void MidiMappingManager::registerAppMapping(MidiAppMapping* mapping)
 //------------------------------------------------------------------------------
 void MidiMappingManager::unregisterAppMapping(MidiAppMapping* mapping)
 {
+    const juce::ScopedLock sl(mappingsLock);
     multimap<int, MidiAppMapping*>::iterator it;
 
     jassert(mapping);
@@ -391,10 +372,9 @@ void MidiMappingManager::unregisterAppMapping(MidiAppMapping* mapping)
     for (it = appMappings.begin(); it != appMappings.end();)
     {
         if (it->second == mapping)
-            appMappings.erase(it++); // Pass the current iterator to erase, then increment it before erase() is
-                                     // executed, so it's not invalidated by the erase() call.
+            appMappings.erase(it++);
         else
-            ++it; // Pre-increment because it should be more efficient.
+            ++it;
     }
 }
 
@@ -421,13 +401,13 @@ MidiAppMapping* MidiMappingManager::getAppMapping(int index)
 //------------------------------------------------------------------------------
 void MidiMappingManager::registerMidiLearnCallback(MidiLearnCallback* callback)
 {
-    midiLearnCallback = callback;
+    midiLearnCallback.store(callback);
 }
 
 //------------------------------------------------------------------------------
 void MidiMappingManager::unregisterMidiLearnCallback(MidiLearnCallback* callback)
 {
-    midiLearnCallback = 0;
+    midiLearnCallback.store(nullptr);
 }
 
 //------------------------------------------------------------------------------

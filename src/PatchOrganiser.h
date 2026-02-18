@@ -28,8 +28,6 @@
 class MainPanel;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
                                                                     //[Comments]
@@ -38,55 +36,73 @@ class MainPanel;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class PatchOrganiser  : public Component,
-                        public ListBoxModel,
-                        public Label::Listener,
-                        public Button::Listener
+class PatchOrganiser : public Component, public ListBoxModel, public Label::Listener, public Button::Listener
 {
-public:
+  public:
     //==============================================================================
-    PatchOrganiser (MainPanel *panel, Array<XmlElement *>& patchArray);
+    PatchOrganiser(MainPanel* panel, Array<XmlElement*>& patchArray);
     ~PatchOrganiser();
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
 
-	///	Returns the number of active mappings.
-	int getNumRows();
-	///	Draws a row.
-	void paintListBoxItem(int rowNumber, Graphics &g, int width, int height, bool rowIsSelected);
-	///	Returns the component for a single row.
-	Component *refreshComponentForRow(int rowNumber, bool isRowSelected, Component *existingComponentToUpdate);
-	///	So the user can select rows.
-	void listBoxItemClicked(int row, const MouseEvent &e);
-	///	So the user can deselect rows.
-	void backgroundClicked();
+    ///	Returns the number of active mappings.
+    int getNumRows();
+    ///	Draws a row.
+    void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected);
+    ///	Returns the component for a single row.
+    Component* refreshComponentForRow(int rowNumber, bool isRowSelected, Component* existingComponentToUpdate);
+    ///	So the user can select rows.
+    void listBoxItemClicked(int row, const MouseEvent& e);
+    ///	So the user can deselect rows.
+    void backgroundClicked();
 
-	///	Called when the user changes a patch name by editing the label.
-	void labelTextChanged(Label *labelThatHasChanged);
+    ///	Called when the user changes a patch name by editing the label.
+    void labelTextChanged(Label* labelThatHasChanged);
 
     //[/UserMethods]
 
-    void paint (Graphics& g);
+    void paint(Graphics& g);
     void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
-
+    void buttonClicked(Button* buttonThatWasClicked);
 
     //==============================================================================
 
-
-private:
+  private:
     //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	The MainPanel.
-	MainPanel *mainPanel;
-	///	Our copy of the available patches.
-	Array<XmlElement *>& patches;
+    ///	The MainPanel.
+    MainPanel* mainPanel;
+    ///	Our copy of the available patches.
+    Array<XmlElement*>& patches;
 
     //[/UserVariables]
 
     //==============================================================================
-    ListBox* patchList;
+    //==============================================================================
+    class PatchListBox : public ListBox, public DragAndDropTarget
+    {
+      public:
+        PatchListBox(const String& componentName, ListBoxModel* model) : ListBox(componentName, model) {}
+
+        bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override
+        {
+            return dragSourceDetails.description.toString().startsWith("PatchMove");
+        }
+
+        void itemDragEnter(const SourceDetails& /*dragSourceDetails*/) override { repaint(); }
+
+        void itemDragMove(const SourceDetails& /*dragSourceDetails*/) override { repaint(); }
+
+        void itemDragExit(const SourceDetails& /*dragSourceDetails*/) override { repaint(); }
+
+        void itemDropped(const SourceDetails& dragSourceDetails) override;
+
+        void paintOverChildren(Graphics& g) override;
+    };
+
+    //==============================================================================
+    PatchListBox* patchList;
     TextButton* addButton;
     TextButton* copyButton;
     TextButton* removeButton;
@@ -94,11 +110,13 @@ private:
     TextButton* moveDownButton;
     TextButton* importButton;
 
+    void movePatch(int sourceIndex, int destIndex);
+    var getDragSourceDescription(const SparseSet<int>& selectedRows) override;
+
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)
-    PatchOrganiser (const PatchOrganiser&);
-    const PatchOrganiser& operator= (const PatchOrganiser&);
+    PatchOrganiser(const PatchOrganiser&);
+    const PatchOrganiser& operator=(const PatchOrganiser&);
 };
 
-
-#endif   // __JUCER_HEADER_PATCHORGANISER_PATCHORGANISER_B5AD9ECF__
+#endif // __JUCER_HEADER_PATCHORGANISER_PATCHORGANISER_B5AD9ECF__

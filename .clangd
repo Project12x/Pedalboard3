@@ -1,0 +1,22 @@
+If:
+  PathExclude:
+    # JUCE framework internals (keeps headers, excludes extras/native)
+    - .*/JUCE/extras/.*
+    - .*/JUCE/modules/.*/native/.*
+    - .*/JUCE/examples/.*
+    - .*/JuceLibraryCode/.*
+    # Build artifacts
+    - .*/build.*/.*
+    - .*/out/.*
+    - .*/release/.*
+    - .*/cmake-build-.*/.*
+    - .*/_deps/.*
+
+CompileFlags:
+  Add: [-ferror-limit=100]
+
+Index:
+  Background: Build  # Only index files that are actually compiled
+
+Diagnostics:
+  UnusedIncludes: None

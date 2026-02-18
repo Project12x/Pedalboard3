@@ -24,19 +24,45 @@
 #include "App.h"
 #include "ApplicationMappingsEditor.h"
 #include "AudioSingletons.h"
+#include "BlacklistWindow.h"
+#include "BranchesLAF.h"
+#include "BypassableInstance.h"
 #include "ColourSchemeEditor.h"
+#include "CrashProtection.h"
+#include "DawMixerProcessor.h"
+#include "DawSplitterProcessor.h"
+#include "FontManager.h"
+#include "IRLoaderProcessor.h"
 #include "Images.h"
+#include "JuceHelperStuff.h"
+#include "LabelProcessor.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
+#include "Mapping.h"
+#include "MasterGainState.h"
+#include "MidiFilePlayer.h"
+#include "MidiUtilityProcessors.h"
+#include "NAMProcessor.h"
+#include "NotesProcessor.h"
+#include "OscilloscopeProcessor.h"
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
+#include "PluginPoolManager.h"
 #include "PreferencesDialog.h"
+#include "RoutingProcessors.h"
+#include "SafePluginScanner.h"
 #include "SettingsManager.h"
+#include "StageView.h"
+#include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
+#include "ToastOverlay.h"
+#include "ToneGeneratorProcessor.h"
+#include "TunerProcessor.h"
 #include "UserPresetWindow.h"
 #include "Vectors.h"
+#include "VirtualMidiInputProcessor.h"
 
 #include <iostream>
 #include <sstream>
@@ -55,24 +81,32 @@ File MainPanel::lastDocument = File();
 class PluginListWindow : public DocumentWindow
 {
   public:
-    PluginListWindow(KnownPluginList& knownPluginList, MainPanel* p)
-        : DocumentWindow("Available Plugins", Colour(0xffeeece1),
+    PluginListWindow(KnownPluginList& knownPluginList, MainPanel* p, bool useSafeScanner = true)
+        : DocumentWindow("Available Plugins", ColourScheme::getInstance().colours["Dialog Background"],
                          DocumentWindow::minimiseButton | DocumentWindow::closeButton),
           panel(p)
     {
         const File deadMansPedalFile(
             SettingsManager::getInstance().getUserDataDirectory().getChildFile("RecentlyCrashedPluginsList"));
 
-        setContentOwned(new PluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
-                                                deadMansPedalFile, nullptr),
-                        true);
+        if (useSafeScanner)
+        {
+            // Use our safe scanner with out-of-process support
+            setContentOwned(new SafePluginListComponent(AudioPluginFormatManagerSingleton::getInstance(),
+                                                        knownPluginList, deadMansPedalFile, nullptr),
+                            true);
+        }
+        else
+        {
+            // Fall back to JUCE's built-in scanner
+            setContentOwned(new PluginListComponent(AudioPluginFormatManagerSingleton::getInstance(), knownPluginList,
+                                                    deadMansPedalFile, nullptr),
+                            true);
+        }
 
         setResizable(true, false);
-        // setResizeLimits(300, 400, 800, 1500);
-        // setTopLeftPosition(60, 60);
-        centreWithSize(300, 400);
+        centreWithSize(500, 500); // Slightly larger for better UX
         setUsingNativeTitleBar(true);
-        // setDropShadowEnabled(false);
         getPeer()->setIcon(ImageCache::getFromMemory(Images::icon512_png, Images::icon512_pngSize));
 
         restoreWindowStateFromString(SettingsManager::getInstance().getString("listWindowPos"));
@@ -102,10 +136,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
       tempoEditor(0), tapTempoButton(0)
 {
     addAndMakeVisible(patchLabel = new Label("patchLabel", "Patch:"));
-    patchLabel->setFont(Font(15.0000f, Font::plain));
+    patchLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     patchLabel->setJustificationType(Justification::centredLeft);
     patchLabel->setEditable(false, false, false);
-    patchLabel->setColour(TextEditor::textColourId, Colours::black);
+    patchLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     patchLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(prevPatch = new TextButton("prevPatch"));
@@ -136,10 +170,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuSlider->addListener(this);
 
     addAndMakeVisible(cpuLabel = new Label("cpuLabel", "CPU Usage:"));
-    cpuLabel->setFont(Font(15.0000f, Font::plain));
+    cpuLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
-    cpuLabel->setColour(TextEditor::textColourId, Colours::black);
+    cpuLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     cpuLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(playButton = new DrawableButton("playButton", DrawableButton::ImageOnButtonBackground));
@@ -149,10 +183,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     rtzButton->setName("rtzButton");
 
     addAndMakeVisible(tempoLabel = new Label("tempoLabel", "Tempo:"));
-    tempoLabel->setFont(Font(15.0000f, Font::plain));
+    tempoLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
     tempoLabel->setJustificationType(Justification::centredLeft);
     tempoLabel->setEditable(false, false, false);
-    tempoLabel->setColour(TextEditor::textColourId, Colours::black);
+    tempoLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     tempoLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(tempoEditor = new TextEditor("tempoEditor"));
@@ -166,6 +200,46 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     addAndMakeVisible(tapTempoButton = new ArrowButton("tapTempoButton", 0.0, Colour(0x40000000)));
     tapTempoButton->setName("tapTempoButton");
+
+    addAndMakeVisible(organiseButton = new TextButton("organiseButton"));
+    organiseButton->setButtonText("Manage");
+    organiseButton->addListener(this);
+
+    addAndMakeVisible(fitButton = new TextButton("fitButton"));
+    fitButton->setButtonText("Fit");
+    fitButton->setTooltip("Fit all nodes to screen");
+    fitButton->addListener(this);
+
+    addAndMakeVisible(inputGainLabel = new Label("inputGainLabel", "IN"));
+    inputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
+    inputGainLabel->setJustificationType(Justification::centredRight);
+
+    addAndMakeVisible(inputGainSlider = new Slider("inputGainSlider"));
+    inputGainSlider->setSliderStyle(Slider::LinearBar);
+    inputGainSlider->setRange(-60.0, 12.0, 0.1);
+    inputGainSlider->setTextValueSuffix(" dB");
+    inputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    inputGainSlider->setTooltip("Master Input Gain");
+    inputGainSlider->textFromValueFunction = [](double v) { return "IN " + String(v, 1) + " dB"; };
+    inputGainSlider->addListener(this);
+
+    addAndMakeVisible(outputGainLabel = new Label("outputGainLabel", "OUT"));
+    outputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
+    outputGainLabel->setJustificationType(Justification::centredRight);
+
+    addAndMakeVisible(outputGainSlider = new Slider("outputGainSlider"));
+    outputGainSlider->setSliderStyle(Slider::LinearBar);
+    outputGainSlider->setRange(-60.0, 12.0, 0.1);
+    outputGainSlider->setTextValueSuffix(" dB");
+    outputGainSlider->setDoubleClickReturnValue(true, 0.0);
+    outputGainSlider->setTooltip("Master Output Gain");
+    outputGainSlider->textFromValueFunction = [](double v) { return "OUT " + String(v, 1) + " dB"; };
+    outputGainSlider->addListener(this);
+
+    addAndMakeVisible(masterInsertButton = new TextButton("masterInsertButton"));
+    masterInsertButton->setButtonText("FX");
+    masterInsertButton->setTooltip("Master Bus Insert Rack");
+    masterInsertButton->addListener(this);
 
     //[UserPreSize]
 
@@ -189,6 +263,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     playButton->setTooltip("Play (main transport)");
     rtzButton->setTooltip("Return to zero (main transport)");
     tapTempoButton->setTooltip("Tap tempo");
+    organiseButton->setTooltip("Manage Setlist (Reorder/Rename Patches)");
 
     // So the user can't drag the cpu meter.
     cpuSlider->setInterceptsMouseClicks(false, true);
@@ -196,14 +271,15 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     // Setup the DrawableButton images.
     // Setup the DrawableButton images.
-    playImage.reset(loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
-    pauseImage.reset(loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
+    playImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
+    pauseImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
     playButton->setImages(playImage.get());
     playButton->setColour(DrawableButton::backgroundColourId, buttonCol);
     playButton->setColour(DrawableButton::backgroundOnColourId, buttonCol);
     playButton->addListener(this);
 
-    std::unique_ptr<Drawable> rtzImage(loadSVGFromMemory(Vectors::rtzbutton_svg, Vectors::rtzbutton_svgSize));
+    std::unique_ptr<Drawable> rtzImage(
+        JuceHelperStuff::loadSVGFromMemory(Vectors::rtzbutton_svg, Vectors::rtzbutton_svgSize));
     rtzButton->setImages(rtzImage.get());
     rtzButton->setColour(DrawableButton::backgroundColourId, buttonCol);
     rtzButton->setColour(DrawableButton::backgroundOnColourId, buttonCol);
@@ -220,7 +296,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     String tempstr;
     auto savedAudioState = // JUCE 8: returns unique_ptr
         SettingsManager::getInstance().getXmlValue("audioDeviceState");
-    tempstr = deviceManager.initialise(2, 2, savedAudioState.get(), true);
+    // Support up to 16 input/output channels for multi-channel interfaces
+    tempstr = deviceManager.initialise(16, 16, savedAudioState.get(), true);
     if (savedAudioState)
     {
         // JUCE 8: unique_ptr auto-deleted
@@ -264,22 +341,115 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
         looper.fillInPluginDescription(desc);
         pluginList.addType(desc);
+
+        TunerProcessor tuner;
+        tuner.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        ToneGeneratorProcessor toneGen;
+        toneGen.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        SplitterProcessor splitter;
+        splitter.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MixerProcessor mixer;
+        mixer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        NotesProcessor notes;
+        notes.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        LabelProcessor label;
+        label.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiFilePlayerProcessor midiFilePlayer;
+        midiFilePlayer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        IRLoaderProcessor irLoader;
+        irLoader.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        NAMProcessor nam;
+        nam.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        OscilloscopeProcessor oscilloscope;
+        oscilloscope.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiTransposeProcessor midiTranspose;
+        midiTranspose.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        MidiRechannelizeProcessor midiRechannelize;
+        midiRechannelize.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        KeyboardSplitProcessor keyboardSplit;
+        keyboardSplit.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        DawMixerProcessor dawMixer;
+        dawMixer.fillInPluginDescription(desc);
+        pluginList.addType(desc);
+
+        DawSplitterProcessor dawSplitter;
+        dawSplitter.fillInPluginDescription(desc);
+        pluginList.addType(desc);
     }
     pluginList.addChangeListener(this);
 
     pluginList.sort(KnownPluginList::sortAlphabetically,
                     true); // JUCE 8: sort takes 2 args
 
+    // Register plugin list singleton for SubGraph editors to access
+    KnownPluginListSingleton::setInstance(&pluginList);
+
+    // Configure graph bus layout to match device channels
+    if (auto* device = deviceManager.getCurrentAudioDevice())
+    {
+        auto activeInputs = device->getActiveInputChannels();
+        auto activeOutputs = device->getActiveOutputChannels();
+        int numInputs = activeInputs.countNumberOfSetBits();
+        int numOutputs = activeOutputs.countNumberOfSetBits();
+        signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+    }
+
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     deviceManager.addAudioCallback(&graphPlayer);
 
-    // Setup midi.
+    // Device meter tap for I/O node VU meters (can be disabled for debugging)
+    if (SettingsManager::getInstance().getBool("EnableDeviceMeterTap", true))
     {
-        auto midiDevices = MidiInput::getAvailableDevices(); // JUCE 8: Array<MidiDeviceInfo>
-        for (const auto& device : midiDevices)
-            deviceManager.addMidiInputCallback(device.identifier, &graphPlayer);
+        deviceManager.addAudioCallback(&deviceMeterTap);
+        DeviceMeterTap::setInstance(&deviceMeterTap);
     }
+    deviceManager.addChangeListener(this);
+
+    // Setup midi: global callback receives from ALL enabled MIDI inputs.
+    // In JUCE 8, per-device callbacks with specific identifiers don't fire;
+    // empty identifier is required to receive from all enabled devices.
+    deviceManager.addMidiInputCallback({}, &graphPlayer);
+
+    // On first launch (no saved audio state), auto-enable all MIDI devices.
+    if (!savedAudioState)
+    {
+        for (const auto& device : MidiInput::getAvailableDevices())
+            deviceManager.setMidiInputDeviceEnabled(device.identifier, true);
+    }
+
+    // Setup virtual MIDI keyboard
+    virtualKeyboard = std::make_unique<MidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
+    virtualKeyboard->setKeyWidth(40.0f);
+    virtualKeyboard->setAvailableRange(36, 96); // C2 to C7
+    addAndMakeVisible(virtualKeyboard.get());
+    keyboardState.addListener(this);
 
     // Setup the PluginField.
     PluginField* field = new PluginField(&signalPath, &pluginList, commandManager);
@@ -321,15 +491,31 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     setSize(1024, 570);
 
     //[Constructor] You can add your own custom stuff here..
+    setWantsKeyboardFocus(true);
 
     // Setup the program change warning.
     // Setup the program change warning.
     warningBox.reset(new CallOutBox(warningText, patchComboBox->getBounds(), this));
     warningBox->setVisible(false);
 
+    // Add ToastOverlay for premium notifications
+    addChildComponent(&ToastOverlay::getInstance());
+
+    // Wire the lock-free FIFO so MIDI/OSC mapping parameter changes are
+    // deferred from the audio thread to this timer on the message thread.
+    Mapping::setParamFifo(&midiAppFifo);
+
+    // Load master gain state from settings and sync footer sliders
+    MasterGainState::getInstance().loadFromSettings();
+    {
+        auto& gs = MasterGainState::getInstance();
+        inputGainSlider->setValue(gs.masterInputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+        outputGainSlider->setValue(gs.masterOutputGainDb.load(std::memory_order_relaxed), dontSendNotification);
+    }
+
     // Start timers.
     startTimer(CpuTimer, 100);
-    startTimer(MidiAppTimer, 30);
+    startTimer(MidiAppTimer, 5);
 
     // To load the default patch.
     {
@@ -338,6 +524,29 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         if (defaultPatch.existsAsFile())
             commandManager->invokeDirectly(FileNew, true);
     }
+
+    // Defer fitToScreen until after the message loop processes all pending
+    // resize/layout events so the viewport has its final dimensions.
+    MessageManager::callAsync(
+        [this]()
+        {
+            if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+                pluginField->fitToScreen();
+        });
+
+    // Set up crash protection auto-save callback
+    CrashProtection::getInstance().setAutoSaveCallback(
+        [this]()
+        {
+            // Save current patch state before risky plugin operations
+            if (hasChangedSinceSaved())
+            {
+                savePatch();
+                spdlog::debug("[MainPanel] Auto-save triggered by crash protection");
+            }
+        });
+
+    spdlog::info("[MainPanel] Crash protection auto-save callback registered");
     //[/Constructor]
 }
 
@@ -345,17 +554,27 @@ MainPanel::~MainPanel()
 {
     //[Destructor_pre]. You can add your own custom destruction code here..
 
+    // Save gain state before shutdown
+    MasterGainState::getInstance().saveToSettings();
+
+    // Remove keyboard listener before destruction
+    keyboardState.removeListener(this);
+
     int i;
-    auto midiDevices = MidiInput::getAvailableDevices(); // JUCE 8: Array<MidiDeviceInfo>
 
     // Logger::setCurrentLogger(0);
 
     signalThreadShouldExit();
+    stopThread(2000);
 
     // deviceManager.setAudioCallback(0);
+    if (DeviceMeterTap::getInstance() != nullptr)
+    {
+        deviceManager.removeAudioCallback(&deviceMeterTap);
+        DeviceMeterTap::setInstance(nullptr);
+    }
     deviceManager.removeAudioCallback(&graphPlayer);
-    for (const auto& device : midiDevices)
-        deviceManager.removeMidiInputCallback(device.identifier, &graphPlayer);
+    deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
     signalPath.clear(false, false, false);
 
@@ -390,6 +609,18 @@ MainPanel::~MainPanel()
     tempoEditor = nullptr;
     delete tapTempoButton;
     tapTempoButton = nullptr;
+    delete organiseButton;
+    organiseButton = nullptr;
+    delete inputGainSlider;
+    inputGainSlider = nullptr;
+    delete outputGainSlider;
+    outputGainSlider = nullptr;
+    delete inputGainLabel;
+    inputGainLabel = nullptr;
+    delete outputGainLabel;
+    outputGainLabel = nullptr;
+    delete masterInsertButton;
+    masterInsertButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -414,8 +645,6 @@ void MainPanel::paint(Graphics& g)
 
     //[/UserPrePaint]
 
-    g.fillAll(Colour(0xffeeece1));
-
     //[UserPaint] Add your own custom painting code here..
 
     g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
@@ -425,18 +654,25 @@ void MainPanel::paint(Graphics& g)
 
 void MainPanel::resized()
 {
+    // Calculate heights: toolbar at bottom (40px), keyboard above that, viewport fills rest
+    const int toolbarHeight = 40;
+    const int viewportHeight = getHeight() - toolbarHeight - keyboardHeight;
+
     patchLabel->setBounds(8, getHeight() - 33, 48, 24);
     prevPatch->setBounds(264, getHeight() - 33, 24, 24);
     nextPatch->setBounds(288, getHeight() - 33, 24, 24);
     patchComboBox->setBounds(56, getHeight() - 33, 200, 24);
-    viewport->setBounds(0, 0, getWidth() - 0, getHeight() - 40);
-    cpuSlider->setBounds(getWidth() - 156, getHeight() - 33, 150, 24);
-    cpuLabel->setBounds(getWidth() - 236, getHeight() - 33, 78, 24);
+    viewport->setBounds(0, 0, getWidth(), viewportHeight);
     playButton->setBounds(proportionOfWidth(0.5000f) - ((36) / 2), getHeight() - 38, 36, 36);
     rtzButton->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + 38, getHeight() - 32, 24, 24);
     tempoLabel->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -151, getHeight() - 33, 64, 24);
     tempoEditor->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -87, getHeight() - 33, 52, 24);
     tapTempoButton->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -31, getHeight() - 27, 10, 16);
+
+    // Virtual MIDI keyboard between viewport and toolbar
+    if (virtualKeyboard != nullptr)
+        virtualKeyboard->setBounds(0, viewportHeight, getWidth(), keyboardHeight);
+
     //[UserResized] Add your own custom resize handling here..
 
     int x, y;
@@ -446,9 +682,93 @@ void MainPanel::resized()
     y = field->getHeight();
     if (field->getWidth() < getWidth())
         x = getWidth();
-    if (field->getHeight() < (getHeight() - 40))
-        y = getHeight() - 40;
+    if (field->getHeight() < viewportHeight)
+        y = viewportHeight;
     field->setSize(x, y);
+
+    // Keep StageView covering the entire panel
+    if (stageView != nullptr)
+        stageView->setBounds(getLocalBounds());
+
+    // Right group: tightly packed from right edge
+    // [FIT][Manage][CPU:][======cpu======]
+    const int rightMargin = 6;
+    int rxEnd = getWidth() - rightMargin;
+    cpuSlider->setBounds(rxEnd - 144, getHeight() - 33, 144, 24);
+    rxEnd -= 144 + 2;
+    cpuLabel->setBounds(rxEnd - 42, getHeight() - 33, 42, 24);
+    rxEnd -= 42 + 4;
+    organiseButton->setBounds(rxEnd - 64, getHeight() - 33, 64, 24);
+    rxEnd -= 64 + 4;
+    fitButton->setBounds(rxEnd - 38, getHeight() - 33, 38, 24);
+    int fitStartX = rxEnd - 38;
+
+    // Master gain sliders between transport and FIT button (responsive layout)
+    {
+        int transportEndX = (proportionOfWidth(0.5f) - 18) + 38 + 24 + 10;
+        int gainAreaW = fitStartX - transportEndX;
+        int gainY = getHeight() - 33;
+
+        const int labelW = 34;
+        const int gap = 4;
+        const int minSliderW = 50;
+
+        // Full layout: [IN label][slider][FX][gap][OUT label][slider]
+        int fullW = labelW * 2 + gap * 3 + minSliderW * 2 + 28;
+        // Compact layout: [slider][FX][gap][slider] (no labels)
+        int compactW = gap * 2 + minSliderW * 2 + 28;
+
+        const int fxBtnW = 28;
+
+        if (gainAreaW >= fullW)
+        {
+            // Full layout with labels
+            int sliderW = (gainAreaW - labelW * 2 - gap * 3 - fxBtnW) / 2;
+
+            int x = transportEndX + gap;
+            inputGainLabel->setVisible(true);
+            inputGainLabel->setBounds(x, gainY, labelW, 24);
+            x += labelW;
+            inputGainSlider->setVisible(true);
+            inputGainSlider->setBounds(x, gainY, sliderW, 24);
+            x += sliderW + gap;
+            masterInsertButton->setVisible(true);
+            masterInsertButton->setBounds(x, gainY, fxBtnW, 24);
+            x += fxBtnW + gap;
+            outputGainLabel->setVisible(true);
+            outputGainLabel->setBounds(x, gainY, labelW, 24);
+            x += labelW;
+            outputGainSlider->setVisible(true);
+            outputGainSlider->setBounds(x, gainY, sliderW, 24);
+        }
+        else if (gainAreaW >= compactW)
+        {
+            // Compact layout: sliders + FX button (self-labeled "IN 0.0 dB" / "OUT 0.0 dB")
+            int sliderW = (gainAreaW - gap * 2 - fxBtnW) / 2;
+
+            inputGainLabel->setVisible(false);
+            outputGainLabel->setVisible(false);
+
+            int x = transportEndX + gap;
+            inputGainSlider->setVisible(true);
+            inputGainSlider->setBounds(x, gainY, sliderW, 24);
+            x += sliderW + gap;
+            masterInsertButton->setVisible(true);
+            masterInsertButton->setBounds(x, gainY, fxBtnW, 24);
+            x += fxBtnW + gap;
+            outputGainSlider->setVisible(true);
+            outputGainSlider->setBounds(x, gainY, sliderW, 24);
+        }
+        else
+        {
+            // Not enough space: hide gain controls
+            inputGainLabel->setVisible(false);
+            outputGainLabel->setVisible(false);
+            inputGainSlider->setVisible(false);
+            outputGainSlider->setVisible(false);
+            masterInsertButton->setVisible(false);
+        }
+    }
 
     //[/UserResized]
 }
@@ -487,6 +807,27 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
 
         CallOutBox callout(tempoBox, tapTempoButton->getBounds(), this);
         callout.runModalLoop();
+    }
+    else if (buttonThatWasClicked == fitButton)
+    {
+        if (auto* pluginField = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+            pluginField->fitToScreen();
+    }
+    else if (buttonThatWasClicked == masterInsertButton)
+    {
+        auto& gainState = MasterGainState::getInstance();
+        auto& masterBus = gainState.getMasterBus();
+        auto* editor = new SubGraphEditorComponent(*masterBus.getRack());
+        editor->setSize(600, 400);
+
+        DialogWindow::LaunchOptions opts;
+        opts.content.setOwned(editor);
+        opts.dialogTitle = "Master Bus Insert Rack";
+        opts.dialogBackgroundColour = ColourScheme::getInstance().colours["Dialog Background"];
+        opts.escapeKeyTriggersCloseButton = true;
+        opts.useNativeTitleBar = true;
+        opts.resizable = true;
+        opts.launchAsync();
     }
 
     //[/UserbuttonClicked_Post]
@@ -559,11 +900,76 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
     }
 
     //[UsersliderValueChanged_Post]
+    else if (sliderThatWasMoved == inputGainSlider)
+    {
+        auto& state = MasterGainState::getInstance();
+        state.masterInputGainDb.store((float)inputGainSlider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
+    }
+    else if (sliderThatWasMoved == outputGainSlider)
+    {
+        auto& state = MasterGainState::getInstance();
+        state.masterOutputGainDb.store((float)outputGainSlider->getValue(), std::memory_order_relaxed);
+        state.saveToSettings();
+    }
     //[/UsersliderValueChanged_Post]
 }
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any
 // other code here...
+
+//------------------------------------------------------------------------------
+void MainPanel::handleNoteOn(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity)
+{
+    ignoreUnused(source);
+    if (auto* processor = VirtualMidiInputProcessor::getInstance())
+    {
+        auto msg = MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity);
+        msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
+        processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::handleNoteOff(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity)
+{
+    ignoreUnused(source);
+    if (auto* processor = VirtualMidiInputProcessor::getInstance())
+    {
+        auto msg = MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity);
+        msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
+        processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::showToast(const String& message)
+{
+    // Use custom ToastOverlay with Melatonin Blur for premium shadows
+    ToastOverlay::getInstance().show(message, 1500);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::refreshPluginPoolDefinitions()
+{
+    auto& pool = PluginPoolManager::getInstance();
+    pool.clear();
+
+    for (int i = 0; i < patches.size(); ++i)
+    {
+        if (patches[i] != nullptr)
+            pool.addPatchDefinition(i, std::make_unique<XmlElement>(*patches[i]));
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::updatePluginPoolDefinition(int patchIndex, const XmlElement* patch)
+{
+    if (patch == nullptr || patchIndex < 0)
+        return;
+
+    PluginPoolManager::getInstance().addPatchDefinition(patchIndex, std::make_unique<XmlElement>(*patch));
+}
 
 //------------------------------------------------------------------------------
 StringArray MainPanel::getMenuBarNames()
@@ -612,10 +1018,14 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
     {
         retval.addCommandItem(commandManager, OptionsAudio);
         retval.addCommandItem(commandManager, OptionsPluginList);
+        retval.addCommandItem(commandManager, OptionsPluginBlacklist);
         retval.addCommandItem(commandManager, OptionsPreferences);
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
+        retval.addCommandItem(commandManager, OptionsSnapToGrid);
         retval.addCommandItem(commandManager, OptionsKeyMappings);
+        retval.addSeparator();
+        retval.addCommandItem(commandManager, ToggleStageMode);
     }
     else if (menuName == "Help")
     {
@@ -665,7 +1075,10 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              PatchPrevPatch,
                              TransportPlay,
                              TransportRtz,
-                             TransportTapTempo};
+                             TransportTapTempo,
+                             ToggleStageMode,
+                             OptionsPluginBlacklist,
+                             OptionsSnapToGrid};
     commands.addArray(ids, numElementsInArray(ids));
 }
 
@@ -771,6 +1184,17 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
     case TransportTapTempo:
         result.setInfo("Tap Tempo", "Used to set the tempo by 'tapping'.", transportCategory, 0);
         break;
+    case ToggleStageMode:
+        result.setInfo("Toggle Stage Mode", "Fullscreen performance view with large fonts.", optionsCategory, 0);
+        result.addDefaultKeypress(KeyPress::F11Key, ModifierKeys());
+        break;
+    case OptionsPluginBlacklist:
+        result.setInfo("Plugin Blacklist", "Manage blacklisted plugins that will not be loaded.", optionsCategory, 0);
+        break;
+    case OptionsSnapToGrid:
+        result.setInfo("Snap to Grid", "Snap plugin nodes to a 20px grid when dragging.", optionsCategory, 0);
+        result.setTicked(SettingsManager::getInstance().getBool("SnapToGrid", false));
+        break;
     }
 }
 
@@ -807,6 +1231,9 @@ bool MainPanel::perform(const InvocationInfo& info)
             patchComboBox->setSelectedId(1, true);
             currentPatch = 0;
 
+            refreshPluginPoolDefinitions();
+            PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
+
             changed();
 
             int temp;
@@ -820,18 +1247,22 @@ bool MainPanel::perform(const InvocationInfo& info)
     case FileOpen:
         loadFromUserSpecifiedFile(true);
         field->clearDoubleClickMessage();
+        showToast("Loaded");
         break;
     case FileSave:
         save(true, true);
+        showToast("Saved");
         break;
     case FileSaveAs:
         saveAsInteractive(true);
+        showToast("Saved");
         break;
     case FileSaveAsDefault:
     {
         File defaultFile = JuceHelperStuff::getAppDataFolder().getChildFile("default.pdl");
 
         saveDocument(defaultFile);
+        showToast("Default saved");
     }
     break;
     case FileResetDefault:
@@ -868,6 +1299,8 @@ bool MainPanel::perform(const InvocationInfo& info)
             JuceHelperStuff::showModalDialog("Patch Organiser", &patchOrganiser, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);
         }
+        refreshPluginPoolDefinitions();
+        PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
         break;
     case EditUserPresetManagement:
         // Open the preset window.
@@ -885,8 +1318,6 @@ bool MainPanel::perform(const InvocationInfo& info)
         String tempstr;
         tempstr << sock.getPort();
         PreferencesDialog dlg(this, tempstr, sock.getMulticastGroup().c_str());
-
-        dlg.setSize(560, 500);
 
         JuceHelperStuff::showModalDialog("Misc Settings", &dlg, 0,
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
@@ -946,7 +1377,7 @@ bool MainPanel::perform(const InvocationInfo& info)
     {
         AboutPage dlg(String(sock.getIpAddress().c_str()));
 
-        dlg.setSize(400, 250);
+        dlg.setSize(400, 340);
 
         JuceHelperStuff::showModalDialog("About", &dlg, 0, ColourScheme::getInstance().colours["Window Background"],
                                          true, true);
@@ -1040,10 +1471,12 @@ bool MainPanel::perform(const InvocationInfo& info)
     case EditUndo:
         signalPath.getUndoManager().undo();
         field->syncWithGraph();
+        showToast("Undone");
         break;
     case EditRedo:
         signalPath.getUndoManager().redo();
         field->syncWithGraph();
+        showToast("Redone");
         break;
     case EditPanic:
     {
@@ -1054,6 +1487,25 @@ bool MainPanel::perform(const InvocationInfo& info)
             midiCollector.addMessageToQueue(MidiMessage::allNotesOff(channel));
             midiCollector.addMessageToQueue(MidiMessage::allSoundOff(channel));
         }
+
+        // Unmute the safety limiter if it was auto-muted
+        if (auto* limiter = signalPath.getSafetyLimiter())
+            limiter->unmute();
+
+        showToast("Panic sent");
+    }
+    break;
+    case ToggleStageMode:
+        toggleStageMode();
+        break;
+    case OptionsPluginBlacklist:
+        BlacklistWindow::showWindow();
+        break;
+    case OptionsSnapToGrid:
+    {
+        bool current = SettingsManager::getInstance().getBool("SnapToGrid", false);
+        SettingsManager::getInstance().setValue("SnapToGrid", !current);
+        showToast(!current ? "Snap to Grid enabled" : "Snap to Grid disabled");
     }
     break;
     }
@@ -1106,6 +1558,7 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
             {
                 delete patches[currentPatch];
                 patches.set(currentPatch, patch);
+                updatePluginPoolDefinition(currentPatch, patch);
             }
 
             // Load new patch if it exists.
@@ -1137,7 +1590,12 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
             }
             lastTempoTicks = 0;
         }
+
+        // Update Stage View
+        updateStageView();
     }
+
+    PluginPoolManager::getInstance().setCurrentPosition(currentPatch);
 }
 
 //------------------------------------------------------------------------------
@@ -1149,14 +1607,34 @@ void MainPanel::timerCallback(int timerId)
         cpuSlider->setColour(Slider::thumbColourId, ColourScheme::getInstance().colours["CPU Meter Colour"]);
         cpuSlider->setValue(deviceManager.getCpuUsage());
 
-        /*if(programChangePatch != currentPatch)
+        // Check for safety limiter mute condition
+        if (auto* limiter = signalPath.getSafetyLimiter())
         {
-                if((programChangePatch < patches.size()) && (programChangePatch >
-        -1)) patchComboBox->setSelectedId(programChangePatch+1); programChangePatch
-        = currentPatch;
-        }*/
+            if (limiter->checkAndClearMuteTriggered())
+            {
+                showToast("OUTPUT MUTED - Use Panic to unmute");
+            }
+        }
+
+        // Sync master gain sliders from MasterGainState (when not being dragged)
+        {
+            auto& gs = MasterGainState::getInstance();
+            if (!inputGainSlider->isMouseButtonDown())
+            {
+                float inDb = gs.masterInputGainDb.load(std::memory_order_relaxed);
+                if (std::abs((float)inputGainSlider->getValue() - inDb) > 0.01f)
+                    inputGainSlider->setValue(inDb, dontSendNotification);
+            }
+            if (!outputGainSlider->isMouseButtonDown())
+            {
+                float outDb = gs.masterOutputGainDb.load(std::memory_order_relaxed);
+                if (std::abs((float)outputGainSlider->getValue() - outDb) > 0.01f)
+                    outputGainSlider->setValue(outDb, dontSendNotification);
+            }
+        }
         break;
     case MidiAppTimer:
+        CrashProtection::getInstance().pingWatchdog();
         if (midiAppFifo.getNumWaitingID() > 0)
             commandManager->invokeDirectly(midiAppFifo.readID(), true);
         if (midiAppFifo.getNumWaitingTempo() > 0)
@@ -1195,6 +1673,33 @@ void MainPanel::timerCallback(int timerId)
                 startTimer(ProgramChangeTimer, 5 * 1000); // 5 seconds.
             }
         }
+        // Drain deferred parameter changes from MIDI/OSC mapping (audio thread).
+        {
+            MidiAppFifo::PendingParamChange pc;
+            while (midiAppFifo.readParamChange(pc))
+            {
+                if (pc.graph != &signalPath)
+                    continue;
+
+                auto node = pc.graph->getNodeForId(juce::AudioProcessorGraph::NodeID(pc.pluginId));
+                if (node)
+                {
+                    if (pc.paramIndex == -1)
+                    {
+                        auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
+                        if (bypassable)
+                            bypassable->setBypass(pc.value > 0.5f);
+                    }
+                    else
+                    {
+                        auto* processor = node->getProcessor();
+                        const int numParams = processor->getNumParameters();
+                        if (pc.paramIndex >= 0 && pc.paramIndex < numParams)
+                            processor->setParameter(pc.paramIndex, pc.value);
+                    }
+                }
+            }
+        }
         break;
     case ProgramChangeTimer:
         warningBox->setVisible(false);
@@ -1208,7 +1713,23 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
 {
     ColourSchemeEditor* ed = dynamic_cast<ColourSchemeEditor*>(changedObject);
 
-    if (changedObject == MainTransport::getInstance())
+    if (changedObject == &deviceManager)
+    {
+        // Audio device changed - update graph channel counts
+        if (auto* device = deviceManager.getCurrentAudioDevice())
+        {
+            auto activeInputs = device->getActiveInputChannels();
+            auto activeOutputs = device->getActiveOutputChannels();
+            int numInputs = activeInputs.countNumberOfSetBits();
+            int numOutputs = activeOutputs.countNumberOfSetBits();
+            signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+
+            // Refresh the UI to show updated channel pins
+            if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+                field->refreshAudioIOPins();
+        }
+    }
+    else if (changedObject == MainTransport::getInstance())
     {
         if (MainTransport::getInstance()->getState())
             playButton->setImages(pauseImage.get());
@@ -1221,7 +1742,22 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
     else if (changedObject == dynamic_cast<PluginField*>(viewport->getViewedComponent()))
         changed();
     else if (ed) // The colour scheme editor's updated our colour scheme.
-        repaint();
+    {
+        // Refresh LookAndFeel colors
+        if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
+            laf->refreshColours();
+
+        // Repaint the entire component tree
+        if (auto* topLevel = getTopLevelComponent())
+            topLevel->repaint();
+        else
+            repaint();
+
+        // Also update any visible windows (plugin editors, dialogs, etc.)
+        for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
+            if (auto* comp = Desktop::getInstance().getComponent(i))
+                comp->repaint();
+    }
     else
     {
         // Save the plugin list every time it gets changed, so that if we're
@@ -1364,7 +1900,10 @@ void MainPanel::enableOscInput(bool val)
 
     // If there's no OSC input, we don't need to run the OSC thread.
     if (!val && isThreadRunning())
+    {
         signalThreadShouldExit();
+        stopThread(2000);
+    }
     else if (val && !isThreadRunning())
     {
         String port, address;
@@ -1453,12 +1992,26 @@ Result MainPanel::loadDocument(const File& file)
                 {
                     String err;
 
-                    err = deviceManager.initialise(2, 2, deviceXml, true);
+                    // Support up to 16 input/output channels for multi-channel interfaces
+                    err = deviceManager.initialise(16, 16, deviceXml, true);
 
                     if (err != "")
                     {
                         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Audio Device Error",
                                                          "Could not initialise audio settings loaded from .pdl file");
+                        showToast("Audio error!");
+                    }
+                    else
+                    {
+                        // Update graph bus layout to match device channels
+                        if (auto* device = deviceManager.getCurrentAudioDevice())
+                        {
+                            auto activeInputs = device->getActiveInputChannels();
+                            auto activeOutputs = device->getActiveOutputChannels();
+                            int numInputs = activeInputs.countNumberOfSetBits();
+                            int numOutputs = activeOutputs.countNumberOfSetBits();
+                            signalPath.setDeviceChannelCounts(numInputs, numOutputs);
+                        }
                     }
                 }
             }
@@ -1484,6 +2037,8 @@ Result MainPanel::loadDocument(const File& file)
             // Delete root.
             // delete root; // JUCE 8: unique_ptr auto-deleted
 
+            refreshPluginPoolDefinitions();
+
             // Load the current patch.
             switchPatch(0, false);
 
@@ -1493,10 +2048,12 @@ Result MainPanel::loadDocument(const File& file)
             patchComboBox->addItem("<new patch>", patches.size() + 1);
             patchComboBox->setSelectedId(1, true); // deprecated but works
 
-            // Update the window title with the filename
             if (auto* win = dynamic_cast<StupidWindow*>(getParentComponent()))
                 win->updateWindowTitle(file.getFileName());
         }
+
+        // Update Stage View if active
+        updateStageView();
     }
 
     return Result::ok();
@@ -1516,6 +2073,7 @@ Result MainPanel::saveDocument(const File& file)
 
         delete patches[currentPatch];
         patches.set(currentPatch, patch);
+        updatePluginPoolDefinition(currentPatch, patch);
     }
 
     for (i = 0; i < patches.size(); ++i)
@@ -1552,6 +2110,8 @@ void MainPanel::addPatch(XmlElement* patch)
 {
     patches.add(patch);
 
+    updatePluginPoolDefinition(patches.size() - 1, patch);
+
     patchComboBox->changeItemText(patchComboBox->getNumItems(), patch->getStringAttribute("name"));
     patchComboBox->addItem("<new patch>", patchComboBox->getNumItems() + 1);
 
@@ -1567,9 +2127,42 @@ void MainPanel::savePatch()
     // Save current patch.
     patch = field->getXml();
     patch->setAttribute("name", patchComboBox->getItemText(lastCombo - 1));
+
+    // Update Stage View if open
+    updateStageView();
+
     delete patches[currentPatch];
     patches.set(currentPatch, patch);
+
+    updatePluginPoolDefinition(currentPatch, patch);
 }
+
+//------------------------------------------------------------------------------
+void MainPanel::updateStageView()
+{
+    if (stageView != nullptr)
+    {
+        String currentName = getCurrentPatchName();
+        String nextName = "";
+
+        // Safety check for patching index
+        if (currentPatch >= 0 && currentPatch < patches.size())
+        {
+            // Get current name from array to be sure
+            currentName = patches[currentPatch]->getStringAttribute("name");
+
+            // Get next patch if available
+            if (currentPatch + 1 < patches.size())
+            {
+                nextName = patches[currentPatch + 1]->getStringAttribute("name");
+            }
+        }
+
+        stageView->updatePatchInfo(currentName, nextName, currentPatch, patches.size());
+    }
+}
+
+//------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
 void MainPanel::duplicatePatch(int index)
@@ -1592,6 +2185,8 @@ void MainPanel::duplicatePatch(int index)
     patch = new XmlElement(*patches[index]);
     patch->setAttribute("name", tempstr);
     patches.set(patches.size(), patch);
+
+    updatePluginPoolDefinition(patches.size() - 1, patch);
 
     changed();
 }
@@ -1623,19 +2218,75 @@ void MainPanel::switchPatchFromProgramChange(int newPatch)
         outFile.write(endline.toUTF8().getAddress(), endline.toUTF8().length());
 }*/
 
-//------------------------------------------------------------------------------
-Drawable* MainPanel::loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes)
+//==============================================================================
+// Stage Mode methods
+//==============================================================================
+
+void MainPanel::toggleStageMode()
 {
-    Drawable* retval = nullptr;
+    if (stageView != nullptr)
+    {
+        // Exit Stage Mode
+        removeChildComponent(stageView.get());
+        stageView.reset();
 
-    MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-    XmlDocument doc(memBlock.toString());
-    std::unique_ptr<XmlElement> svgData = doc.getDocumentElement(); // JUCE 8: unique_ptr
+        // Disable global tuner
+        deviceManager.removeAudioCallback(&tunerPlayer);
+        tunerPlayer.setProcessor(nullptr);
 
-    if (svgData != nullptr)
-        retval = Drawable::createFromSVG(*svgData).release(); // JUCE 8: release ownership to match return type
+        activeTuner = nullptr; // Clear reference
+        grabKeyboardFocus();   // Ensure MainPanel gets focus back
+        DBG("Stage Mode disabled");
+    }
+    else
+    {
+        // Enter Stage Mode
 
-    return retval;
+        // Ensure global tuner exists
+        if (globalTuner == nullptr)
+            globalTuner = std::make_unique<TunerProcessor>();
+
+        // Configure global tuner for silent monitoring
+        globalTuner->setMuteOutput(true);
+        tunerPlayer.setProcessor(globalTuner.get());
+
+        // Add to device manager to receive input audio independent of graph
+        deviceManager.addAudioCallback(&tunerPlayer);
+
+        activeTuner = globalTuner.get();
+        DBG("Global Tuner activated (parallel monitoring)");
+
+        stageView = std::make_unique<StageView>(this);
+        addAndMakeVisible(stageView.get());
+        stageView->setBounds(getLocalBounds());
+        stageView->setTunerProcessor(activeTuner);
+        updateStageView();
+        stageView->toFront(true); // Bring to front and grab keyboard focus
+        DBG("Stage Mode enabled");
+    }
+}
+
+bool MainPanel::keyPressed(const KeyPress& key)
+{
+    // Manually handle F11 if the command manager misses it
+    if (key == KeyPress::F11Key)
+    {
+        toggleStageMode();
+        return true;
+    }
+    return false;
+}
+
+String MainPanel::getCurrentPatchName() const
+{
+    if (patchComboBox != nullptr)
+        return patchComboBox->getText();
+    return "No Patch";
+}
+
+int MainPanel::getPatchCount() const
+{
+    return patches.size();
 }
 
 //[/MiscUserCode]

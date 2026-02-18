@@ -13,6 +13,7 @@
 
 #include "FilterGraph.h"
 
+#include <spdlog/spdlog.h>
 
 //==============================================================================
 // AddPluginAction
@@ -20,9 +21,22 @@
 
 bool AddPluginAction::perform()
 {
+    spdlog::debug("[AddPluginAction::perform] About to call addFilterRaw for: {}",
+                  pluginDescription.name.toStdString());
+    spdlog::default_logger()->flush();
+
     // Add the plugin using the raw (non-undoable) method
     nodeId = filterGraph.addFilterRaw(&pluginDescription, x, y);
-    return nodeId != juce::AudioProcessorGraph::NodeID();
+
+    spdlog::debug("[AddPluginAction::perform] addFilterRaw returned nodeId: {}", nodeId.uid);
+    spdlog::default_logger()->flush();
+
+    bool result = nodeId != juce::AudioProcessorGraph::NodeID();
+
+    spdlog::debug("[AddPluginAction::perform] Returning: {}", result);
+    spdlog::default_logger()->flush();
+
+    return result;
 }
 
 bool AddPluginAction::undo()

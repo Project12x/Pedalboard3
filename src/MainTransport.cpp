@@ -20,6 +20,8 @@
 
 #include "MainTransport.h"
 
+#include <spdlog/spdlog.h>
+
 //------------------------------------------------------------------------------
 juce_ImplementSingleton(MainTransport)
 
@@ -67,6 +69,10 @@ void MainTransport::toggleState()
 		transportsPlaying = transports.size();
 	else
 		transportsPlaying = 1;
+
+	spdlog::info("[MainTransport] toggleState: state={}, transportsPlaying={}, registeredTransports={}",
+	             state, transportsPlaying, transports.size());
+
 	sendChangeMessage();
 }
 

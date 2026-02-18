@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subgraphs - Pedalboard3</title>
+    <style>
+        :root { --bg-color: #1a1a2e; --card-bg: #16213e; --text-color: #eee; --text-muted: #aaa; --accent: #4da6ff; --border: #2a3a5e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.7; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        p { margin-bottom: 1rem; }
+        ol, ul { margin: 1rem 0 1rem 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+        .note { background: rgba(77, 166, 255, 0.1); border-left: 3px solid var(--accent); padding: 1rem; margin: 1rem 0; }
+        a { color: var(--accent); }
+        .back-link { display: inline-block; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / Subgraphs</p>
+        <h1>Subgraphs</h1>
+        <p>Subgraphs let you organize complex signal chains into reusable, collapsible groups.</p>
+
+        <h2>Creating a Subgraph</h2>
+        <ol>
+            <li>Right-click on the canvas</li>
+            <li>Select <strong>Built-in &gt; Subgraph</strong></li>
+            <li>Double-click the subgraph node to open it</li>
+            <li>Add plugins inside the subgraph</li>
+            <li>Connect Input and Output nodes to define the signal flow</li>
+        </ol>
+
+        <h2>Use Cases</h2>
+        <ul>
+            <li><strong>Effect chains:</strong> Group your go-to pedal combinations</li>
+            <li><strong>Parallel processing:</strong> Create a wet/dry mix inside a subgraph</li>
+            <li><strong>Organization:</strong> Keep complex patches clean and readable</li>
+            <li><strong>Reuse:</strong> Copy subgraphs between patches</li>
+        </ul>
+
+        <h2>Navigation</h2>
+        <ul>
+            <li>Double-click a subgraph to enter it</li>
+            <li>Use the breadcrumb bar at the top to navigate back</li>
+            <li>Or click outside the subgraph bounds</li>
+        </ul>
+
+        <div class="note">
+            <strong>Tip:</strong> Name your subgraphs descriptively (right-click &gt; Rename) so you remember what's inside.
+        </div>
+
+        <h2>I/O Configuration</h2>
+        <p>Subgraphs can have multiple audio and MIDI inputs/outputs:</p>
+        <ul>
+            <li>Add Input/Output nodes inside the subgraph</li>
+            <li>These appear as connection points on the subgraph node</li>
+            <li>Useful for stereo processing, sidechain, or MIDI routing</li>
+        </ul>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>

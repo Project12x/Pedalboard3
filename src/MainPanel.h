@@ -24,7 +24,10 @@
 
 //[Headers]     -- You can add your own extra header files here --
 #include "ColourScheme.h"
+#include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "MasterBusProcessor.h"
+#include "MasterGainState.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
@@ -32,7 +35,146 @@
 #include <JuceHeader.h>
 
 class PluginListWindow;
+class StageView;
+class TunerProcessor;
+
 //[/Headers]
+
+//==============================================================================
+/// AudioProcessorPlayer subclass that applies master gain and taps device
+/// buffers for VU metering. All operations are RT-safe: pre-allocated buffers,
+/// atomic reads, no allocations or locks in the audio callback.
+class MeteringProcessorPlayer : public AudioProcessorPlayer
+{
+  public:
+    static constexpr int MaxChannels = 16;
+
+    void audioDeviceAboutToStart(AudioIODevice* device) override
+    {
+        AudioProcessorPlayer::audioDeviceAboutToStart(device);
+        if (device != nullptr)
+        {
+            int maxCh = jmax(device->getActiveInputChannels().countNumberOfSetBits(),
+                             device->getActiveOutputChannels().countNumberOfSetBits());
+            inputGainBuffer.setSize(jmax(maxCh, 2), device->getCurrentBufferSizeSamples() * 2);
+            masterBusBuffer.setSize(jmax(maxCh, 2), device->getCurrentBufferSizeSamples() * 2);
+
+            // Prepare master bus insert rack
+            auto& gainState = MasterGainState::getInstance();
+            gainState.getMasterBus().prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
+
+            // Initialize gain smoothing at device sample rate
+            gainState.prepareSmoothing(device->getCurrentSampleRate());
+        }
+    }
+
+    void audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
+                                          float* const* outputChannelData, int numOutputChannels, int numSamples,
+                                          const AudioIODeviceCallbackContext& context) override
+    {
+        auto& gainState = MasterGainState::getInstance();
+
+        // Update smoothed gain targets from atomic dB values (once per block)
+        gainState.updateSmoothedTargets();
+
+        // Pre-compute smoothed master input gain ramp (one value per sample).
+        // This ensures the ramp advances at the correct rate regardless of
+        // how many channels reference it.
+        float smoothedInputRamp[8192];
+        jassert(numSamples <= 8192);
+        for (int i = 0; i < numSamples; ++i)
+            smoothedInputRamp[i] = gainState.smoothedInputGain.getNextValue();
+
+        // Apply per-channel input gain. inputChannelData is const, so we copy
+        // to a pre-allocated buffer and multiply by smoothed master * channel gain.
+        const float* const* actualInput = inputChannelData;
+        {
+            bool anyInputGain = false;
+            int chCount = jmin(numInputChannels, (int)MaxChannels);
+            for (int ch = 0; ch < chCount; ++ch)
+            {
+                float channelGain = gainState.getInputChannelGainLinear(ch);
+                bool needsGain = gainState.smoothedInputGain.isSmoothing() ||
+                                 std::abs(channelGain * smoothedInputRamp[numSamples - 1] - 1.0f) > 0.0001f;
+
+                if (inputChannelData[ch] != nullptr && needsGain && numSamples <= inputGainBuffer.getNumSamples())
+                {
+                    float* dest = inputGainBuffer.getWritePointer(ch);
+                    const float* src = inputChannelData[ch];
+                    for (int i = 0; i < numSamples; ++i)
+                        dest[i] = src[i] * smoothedInputRamp[i] * channelGain;
+                    gainedInputPtrs[ch] = dest;
+                    anyInputGain = true;
+                }
+                else
+                {
+                    gainedInputPtrs[ch] = inputChannelData[ch];
+                }
+            }
+            for (int ch = chCount; ch < numInputChannels; ++ch)
+                gainedInputPtrs[ch] = inputChannelData[ch];
+            if (anyInputGain)
+                actualInput = gainedInputPtrs;
+        }
+
+        // Process graph with (possibly gained) input
+        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(actualInput, numInputChannels, outputChannelData,
+                                                               numOutputChannels, numSamples, context);
+
+        // Process master bus insert rack (between graph output and output gain)
+        // Only when user has inserted plugins - empty rack is pure passthrough
+        auto& masterBus = gainState.getMasterBus();
+        if (masterBus.hasPluginsCached() && !masterBus.isBypassed())
+        {
+            int chCount = jmin(numOutputChannels, masterBusBuffer.getNumChannels());
+            if (chCount > 0 && numSamples <= masterBusBuffer.getNumSamples())
+            {
+                // Copy output to pre-allocated buffer for processBlock
+                for (int ch = 0; ch < chCount; ++ch)
+                    masterBusBuffer.copyFrom(ch, 0, outputChannelData[ch], numSamples);
+
+                MidiBuffer emptyMidi;
+                masterBus.processBlock(masterBusBuffer, emptyMidi);
+
+                // Copy processed data back to output
+                for (int ch = 0; ch < chCount; ++ch)
+                    FloatVectorOperations::copy(outputChannelData[ch], masterBusBuffer.getReadPointer(ch), numSamples);
+            }
+        }
+
+        // Pre-compute smoothed master output gain ramp (same pattern as input)
+        float smoothedOutputRamp[8192];
+        for (int i = 0; i < numSamples; ++i)
+            smoothedOutputRamp[i] = gainState.smoothedOutputGain.getNextValue();
+
+        // Apply per-channel output gain with smoothing. Output buffers are writable.
+        for (int ch = 0; ch < numOutputChannels; ++ch)
+        {
+            float channelGain = gainState.getOutputChannelGainLinear(ch);
+            bool needsGain = gainState.smoothedOutputGain.isSmoothing() ||
+                             std::abs(channelGain * smoothedOutputRamp[numSamples - 1] - 1.0f) > 0.0001f;
+
+            if (outputChannelData[ch] != nullptr && needsGain)
+            {
+                float* data = outputChannelData[ch];
+                for (int i = 0; i < numSamples; ++i)
+                    data[i] *= smoothedOutputRamp[i] * channelGain;
+            }
+        }
+
+        // Tap levels for VU metering (post-gain)
+        if (auto* limiter = SafetyLimiterProcessor::getInstance())
+        {
+            limiter->updateInputLevelsFromDevice(actualInput, numInputChannels, numSamples);
+            limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
+        }
+    }
+
+  private:
+    AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
+    AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
+    const float* gainedInputPtrs[MaxChannels] = {};
+};
 
 //==============================================================================
 /**
@@ -53,7 +195,8 @@ class MainPanel : public Component,
                   public TextEditor::Listener,
                   public Button::Listener,
                   public ComboBox::Listener,
-                  public Slider::Listener
+                  public Slider::Listener,
+                  public MidiKeyboardState::Listener
 {
   public:
     //==============================================================================
@@ -96,6 +239,7 @@ class MainPanel : public Component,
     void textEditorTextChanged(TextEditor& editor);
     ///	Used to update the tempo.
     void textEditorReturnKeyPressed(TextEditor& editor);
+    bool keyPressed(const KeyPress& key) override;
 
     ///	Used to accept dragged .pdl files.
     bool isInterestedInFileDrag(const StringArray& files);
@@ -148,6 +292,24 @@ class MainPanel : public Component,
     void switchPatchFromProgramChange(int newPatch);
     ///	Returns the index of the current patch.
     int getCurrentPatch() const { return patchComboBox->getSelectedId() - 1; };
+    ///	Returns the name of the current patch.
+    String getCurrentPatchName() const;
+    ///	Returns the total number of patches.
+    int getPatchCount() const;
+
+    /// Helper method to update Stage View state
+    void updateStageView();
+    /// Refreshes plugin pool definitions to match the current patch list.
+    void refreshPluginPoolDefinitions();
+    /// Updates a single patch definition in the plugin pool.
+    void updatePluginPoolDefinition(int patchIndex, const XmlElement* patch);
+
+    ///	Toggles Stage Mode (fullscreen performance view).
+    void toggleStageMode();
+    ///	Returns true if Stage Mode is active.
+    bool isStageMode() const { return stageView != nullptr; };
+    ///	Returns the application command manager for invoking commands.
+    ApplicationCommandManager* getApplicationCommandManager() const { return commandManager; };
 
     ///	Returns the PluginField's MidiMappingManager.
     MidiMappingManager* getMidiMappingManager()
@@ -192,7 +354,10 @@ class MainPanel : public Component,
         HelpLog,
         EditUndo,
         EditRedo,
-        EditPanic
+        EditPanic,
+        ToggleStageMode,
+        OptionsPluginBlacklist,
+        OptionsSnapToGrid
     };
 
     //[/UserMethods]
@@ -205,21 +370,17 @@ class MainPanel : public Component,
 
     //==============================================================================
 
+  private:
+    //[UserVariables]   -- You can add your own custom variables in this
+    // section.
 
-      private :
-      //[UserVariables]   -- You can add your own custom variables in this
-      // section.
-
-      ///	Helper method. Switches patches.
-      /*!
-              \param newPatch Index of the new patch to load.
-              \param savePrev Saves the current patch in the process.
-              \param reloadPatch Reloads the current patch.
-       */
-      void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
-
-    ///	Helper method to load an SVG file from a binary chunk of data.
-    Drawable* loadSVGFromMemory(const void* dataToInitialiseFrom, size_t sizeInBytes);
+    ///	Helper method. Switches patches.
+    /*!
+            \param newPatch Index of the new patch to load.
+            \param savePrev Saves the current patch in the process.
+            \param reloadPatch Reloads the current patch.
+     */
+    void switchPatch(int newPatch, bool savePrev = true, bool reloadPatch = false);
 
     ///	The IDs of the three timers.
     enum
@@ -241,8 +402,8 @@ class MainPanel : public Component,
     AudioDeviceManager deviceManager;
     ///	The graph representing the audio signal path.
     FilterGraph signalPath;
-    ///	Object used to 'play' the signalPath object.
-    AudioProcessorPlayer graphPlayer;
+    ///	Object used to 'play' the signalPath object (with output metering).
+    MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.
     KnownPluginList pluginList;
     ///	The socket we listen for OSC messages on.
@@ -253,6 +414,19 @@ class MainPanel : public Component,
 
     ///	Window to display/edit the list of possible plugins.
     PluginListWindow* listWindow;
+
+    ///	Stage Mode overlay (fullscreen performance view).
+    std::unique_ptr<StageView> stageView;
+    ///	Pointer to active TunerProcessor for Stage Mode integration.
+    TunerProcessor* activeTuner = nullptr;
+
+    /// Dedicated player for the global tuner (bypasses signal chain)
+    AudioProcessorPlayer tunerPlayer;
+    /// The global tuner processor
+    std::unique_ptr<TunerProcessor> globalTuner;
+
+    /// Device-level audio metering for I/O nodes
+    DeviceMeterTap deviceMeterTap;
 
     ///	The currently-loaded patches.
     Array<XmlElement*> patches;
@@ -322,6 +496,19 @@ class MainPanel : public Component,
     /// the limits of the patch list.
     std::unique_ptr<CallOutBox> warningBox;
 
+    /// Toast notification using JUCE's BubbleMessageComponent
+    std::unique_ptr<BubbleMessageComponent> toastBubble;
+    void showToast(const String& message);
+
+    /// Virtual MIDI keyboard state and component
+    MidiKeyboardState keyboardState;
+    std::unique_ptr<MidiKeyboardComponent> virtualKeyboard;
+    static constexpr int keyboardHeight = 60;
+
+    /// MidiKeyboardState::Listener callbacks
+    void handleNoteOn(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity) override;
+
     //[/UserVariables]
 
     //==============================================================================
@@ -337,6 +524,13 @@ class MainPanel : public Component,
     Label* tempoLabel;
     TextEditor* tempoEditor;
     ArrowButton* tapTempoButton;
+    TextButton* organiseButton;
+    TextButton* fitButton;
+    Slider* inputGainSlider;
+    Slider* outputGainSlider;
+    Label* inputGainLabel;
+    Label* outputGainLabel;
+    TextButton* masterInsertButton;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

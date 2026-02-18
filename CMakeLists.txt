@@ -11,6 +11,11 @@ project(Pedalboard3
     LANGUAGES CXX
 )
 
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FS")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /FS")
+endif()
+
 # ==============================================================================
 # CPM.cmake - Dependency Manager
 # ==============================================================================
@@ -43,6 +48,24 @@ CPMAddPackage(
     GIT_TAG v3.11.3
     OPTIONS "JSON_BuildTests OFF"
 )
+
+# md4c - C Markdown Parser
+CPMAddPackage(
+    NAME md4c
+    GITHUB_REPOSITORY mity/md4c
+    GIT_TAG release-0.5.2
+    OPTIONS "MD4C_USE_UTF8 ON"
+)
+
+# Eigen - Linear algebra library (required for NeuralAmpModeler)
+# Using master branch for full lastN/indexing support
+CPMAddPackage(
+    NAME Eigen3
+    GITLAB_REPOSITORY libeigen/eigen
+    GIT_TAG master
+    OPTIONS "EIGEN_BUILD_DOC OFF" "BUILD_TESTING OFF" "EIGEN_BUILD_PKGCONFIG OFF"
+)
+
 
 # ==============================================================================
 # Testing Framework
@@ -90,6 +113,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Add JUCE as a subdirectory
 add_subdirectory(JUCE)
 
+# Melatonin Blur - GPU-accelerated drop shadows and blur effects
+# Must be after JUCE is added, uses FetchContent per official docs
+Include(FetchContent)
+FetchContent_Declare(melatonin_blur
+    GIT_REPOSITORY https://github.com/sudara/melatonin_blur.git
+    GIT_TAG origin/main
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/melatonin_blur
+)
+FetchContent_MakeAvailable(melatonin_blur)
+
 # Define the application
 juce_add_gui_app(Pedalboard3
     PRODUCT_NAME "Pedalboard3"
@@ -101,6 +134,20 @@ juce_add_gui_app(Pedalboard3
 
 # Generate JUCE header
 juce_generate_juce_header(Pedalboard3)
+
+# Add custom fonts as binary data
+juce_add_binary_data(Pedalboard3_fonts
+    HEADER_NAME "FontData.h"
+    NAMESPACE FontData
+    SOURCES
+        fonts/SpaceGrotesk-Regular.ttf
+        fonts/SpaceGrotesk-Bold.ttf
+        fonts/IBMPlexSans-Regular.ttf
+        fonts/IBMPlexSans-Bold.ttf
+        fonts/Inter-Regular.ttf
+        fonts/Inter-Bold.ttf
+        fonts/JetBrainsMono-Regular.ttf
+)
 
 # Source files - Core
 target_sources(Pedalboard3 PRIVATE
@@ -121,19 +168,161 @@ target_sources(Pedalboard3 PRIVATE
     src/BypassableInstance.h
     src/InternalFilters.cpp
     src/InternalFilters.h
+    src/PluginPoolManager.cpp
+    src/PluginPoolManager.h
     
     # Plugin Components
     src/PluginComponent.cpp
     src/PluginComponent.h
+    src/PluginConnection.cpp
     src/PluginField.cpp
+    src/PluginFieldPersistence.cpp
     src/PluginField.h
     
     # Internal Processors
-    src/PedalboardProcessors.cpp
+    src/LevelProcessor.cpp
+    src/FilePlayerProcessor.cpp
+    src/OutputToggleProcessor.cpp
+    src/VuMeterProcessor.cpp
+    src/RecorderProcessor.cpp
+    src/MetronomeProcessor.cpp
+    src/LooperProcessor.cpp
     src/PedalboardProcessors.h
-    src/PedalboardProcessorEditors.cpp
+    src/LevelEditors.cpp
+    src/FilePlayerEditor.cpp
+    src/OutputToggleEditors.cpp
+    src/VuMeterEditors.cpp
+    src/AudioRecorderEditor.cpp
+    src/MetronomeEditor.cpp
     src/PedalboardProcessorEditors.h
+    src/SafetyLimiter.cpp
+    src/SafetyLimiter.h
+    src/DeviceMeterTap.cpp
+    src/DeviceMeterTap.h
+    src/CrossfadeMixer.cpp
+    src/CrossfadeMixer.h
+    src/TunerProcessor.cpp
+    src/TunerProcessor.h
+    src/TunerControl.cpp
+    src/TunerControl.h
+    src/OscilloscopeProcessor.cpp
+    src/OscilloscopeProcessor.h
+    src/OscilloscopeControl.cpp
+    src/OscilloscopeControl.h
+    src/ToneGeneratorProcessor.cpp
+    src/ToneGeneratorProcessor.h
+    src/ToneGeneratorControl.cpp
+    src/ToneGeneratorControl.h
+    src/StageView.cpp
+    src/StageView.h
+    src/RoutingProcessors.cpp
+    src/RoutingProcessors.h
+    src/DawMixerProcessor.cpp
+    src/DawMixerProcessor.h
+    src/DawSplitterProcessor.cpp
+    src/DawSplitterProcessor.h
+    src/IRLoaderProcessor.cpp
+    src/IRLoaderProcessor.h
+    src/IRLoaderControl.cpp
+    src/IRLoaderControl.h
+    src/MidiUtilityProcessors.cpp
+    src/MidiUtilityProcessors.h
+    src/MidiUtilityControls.cpp
+    src/VirtualMidiInputProcessor.cpp
+    src/VirtualMidiInputProcessor.h
+
+    # NAM (Neural Amp Modeler) Processor
+    src/NAMProcessor.cpp
+    src/NAMProcessor.h
+    src/NAMControl.cpp
+    src/NAMControl.h
+    src/NAMConvolver.cpp
+    src/NAMConvolver.h
+    src/NAMCore.cpp
+    src/NAMCore.h
+    src/NAMModelBrowser.cpp
+    src/NAMModelBrowser.h
+    src/NAMOnlineBrowser.cpp
+    src/NAMOnlineBrowser.h
+
+    # TONE3000 API Integration
+    src/Tone3000Types.h
+    src/Tone3000Client.cpp
+    src/Tone3000Client.h
+    src/Tone3000Auth.cpp
+    src/Tone3000Auth.h
+    src/Tone3000DownloadManager.cpp
+    src/Tone3000DownloadManager.h
+
+    # NeuralAmpModelerCore Library Sources
+    external/NeuralAmpModelerCore/NAM/activations.cpp
+    external/NeuralAmpModelerCore/NAM/activations.h
+    external/NeuralAmpModelerCore/NAM/convnet.cpp
+    external/NeuralAmpModelerCore/NAM/convnet.h
+    external/NeuralAmpModelerCore/NAM/dsp.cpp
+    external/NeuralAmpModelerCore/NAM/dsp.h
+    external/NeuralAmpModelerCore/NAM/get_dsp.cpp
+    external/NeuralAmpModelerCore/NAM/lstm.cpp
+    external/NeuralAmpModelerCore/NAM/lstm.h
+    external/NeuralAmpModelerCore/NAM/util.cpp
+    external/NeuralAmpModelerCore/NAM/util.h
+    external/NeuralAmpModelerCore/NAM/version.h
+    external/NeuralAmpModelerCore/NAM/wavenet.cpp
+    external/NeuralAmpModelerCore/NAM/wavenet.h
+
+    # AudioDSPTools Library Sources
+    external/AudioDSPTools/dsp/dsp.cpp
+    external/AudioDSPTools/dsp/dsp.h
+    external/AudioDSPTools/dsp/ImpulseResponse.cpp
+    external/AudioDSPTools/dsp/ImpulseResponse.h
+    external/AudioDSPTools/dsp/NoiseGate.cpp
+    external/AudioDSPTools/dsp/NoiseGate.h
+    external/AudioDSPTools/dsp/RecursiveLinearFilter.cpp
+    external/AudioDSPTools/dsp/RecursiveLinearFilter.h
+    external/AudioDSPTools/dsp/Resample.h
+    external/AudioDSPTools/dsp/wav.cpp
+    external/AudioDSPTools/dsp/wav.h
+
+    # NAM Wrapper Classes
+    external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h
+    external/NeuralAmpModelerCore/wrapper/ToneStack.cpp
+    external/NeuralAmpModelerCore/wrapper/ToneStack.h
+
+    # Notes Node
+    src/NotesProcessor.cpp
+    src/NotesProcessor.h
+    src/NotesControl.cpp
+    src/NotesControl.h
+    src/MarkdownTokeniser.cpp
+    src/MarkdownTokeniser.h
     
+    # Label Node
+    src/LabelProcessor.cpp
+    src/LabelProcessor.h
+    src/LabelControl.cpp
+    src/LabelControl.h
+    
+    # MIDI File Player
+    src/MidiFilePlayer.cpp
+    src/MidiFilePlayer.h
+    src/MidiFilePlayerControl.cpp
+    src/MidiFilePlayerControl.h
+    
+    # Sub-Graph / Effect Rack
+    src/IFilterGraph.h
+    src/SubGraphProcessor.cpp
+    src/SubGraphProcessor.h
+    src/SubGraphFilterGraph.cpp
+    src/SubGraphFilterGraph.h
+    src/SubGraphEditorComponent.cpp
+    src/SubGraphEditorComponent.h
+    
+    # Master Gain / Master Bus
+    src/MasterGainState.cpp
+    src/MasterGainState.h
+    src/MasterBusProcessor.cpp
+    src/MasterBusProcessor.h
+
     # MIDI Handling
     src/MidiMappingManager.cpp
     src/MidiMappingManager.h
@@ -199,6 +388,17 @@ target_sources(Pedalboard3 PRIVATE
     # Utilities
     src/SettingsManager.cpp
     src/SettingsManager.h
+    src/PluginBlacklist.cpp
+    src/PluginBlacklist.h
+    src/BlacklistWindow.cpp
+    src/BlacklistWindow.h
+    src/CrashProtection.cpp
+    src/CrashProtection.h
+    src/PluginScannerIPC.h
+    src/PluginScannerClient.cpp
+    src/PluginScannerClient.h
+    src/SafePluginScanner.cpp
+    src/SafePluginScanner.h
     src/JuceHelperStuff.cpp
     src/JuceHelperStuff.h
     src/LogDisplay.cpp
@@ -226,6 +426,18 @@ target_sources(Pedalboard3 PRIVATE
     src/LookAndFeelImages.cpp
     src/LookAndFeelImages.h
     
+    # Font Management
+    src/FontManager.cpp
+    src/FontManager.h
+    
+    # Toast Notifications
+    src/ToastOverlay.cpp
+    src/ToastOverlay.h
+    
+    # Icon Management (FontAudio + Lucide)
+    src/IconManager.cpp
+    src/IconManager.h
+    
     # Custom Plugin Formats (disabled temporarily - needs JUCE 8 API updates)
     # TODO: Update NiallsAudioPlugin for JUCE 8 compatibility
     # src/NiallsAudioPlugin.cpp
@@ -233,6 +445,7 @@ target_sources(Pedalboard3 PRIVATE
     # src/NiallsAudioPluginFormat.cpp
     # src/NiallsAudioPluginFormat.h
 )
+
 
 # Compile definitions
 target_compile_definitions(Pedalboard3 PRIVATE
@@ -261,6 +474,20 @@ target_compile_definitions(Pedalboard3 PRIVATE
     # Modern features
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
+
+    # NAM (Neural Amp Modeler) settings
+    NAM_SAMPLE_FLOAT
+    DSP_SAMPLE_FLOAT
+    NOMINMAX
+)
+
+target_include_directories(Pedalboard3 PRIVATE
+    ${md4c_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/NeuralAmpModelerCore
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/NeuralAmpModelerCore/NAM
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools/dsp
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/AudioDSPTools/dsp/ResamplingContainer
 )
 
 # Link JUCE modules
@@ -273,6 +500,7 @@ target_link_libraries(Pedalboard3 PRIVATE
     juce::juce_core
     juce::juce_cryptography
     juce::juce_data_structures
+    juce::juce_dsp
     juce::juce_events
     juce::juce_graphics
     juce::juce_gui_basics
@@ -287,7 +515,16 @@ target_link_libraries(Pedalboard3 PRIVATE
     fmt::fmt
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    md4c
+    Eigen3::Eigen
+    
+    # UI Effects
+    melatonin_blur
+    
+    # Custom fonts
+    Pedalboard3_fonts
 )
+
 
 # Windows-specific settings
 if(WIN32)
@@ -306,6 +543,49 @@ add_custom_command(TARGET Pedalboard3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
         "$<TARGET_FILE_DIR:Pedalboard3>/documentation"
+)
+
+# ==============================================================================
+# Out-of-Process Plugin Scanner
+# ==============================================================================
+juce_add_console_app(Pedalboard3Scanner
+    PRODUCT_NAME "Pedalboard3Scanner"
+    COMPANY_NAME "Pedalboard3 Project"
+)
+
+# Generate JUCE header for scanner
+juce_generate_juce_header(Pedalboard3Scanner)
+
+target_sources(Pedalboard3Scanner PRIVATE
+    src/scanner/PluginScannerMain.cpp
+    src/PluginScannerIPC.h
+)
+
+target_compile_definitions(Pedalboard3Scanner PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_VST3=1
+    JUCE_PLUGINHOST_VST=0
+    JUCE_PLUGINHOST_AU=0
+    JUCE_PLUGINHOST_LADSPA=0
+    JUCE_STANDALONE_APPLICATION=1
+    JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=0
+)
+
+# Minimal dependencies for plugin scanning - no audio devices, formats, or utils needed
+target_link_libraries(Pedalboard3Scanner PRIVATE
+    juce::juce_audio_processors  # Required for plugin loading (pulls in gui_basics, graphics)
+    juce::juce_core
+    juce::juce_data_structures
+    juce::juce_events
+    juce::juce_recommended_config_flags
+)
+
+# Copy scanner to same directory as main app
+add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "$<TARGET_FILE:Pedalboard3Scanner>"
+        "$<TARGET_FILE_DIR:Pedalboard3>/"
 )
 
 # ==============================================================================

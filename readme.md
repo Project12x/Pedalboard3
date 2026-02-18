@@ -1,32 +1,74 @@
-# Pedalboard3
+﻿# Pedalboard3
 
-**A free, open-source VST3 plugin host for live performance.**
+A free, open-source VST3 plugin host for live performance and studio workflows.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![JUCE](https://img.shields.io/badge/JUCE-8.x-orange.svg)](https://juce.com)
 
 ---
 
-## About
+## What It Is
 
-Pedalboard3 is a modular VST3 plugin host designed for guitarists, keyboardists, and live performers who need reliable, real-time control over their plugin chains. Originally created by [Niall Moody](http://www.niallmoody.com) as "Pedalboard2", it has been modernized and updated by Eric Steenwerth to work with modern audio plugins and development practices.
+Pedalboard3 is a standalone application that lets you load VST3 plugins, wire them together on a visual canvas, and switch between patches for live performance or practice. Think of it as a modular plugin host — you build signal chains by dragging cables between nodes, then save and recall them as patches in a setlist.
 
-### Key Features
-
-- **Modular Patching** – Drag-and-drop plugin routing with visual connections
-- **VST3 Support** – Native 64-bit VST3 plugin hosting
-- **MIDI/OSC Control** – Map any plugin parameter to MIDI CCs or OSC messages
-- **Patch Switching** – Queue unlimited patches and switch instantly during performance
-- **Undo/Redo** – Full undo support for connection and plugin changes
-- **Theme System** – 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest)
-- **Background Scanning** – Non-blocking plugin discovery
-- **Panic Button** – Instantly stop all audio (Edit → Panic or Ctrl+Shift+P)
+It started as [Niall Moody's Pedalboard2](http://www.niallmoody.com) (2011-2013), a simple VST2 host built on JUCE 1.x. That project was abandoned after version 2.14. This fork modernizes the entire codebase for current plugin formats and adds the features you'd actually need to use it on stage or in a studio.
 
 ---
 
-## Screenshots
+## Features
 
-*Coming soon*
+### Plugin Hosting
+- Native 64-bit VST3 hosting
+- Out-of-process plugin scanner with timeout protection — a crashing plugin won't take down the host
+- Automatic plugin blacklisting with crash recovery
+- Plugin search, favorites, recent plugins, and categorized menus
+- Effect Rack — nest an entire plugin chain inside a single node
+
+### Neural Amp Modeling
+- Built-in NAM processor for loading `.nam` neural amp models
+- Integrated Tone3000 browser for searching, previewing, and downloading models
+- OAuth login and background download management with local caching
+
+### Canvas & Navigation
+- Drag-and-drop plugin wiring with bezier cables
+- Zoom (scroll wheel), pan (click-drag), and fit-to-screen
+- Undo/redo for all graph operations
+- Smooth viewport scrolling with generous padding
+
+### Live Performance
+- Stage Mode (F11) — fullscreen view with large patch name, next-patch preview, and VU meters
+- Setlist management with drag-and-drop reordering
+- Glitch-free patch switching via crossfade mixer
+- Background plugin preloading for instant transitions
+
+### Mixing & Metering
+- DAW-style mixer node — N strips with gain faders, pan knobs, mute/solo/phase, stereo toggle
+- DAW splitter node — 1 stereo input to N outputs with per-strip controls
+- Master bus insert rack for global effects processing
+- Per-channel master gain controls (up to 16 channels)
+- Professional VU meters with gradient fill, peak hold, dB scale ticks, and glow
+
+### MIDI
+- MIDI CC mapping with learn mode, custom ranges, latch/toggle, channel filtering
+- MIDI file player with transport, tempo control, and loop
+- Transpose, rechannelize, and keyboard split processors
+- Virtual MIDI keyboard for testing without hardware
+- Lock-free FIFO dispatch — all MIDI parameter control is RT-safe
+
+### Built-in Processors
+- Audio Input / Output (multi-channel, with per-channel gain and VU)
+- Chromatic tuner (needle + strobe modes, YIN detection)
+- Tone generator (sine, square, saw, triangle, noise)
+- Oscilloscope
+- File player, looper, metronome, audio recorder
+- A/B splitter and mixer for parallel routing
+- Notes node (markdown rendered) and label node
+- IR loader for cabinet simulation
+
+### Themes
+- 5 built-in colour schemes: Midnight, Daylight, Synthwave, Deep Ocean, Forest
+- Semantic colour token system for consistent theming across the entire UI
+- Inter font family for clean typography
 
 ---
 
@@ -34,14 +76,14 @@ Pedalboard3 is a modular VST3 plugin host designed for guitarists, keyboardists,
 
 ### Windows (64-bit)
 
-1. Download the latest release from [Releases](https://github.com/Project12x/Pedalboard3/releases)
-2. Extract `Pedalboard3.exe` to your preferred location
-3. Run and scan for your VST3 plugins via **Options → Plugin List**
+1. Download the latest release from the GitHub Releases page.
+2. Extract `Pedalboard3.exe` to your preferred location.
+3. Run the app and scan plugins from **Options > Plugin List**.
 
-### Building from Source
+### Build From Source
 
-**Requirements:**
-- Visual Studio 2022 (Windows) or Xcode 14+ (macOS)
+Requirements:
+- Visual Studio 2022 (Windows)
 - CMake 3.24+
 - Git
 
@@ -52,33 +94,16 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
 
-The executable will be in `build/Pedalboard3_artefacts/Release/`.
+Output: `build/Pedalboard3_artefacts/Release/`
 
 ---
 
-## Usage
+## Quick Start
 
-### Quick Start
-
-1. **Add Plugins** – Double-click in the plugin field to open the processor menu
-2. **Make Connections** – Click and drag from output pins to input pins
-3. **Delete Connections** – Select a connection and press Delete
-4. **Switch Patches** – Use the patch dropdown or Next/Prev buttons
-
-### MIDI & OSC Mapping
-
-- Open **Options → Key Mappings** to assign keyboard shortcuts
-- All plugin parameters can be controlled via MIDI CCs or OSC
-- Configure OSC input in **Options → Misc Settings**
-
-### Built-in Processors
-
-- **Audio Input/Output** – Route system audio
-- **MIDI Input/Output** – Route MIDI events
-- **File Player** – Play audio files with transport sync
-- **Audio Recorder** – Record output to WAV
-- **Looper** – Live loop recording/playback
-- **Metronome** – Click track with tempo control
+1. Double-click the canvas to add a plugin or processor.
+2. Drag from an output pin to an input pin to create a connection.
+3. Use the patch bar at the bottom to save, load, and switch patches.
+4. Press F11 for Stage Mode.
 
 ---
 
@@ -91,56 +116,49 @@ The executable will be in `build/Pedalboard3_artefacts/Release/`.
 
 ---
 
-## Roadmap
+## Project Status
 
-### Coming Soon
-- MIDI Learn (one-click parameter mapping)
-- Setlist management
-- Stage mode (large fonts for live use)
+Active development, currently in the stability and polish phase. The core feature set is complete. Remaining work is UI refinement, distribution packaging, and documentation.
 
-### Future
-- Built-in chromatic tuner
-- macOS support
-- CLAP plugin format
+For details, see:
+- [CHANGELOG.md](CHANGELOG.md) — what changed and when
+- [ROADMAP.md](ROADMAP.md) — what's planned
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how it's built
+- [STATE_OF_PROJECT.md](STATE_OF_PROJECT.md) — current status snapshot
+
+---
+
+## Testing
+
+155 test cases with over 2 million assertions covering signal path, plugin lifecycle, MIDI mapping, cable wiring, graph management, and mutation testing. Tests run via Catch2:
+
+```bash
+.\build\tests\Release\Pedalboard3_Tests.exe
+```
 
 ---
 
 ## Contributing
 
-Contributions are welcome! This is a GPL v3 project.
+Contributions are welcome.
 
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
----
-
-## Support
-
-If you find Pedalboard3 useful, consider supporting development:
-
-- ⭐ Star this repo
-- 🐛 Report bugs via [Issues](https://github.com/Project12x/Pedalboard3/issues)
-- ☕ [Buy me a coffee on Ko-fi](https://ko-fi.com/worriedwalrus)
-- 💸 [Support via PayPal](https://paypal.me/worriedwalrus)
+1. Fork the repository.
+2. Create a feature branch.
+3. Submit a pull request with clear change notes and test evidence.
 
 ---
 
 ## Credits
 
-- **Original Author:** [Niall Moody](http://www.niallmoody.com) (2011)
-- **Modernization:** Eric Steenwerth (2024-2026)
-- **Framework:** [JUCE](https://juce.com) by Raw Material Software
+- Original Author: [Niall Moody](http://www.niallmoody.com) (2011)
+- Modernization: Eric Steenwerth (2024-2026)
+- Framework: [JUCE](https://juce.com)
 
 ---
 
 ## License
 
-**GPL v3** – See [LICENSE](LICENSE) for details.
+GPL v3. See `license.txt`.
 
-Source code is licensed under the GNU General Public License v3.0.  
-Original graphics and sounds under the Creative Commons Sampling Plus license.
-
----
-
-*Last updated: January 2026*
+Source code is licensed under the GNU General Public License v3.0.
+Original graphics and sounds are under the Creative Commons Sampling Plus license.

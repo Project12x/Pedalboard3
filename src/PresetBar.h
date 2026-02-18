@@ -38,57 +38,52 @@ class PluginComponent;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class PresetBar : public Component,
-                  public Button::Listener,
-                  public ComboBox::Listener {
-public:
-  //==========================================================================
-  PresetBar(PluginComponent *comp);
-  ~PresetBar();
+class PresetBar : public Component, public Button::Listener, public ComboBox::Listener
+{
+  public:
+    //==========================================================================
+    PresetBar(PluginComponent* comp);
+    ~PresetBar();
 
-  //==========================================================================
-  //[UserMethods]     -- You can add your own custom methods in this section.
+    //==========================================================================
+    //[UserMethods]     -- You can add your own custom methods in this section.
 
-  ///	So we can do things when the user clicks one of the buttons.
-  void buttonClicked(Button *button);
+    ///	So we can do things when the user clicks one of the buttons.
+    void buttonClicked(Button* button);
 
-  //[/UserMethods]
+    //[/UserMethods]
 
-  void paint(Graphics &g);
-  void resized();
-  void comboBoxChanged(ComboBox *comboBoxThatHasChanged);
+    void paint(Graphics& g);
+    void resized();
+    void comboBoxChanged(ComboBox* comboBoxThatHasChanged);
 
-private:
-  JUCE_LEAK_DETECTOR(PresetBar)
+  private:
+    JUCE_LEAK_DETECTOR(PresetBar)
 
-  //[UserVariables]   -- You can add your own custom variables in this section.
+    //[UserVariables]   -- You can add your own custom variables in this section.
 
-  ///	Helper method. Fills out presetsComboBox correctly.
-  void fillOutComboBox();
+    ///	Helper method. Fills out presetsComboBox correctly.
+    void fillOutComboBox();
 
-  ///	Helper method to load an SVG file from a binary chunk of data.
-  std::unique_ptr<Drawable> loadSVGFromMemory(const void *dataToInitialiseFrom,
-                                              size_t sizeInBytes); // JUCE 8
+    ///	The 'parent' PluginComponent.
+    PluginComponent* component;
 
-  ///	The 'parent' PluginComponent.
-  PluginComponent *component;
+    ///	Used to figure out which preset the user's just changed the name of.
+    int lastComboBox;
 
-  ///	Used to figure out which preset the user's just changed the name of.
-  int lastComboBox;
+    //[/UserVariables]
 
-  //[/UserVariables]
+    //==========================================================================
+    ComboBox* presetsComboBox;
+    Label* presetsLabel;
+    DrawableButton* importButton;
+    DrawableButton* saveButton;
+    Path internalPath1;
 
-  //==========================================================================
-  ComboBox *presetsComboBox;
-  Label *presetsLabel;
-  DrawableButton *importButton;
-  DrawableButton *saveButton;
-  Path internalPath1;
-
-  //==========================================================================
-  // (prevent copy constructor and operator= being generated..)
-  PresetBar(const PresetBar &);
-  const PresetBar &operator=(const PresetBar &);
+    //==========================================================================
+    // (prevent copy constructor and operator= being generated..)
+    PresetBar(const PresetBar&);
+    const PresetBar& operator=(const PresetBar&);
 };
 
 #endif // __JUCER_HEADER_PRESETBAR_PRESETBAR_30B11D9C__

@@ -20,7 +20,10 @@
 #ifndef BRANCHESLAF_H_
 #define BRANCHESLAF_H_
 
+#include "FontManager.h"
+
 #include <JuceHeader.h>
+
 
 ///	LookAndFeel class implementing some different buttons.
 class BranchesLAF : public LookAndFeel_V4
@@ -60,7 +63,7 @@ class BranchesLAF : public LookAndFeel_V4
     ///	The width of a menubar item.
     int getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText) override;
     ///	Returns the popup meun font.
-    Font getPopupMenuFont() override { return Font(FontOptions().withHeight(15.0f)); };
+    Font getPopupMenuFont() override { return FontManager::getInstance().getUIFont(15.0f); };
     ///	Draws the popup menu background.
     void drawPopupMenuBackground(Graphics& g, int width, int height) override;
     ///	Cancels menus' drop shadow.

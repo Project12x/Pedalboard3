@@ -206,6 +206,9 @@ class MidiMappingManager
 
 
   private:
+	///	Protects mappings/appMappings from concurrent access (audio thread iterates, UI thread mutates).
+	juce::CriticalSection mappingsLock;
+
 	///	Holds all the MidiMappings to dispatch messages to.
 	/*!
 		Stores mappings with their cc as the key.
@@ -222,9 +225,10 @@ class MidiMappingManager
 
 	///	The midi learn callback to call for the next received MIDI CC message.
 	/*!
-		0 if there's no callback currently registered.
+		nullptr if there's no callback currently registered.
+		Atomic because audio thread reads/clears, UI thread registers/unregisters.
 	 */
-	MidiLearnCallback *midiLearnCallback;
+	std::atomic<MidiLearnCallback*> midiLearnCallback{nullptr};
 };
 
 //------------------------------------------------------------------------------

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Mapping - Pedalboard3</title>
+    <style>
+        :root { --bg-color: #1a1a2e; --card-bg: #16213e; --text-color: #eee; --text-muted: #aaa; --accent: #4da6ff; --border: #2a3a5e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.7; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        p { margin-bottom: 1rem; }
+        ol, ul { margin: 1rem 0 1rem 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+        .note { background: rgba(77, 166, 255, 0.1); border-left: 3px solid var(--accent); padding: 1rem; margin: 1rem 0; }
+        a { color: var(--accent); }
+        .back-link { display: inline-block; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / MIDI Mapping</p>
+        <h1>MIDI Mapping</h1>
+        <p>Control plugin parameters with MIDI controllers, foot pedals, and other MIDI devices.</p>
+
+        <h2>Quick MIDI Learn</h2>
+        <ol>
+            <li>Right-click on any plugin parameter slider</li>
+            <li>Select <strong>MIDI Learn</strong></li>
+            <li>Move your MIDI controller (knob, fader, or pedal)</li>
+            <li>The parameter is now mapped!</li>
+        </ol>
+
+        <h2>MIDI Mapping Manager</h2>
+        <p>For advanced mapping, go to <strong>Options &gt; Application Mappings</strong>.</p>
+        <p>Here you can:</p>
+        <ul>
+            <li>View all current MIDI mappings</li>
+            <li>Edit mapping ranges and curves</li>
+            <li>Delete mappings</li>
+            <li>Map MIDI to application functions (patch switching, transport, etc.)</li>
+        </ul>
+
+        <h2>Expression Pedals</h2>
+        <p>Expression pedals send continuous controller (CC) messages, typically CC 1, 7, or 11.</p>
+        <ol>
+            <li>Connect your expression pedal to your MIDI interface</li>
+            <li>Use MIDI Learn on the parameter you want to control</li>
+            <li>Move the pedal to complete the mapping</li>
+        </ol>
+
+        <div class="note">
+            <strong>Tip:</strong> You can map multiple parameters to the same MIDI controller for linked control.
+        </div>
+
+        <h2>Foot Switches</h2>
+        <p>MIDI foot switches can be mapped to:</p>
+        <ul>
+            <li>Plugin bypass (toggle on/off)</li>
+            <li>Patch switching (next/previous)</li>
+            <li>Transport controls (play/pause)</li>
+            <li>Tap tempo</li>
+        </ul>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>

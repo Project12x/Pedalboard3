@@ -36,10 +36,17 @@
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
 #include "OscMappingManager.h"
+#include "PedalboardProcessors.h"
+#include "PluginBlacklist.h"
 #include "SettingsManager.h"
+#include "SubGraphProcessor.h"
 #include "UndoActions.h"
+#include "VirtualMidiInputProcessor.h"
 
+#include <chrono>
 #include <iostream>
+#include <spdlog/spdlog.h>
+#include <thread>
 
 using namespace std;
 
@@ -57,6 +64,34 @@ FilterConnection::~FilterConnection() {}
 //==============================================================================
 const int FilterGraph::midiChannelNumber = 0x1000;
 
+void FilterGraph::createInfrastructureNodes()
+{
+    safetyLimiter = nullptr;
+    crossfadeMixer = nullptr;
+    safetyLimiterNodeId = {};
+    crossfadeMixerNodeId = {};
+
+    auto limiterProcessor = std::make_unique<SafetyLimiterProcessor>();
+    safetyLimiter = limiterProcessor.get();
+    auto safetyNode = graph.addNode(std::move(limiterProcessor), AudioProcessorGraph::NodeID(0xFFFFFF));
+    if (safetyNode)
+    {
+        safetyLimiterNodeId = safetyNode->nodeID;
+        safetyNode->properties.set("x", -100.0);
+        safetyNode->properties.set("y", -100.0);
+    }
+
+    auto crossfadeProcessor = std::make_unique<CrossfadeMixerProcessor>();
+    crossfadeMixer = crossfadeProcessor.get();
+    auto crossfadeNode = graph.addNode(std::move(crossfadeProcessor), AudioProcessorGraph::NodeID(0xFFFFFE));
+    if (crossfadeNode)
+    {
+        crossfadeMixerNodeId = crossfadeNode->nodeID;
+        crossfadeNode->properties.set("x", -100.0);
+        crossfadeNode->properties.set("y", -150.0);
+    }
+}
+
 FilterGraph::FilterGraph()
     : FileBasedDocument(filenameSuffix, filenameWildcard, "Load a filter graph", "Save a filter graph"), lastUID(0)
 {
@@ -64,20 +99,20 @@ FilterGraph::FilterGraph()
     bool audioInput = SettingsManager::getInstance().getBool("AudioInput", true);
     bool midiInput = SettingsManager::getInstance().getBool("MidiInput", true);
 
+    // Add default nodes at standard positions
     if (audioInput)
-    {
-        // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
-    }
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 540.0f, 500.0f);
 
     if (midiInput)
-    {
-        // Use Raw method to avoid adding to undo history
-        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
-    }
+        addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 540.0f, 760.0f);
+
+    // Virtual MIDI Input (for on-screen keyboard) - always added
+    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::virtualMidiInputProcFilter), 540.0f, 660.0f);
 
     // Use Raw method to avoid adding to undo history
-    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
+    addFilterRaw(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 1320.0f, 500.0f);
+
+    createInfrastructureNodes();
 
     setChangedFlag(false);
 }
@@ -87,23 +122,111 @@ FilterGraph::~FilterGraph()
     graph.clear();
 }
 
+void FilterGraph::setDeviceChannelCounts(int numInputs, int numOutputs)
+{
+    spdlog::info("[FilterGraph] Setting device channel counts: {} inputs, {} outputs", numInputs, numOutputs);
+
+    // Configure the graph's bus layout to match the device channels
+    AudioProcessor::BusesLayout layout;
+
+    if (numInputs > 0)
+        layout.inputBuses.add(AudioChannelSet::discreteChannels(numInputs));
+    if (numOutputs > 0)
+        layout.outputBuses.add(AudioChannelSet::discreteChannels(numOutputs));
+
+    if (graph.setBusesLayout(layout))
+    {
+        spdlog::info("[FilterGraph] Graph bus layout set successfully: {} in, {} out", graph.getTotalNumInputChannels(),
+                     graph.getTotalNumOutputChannels());
+    }
+    else
+    {
+        spdlog::warn("[FilterGraph] Failed to set graph bus layout");
+    }
+}
+
+void FilterGraph::repositionDefaultInputNodes()
+{
+    // Default node layout — standard arrangement
+    constexpr float nodeX = 540.0f;
+
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (!node)
+            continue;
+        auto name = node->getProcessor()->getName();
+
+        if (name == "Audio Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", 500.0f);
+        }
+        else if (name == "Virtual MIDI Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", 660.0f);
+        }
+        else if (name == "MIDI Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", 760.0f);
+        }
+        else if (name == "Audio Output")
+        {
+            node->properties.set("x", 1320.0f);
+            node->properties.set("y", 500.0f);
+        }
+        else if (name == "OSC Input")
+        {
+            node->properties.set("x", nodeX);
+            node->properties.set("y", 860.0f);
+        }
+    }
+}
+
+float FilterGraph::getNextInputNodeY() const
+{
+    // Find the Virtual MIDI Input node and return position after it
+    // This is used by PluginField to position OSC Input
+    constexpr float gap = 20.0f;
+
+    for (int i = 0; i < getNumFilters(); ++i)
+    {
+        auto node = getNode(i);
+        if (node && node->getProcessor()->getName() == "Virtual MIDI Input")
+        {
+            float y = static_cast<float>(node->properties.getWithDefault("y", 100.0));
+
+            // Virtual MIDI Input: getSize().y (40) + header (52) = 92px
+            auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
+            float height = proc ? (proc->getSize().y + 52.0f) : 92.0f;
+
+            return y + height + gap;
+        }
+    }
+
+    // Fallback if Virtual MIDI Input not found
+    return 300.0f;
+}
+
 uint32 FilterGraph::getNextUID() throw()
 {
     return ++lastUID;
 }
 
 //==============================================================================
-int FilterGraph::getNumFilters() const throw()
+int FilterGraph::getNumFilters() const
 {
     return graph.getNumNodes();
 }
 
-const AudioProcessorGraph::Node::Ptr FilterGraph::getNode(const int index) const throw()
+AudioProcessorGraph::Node::Ptr FilterGraph::getNode(int index) const
 {
     return graph.getNode(index);
 }
 
-const AudioProcessorGraph::Node::Ptr FilterGraph::getNodeForId(const AudioProcessorGraph::NodeID uid) const throw()
+AudioProcessorGraph::Node::Ptr FilterGraph::getNodeForId(AudioProcessorGraph::NodeID uid) const
 {
     return graph.getNodeForId(uid);
 }
@@ -112,8 +235,14 @@ void FilterGraph::addFilter(const PluginDescription* desc, double x, double y)
 {
     if (desc != nullptr)
     {
+        spdlog::debug("[FilterGraph::addFilter] About to call undoManager.perform for: {}", desc->name.toStdString());
+        spdlog::default_logger()->flush();
+
         undoManager.beginNewTransaction();
         undoManager.perform(new AddPluginAction(*this, *desc, x, y));
+
+        spdlog::debug("[FilterGraph::addFilter] undoManager.perform returned successfully");
+        spdlog::default_logger()->flush();
     }
 }
 
@@ -122,6 +251,23 @@ void FilterGraph::addFilter(AudioPluginInstance* plugin, double x, double y)
     if (plugin != 0)
     {
         String errorMessage;
+
+        // Log bus state BEFORE enableAllBuses
+        spdlog::debug(
+            "[addFilter] Plugin '{}' BEFORE enableAllBuses: inputBuses={}, outputBuses={}, totalIn={}, totalOut={}",
+            plugin->getName().toStdString(), plugin->getBusCount(true), plugin->getBusCount(false),
+            plugin->getTotalNumInputChannels(), plugin->getTotalNumOutputChannels());
+
+        // VST3 instruments may have disabled output buses by default (confirmed by Carla source).
+        // Enable all buses before wrapping to ensure output pins are visible.
+        plugin->enableAllBuses();
+
+        // Log bus state AFTER enableAllBuses
+        spdlog::debug(
+            "[addFilter] Plugin '{}' AFTER enableAllBuses: inputBuses={}, outputBuses={}, totalIn={}, totalOut={}",
+            plugin->getName().toStdString(), plugin->getBusCount(true), plugin->getBusCount(false),
+            plugin->getTotalNumInputChannels(), plugin->getTotalNumOutputChannels());
+        spdlog::default_logger()->flush();
 
         // JUCE 8: addNode takes unique_ptr
         auto instance = std::make_unique<BypassableInstance>(plugin);
@@ -207,27 +353,19 @@ std::vector<AudioProcessorGraph::Connection> FilterGraph::getConnections() const
     return graph.getConnections();
 }
 
-// JUCE 8: Implementation of getConnectionBetween - finds a matching connection
-const AudioProcessorGraph::Connection* FilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID,
-                                                                         int sourceFilterChannel,
-                                                                         AudioProcessorGraph::NodeID destFilterUID,
-                                                                         int destFilterChannel) const
+// JUCE 8: Implementation of getConnectionBetween - checks if a connection exists
+bool FilterGraph::getConnectionBetween(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
+                                       AudioProcessorGraph::NodeID destFilterUID, int destFilterChannel) const
 {
-    // Search through all connections to find a matching one
-    auto connections = graph.getConnections();
-    for (const auto& conn : connections)
+    for (const auto& conn : graph.getConnections())
     {
         if (conn.source.nodeID == sourceFilterUID && conn.source.channelIndex == sourceFilterChannel &&
             conn.destination.nodeID == destFilterUID && conn.destination.channelIndex == destFilterChannel)
         {
-            // Return pointer to the connection - we need to store it to return a
-            // valid pointer
-            static AudioProcessorGraph::Connection lastFoundConnection;
-            lastFoundConnection = conn;
-            return &lastFoundConnection;
+            return true;
         }
     }
-    return nullptr;
+    return false;
 }
 
 bool FilterGraph::canConnect(AudioProcessorGraph::NodeID sourceFilterUID, int sourceFilterChannel,
@@ -266,42 +404,81 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
     if (desc == nullptr)
         return AudioProcessorGraph::NodeID();
 
+    // Check if plugin is blacklisted
+    auto& blacklist = PluginBlacklist::getInstance();
+    if (blacklist.isBlacklisted(desc->fileOrIdentifier) || blacklist.isBlacklistedById(desc->createIdentifierString()))
+    {
+        spdlog::warn("[addFilterRaw] Plugin is blacklisted: {} ({})", desc->name.toStdString(),
+                     desc->fileOrIdentifier.toStdString());
+        return AudioProcessorGraph::NodeID();
+    }
+
+    spdlog::debug("[addFilterRaw] Adding plugin: {}", desc->name.toStdString());
+
     String errorMessage;
     auto tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(*desc, 44100.0, 512, errorMessage);
 
-    if (tempInstance)
+    if (!tempInstance)
     {
-        AudioProcessor::BusesLayout stereoLayout;
-        stereoLayout.inputBuses.add(AudioChannelSet::stereo());
-        stereoLayout.outputBuses.add(AudioChannelSet::stereo());
-
-        if (tempInstance->checkBusesLayoutSupported(stereoLayout))
-            tempInstance->setBusesLayout(stereoLayout);
+        spdlog::error("[addFilterRaw] createPluginInstance failed: {}", errorMessage.toStdString());
+        return AudioProcessorGraph::NodeID();
     }
 
+    // Try stereo layout
+    AudioProcessor::BusesLayout stereoLayout;
+    stereoLayout.inputBuses.add(AudioChannelSet::stereo());
+    stereoLayout.outputBuses.add(AudioChannelSet::stereo());
+
+    if (tempInstance->checkBusesLayoutSupported(stereoLayout))
+        tempInstance->setBusesLayout(stereoLayout);
+
+    // Wrap external plugins in BypassableInstance; internal processors go directly
     std::unique_ptr<AudioProcessor> instance;
-    if (tempInstance)
+    if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
+        dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
+        dynamic_cast<SubGraphProcessor*>(tempInstance.get()) ||
+        dynamic_cast<VirtualMidiInputProcessor*>(tempInstance.get()))
     {
-        if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
-            instance = std::move(tempInstance);
-        else
-            instance = std::make_unique<BypassableInstance>(tempInstance.release());
+        instance = std::move(tempInstance);
+    }
+    else
+    {
+        instance = std::make_unique<BypassableInstance>(tempInstance.release());
     }
 
+    // Lock the audio callback to prevent race with audio thread
     AudioProcessorGraph::Node::Ptr node;
-    if (instance)
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
         node = graph.addNode(std::move(instance));
+    }
 
     if (node != nullptr)
     {
         node->properties.set("x", x);
         node->properties.set("y", y);
-        changed();
-        return node->nodeID;
+
+        // Notify listeners that graph changed - creates UI components
+        try
+        {
+            changed();
+        }
+        catch (const std::exception& e)
+        {
+            spdlog::error("[addFilterRaw] Exception in changed(): {}", e.what());
+        }
+        catch (...)
+        {
+            spdlog::error("[addFilterRaw] Unknown exception in changed()");
+        }
+
+        auto nodeId = node->nodeID;
+        spdlog::debug("[addFilterRaw] Added node ID={}", nodeId.uid);
+        return nodeId;
     }
 
+    spdlog::error("[addFilterRaw] Failed to add plugin to graph");
     return AudioProcessorGraph::NodeID();
 }
 
@@ -316,6 +493,25 @@ bool FilterGraph::addConnectionRaw(AudioProcessorGraph::NodeID sourceFilterUID, 
 {
     AudioProcessorGraph::Connection conn{{sourceFilterUID, sourceFilterChannel}, {destFilterUID, destFilterChannel}};
     const bool result = graph.addConnection(conn);
+
+    // DEBUG: Log connection attempts with channel info when failing
+    if (!result)
+    {
+        auto srcNode = graph.getNodeForId(sourceFilterUID);
+        auto dstNode = graph.getNodeForId(destFilterUID);
+        spdlog::warn("[addConnectionRaw] FAILED {}:{} -> {}:{} | src({} out={}) dst({} in={}) canConnect={}",
+                     (int)sourceFilterUID.uid, sourceFilterChannel, (int)destFilterUID.uid, destFilterChannel,
+                     srcNode ? srcNode->getProcessor()->getName().toStdString() : "NULL",
+                     srcNode ? srcNode->getProcessor()->getTotalNumOutputChannels() : -1,
+                     dstNode ? dstNode->getProcessor()->getName().toStdString() : "NULL",
+                     dstNode ? dstNode->getProcessor()->getTotalNumInputChannels() : -1, graph.canConnect(conn));
+    }
+    else
+    {
+        spdlog::info("[addConnectionRaw] OK {}:{} -> {}:{}", (int)sourceFilterUID.uid, sourceFilterChannel,
+                     (int)destFilterUID.uid, destFilterChannel);
+    }
+
     if (result)
         changed();
     return result;
@@ -376,27 +572,35 @@ FilterGraph::getConnectionsForNode(AudioProcessorGraph::NodeID nodeId) const
     return nodeConnections;
 }
 
-void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut)
+void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut, bool addVirtualMidiIn)
 {
     InternalPluginFormat internalFormat;
 
     // PluginWindow::closeAllCurrentlyOpenWindows();
 
     graph.clear();
+    createInfrastructureNodes();
 
+    // Add nodes with temporary Y positions (will be repositioned below)
     if (addAudioIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f, 10.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 540.0f, 500.0f);
     }
 
     if (addMidiIn)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 10.0f, 120.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::midiInputFilter), 540.0f, 760.0f);
+    }
+
+    // Virtual MIDI Input (for on-screen keyboard)
+    if (addVirtualMidiIn)
+    {
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::virtualMidiInputProcFilter), 540.0f, 660.0f);
     }
 
     if (addAudioOut)
     {
-        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 892.0f, 10.0f);
+        addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioOutputFilter), 1320.0f, 500.0f);
     }
 
     changed();
@@ -464,11 +668,58 @@ void FilterGraph::setLastDocumentOpened(const File& file)
 //==============================================================================
 static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscMappingManager& oscManager)
 {
+    spdlog::debug("[createNodeXml] Processing node: {}", node->getProcessor()->getName().toStdString());
+    spdlog::default_logger()->flush();
+
+    // Check if this is a SubGraphProcessor (Effect Rack) - needs special handling
+    // SubGraphProcessor is NOT an AudioPluginInstance, so we handle it separately
+    SubGraphProcessor* subGraph = dynamic_cast<SubGraphProcessor*>(node->getProcessor());
+    if (subGraph != nullptr)
+    {
+        spdlog::debug("[createNodeXml] Found SubGraphProcessor, creating XML");
+        spdlog::default_logger()->flush();
+
+        XmlElement* e = new XmlElement("FILTER");
+        e->setAttribute("uid", (int)node->nodeID.uid);
+        e->setAttribute("x", (double)node->properties.getWithDefault("x", 0.0));
+        e->setAttribute("y", (double)node->properties.getWithDefault("y", 0.0));
+        e->setAttribute("uiLastX", (int)node->properties.getWithDefault("uiLastX", 0.0));
+        e->setAttribute("uiLastY", (int)node->properties.getWithDefault("uiLastY", 0.0));
+        e->setAttribute("windowOpen", (bool)node->properties.getWithDefault("windowOpen", false));
+        e->setAttribute("program", 0);
+
+        // Create plugin description for SubGraphProcessor
+        PluginDescription pd;
+        pd.name = "Effect Rack"; // Must match InternalPluginFormat::subGraphProcDesc.name for restore
+        pd.pluginFormatName = "Internal";
+        pd.fileOrIdentifier = "Internal:SubGraph";
+        pd.uniqueId = 0;
+        pd.isInstrument = false;
+        pd.numInputChannels = subGraph->getTotalNumInputChannels();
+        pd.numOutputChannels = subGraph->getTotalNumOutputChannels();
+
+        e->addChildElement(pd.createXml().release());
+
+        // Save SubGraphProcessor state
+        XmlElement* state = new XmlElement("STATE");
+        MemoryBlock m;
+        subGraph->getStateInformation(m);
+        state->addTextElement(m.toBase64Encoding());
+        e->addChildElement(state);
+
+        spdlog::debug("[createNodeXml] SubGraphProcessor XML created successfully");
+        spdlog::default_logger()->flush();
+        return e;
+    }
+
     AudioPluginInstance* plugin = dynamic_cast<AudioPluginInstance*>(node->getProcessor());
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(plugin);
 
     if (plugin == nullptr)
     {
+        spdlog::error("[createNodeXml] ERROR: plugin is nullptr for: {}",
+                      node->getProcessor()->getName().toStdString());
+        spdlog::default_logger()->flush();
         jassertfalse;
         return nullptr;
     }
@@ -490,6 +741,7 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
     {
         e->setAttribute("oscMIDIAddress", oscManager.getMIDIProcessorAddress(bypassable));
         e->setAttribute("MIDIChannel", bypassable->getMIDIChannel());
+        e->setAttribute("bypass", bypassable->getBypass());
     }
 
     PluginDescription pd;
@@ -524,15 +776,27 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
             break;
     }
 
+    int uid = xml.getIntAttribute("uid");
+    spdlog::debug("[createNodeFromXml] Creating node uid={} plugin={}", uid, pd.name.toStdString());
+
     // JUCE 8: createPluginInstance (not createPluginInstanceSync)
     tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(pd, 44100.0, 512, errorMessage);
+
+    // VST3 instruments may have disabled output buses by default (confirmed by Carla source).
+    // Enable all buses to ensure output pins are visible for synths.
+    if (tempInstance)
+    {
+        tempInstance->enableAllBuses();
+    }
 
     std::unique_ptr<AudioProcessor> instancePtr;
     if (tempInstance)
     {
         if (dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(tempInstance.get()) ||
-            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()))
+            dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
+            dynamic_cast<SubGraphProcessor*>(tempInstance.get()) ||
+            dynamic_cast<VirtualMidiInputProcessor*>(tempInstance.get()))
             instancePtr = std::move(tempInstance);
         else
         {
@@ -542,11 +806,22 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     }
 
     if (!instancePtr)
+    {
+        spdlog::error("[createNodeFromXml] FAILED to create plugin uid={} name={} error={}", uid, pd.name.toStdString(),
+                      errorMessage.toStdString());
         return;
+    }
 
     // JUCE 8: addNode takes unique_ptr and NodeID
-    AudioProcessorGraph::Node::Ptr node(
-        graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(xml.getIntAttribute("uid"))));
+    AudioProcessorGraph::Node::Ptr node(graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(uid)));
+
+    if (!node)
+    {
+        spdlog::error("[createNodeFromXml] addNode returned null for uid={}", uid);
+        return;
+    }
+
+    spdlog::debug("[createNodeFromXml] SUCCESS node uid={} actual_uid={}", uid, (int)node->nodeID.uid);
 
     const XmlElement* const state = xml.getChildByName("STATE");
 
@@ -570,7 +845,8 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
         if (!midiAddress.isEmpty())
             oscManager.registerMIDIProcessor(midiAddress, bypassable);
 
-        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChanne"));
+        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
+        bypassable->setBypass(xml.getBoolAttribute("bypass", false));
     }
 
     node->getProcessor()->setCurrentProgram(xml.getIntAttribute("program"));
@@ -580,14 +856,28 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
 {
     XmlElement* xml = new XmlElement("FILTERGRAPH");
 
-    int i;
-    for (i = 0; i < graph.getNumNodes(); ++i)
-        xml->addChildElement(createNodeXml(graph.getNode(i), oscManager));
+    int savedNodes = 0;
+    for (int i = 0; i < graph.getNumNodes(); ++i)
+    {
+        auto node = graph.getNode(i);
+        if (node == nullptr || isHiddenInfrastructureNode(node->nodeID))
+            continue;
+
+        if (auto* nodeXml = createNodeXml(node, oscManager))
+        {
+            xml->addChildElement(nodeXml);
+            ++savedNodes;
+        }
+    }
 
     // JUCE 8: getConnections returns vector
     auto connections = graph.getConnections();
+    int savedConnections = 0;
     for (const auto& fc : connections)
     {
+        if (isHiddenInfrastructureNode(fc.source.nodeID) || isHiddenInfrastructureNode(fc.destination.nodeID))
+            continue;
+
         XmlElement* e = new XmlElement("CONNECTION");
 
         e->setAttribute("srcFilter", (int)fc.source.nodeID.uid);
@@ -596,27 +886,49 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
         e->setAttribute("dstChannel", fc.destination.channelIndex);
 
         xml->addChildElement(e);
+        ++savedConnections;
     }
 
+    spdlog::info("[FilterGraph::createXml] Saved {} nodes and {} connections", savedNodes, savedConnections);
     return xml;
 }
 
 void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager)
 {
-    clear(false, false, false);
+    clear(false, false, false, false);
 
+    int nodeCount = 0;
     forEachXmlChildElementWithTagName(xml, e, "FILTER")
     {
         createNodeFromXml(*e, oscManager);
         changed();
+        nodeCount++;
     }
 
+    int connectionCount = 0;
     forEachXmlChildElementWithTagName(xml, e2, "CONNECTION")
     {
-        addConnection(
-            AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("srcFilter")), e2->getIntAttribute("srcChannel"),
-            AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("dstFilter")), e2->getIntAttribute("dstChannel"));
+        auto srcFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("srcFilter"));
+        auto srcChannel = e2->getIntAttribute("srcChannel");
+        auto dstFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("dstFilter"));
+        auto dstChannel = e2->getIntAttribute("dstChannel");
+
+        spdlog::debug("[restoreFromXml] Adding connection: src={}/{} -> dst={}/{}", (int)srcFilter.uid, srcChannel,
+                      (int)dstFilter.uid, dstChannel);
+
+        // Use addConnectionRaw to bypass undo manager during restore
+        bool success = addConnectionRaw(srcFilter, srcChannel, dstFilter, dstChannel);
+        spdlog::debug("[restoreFromXml] Connection add result: {}", success ? "SUCCESS" : "FAILED");
+
+        connectionCount++;
     }
 
+    spdlog::info("[FilterGraph::restoreFromXml] Loaded {} nodes, {} connections from XML", nodeCount, connectionCount);
+
+    auto beforeRemove = graph.getConnections().size();
     graph.removeIllegalConnections();
+    auto afterRemove = graph.getConnections().size();
+
+    spdlog::info("[FilterGraph::restoreFromXml] After removeIllegalConnections: {} -> {} connections", beforeRemove,
+                 afterRemove);
 }

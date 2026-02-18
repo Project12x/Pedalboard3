@@ -22,9 +22,10 @@
 //[Headers] You can add your own extra header files here...
 
 #include "ColourScheme.h"
+#include "FontManager.h"
+#include "JuceHelperStuff.h"
 #include "PedalboardProcessors.h"
 #include "Vectors.h"
-
 
 //[/Headers]
 
@@ -34,295 +35,287 @@
 //[/MiscUserDefs]
 
 //==============================================================================
-MetronomeControl::MetronomeControl(MetronomeProcessor *proc, bool editors)
-    : processor(proc), playing(false), showFileEditors(editors), syncButton(0),
-      playPauseButton(0), accentFile(0), accentLabel(0), clickFile(0),
-      clickLabel(0), numeratorLabel(0), denominatorLabel(0), separatorLabel(0) {
-  addAndMakeVisible(syncButton = new ToggleButton("syncButton"));
-  syncButton->setTooltip("Sync metronome playback to the main transport");
-  syncButton->setButtonText("Sync to main transport");
-  syncButton->addListener(this);
+MetronomeControl::MetronomeControl(MetronomeProcessor* proc, bool editors)
+    : processor(proc), playing(false), showFileEditors(editors), syncButton(0), playPauseButton(0), accentFile(0),
+      accentLabel(0), clickFile(0), clickLabel(0), numeratorLabel(0), denominatorLabel(0), separatorLabel(0)
+{
+    addAndMakeVisible(syncButton = new ToggleButton("syncButton"));
+    syncButton->setTooltip("Sync metronome playback to the main transport");
+    syncButton->setButtonText("Sync to main transport");
+    syncButton->addListener(this);
 
-  addAndMakeVisible(
-      playPauseButton = new DrawableButton(
-          "playPauseButton", DrawableButton::ImageOnButtonBackground));
-  playPauseButton->setName("playPauseButton");
+    addAndMakeVisible(playPauseButton = new DrawableButton("playPauseButton", DrawableButton::ImageOnButtonBackground));
+    playPauseButton->setName("playPauseButton");
 
-  addAndMakeVisible(accentFile = new FilenameComponent(
-                        "accentFile", File(), true, false, false, "*.wav;*.aif",
-                        "", "<no file loaded>"));
-  accentFile->setName("accentFile");
+    addAndMakeVisible(accentFile = new FilenameComponent("accentFile", File(), true, false, false, "*.wav;*.aif", "",
+                                                         "<no file loaded>"));
+    accentFile->setName("accentFile");
 
-  addAndMakeVisible(accentLabel = new Label("accentLabel", "Accent:"));
-  accentLabel->setFont(Font(15.0000f, Font::plain));
-  accentLabel->setJustificationType(Justification::centredLeft);
-  accentLabel->setEditable(false, false, false);
-  accentLabel->setColour(TextEditor::textColourId, Colours::black);
-  accentLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    addAndMakeVisible(accentLabel = new Label("accentLabel", "Accent:"));
+    accentLabel->setFont(Font(15.0000f, Font::plain));
+    accentLabel->setJustificationType(Justification::centredLeft);
+    accentLabel->setEditable(false, false, false);
+    accentLabel->setColour(TextEditor::textColourId, Colours::black);
+    accentLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(
-      clickFile = new FilenameComponent("clickFile", File(), true, false, false,
-                                        "*.wav;*.aif", "", "<no file loaded>"));
-  clickFile->setName("clickFile");
+    addAndMakeVisible(clickFile = new FilenameComponent("clickFile", File(), true, false, false, "*.wav;*.aif", "",
+                                                        "<no file loaded>"));
+    clickFile->setName("clickFile");
 
-  addAndMakeVisible(clickLabel = new Label("clickLabel", "Click:"));
-  clickLabel->setFont(Font(15.0000f, Font::plain));
-  clickLabel->setJustificationType(Justification::centredLeft);
-  clickLabel->setEditable(false, false, false);
-  clickLabel->setColour(TextEditor::textColourId, Colours::black);
-  clickLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    addAndMakeVisible(clickLabel = new Label("clickLabel", "Click:"));
+    clickLabel->setFont(Font(15.0000f, Font::plain));
+    clickLabel->setJustificationType(Justification::centredLeft);
+    clickLabel->setEditable(false, false, false);
+    clickLabel->setColour(TextEditor::textColourId, Colours::black);
+    clickLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  addAndMakeVisible(numeratorLabel = new Label("numeratorLabel", "4"));
-  numeratorLabel->setFont(
-      Font(Font::getDefaultSerifFontName(), 250.0000f, Font::bold));
-  numeratorLabel->setJustificationType(Justification::centred);
-  numeratorLabel->setEditable(true, true, false);
-  numeratorLabel->setColour(TextEditor::textColourId, Colours::black);
-  numeratorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
-  numeratorLabel->addListener(this);
+    addAndMakeVisible(numeratorLabel = new Label("numeratorLabel", "4"));
+    numeratorLabel->setFont(FontManager::getInstance().getMonoFont(250.0f));
+    numeratorLabel->setJustificationType(Justification::centred);
+    numeratorLabel->setEditable(true, true, false);
+    numeratorLabel->setColour(TextEditor::textColourId, Colours::black);
+    numeratorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    numeratorLabel->addListener(this);
 
-  addAndMakeVisible(denominatorLabel = new Label("denominatorLabel", "4"));
-  denominatorLabel->setFont(
-      Font(Font::getDefaultSerifFontName(), 250.0000f, Font::bold));
-  denominatorLabel->setJustificationType(Justification::centred);
-  denominatorLabel->setEditable(true, true, false);
-  denominatorLabel->setColour(TextEditor::textColourId, Colours::black);
-  denominatorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
-  denominatorLabel->addListener(this);
+    addAndMakeVisible(denominatorLabel = new Label("denominatorLabel", "4"));
+    denominatorLabel->setFont(FontManager::getInstance().getMonoFont(250.0f));
+    denominatorLabel->setJustificationType(Justification::centred);
+    denominatorLabel->setEditable(true, true, false);
+    denominatorLabel->setColour(TextEditor::textColourId, Colours::black);
+    denominatorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    denominatorLabel->addListener(this);
 
-  addAndMakeVisible(separatorLabel = new Label("separatorLabel", "/"));
-  separatorLabel->setFont(
-      Font(Font::getDefaultSerifFontName(), 250.0000f, Font::bold));
-  separatorLabel->setJustificationType(Justification::centred);
-  separatorLabel->setEditable(false, false, false);
-  separatorLabel->setColour(TextEditor::textColourId, Colours::black);
-  separatorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    addAndMakeVisible(separatorLabel = new Label("separatorLabel", "/"));
+    separatorLabel->setFont(FontManager::getInstance().getMonoFont(250.0f));
+    separatorLabel->setJustificationType(Justification::centred);
+    separatorLabel->setEditable(false, false, false);
+    separatorLabel->setColour(TextEditor::textColourId, Colours::black);
+    separatorLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-  //[UserPreSize]
+    //[UserPreSize]
 
-  String tempstr;
+    String tempstr;
 
-  playImage =
-      loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize);
-  pauseImage =
-      loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize);
-  playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
-  playPauseButton->setColour(
-      DrawableButton::backgroundColourId,
-      ColourScheme::getInstance().colours["Button Colour"]);
-  playPauseButton->setColour(
-      DrawableButton::backgroundOnColourId,
-      ColourScheme::getInstance().colours["Button Colour"]);
-  playPauseButton->addListener(this);
-  playPauseButton->setTooltip("Play/pause metronome");
+    playImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::playbutton_svg, Vectors::playbutton_svgSize));
+    pauseImage.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::pausebutton_svg, Vectors::pausebutton_svgSize));
+    playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
+    playPauseButton->setColour(DrawableButton::backgroundColourId,
+                               ColourScheme::getInstance().colours["Button Colour"]);
+    playPauseButton->setColour(DrawableButton::backgroundOnColourId,
+                               ColourScheme::getInstance().colours["Button Colour"]);
+    playPauseButton->addListener(this);
+    playPauseButton->setTooltip("Play/pause metronome");
 
-  clickFile->addListener(this);
-  accentFile->addListener(this);
-  processor->addChangeListener(this);
+    clickFile->addListener(this);
+    accentFile->addListener(this);
+    processor->addChangeListener(this);
 
-  tempstr << (int)processor->getParameter(MetronomeProcessor::Numerator);
-  numeratorLabel->setText(tempstr, dontSendNotification);
-  tempstr = "";
-  tempstr << (int)processor->getParameter(MetronomeProcessor::Denominator);
-  denominatorLabel->setText(tempstr, dontSendNotification);
+    tempstr << (int)processor->getParameter(MetronomeProcessor::Numerator);
+    numeratorLabel->setText(tempstr, dontSendNotification);
+    tempstr = "";
+    tempstr << (int)processor->getParameter(MetronomeProcessor::Denominator);
+    denominatorLabel->setText(tempstr, dontSendNotification);
 
-  clickFile->setCurrentFile(processor->getClickFile(), false);
-  accentFile->setCurrentFile(processor->getAccentFile(), false);
+    clickFile->setCurrentFile(processor->getClickFile(), false);
+    accentFile->setCurrentFile(processor->getAccentFile(), false);
 
-  if (!showFileEditors) {
-    clickLabel->setVisible(false);
-    clickFile->setVisible(false);
-    accentLabel->setVisible(false);
-    accentFile->setVisible(false);
-  }
+    if (!showFileEditors)
+    {
+        clickLabel->setVisible(false);
+        clickFile->setVisible(false);
+        accentLabel->setVisible(false);
+        accentFile->setVisible(false);
+    }
 
-  //[/UserPreSize]
+    //[/UserPreSize]
 
-  setSize(170, 100);
+    setSize(170, 100);
 
-  //[Constructor] You can add your own custom stuff here..
-  //[/Constructor]
+    //[Constructor] You can add your own custom stuff here..
+    //[/Constructor]
 }
 
-MetronomeControl::~MetronomeControl() {
-  //[Destructor_pre]. You can add your own custom destruction code here..
-  //[/Destructor_pre]
+MetronomeControl::~MetronomeControl()
+{
+    //[Destructor_pre]. You can add your own custom destruction code here..
+    //[/Destructor_pre]
 
-  delete syncButton; syncButton = nullptr;
-  delete playPauseButton; playPauseButton = nullptr;
-  delete accentFile; accentFile = nullptr;
-  delete accentLabel; accentLabel = nullptr;
-  delete clickFile; clickFile = nullptr;
-  delete clickLabel; clickLabel = nullptr;
-  delete numeratorLabel; numeratorLabel = nullptr;
-  delete denominatorLabel; denominatorLabel = nullptr;
-  delete separatorLabel; separatorLabel = nullptr;
+    delete syncButton;
+    syncButton = nullptr;
+    delete playPauseButton;
+    playPauseButton = nullptr;
+    delete accentFile;
+    accentFile = nullptr;
+    delete accentLabel;
+    accentLabel = nullptr;
+    delete clickFile;
+    clickFile = nullptr;
+    delete clickLabel;
+    clickLabel = nullptr;
+    delete numeratorLabel;
+    numeratorLabel = nullptr;
+    delete denominatorLabel;
+    denominatorLabel = nullptr;
+    delete separatorLabel;
+    separatorLabel = nullptr;
 
-  //[Destructor]. You can add your own custom destruction code here..
-  processor->removeChangeListener(this);
-  //[/Destructor]
+    //[Destructor]. You can add your own custom destruction code here..
+    processor->removeChangeListener(this);
+    //[/Destructor]
 }
 
 //==============================================================================
-void MetronomeControl::paint(Graphics &g) {
-  //[UserPrePaint] Add your own custom painting code here..
-  //[/UserPrePaint]
+void MetronomeControl::paint(Graphics& g)
+{
+    //[UserPrePaint] Add your own custom painting code here..
+    //[/UserPrePaint]
 
-  //[UserPaint] Add your own custom painting code here..
-  //[/UserPaint]
+    //[UserPaint] Add your own custom painting code here..
+    //[/UserPaint]
 }
 
-void MetronomeControl::resized() {
-  syncButton->setBounds(0, getHeight() - 23, 168, 24);
-  playPauseButton->setBounds(getWidth() - 26, 0, 24, 24);
-  accentFile->setBounds(56, 24, getWidth() - 58, 24);
-  accentLabel->setBounds(0, 24, 64, 24);
-  clickFile->setBounds(56, 0, getWidth() - 84, 24);
-  clickLabel->setBounds(0, 0, 48, 24);
-  numeratorLabel->setBounds(0, 48, proportionOfWidth(0.4896f),
-                            getHeight() - 71);
-  denominatorLabel->setBounds(proportionOfWidth(0.5104f), 48,
-                              proportionOfWidth(0.4896f), getHeight() - 71);
-  separatorLabel->setBounds(proportionOfWidth(0.4301f), 48,
-                            proportionOfWidth(0.1399f), getHeight() - 71);
-  //[UserResized] Add your own custom resize handling here..
+void MetronomeControl::resized()
+{
+    syncButton->setBounds(0, getHeight() - 23, 168, 24);
+    playPauseButton->setBounds(getWidth() - 26, 0, 24, 24);
+    accentFile->setBounds(56, 24, getWidth() - 58, 24);
+    accentLabel->setBounds(0, 24, 64, 24);
+    clickFile->setBounds(56, 0, getWidth() - 84, 24);
+    clickLabel->setBounds(0, 0, 48, 24);
+    numeratorLabel->setBounds(0, 48, proportionOfWidth(0.4896f), getHeight() - 71);
+    denominatorLabel->setBounds(proportionOfWidth(0.5104f), 48, proportionOfWidth(0.4896f), getHeight() - 71);
+    separatorLabel->setBounds(proportionOfWidth(0.4301f), 48, proportionOfWidth(0.1399f), getHeight() - 71);
+    //[UserResized] Add your own custom resize handling here..
 
-  float fontSize = getHeight() * (250.0f / 400.0f);
-  Font resizedFont(Font::getDefaultSerifFontName(),
-                   (fontSize > 14.0f) ? fontSize : 14.0f, Font::bold);
+    float fontSize = getHeight() * (250.0f / 400.0f);
+    Font resizedFont = FontManager::getInstance().getMonoFont((fontSize > 14.0f) ? fontSize : 14.0f);
 
-  numeratorLabel->setFont(resizedFont);
-  denominatorLabel->setFont(resizedFont);
-  separatorLabel->setFont(resizedFont);
+    numeratorLabel->setFont(resizedFont);
+    denominatorLabel->setFont(resizedFont);
+    separatorLabel->setFont(resizedFont);
 
-  if (!showFileEditors) {
-    playPauseButton->setTopLeftPosition(0, 0);
-    numeratorLabel->setBounds(0, 24, proportionOfWidth(0.4896f),
-                              getHeight() - 48);
-    denominatorLabel->setBounds(proportionOfWidth(0.5104f), 24,
-                                proportionOfWidth(0.4896f), getHeight() - 48);
-    separatorLabel->setBounds(proportionOfWidth(0.4301f), 24,
-                              proportionOfWidth(0.1399f), getHeight() - 48);
-  }
+    if (!showFileEditors)
+    {
+        playPauseButton->setTopLeftPosition(0, 0);
+        numeratorLabel->setBounds(0, 24, proportionOfWidth(0.4896f), getHeight() - 48);
+        denominatorLabel->setBounds(proportionOfWidth(0.5104f), 24, proportionOfWidth(0.4896f), getHeight() - 48);
+        separatorLabel->setBounds(proportionOfWidth(0.4301f), 24, proportionOfWidth(0.1399f), getHeight() - 48);
+    }
 
-  // Set controls according to the processor's state.
-  {
-    String tempstr;
+    // Set controls according to the processor's state.
+    {
+        String tempstr;
 
-    tempstr << (int)(processor->getParameter(MetronomeProcessor::Numerator));
-    numeratorLabel->setText(tempstr, dontSendNotification);
-    tempstr = "";
-    tempstr << (int)(processor->getParameter(MetronomeProcessor::Denominator));
-    denominatorLabel->setText(tempstr, dontSendNotification);
-    syncButton->setToggleState(
-        processor->getParameter(MetronomeProcessor::SyncToMainTransport) > 0.5f,
-        false);
-  }
+        tempstr << (int)(processor->getParameter(MetronomeProcessor::Numerator));
+        numeratorLabel->setText(tempstr, dontSendNotification);
+        tempstr = "";
+        tempstr << (int)(processor->getParameter(MetronomeProcessor::Denominator));
+        denominatorLabel->setText(tempstr, dontSendNotification);
+        syncButton->setToggleState(processor->getParameter(MetronomeProcessor::SyncToMainTransport) > 0.5f, false);
+    }
 
-  //[/UserResized]
+    //[/UserResized]
 }
 
-void MetronomeControl::buttonClicked(Button *buttonThatWasClicked) {
-  //[UserbuttonClicked_Pre]
-  //[/UserbuttonClicked_Pre]
+void MetronomeControl::buttonClicked(Button* buttonThatWasClicked)
+{
+    //[UserbuttonClicked_Pre]
+    //[/UserbuttonClicked_Pre]
 
-  if (buttonThatWasClicked == syncButton) {
-    //[UserButtonCode_syncButton] -- add your button handler code here..
+    if (buttonThatWasClicked == syncButton)
+    {
+        //[UserButtonCode_syncButton] -- add your button handler code here..
 
-    bool val = syncButton->getToggleState();
+        bool val = syncButton->getToggleState();
 
-    processor->setParameter(MetronomeProcessor::SyncToMainTransport,
-                            val ? 1.0f : 0.0f);
+        processor->setParameter(MetronomeProcessor::SyncToMainTransport, val ? 1.0f : 0.0f);
 
-    //[/UserButtonCode_syncButton]
-  }
+        //[/UserButtonCode_syncButton]
+    }
 
-  //[UserbuttonClicked_Post]
-  else if (buttonThatWasClicked == playPauseButton) {
-    if (!playing)
-      playPauseButton->setImages(pauseImage.get()); // JUCE 8: use .get()
-    else
-      playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
-    playing = !playing;
-    processor->setParameter(MetronomeProcessor::Play, 1.0f);
-  }
-  //[/UserbuttonClicked_Post]
+    //[UserbuttonClicked_Post]
+    else if (buttonThatWasClicked == playPauseButton)
+    {
+        if (!playing)
+            playPauseButton->setImages(pauseImage.get()); // JUCE 8: use .get()
+        else
+            playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
+        playing = !playing;
+        processor->setParameter(MetronomeProcessor::Play, 1.0f);
+    }
+    //[/UserbuttonClicked_Post]
 }
 
-void MetronomeControl::labelTextChanged(Label *labelThatHasChanged) {
-  //[UserlabelTextChanged_Pre]
-  //[/UserlabelTextChanged_Pre]
+void MetronomeControl::labelTextChanged(Label* labelThatHasChanged)
+{
+    //[UserlabelTextChanged_Pre]
+    //[/UserlabelTextChanged_Pre]
 
-  if (labelThatHasChanged == numeratorLabel) {
-    //[UserLabelCode_numeratorLabel] -- add your label text handling code here..
+    if (labelThatHasChanged == numeratorLabel)
+    {
+        //[UserLabelCode_numeratorLabel] -- add your label text handling code here..
 
-    float tempf;
+        float tempf;
 
-    tempf = (float)(numeratorLabel->getText().getIntValue());
-    processor->setParameter(MetronomeProcessor::Numerator, tempf);
+        tempf = (float)(numeratorLabel->getText().getIntValue());
+        processor->setParameter(MetronomeProcessor::Numerator, tempf);
 
-    //[/UserLabelCode_numeratorLabel]
-  } else if (labelThatHasChanged == denominatorLabel) {
-    //[UserLabelCode_denominatorLabel] -- add your label text handling code
-    //here..
+        //[/UserLabelCode_numeratorLabel]
+    }
+    else if (labelThatHasChanged == denominatorLabel)
+    {
+        //[UserLabelCode_denominatorLabel] -- add your label text handling code
+        // here..
 
-    float tempf;
+        float tempf;
 
-    tempf = (float)(denominatorLabel->getText().getIntValue());
-    processor->setParameter(MetronomeProcessor::Denominator, tempf);
+        tempf = (float)(denominatorLabel->getText().getIntValue());
+        processor->setParameter(MetronomeProcessor::Denominator, tempf);
 
-    //[/UserLabelCode_denominatorLabel]
-  }
+        //[/UserLabelCode_denominatorLabel]
+    }
 
-  //[UserlabelTextChanged_Post]
-  //[/UserlabelTextChanged_Post]
+    //[UserlabelTextChanged_Post]
+    //[/UserlabelTextChanged_Post]
 }
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any
-//other code here...
+// other code here...
 
 //------------------------------------------------------------------------------
-void MetronomeControl::filenameComponentChanged(
-    FilenameComponent *fileComponentThatHasChanged) {
-  if (fileComponentThatHasChanged == accentFile)
-    processor->setAccentFile(fileComponentThatHasChanged->getCurrentFile());
-  else if (fileComponentThatHasChanged == clickFile)
-    processor->setClickFile(fileComponentThatHasChanged->getCurrentFile());
+void MetronomeControl::filenameComponentChanged(FilenameComponent* fileComponentThatHasChanged)
+{
+    if (fileComponentThatHasChanged == accentFile)
+        processor->setAccentFile(fileComponentThatHasChanged->getCurrentFile());
+    else if (fileComponentThatHasChanged == clickFile)
+        processor->setClickFile(fileComponentThatHasChanged->getCurrentFile());
 }
 
 //------------------------------------------------------------------------------
-void MetronomeControl::changeListenerCallback(ChangeBroadcaster *source) {
-  if (source == processor) {
-    String tempstr;
+void MetronomeControl::changeListenerCallback(ChangeBroadcaster* source)
+{
+    if (source == processor)
+    {
+        String tempstr;
 
-    if (processor->isPlaying()) {
-      playPauseButton->setImages(pauseImage.get()); // JUCE 8: use .get()
-      playing = true;
-    } else {
-      playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
-      playing = false;
+        if (processor->isPlaying())
+        {
+            playPauseButton->setImages(pauseImage.get()); // JUCE 8: use .get()
+            playing = true;
+        }
+        else
+        {
+            playPauseButton->setImages(playImage.get()); // JUCE 8: use .get()
+            playing = false;
+        }
+
+        tempstr << (int)(processor->getParameter(MetronomeProcessor::Numerator));
+        numeratorLabel->setText(tempstr, dontSendNotification);
+        tempstr = "";
+        tempstr << (int)(processor->getParameter(MetronomeProcessor::Denominator));
+        denominatorLabel->setText(tempstr, dontSendNotification);
+        syncButton->setToggleState(processor->getParameter(MetronomeProcessor::SyncToMainTransport) > 0.5f, false);
     }
-
-    tempstr << (int)(processor->getParameter(MetronomeProcessor::Numerator));
-    numeratorLabel->setText(tempstr, dontSendNotification);
-    tempstr = "";
-    tempstr << (int)(processor->getParameter(MetronomeProcessor::Denominator));
-    denominatorLabel->setText(tempstr, dontSendNotification);
-    syncButton->setToggleState(
-        processor->getParameter(MetronomeProcessor::SyncToMainTransport) > 0.5f,
-        false);
-  }
-}
-
-//------------------------------------------------------------------------------
-std::unique_ptr<Drawable>
-MetronomeControl::loadSVGFromMemory(const void *dataToInitialiseFrom,
-                                    size_t sizeInBytes) {
-  MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-  XmlDocument doc(memBlock.toString());
-  std::unique_ptr<XmlElement> svgData(doc.getDocumentElement()); // JUCE 8
-
-  return Drawable::createFromSVG(*svgData); // JUCE 8: returns unique_ptr
 }
 
 //[/MiscUserCode]

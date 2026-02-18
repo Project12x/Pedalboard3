@@ -41,7 +41,8 @@ class WaveformDisplayLite;
 class AudioRecorderControl : public Component,
                              public FilenameComponentListener,
                              public ChangeListener,
-                             public Button::Listener
+                             public Button::Listener,
+                             public Timer
 {
   public:
     //==============================================================================
@@ -58,6 +59,9 @@ class AudioRecorderControl : public Component,
 
     ///	Changes the colour of the WaveformDisplay background.
     void setWaveformBackground(const Colour& col);
+
+    /// Polls RecorderProcessor for pending state changes (RT-safe pattern).
+    void timerCallback() override;
 
     //[/UserMethods]
 

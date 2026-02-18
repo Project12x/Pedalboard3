@@ -24,7 +24,8 @@
 MidiAppFifo::MidiAppFifo():
 idFifo(BufferSize),
 tempoFifo(BufferSize),
-patchChangeFifo(BufferSize)
+patchChangeFifo(BufferSize),
+paramChangeFifo(BufferSize)
 {
 	int i;
 
@@ -33,6 +34,7 @@ patchChangeFifo(BufferSize)
 		idBuffer[i] = 0;
 		tempoBuffer[i] = 0;
 		patchChangeBuffer[i] = 0;
+		paramChangeBuffer[i] = {};
 	}
 }
 
@@ -45,6 +47,7 @@ MidiAppFifo::~MidiAppFifo()
 //------------------------------------------------------------------------------
 void MidiAppFifo::writeID(CommandID id)
 {
+	const juce::SpinLock::ScopedLockType sl(writeLock);
 	int start1, size1, start2, size2;
 
     idFifo.prepareToWrite(1, start1, size1, start2, size2);
@@ -78,6 +81,7 @@ CommandID MidiAppFifo::readID()
 //------------------------------------------------------------------------------
 void MidiAppFifo::writeTempo(double tempo)
 {
+	const juce::SpinLock::ScopedLockType sl(writeLock);
 	int start1, size1, start2, size2;
 
     tempoFifo.prepareToWrite(1, start1, size1, start2, size2);
@@ -111,6 +115,7 @@ double MidiAppFifo::readTempo()
 //------------------------------------------------------------------------------
 void MidiAppFifo::writePatchChange(int tempo)
 {
+	const juce::SpinLock::ScopedLockType sl(writeLock);
 	int start1, size1, start2, size2;
 
     patchChangeFifo.prepareToWrite(1, start1, size1, start2, size2);
@@ -139,4 +144,40 @@ int MidiAppFifo::readPatchChange()
     patchChangeFifo.finishedRead(size1 + size2);
 
 	return retval;
+}
+
+//------------------------------------------------------------------------------
+void MidiAppFifo::writeParamChange(FilterGraph* graph, uint32 pluginId, int paramIndex, float value)
+{
+	const juce::SpinLock::ScopedLockType sl(writeLock);
+	int start1, size1, start2, size2;
+
+	paramChangeFifo.prepareToWrite(1, start1, size1, start2, size2);
+
+	if (size1 > 0)
+		paramChangeBuffer[start1] = {graph, pluginId, paramIndex, value};
+	else if (size2 > 0)
+		paramChangeBuffer[start2] = {graph, pluginId, paramIndex, value};
+
+	paramChangeFifo.finishedWrite(size1 + size2);
+}
+
+//------------------------------------------------------------------------------
+bool MidiAppFifo::readParamChange(PendingParamChange& out)
+{
+	if (paramChangeFifo.getNumReady() <= 0)
+		return false;
+
+	int start1, size1, start2, size2;
+
+	paramChangeFifo.prepareToRead(1, start1, size1, start2, size2);
+
+	if (size1 > 0)
+		out = paramChangeBuffer[start1];
+	else if (size2 > 0)
+		out = paramChangeBuffer[start2];
+
+	paramChangeFifo.finishedRead(size1 + size2);
+
+	return (size1 + size2) > 0;
 }

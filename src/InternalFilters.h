@@ -64,6 +64,23 @@ class InternalPluginFormat : public AudioPluginFormat
         recorderProcFilter,
         metronomeProcFilter,
         looperProcFilter,
+        tunerProcFilter,
+        toneGenProcFilter,
+        splitterProcFilter,
+        mixerProcFilter,
+        irLoaderProcFilter,
+        namProcFilter,
+        oscilloscopeProcFilter,
+        midiTransposeProcFilter,
+        midiRechannelizeProcFilter,
+        keyboardSplitProcFilter,
+        notesProcFilter,
+        labelProcFilter,
+        midiFilePlayerProcFilter,
+        subGraphProcFilter,
+        virtualMidiInputProcFilter,
+        dawMixerProcFilter,
+        dawSplitterProcFilter,
 
         endOfFilterTypes
     };
@@ -71,6 +88,9 @@ class InternalPluginFormat : public AudioPluginFormat
     const PluginDescription* getDescriptionFor(const InternalFilterType type);
 
     void getAllTypes(OwnedArray<PluginDescription>& results);
+
+    /// Returns only user-facing internal plugins (excludes Audio I/O, MIDI Input, etc.)
+    void getUserFacingTypes(OwnedArray<PluginDescription>& results);
 
     bool canScanForPlugins() const { return false; };
 
@@ -119,6 +139,23 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription recorderProcDesc;
     PluginDescription metronomeProcDesc;
     PluginDescription looperProcDesc;
+    PluginDescription tunerProcDesc;
+    PluginDescription toneGenProcDesc;
+    PluginDescription splitterProcDesc;
+    PluginDescription mixerProcDesc;
+    PluginDescription irLoaderProcDesc;
+    PluginDescription namProcDesc;
+    PluginDescription oscilloscopeProcDesc;
+    PluginDescription midiTransposeProcDesc;
+    PluginDescription midiRechannelizeProcDesc;
+    PluginDescription keyboardSplitProcDesc;
+    PluginDescription notesProcDesc;
+    PluginDescription labelProcDesc;
+    PluginDescription midiFilePlayerProcDesc;
+    PluginDescription subGraphProcDesc;
+    PluginDescription virtualMidiInputProcDesc;
+    PluginDescription dawMixerProcDesc;
+    PluginDescription dawSplitterProcDesc;
 };
 
 #endif

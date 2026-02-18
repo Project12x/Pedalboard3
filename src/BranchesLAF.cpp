@@ -20,7 +20,10 @@
 #include "BranchesLAF.h"
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "LookAndFeelImages.h"
+
+#include <melatonin_blur/melatonin_blur.h>
 
 using namespace std;
 
@@ -49,7 +52,7 @@ BranchesLAF::BranchesLAF() : LookAndFeel_V4()
     setColour(ComboBox::buttonColourId, colours["Button Colour"]);
     setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
     setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
-    setColour(DirectoryContentsDisplayComponent::highlightColourId, Colour(0xFFD7D1B5));
+    setColour(DirectoryContentsDisplayComponent::highlightColourId, colours["List Selected Colour"]);
     setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
     setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
 
@@ -103,84 +106,65 @@ void BranchesLAF::refreshColours()
 void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
                                        bool isMouseOverButton, bool isButtonDown)
 {
-    Path highlight, shadow;
-    Colour buttonCol = ::ColourScheme::getInstance().colours["Button Colour"];
-    /*GradientBrush grad(backgroundColour.brighter(0.8f),
-                       0.0f,
-                       0.0f,
-                       backgroundColour.darker(0.05f),
-                       0.0f,
-                       (float)(button.getHeight()),
-                       false);*/
-    /*ColourGradient grad(backgroundColour.brighter(0.8f),
-                        0.0f,
-                        0.0f,
-                        backgroundColour.darker(0.05f),
-                        0.0f,
-                        (float)(button.getHeight()),
-                        false);*/
-    ColourGradient grad(buttonCol.brighter(0.8f), 0.0f, 0.0f, buttonCol.darker(0.05f), 0.0f,
-                        (float)(button.getHeight()), false);
+    auto& colours = ::ColourScheme::getInstance().colours;
+    Colour buttonCol = colours["Button Colour"];
+    Colour accentCol = colours["Audio Connection"];
 
-    g.setColour(Colours::black);
-    g.drawRoundedRectangle(1.0f, 1.0f, (float)(button.getWidth() - 2), (float)(button.getHeight() - 2), 4.0f, 1.0f);
-    // g.setColour(Colour(0xFFEEECE1));
-    // g.setColour(backgroundColour);
-    // g.setBrush(&grad);
-    g.setGradientFill(grad);
-    g.fillRoundedRectangle(1.0f, 1.0f, (float)(button.getWidth() - 2), (float)(button.getHeight() - 2), 4.0f);
+    float w = (float)button.getWidth();
+    float h = (float)button.getHeight();
+    float cornerRadius = 6.0f;
 
-    /*g.setColour(Colour(0x08000000));
-    g.fillRoundedRectangle(1.0f,
-                           (float)(button.getHeight()/2),
-                           (float)(button.getWidth()-2),
-                           (float)(button.getHeight()-2),
-                           4.0f);*/
+    Rectangle<float> bounds(1.0f, 1.0f, w - 2.0f, h - 2.0f);
 
-    // Draw mouse over.
-    if (isMouseOverButton)
-    {
-        g.setColour(::ColourScheme::getInstance().colours["Button Highlight"]);
-        g.drawRoundedRectangle(2.0f, 2.0f, (float)(button.getWidth() - 4), (float)(button.getHeight() - 4), 4.0f, 3.0f);
-    }
+    // === Main fill ===
+    Colour fillCol;
+    if (isButtonDown)
+        fillCol = buttonCol.darker(0.3f);
+    else if (isMouseOverButton)
+        fillCol = buttonCol.brighter(0.15f);
+    else
+        fillCol = buttonCol;
 
-    // Draw highlight.
-    highlight.startNewSubPath(2.0f, (float)(button.getHeight() - 3));
-    highlight.lineTo(2.0f, 4.0f);
-    highlight.quadraticTo(2.0f, 2.0f, 4.0f, 2.0f);
-    highlight.lineTo((float)(button.getWidth() - 3), 2.0f);
+    // Strong top-to-bottom gradient
+    ColourGradient mainGrad(fillCol.brighter(0.25f), 0.0f, bounds.getY(), fillCol.darker(0.2f), 0.0f,
+                            bounds.getBottom(), false);
+    g.setGradientFill(mainGrad);
+    g.fillRoundedRectangle(bounds, cornerRadius);
+
+    // === Glossy top highlight (very visible) ===
     if (!isButtonDown)
     {
-        if (!isMouseOverButton)
-            g.setColour(buttonCol.brighter(1.0f).withAlpha(0.69f));
-        else
-            g.setColour(buttonCol.brighter(1.0f).withAlpha(0.38f));
-        g.strokePath(highlight, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        Rectangle<float> glossArea(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight() * 0.45f);
+        ColourGradient glossGrad(Colours::white.withAlpha(0.35f), 0.0f, glossArea.getY(),
+                                 Colours::white.withAlpha(0.0f), 0.0f, glossArea.getBottom(), false);
+        g.setGradientFill(glossGrad);
+        g.fillRoundedRectangle(glossArea.reduced(2.0f, 0.0f), cornerRadius - 1.0f);
+    }
+
+    // === Border ===
+    bool isToggled = button.getToggleState();
+
+    if (isMouseOverButton && !isButtonDown)
+    {
+        // Glowing accent border on hover
+        g.setColour(accentCol.withAlpha(0.8f));
+        g.drawRoundedRectangle(bounds, cornerRadius, 2.0f);
+
+        // Outer glow
+        g.setColour(accentCol.withAlpha(0.3f));
+        g.drawRoundedRectangle(bounds.expanded(1.0f), cornerRadius + 1.0f, 2.0f);
+    }
+    else if (isButtonDown || isToggled)
+    {
+        // Bright accent border when pressed or toggled on
+        g.setColour(accentCol);
+        g.drawRoundedRectangle(bounds, cornerRadius, 2.0f);
     }
     else
     {
-        g.setColour(Colour(0x20000000));
-        g.strokePath(highlight, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-
-    // Draw shadow.
-    shadow.startNewSubPath(3.0f, (float)(button.getHeight() - 2));
-    shadow.lineTo((float)(button.getWidth() - 4), (float)(button.getHeight() - 2));
-    shadow.quadraticTo((float)(button.getWidth() - 2), (float)(button.getHeight() - 2), (float)(button.getWidth() - 2),
-                       (float)(button.getHeight() - 4));
-    shadow.lineTo((float)(button.getWidth() - 2), 3.0f);
-    if (!isButtonDown)
-    {
-        g.setColour(Colour(0x20000000));
-        g.strokePath(shadow, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-    else
-    {
-        if (!isMouseOverButton)
-            g.setColour(buttonCol.brighter(1.0f).withAlpha(0.69f));
-        else
-            g.setColour(buttonCol.brighter(1.0f).withAlpha(0.38f));
-        g.strokePath(shadow, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        // Normal border
+        g.setColour(Colour(0x60000000));
+        g.drawRoundedRectangle(bounds, cornerRadius, 1.0f);
     }
 }
 
@@ -189,14 +173,14 @@ void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOv
 {
     int inc;
 
-    g.setFont(Font(FontOptions().withHeight(15.0f)));
+    g.setFont(FontManager::getInstance().getUIFont(15.0f));
     g.setColour(
         ::ColourScheme::getInstance().colours["Text Colour"].withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 
     const int yIndent = jmin(4, button.proportionOfHeight(0.3f));
     const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    const int fontHeight = roundFloatToInt(Font(FontOptions().withHeight(15.0f)).getHeight() * 0.6f);
+    const int fontHeight = roundFloatToInt(FontManager::getInstance().getUIFont(15.0f).getHeight() * 0.6f);
     const int leftIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
     const int rightIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
 
@@ -467,29 +451,27 @@ void BranchesLAF::drawScrollbar(Graphics& g, ScrollBar& scrollbar, int x, int y,
 void BranchesLAF::drawMenuBarBackground(Graphics& g, int width, int height, bool isMouseOverBar,
                                         MenuBarComponent& menuBar)
 {
-    /*GradientBrush grad(Colour(0xFFEEECE1).brighter(0.8f),
-                       0.0f,
-                       0.0f,
-                       Colour(0xFFEEECE1).darker(0.05f),
-                       0.0f,
-                       (float)height,
-                       false);*/
-    Colour col = ::ColourScheme::getInstance().colours["Window Background"];
+    auto& colours = ::ColourScheme::getInstance().colours;
+    Colour bgCol = colours["Window Background"];
 
-    ColourGradient grad(col.brighter(0.8f), 0.0f, 0.0f, col.darker(0.05f), 0.0f, (float)height, false);
-
-    // g.setBrush(&grad);
+    // Subtle metallic gradient (refined, not extreme)
+    ColourGradient grad(bgCol.brighter(0.08f), 0.0f, 0.0f, bgCol.darker(0.04f), 0.0f, (float)height, false);
     g.setGradientFill(grad);
     g.fillRect(0.0f, 0.0f, (float)width, (float)height);
 
-    g.setColour(Colour(0x30000000));
-    g.fillRect(0.0f, (float)height - 1.0f, (float)width, 1.0f);
+    // Top edge highlight (metallic sheen)
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawHorizontalLine(0, 0.0f, (float)width);
+
+    // Bottom edge shadow (separation line)
+    g.setColour(Colour(0x35000000));
+    g.drawHorizontalLine(height - 1, 0.0f, (float)width);
 }
 
 //------------------------------------------------------------------------------
 Font BranchesLAF::getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText)
 {
-    return Font(FontOptions().withHeight(15.0f));
+    return FontManager::getInstance().getUIFont(15.0f);
 }
 
 //------------------------------------------------------------------------------
@@ -525,30 +507,21 @@ int BranchesLAF::getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, c
 //------------------------------------------------------------------------------
 void BranchesLAF::drawPopupMenuBackground(Graphics& g, int width, int height)
 {
-    Path highlight, shadow;
+    auto& colours = ::ColourScheme::getInstance().colours;
+    Colour bgCol = colours["Window Background"];
 
-    g.fillAll(::ColourScheme::getInstance().colours["Window Background"]);
+    // Solid background with subtle gradient for depth
+    ColourGradient grad(bgCol, 0.0f, 0.0f, bgCol.darker(0.05f), 0.0f, (float)height, false);
+    g.setGradientFill(grad);
+    g.fillRect(0, 0, width, height);
 
-    highlight.startNewSubPath(2.0f, (float)(height - 3));
-    highlight.lineTo(2.0f, 2.0f);
-    // highlight.quadraticTo(2.0f, 2.0f, 4.0f, 2.0f);
-    highlight.lineTo((float)width, 2.0f);
-    g.setColour(Colour(0xB0FFFFFF));
-    g.strokePath(highlight, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    // Inner glow at top (light source from above)
+    g.setColour(Colours::white.withAlpha(0.08f));
+    g.drawHorizontalLine(1, 1.0f, (float)width - 1.0f);
 
-    // Draw shadow.
-    shadow.startNewSubPath(3.0f, (float)(height - 2));
-    shadow.lineTo((float)(width - 2), (float)(height - 2));
-    /*shadow.quadraticTo((float)(width-2),
-                          (float)(height-2),
-                          (float)(width-2),
-                          (float)(height-4));*/
-    shadow.lineTo((float)(width - 2), 3.0f);
-    g.setColour(Colour(0x20000000));
-    g.strokePath(shadow, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-    g.setColour(Colour(0x60000000));
-    g.drawRect(0, 0, width, height);
+    // Crisp border
+    g.setColour(Colour(0x50000000));
+    g.drawRect(0, 0, width, height, 1);
 }
 
 //------------------------------------------------------------------------------
@@ -617,36 +590,56 @@ void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButton
 void BranchesLAF::drawProgressBar(Graphics& g, ProgressBar& progressBar, int width, int height, double progress,
                                   const String& textToShow)
 {
-    /*GradientBrush grad(progressBar.findColour(ProgressBar::backgroundColourId).darker(0.2f),
-                       0.0f,
-                       0.0f,
-                       progressBar.findColour(ProgressBar::backgroundColourId),
-                       0.0f,
-                       (float)height,
-                       false);*/
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
-    ColourGradient grad(colours["Window Background"].darker(0.2f), 0.0f, 0.0f, colours["Window Background"], 0.0f,
-                        (float)height, false);
+    auto& colours = ::ColourScheme::getInstance().colours;
+    float cornerRadius = 4.0f;
+    Rectangle<float> bounds(0.0f, 0.0f, (float)width, (float)height);
 
-    // Draw the background.
-    // g.setBrush(&grad);
-    g.setGradientFill(grad);
-    g.fillRect(0.0f, 0.0f, (float)width, (float)height);
-    g.setColour(Colour(0x80000000));
-    g.drawRect(0, 0, width, height, 1);
+    // === Track background (recessed look) ===
+    Colour trackTop = colours["Window Background"].darker(0.3f);
+    Colour trackBottom = colours["Window Background"].darker(0.15f);
+    ColourGradient trackGrad(trackTop, 0.0f, 0.0f, trackBottom, 0.0f, (float)height, false);
+    g.setGradientFill(trackGrad);
+    g.fillRoundedRectangle(bounds, cornerRadius);
 
-    // Draw the foreground.
-    g.setColour(Colour(0x80000000));
-    g.drawRoundedRectangle(1.0f, 1.0f, (float)(width - 2) * (float)progress, (float)(height - 2), 2.0f, 1.0f);
-    g.setColour(colours["CPU Meter Colour"]);
-    g.fillRoundedRectangle(1.0f, 1.0f, (float)(width - 2) * (float)progress, (float)(height - 2), 2.0f);
+    // Inner shadow at top for recessed feel
+    g.setColour(Colour(0x25000000));
+    g.drawHorizontalLine(1, 2.0f, (float)width - 2.0f);
 
-    g.setColour(Colour(0x08000000));
-    g.fillRoundedRectangle(1.0f, (float)(height / 2), (float)(width - 2) * (float)progress, (float)(height - 2), 2.0f);
+    // Border
+    g.setColour(Colour(0x40000000));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
 
-    // Draw the text.
-    g.setColour(Colour(0x80000000));
-    g.drawText(textToShow, 2, 1, width - 4, height - 2, Justification(Justification::horizontallyCentred), true);
+    // === Progress fill (LED glow style) ===
+    if (progress > 0.0)
+    {
+        float fillWidth = jmax(cornerRadius * 2.0f, (float)(width - 2) * (float)progress);
+        Rectangle<float> fillBounds(1.0f, 1.0f, fillWidth, (float)height - 2.0f);
+
+        Colour meterCol = colours["CPU Meter Colour"];
+
+        // Main fill gradient
+        ColourGradient fillGrad(meterCol.brighter(0.2f), 0.0f, fillBounds.getY(), meterCol.darker(0.1f), 0.0f,
+                                fillBounds.getBottom(), false);
+        g.setGradientFill(fillGrad);
+        g.fillRoundedRectangle(fillBounds, cornerRadius - 1.0f);
+
+        // Sheen overlay (metallic shine)
+        ColourGradient sheen(Colours::white.withAlpha(0.2f), 0.0f, fillBounds.getY(), Colours::white.withAlpha(0.0f),
+                             0.0f, fillBounds.getCentreY(), false);
+        g.setGradientFill(sheen);
+        g.fillRoundedRectangle(fillBounds.reduced(1.0f), cornerRadius - 2.0f);
+
+        // Glow at right edge (LED effect)
+        g.setColour(meterCol.brighter(0.5f).withAlpha(0.6f));
+        g.drawVerticalLine((int)fillBounds.getRight() - 1, fillBounds.getY() + 2.0f, fillBounds.getBottom() - 2.0f);
+    }
+
+    // === Text ===
+    if (textToShow.isNotEmpty())
+    {
+        g.setColour(colours["Text Colour"]);
+        g.drawText(textToShow, bounds.toNearestInt(), Justification::centred, true);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -739,25 +732,54 @@ void BranchesLAF::drawToggleButton(Graphics& g, ToggleButton& button, bool isMou
 void BranchesLAF::drawTickBox(Graphics& g, Component& component, float x, float y, float w, float h, bool ticked,
                               bool isEnabled, bool isMouseOverButton, bool isButtonDown)
 {
-    const float boxSize = w * 0.7f;
+    auto& colours = ::ColourScheme::getInstance().colours;
+    float boxSize = w * 0.75f;
+    float boxX = x;
+    float boxY = y + (h - boxSize) * 0.5f;
+    float cornerRadius = 4.0f;
 
-    drawGlassSphere(
-        g, x, y + (h - boxSize) * 0.5f, boxSize,
-        ::ColourScheme::getInstance().colours["Tick Box Colour"].withMultipliedAlpha(isEnabled ? 1.0f : 0.5f), 1.0f);
+    Rectangle<float> boxBounds(boxX, boxY, boxSize, boxSize);
 
+    // === Box background (recessed) ===
+    Colour boxCol = colours["Tick Box Colour"];
+    if (!isEnabled)
+        boxCol = boxCol.withAlpha(0.5f);
+
+    // Gradient fill for depth
+    ColourGradient boxGrad(boxCol.brighter(0.1f), boxX, boxY, boxCol.darker(0.15f), boxX, boxY + boxSize, false);
+    g.setGradientFill(boxGrad);
+    g.fillRoundedRectangle(boxBounds, cornerRadius);
+
+    // Border
+    g.setColour(Colour(0x50000000));
+    g.drawRoundedRectangle(boxBounds, cornerRadius, 1.0f);
+
+    // Hover glow
+    if (isMouseOverButton && isEnabled)
+    {
+        g.setColour(colours["Button Highlight"].withAlpha(0.4f));
+        g.drawRoundedRectangle(boxBounds.reduced(0.5f), cornerRadius - 0.5f, 1.5f);
+    }
+
+    // === Checkmark ===
     if (ticked)
     {
+        Colour tickCol = colours["Audio Connection"]; // Bright accent color for visibility
+        if (!isEnabled)
+            tickCol = tickCol.withAlpha(0.4f);
+
+        // Draw a clean, bold checkmark
         Path tick;
-        Colour tempCol = ::ColourScheme::getInstance().colours["Vector Colour"];
-        tick.startNewSubPath(1.5f, 3.0f);
-        tick.lineTo(3.0f, 6.0f);
-        tick.lineTo(6.0f, 0.0f);
+        float cx = boxX + boxSize * 0.5f;
+        float cy = boxY + boxSize * 0.5f;
+        float scale = boxSize * 0.35f;
 
-        g.setColour(isEnabled ? tempCol : tempCol.withAlpha(0.25f));
+        tick.startNewSubPath(cx - scale * 0.7f, cy);
+        tick.lineTo(cx - scale * 0.15f, cy + scale * 0.55f);
+        tick.lineTo(cx + scale * 0.7f, cy - scale * 0.5f);
 
-        const AffineTransform trans(AffineTransform::scale(w / 9.0f, h / 9.0f).translated(x, y));
-
-        g.strokePath(tick, PathStrokeType(2.5f), trans);
+        g.setColour(tickCol);
+        g.strokePath(tick, PathStrokeType(2.5f, PathStrokeType::curved, PathStrokeType::rounded));
     }
 }
 

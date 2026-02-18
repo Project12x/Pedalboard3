@@ -31,11 +31,24 @@
 
 #include "InternalFilters.h"
 
+#include "DawMixerProcessor.h"
+#include "DawSplitterProcessor.h"
 #include "FilterGraph.h"
+#include "IRLoaderProcessor.h"
+#include "LabelProcessor.h"
+#include "MidiFilePlayer.h"
 #include "MidiMappingManager.h"
+#include "MidiUtilityProcessors.h"
+#include "NAMProcessor.h"
+#include "NotesProcessor.h"
 #include "OscMappingManager.h"
+#include "OscilloscopeProcessor.h"
 #include "PedalboardProcessors.h"
-
+#include "RoutingProcessors.h"
+#include "SubGraphProcessor.h"
+#include "ToneGeneratorProcessor.h"
+#include "TunerProcessor.h"
+#include "VirtualMidiInputProcessor.h"
 
 //==============================================================================
 InternalPluginFormat::InternalPluginFormat()
@@ -111,6 +124,108 @@ InternalPluginFormat::InternalPluginFormat()
         p.fillInPluginDescription(looperProcDesc);
         looperProcDesc.category = "Built-in";
     }
+
+    {
+        TunerProcessor p;
+        p.fillInPluginDescription(tunerProcDesc);
+        tunerProcDesc.category = "Built-in";
+    }
+
+    {
+        ToneGeneratorProcessor p;
+        p.fillInPluginDescription(toneGenProcDesc);
+        toneGenProcDesc.category = "Built-in";
+    }
+
+    {
+        SplitterProcessor p;
+        p.fillInPluginDescription(splitterProcDesc);
+        splitterProcDesc.category = "Built-in";
+    }
+
+    {
+        MixerProcessor p;
+        p.fillInPluginDescription(mixerProcDesc);
+        mixerProcDesc.category = "Built-in";
+    }
+
+    {
+        IRLoaderProcessor p;
+        p.fillInPluginDescription(irLoaderProcDesc);
+        irLoaderProcDesc.category = "Effects";
+    }
+
+    {
+        NAMProcessor p;
+        p.fillInPluginDescription(namProcDesc);
+        namProcDesc.category = "Built-in";
+    }
+
+    {
+        OscilloscopeProcessor p;
+        p.fillInPluginDescription(oscilloscopeProcDesc);
+        oscilloscopeProcDesc.category = "Built-in";
+    }
+
+    {
+        MidiTransposeProcessor p;
+        p.fillInPluginDescription(midiTransposeProcDesc);
+        midiTransposeProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        MidiRechannelizeProcessor p;
+        p.fillInPluginDescription(midiRechannelizeProcDesc);
+        midiRechannelizeProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        KeyboardSplitProcessor p;
+        p.fillInPluginDescription(keyboardSplitProcDesc);
+        keyboardSplitProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        NotesProcessor p;
+        p.fillInPluginDescription(notesProcDesc);
+        notesProcDesc.category = "Built-in";
+    }
+
+    {
+        LabelProcessor p;
+        p.fillInPluginDescription(labelProcDesc);
+        labelProcDesc.category = "Built-in";
+    }
+
+    {
+        MidiFilePlayerProcessor p;
+        p.fillInPluginDescription(midiFilePlayerProcDesc);
+        midiFilePlayerProcDesc.category = "Built-in";
+    }
+
+    {
+        SubGraphProcessor p;
+        p.fillInPluginDescription(subGraphProcDesc);
+        subGraphProcDesc.category = "Built-in";
+    }
+
+    {
+        VirtualMidiInputProcessor p;
+        p.fillInPluginDescription(virtualMidiInputProcDesc);
+        virtualMidiInputProcDesc.category = "MIDI Utility";
+    }
+
+    {
+        DawMixerProcessor p;
+        p.fillInPluginDescription(dawMixerProcDesc);
+        dawMixerProcDesc.category = "Built-in";
+    }
+
+    {
+        DawSplitterProcessor p;
+        p.fillInPluginDescription(dawSplitterProcDesc);
+        dawSplitterProcDesc.category = "Built-in";
+    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -166,6 +281,74 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new LooperProcessor();
     }
+    else if (desc.name == tunerProcDesc.name)
+    {
+        return new TunerProcessor();
+    }
+    else if (desc.name == toneGenProcDesc.name)
+    {
+        return new ToneGeneratorProcessor();
+    }
+    else if (desc.name == splitterProcDesc.name)
+    {
+        return new SplitterProcessor();
+    }
+    else if (desc.name == mixerProcDesc.name)
+    {
+        return new MixerProcessor();
+    }
+    else if (desc.name == dawMixerProcDesc.name)
+    {
+        return new DawMixerProcessor();
+    }
+    else if (desc.name == dawSplitterProcDesc.name)
+    {
+        return new DawSplitterProcessor();
+    }
+    else if (desc.name == irLoaderProcDesc.name)
+    {
+        return new IRLoaderProcessor();
+    }
+    else if (desc.name == namProcDesc.name)
+    {
+        return new NAMProcessor();
+    }
+    else if (desc.name == oscilloscopeProcDesc.name)
+    {
+        return new OscilloscopeProcessor();
+    }
+    else if (desc.name == midiTransposeProcDesc.name)
+    {
+        return new MidiTransposeProcessor();
+    }
+    else if (desc.name == midiRechannelizeProcDesc.name)
+    {
+        return new MidiRechannelizeProcessor();
+    }
+    else if (desc.name == keyboardSplitProcDesc.name)
+    {
+        return new KeyboardSplitProcessor();
+    }
+    else if (desc.name == notesProcDesc.name)
+    {
+        return new NotesProcessor();
+    }
+    else if (desc.name == labelProcDesc.name)
+    {
+        return new LabelProcessor();
+    }
+    else if (desc.name == midiFilePlayerProcDesc.name)
+    {
+        return new MidiFilePlayerProcessor();
+    }
+    else if (desc.name == subGraphProcDesc.name)
+    {
+        return new SubGraphProcessor();
+    }
+    else if (desc.name == virtualMidiInputProcDesc.name)
+    {
+        return new VirtualMidiInputProcessor();
+    }
 
     return 0;
 }
@@ -198,6 +381,40 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &metronomeProcDesc;
     case looperProcFilter:
         return &looperProcDesc;
+    case tunerProcFilter:
+        return &tunerProcDesc;
+    case toneGenProcFilter:
+        return &toneGenProcDesc;
+    case splitterProcFilter:
+        return &splitterProcDesc;
+    case mixerProcFilter:
+        return &mixerProcDesc;
+    case irLoaderProcFilter:
+        return &irLoaderProcDesc;
+    case namProcFilter:
+        return &namProcDesc;
+    case oscilloscopeProcFilter:
+        return &oscilloscopeProcDesc;
+    case midiTransposeProcFilter:
+        return &midiTransposeProcDesc;
+    case midiRechannelizeProcFilter:
+        return &midiRechannelizeProcDesc;
+    case keyboardSplitProcFilter:
+        return &keyboardSplitProcDesc;
+    case notesProcFilter:
+        return &notesProcDesc;
+    case labelProcFilter:
+        return &labelProcDesc;
+    case midiFilePlayerProcFilter:
+        return &midiFilePlayerProcDesc;
+    case subGraphProcFilter:
+        return &subGraphProcDesc;
+    case virtualMidiInputProcFilter:
+        return &virtualMidiInputProcDesc;
+    case dawMixerProcFilter:
+        return &dawMixerProcDesc;
+    case dawSplitterProcFilter:
+        return &dawSplitterProcDesc;
     default:
         return 0;
     }
@@ -207,4 +424,25 @@ void InternalPluginFormat::getAllTypes(OwnedArray<PluginDescription>& results)
 {
     for (int i = 0; i < (int)endOfFilterTypes; ++i)
         results.add(new PluginDescription(*getDescriptionFor((InternalFilterType)i)));
+}
+
+void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& results)
+{
+    // Only include processors that users can add from the plugin menu
+    // Excludes: audioInputFilter, audioOutputFilter, midiInputFilter, midiInterceptorFilter, oscInputFilter
+    static const InternalFilterType userFacingTypes[] = {levelProcFilter,         filePlayerProcFilter,
+                                                         outputToggleProcFilter,  vuMeterProcFilter,
+                                                         recorderProcFilter,      metronomeProcFilter,
+                                                         looperProcFilter,        tunerProcFilter,
+                                                         toneGenProcFilter,       splitterProcFilter,
+                                                         mixerProcFilter,         irLoaderProcFilter,
+                                                         namProcFilter,           oscilloscopeProcFilter,
+                                                         midiTransposeProcFilter, midiRechannelizeProcFilter,
+                                                         keyboardSplitProcFilter, notesProcFilter,
+                                                         labelProcFilter,         midiFilePlayerProcFilter,
+                                                         subGraphProcFilter,      virtualMidiInputProcFilter,
+                                                         dawMixerProcFilter,      dawSplitterProcFilter};
+
+    for (auto type : userFacingTypes)
+        results.add(new PluginDescription(*getDescriptionFor(type)));
 }

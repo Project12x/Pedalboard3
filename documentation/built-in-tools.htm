@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Built-in Tools - Pedalboard3</title>
+    <style>
+        :root { --bg-color: #1a1a2e; --card-bg: #16213e; --text-color: #eee; --text-muted: #aaa; --accent: #4da6ff; --border: #2a3a5e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); line-height: 1.7; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+        p { margin-bottom: 1rem; }
+        .tool { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+        a { color: var(--accent); }
+        .back-link { display: inline-block; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="breadcrumb"><a href="index.htm">Documentation</a> / Built-in Tools</p>
+        <h1>Built-in Tools</h1>
+        <p>Pedalboard3 includes several built-in processors for common tasks.</p>
+
+        <h2>Audio Tools</h2>
+
+        <div class="tool">
+            <h3>Tuner</h3>
+            <p>Chromatic tuner for guitars, bass, and other instruments. Displays note name, cents deviation, and frequency.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Tone Generator</h3>
+            <p>Generate test tones (sine, saw, square, noise) for testing signal chains and tuner calibration. Supports frequency sweep and drift modes.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Oscilloscope</h3>
+            <p>Real-time waveform display for visualizing audio signals.</p>
+        </div>
+
+        <div class="tool">
+            <h3>VU Meter</h3>
+            <p>Visual level metering for monitoring audio levels.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Metronome</h3>
+            <p>Click track with tempo control and time signature settings.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Looper</h3>
+            <p>Record and loop audio phrases for practice or performance.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Audio Recorder</h3>
+            <p>Record audio to WAV files.</p>
+        </div>
+
+        <div class="tool">
+            <h3>File Player</h3>
+            <p>Play back audio files (WAV, MP3, etc.) through your signal chain.</p>
+        </div>
+
+        <h2>Effects</h2>
+
+        <div class="tool">
+            <h3>IR Loader</h3>
+            <p>Load impulse responses for cabinet simulation and reverb.</p>
+        </div>
+
+        <div class="tool">
+            <h3>NAM (Neural Amp Modeler)</h3>
+            <p>Load Neural Amp Modeler profiles for amp and pedal emulation.</p>
+        </div>
+
+        <h2>Routing</h2>
+
+        <div class="tool">
+            <h3>Splitter / Mixer</h3>
+            <p>Split signals into parallel paths or mix multiple signals together.</p>
+        </div>
+
+        <div class="tool">
+            <h3>Level Control</h3>
+            <p>Adjust gain and pan for any point in your signal chain.</p>
+        </div>
+
+        <a href="index.htm" class="back-link">&larr; Back to Documentation</a>
+    </div>
+</body>
+</html>

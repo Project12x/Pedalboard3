@@ -24,6 +24,7 @@
 #include "App.h"
 #include "AudioSingletons.h"
 #include "ColourScheme.h"
+#include "CrashProtection.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "LogFile.h"
@@ -34,6 +35,9 @@
 #include "SettingsManager.h"
 #include "TrayIcon.h"
 
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 //------------------------------------------------------------------------------
 void App::initialise(const String& commandLine)
 {
@@ -43,6 +47,29 @@ void App::initialise(const String& commandLine)
 
     // Initialize new SettingsManager
     SettingsManager::getInstance().initialise();
+
+    // Initialize spdlog with file output for debugging
+    try
+    {
+        auto logPath = File::getSpecialLocation(File::userApplicationDataDirectory)
+                           .getChildFile("Pedalboard3")
+                           .getChildFile("debug.log")
+                           .getFullPathName()
+                           .toStdString();
+        auto file_logger = spdlog::basic_logger_mt("pedalboard", logPath, true);
+        spdlog::set_default_logger(file_logger);
+        spdlog::set_level(spdlog::level::debug);
+        spdlog::flush_on(spdlog::level::info);
+        spdlog::info("Pedalboard3 starting - spdlog initialized");
+    }
+    catch (const spdlog::spdlog_ex& ex)
+    {
+        // Silently fail if we can't create log file
+    }
+
+    // Start crash protection watchdog
+    CrashProtection::getInstance().startWatchdog(15000); // 15 second timeout
+    spdlog::info("Crash protection watchdog started");
 
 #ifndef __APPLE__
     useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon");
@@ -88,6 +115,9 @@ void App::shutdown()
 #endif
 
     MainTransport::deleteInstance();
+
+    // Stop crash protection watchdog
+    CrashProtection::getInstance().stopWatchdog();
 }
 
 //------------------------------------------------------------------------------

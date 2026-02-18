@@ -23,12 +23,16 @@
 #include <JuceHeader.h>
 
 class FilterGraph;
+class MidiAppFifo;
 
 //------------------------------------------------------------------------------
 ///	The base class for all parameter mappings.
 class Mapping
 {
   public:
+	///	Sets the lock-free FIFO for deferred parameter dispatch (call once at startup).
+	static void setParamFifo(MidiAppFifo* fifo);
+
 	///	Constructor.
 	/*!
 		\param graph The FilterGraph this mapping exists in.
@@ -59,6 +63,9 @@ class Mapping
 	///	Called from subclasses to update their parameter.
 	void updateParameter(float val);
   private:
+	///	Lock-free FIFO for deferred parameter dispatch from audio thread.
+	static MidiAppFifo* paramFifo;
+
 	///	The FilterGraph this mapping exists in.
 	FilterGraph *filterGraph;
 	///	The uid of the plugin this mapping applies to.

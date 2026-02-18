@@ -28,25 +28,24 @@
 class AudioPluginFormatManagerSingleton
 {
   public:
-	///	Returns the sole instance of ApplicationProperties.
-	static AudioPluginFormatManager& getInstance();
-	///	Kills the ApplicationProperties instance.
-	/*!
-		****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
-	 */
-	static void killInstance();
-
+    ///	Returns the sole instance of ApplicationProperties.
+    static AudioPluginFormatManager& getInstance();
+    ///	Kills the ApplicationProperties instance.
+    /*!
+     ****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
+     */
+    static void killInstance();
 
   private:
-	///	Constructor.
-	AudioPluginFormatManagerSingleton();
-	///	Destructor.
-	~AudioPluginFormatManagerSingleton();
+    ///	Constructor.
+    AudioPluginFormatManagerSingleton();
+    ///	Destructor.
+    ~AudioPluginFormatManagerSingleton();
 
-	///	The global AudioFormatManagerSingleton instance.
-	static AudioPluginFormatManagerSingleton singletonInstance;
-	///	The global AudioFormatManager instance.
-	AudioPluginFormatManager *instance;
+    ///	The global AudioFormatManagerSingleton instance.
+    static AudioPluginFormatManagerSingleton singletonInstance;
+    ///	The global AudioFormatManager instance.
+    AudioPluginFormatManager* instance;
 };
 
 //------------------------------------------------------------------------------
@@ -54,25 +53,24 @@ class AudioPluginFormatManagerSingleton
 class AudioFormatManagerSingleton
 {
   public:
-	///	Returns the sole instance of ApplicationProperties.
-	static AudioFormatManager& getInstance();
-	///	Kills the ApplicationProperties instance.
-	/*!
-		****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
-	 */
-	static void killInstance();
-
+    ///	Returns the sole instance of ApplicationProperties.
+    static AudioFormatManager& getInstance();
+    ///	Kills the ApplicationProperties instance.
+    /*!
+     ****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
+     */
+    static void killInstance();
 
   private:
-	///	Constructor.
-	AudioFormatManagerSingleton();
-	///	Destructor.
-	~AudioFormatManagerSingleton();
+    ///	Constructor.
+    AudioFormatManagerSingleton();
+    ///	Destructor.
+    ~AudioFormatManagerSingleton();
 
-	///	The global AudioFormatManagerSingleton instance.
-	static AudioFormatManagerSingleton singletonInstance;
-	///	The global AudioFormatManager instance.
-	AudioFormatManager *instance;
+    ///	The global AudioFormatManagerSingleton instance.
+    static AudioFormatManagerSingleton singletonInstance;
+    ///	The global AudioFormatManager instance.
+    AudioFormatManager* instance;
 };
 
 //------------------------------------------------------------------------------
@@ -80,25 +78,39 @@ class AudioFormatManagerSingleton
 class AudioThumbnailCacheSingleton
 {
   public:
-	///	Returns the sole instance of ApplicationProperties.
-	static AudioThumbnailCache& getInstance();
-	///	Kills the ApplicationProperties instance.
-	/*!
-		****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
-	 */
-	static void killInstance();
-
+    ///	Returns the sole instance of ApplicationProperties.
+    static AudioThumbnailCache& getInstance();
+    ///	Kills the ApplicationProperties instance.
+    /*!
+     ****ONLY CALL THIS ONCE, WHEN YOU'RE CLOSING THE PROGRAM.****
+     */
+    static void killInstance();
 
   private:
-	///	Constructor.
-	AudioThumbnailCacheSingleton();
-	///	Destructor.
-	~AudioThumbnailCacheSingleton();
+    ///	Constructor.
+    AudioThumbnailCacheSingleton();
+    ///	Destructor.
+    ~AudioThumbnailCacheSingleton();
 
-	///	The global AudioThumbnailCacheSingleton instance.
-	static AudioThumbnailCacheSingleton singletonInstance;
-	///	The global AudioThumbnailCacheManager instance.
-	AudioThumbnailCache *instance;
+    ///	The global AudioThumbnailCacheSingleton instance.
+    static AudioThumbnailCacheSingleton singletonInstance;
+    ///	The global AudioThumbnailCacheManager instance.
+    AudioThumbnailCache* instance;
+};
+
+//------------------------------------------------------------------------------
+/// Singleton accessor for KnownPluginList (set by MainPanel on startup).
+/// Uses set/get pattern since MainPanel owns the actual KnownPluginList.
+class KnownPluginListSingleton
+{
+  public:
+    /// Sets the global KnownPluginList reference (call from MainPanel constructor)
+    static void setInstance(KnownPluginList* list) { instance = list; }
+    /// Returns the KnownPluginList, or nullptr if not yet set
+    static KnownPluginList* getInstance() { return instance; }
+
+  private:
+    static KnownPluginList* instance;
 };
 
 #endif

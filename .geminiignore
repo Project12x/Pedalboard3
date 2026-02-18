@@ -1,0 +1,16 @@
+# Exclude JUCE framework internals from language server indexing
+JUCE/extras/
+JUCE/modules/*/native/
+JUCE/examples/
+JuceLibraryCode/
+
+# Build artifacts
+build*/
+out/
+release/
+cmake-build-*/
+
+# Dependencies
+_deps/
+third_party/
+external/

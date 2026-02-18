@@ -24,8 +24,9 @@
 #include "c0xHeaders.h"
 
 #include <JuceHeader.h>
-
 #include <map>
+#include <melatonin_blur/melatonin_blur.h>
+
 
 class PresetBar;
 class PluginEditorWindow;
@@ -34,187 +35,220 @@ class PluginPinComponent;
 //------------------------------------------------------------------------------
 ///	Component representing a plugin/filter in the PluginField.
 class PluginComponent : public Component,
-					    public ChangeBroadcaster,
-						public Button::Listener,
-						public Label::Listener
+                        public ChangeBroadcaster,
+                        public Button::Listener,
+                        public Label::Listener,
+                        public Slider::Listener
 {
   public:
-	///	Constructor.
-	PluginComponent(AudioProcessorGraph::Node *n);
-	///	Destructor.
-	~PluginComponent();
+    ///	Constructor.
+    PluginComponent(AudioProcessorGraph::Node* n);
+    ///	Destructor.
+    ~PluginComponent();
 
-	///	Draws the component.
-	void paint(Graphics& g);
+    ///	Draws the component.
+    void paint(Graphics& g);
 
-	///	Used to redraw any connections to this component's pins.
-	void moved();
+    ///	Used to redraw any connections to this component's pins.
+    void moved();
 
-	///	Used to update the bypass button if it needs it.
-	void timerUpdate();
+    ///	Used to update the bypass button if it needs it.
+    void timerUpdate();
 
-	///	Used to move the component about the PluginField.
-	void mouseDown(const MouseEvent& e);
-	///	Used to move the component about the PluginField.
-	void mouseDrag(const MouseEvent& e);
-	///	Used to move the component about the PluginField.
-	void mouseUp(const MouseEvent& e);
+    ///	Used to move the component about the PluginField.
+    void mouseDown(const MouseEvent& e);
+    ///	Used to move the component about the PluginField.
+    void mouseDrag(const MouseEvent& e);
+    ///	Used to move the component about the PluginField.
+    void mouseUp(const MouseEvent& e);
 
-	///	Used to open the plugin's editor/delete the plugin.
-	void buttonClicked(Button *button);
+    ///	Used to open the plugin's editor/delete the plugin.
+    void buttonClicked(Button* button);
 
-	///	Called when the user changes the plugin's name.
-	void labelTextChanged(Label *label);
-	///	Sets the plugin's name.
-	void setUserName(const String& val);
+    ///	Called when the user changes the plugin's name.
+    void labelTextChanged(Label* label);
+    ///	Called when the gain slider is moved.
+    void sliderValueChanged(Slider* slider) override;
+    ///	Sets the plugin's name.
+    void setUserName(const String& val);
 
-	///	Sets the plugin window for this plugin.
-	void setWindow(PluginEditorWindow *val);
-	///	Saves the plugin window's state.
-	void saveWindowState();
+    ///	Sets the plugin window for this plugin.
+    void setWindow(PluginEditorWindow* val);
+    ///	Saves the plugin window's state.
+    void saveWindowState();
 
-	///	Opens the mappings window.
-	void openMappingsWindow();
+    ///	Opens the mappings window.
+    void openMappingsWindow();
+    ///	Opens the plugin's editor.
+    ///	@param forceGeneric If true, opens the generic parameter editor instead of the plugin's custom UI.
+    void openPluginEditor(bool forceGeneric = false);
 
-	///	Returns the node attached to this component.
-	AudioProcessorGraph::Node *getNode() const {return node;};
-	///	Returns the plugin's user name.
-	const String& getUserName() const {return pluginName;};
+    ///	Returns the node attached to this component.
+    AudioProcessorGraph::Node* getNode() const { return node; };
+    ///	Returns the plugin's user name.
+    const String& getUserName() const { return pluginName; };
 
-	///	Used to cache the current program for this plugin.
-	/*!
-		Because of our preset management system, we need to be able to restore
-		presets after the user has loaded one of their own presets. Then when
-		the user switches back to one of the plugin's own presets, we can load
-		it back, rather than being stuck with the preset we just loaded from
-		our user preset dir.
-	 */
-	void cacheCurrentPreset();
-	///	Returns a cached MemoryBlock for the indexed program.
-	/*!
-		\param index The indexed program to restore.
-		\param memBlock The MemoryBlock to write the cached program into. Will
-		be empty if we didn't have the indexed program cached.
+    ///	Used to cache the current program for this plugin.
+    /*!
+        Because of our preset management system, we need to be able to restore
+        presets after the user has loaded one of their own presets. Then when
+        the user switches back to one of the plugin's own presets, we can load
+        it back, rather than being stuck with the preset we just loaded from
+        our user preset dir.
+     */
+    void cacheCurrentPreset();
+    ///	Returns a cached MemoryBlock for the indexed program.
+    /*!
+        \param index The indexed program to restore.
+        \param memBlock The MemoryBlock to write the cached program into. Will
+        be empty if we didn't have the indexed program cached.
 
-		After retrieving the cached program, it will get deleted from the cache.
-	 */
-	void getCachedPreset(int index, MemoryBlock& memBlock);
+        After retrieving the cached program, it will get deleted from the cache.
+     */
+    void getCachedPreset(int index, MemoryBlock& memBlock);
 
-	///	Returns the position for the indexed input pin.
-	PluginPinComponent *getInputPin(int index) {return inputPins[index];};
-	///	Returns the position for the indexed output pin.
-	PluginPinComponent *getOutputPin(int index) {return outputPins[index];};
-	///	Returns the position for the indexed parameter pin.
-	PluginPinComponent *getParamPin(int index) {return paramPins[index];};
+    ///	Returns the position for the indexed input pin.
+    PluginPinComponent* getInputPin(int index) { return inputPins[index]; };
+    ///	Returns the position for the indexed output pin.
+    PluginPinComponent* getOutputPin(int index) { return outputPins[index]; };
+    ///	Returns the position for the indexed parameter pin.
+    PluginPinComponent* getParamPin(int index) { return paramPins[index]; };
 
-	///	Returns the number of input pins.
-	int getNumInputPins() const {return inputPins.size();};
-	///	Returns the number of output pins.
-	int getNumOutputPins() const {return outputPins.size();};
-	///	Returns the number of param pins.
-	int getNumParamPins() const {return paramPins.size();};
+    ///	Returns the number of input pins.
+    int getNumInputPins() const { return inputPins.size(); };
+    ///	Returns the number of output pins.
+    int getNumOutputPins() const { return outputPins.size(); };
+    ///	Returns the number of param pins.
+    int getNumParamPins() const { return paramPins.size(); };
 
+    /// Refreshes pins when channel configuration changes (e.g., audio device change)
+    void refreshPins();
+
+    /// Returns true if this is an Audio Input or Audio Output node
+    bool isAudioIONode() const;
 
   private:
-	///	Helper method to determine what size the component should be.
-	/*!
-		This is determined by the length of the component's name, and the length
-		of its input and output channel names.
-	 */
-	void determineSize(bool onlyUpdateWidth = false);
-	///	Helper method to create the necessary pins for the plugin.
-	void createPins();
+    ///	Helper method to determine what size the component should be.
+    /*!
+        This is determined by the length of the component's name, and the length
+        of its input and output channel names.
+     */
+    void determineSize(bool onlyUpdateWidth = false);
+    ///	Helper method to create the necessary pins for the plugin.
+    void createPins();
 
-	///	The title label.
-	Label *titleLabel;
-	///	Button to open the plugin's editor.
-	TextButton *editButton;
-	///	Button to open the plugin's mappings editor.
-	TextButton *mappingsButton;
-	///	Button to bypass the plugin
-	DrawableButton *bypassButton;
-	///	Button to delete the plugin.
-	DrawableButton *deleteButton;
+    ///	The title label.
+    Label* titleLabel;
+    ///	Button to open the plugin's editor.
+    TextButton* editButton;
+    ///	Button to open the plugin's mappings editor.
+    TextButton* mappingsButton;
+    ///	Button to bypass the plugin
+    DrawableButton* bypassButton;
+    ///	Button to delete the plugin.
+    DrawableButton* deleteButton;
 
-	///	The plugin this component represents.
-	//AudioProcessor *plugin;
-	AudioProcessorGraph::Node *node;
-	///	Window for the plugin.
-	PluginEditorWindow *pluginWindow;
+    ///	The plugin this component represents.
+    // AudioProcessor *plugin;
+    AudioProcessorGraph::Node* node;
+    ///	Window for the plugin.
+    PluginEditorWindow* pluginWindow;
 
-	///	The name of the plugin.
-	String pluginName;
+    ///	The name of the plugin.
+    String pluginName;
 
-	///	Used to draw the name of the plugin.
-	GlyphArrangement nameText;
-	///	Used to draw the names of the input channels.
-	OwnedArray<GlyphArrangement> inputText;
-	///	Used to draw the names of the output channels.
-	OwnedArray<GlyphArrangement> outputText;
+    ///	Used to draw the name of the plugin.
+    GlyphArrangement nameText;
+    ///	Used to draw the names of the input channels.
+    OwnedArray<GlyphArrangement> inputText;
+    ///	Used to draw the names of the output channels.
+    OwnedArray<GlyphArrangement> outputText;
+    ///	Channel names for color-coded rendering.
+    StringArray inputNames;
+    StringArray outputNames;
 
-	///	Keeps track of the positions of the input pins.
-	Array<PluginPinComponent *> inputPins;
-	///	Keeps track of the positions of the output pins.
-	Array<PluginPinComponent *> outputPins;
-	///	Keeps track of the positions of the parameter/midi pins.
-	Array<PluginPinComponent *> paramPins;
+    ///	Keeps track of the positions of the input pins.
+    Array<PluginPinComponent*> inputPins;
+    ///	Keeps track of the positions of the output pins.
+    Array<PluginPinComponent*> outputPins;
+    ///	Keeps track of the positions of the parameter/midi pins.
+    Array<PluginPinComponent*> paramPins;
 
-	///	Used to move the component about the plugin field.
-	bool beingDragged;
-	///	Used to move the component about the plugin field.
-	int dragX;
-	///	Used to move the component about the plugin field.
-	int dragY;
+    ///	Used to move the component about the plugin field.
+    bool beingDragged;
+    ///	Used to move the component about the plugin field.
+    int dragX;
+    ///	Used to move the component about the plugin field.
+    int dragY;
 
-	///	Any cached presets we have.
-	std::map<int, shared_ptr<MemoryBlock> > cachedPresets;
+    ///	Any cached presets we have.
+    std::map<int, shared_ptr<MemoryBlock>> cachedPresets;
+
+    /// Cached meter levels for Audio I/O nodes (VU ballistic, linear)
+    float cachedMeterLevels[16]{};
+    /// Cached peak levels for peak hold indicator (instantaneous peak, linear)
+    float cachedPeakLevels[16]{};
+    /// Number of channels for cached meter levels
+    int cachedMeterChannelCount{0};
+    /// Peak hold levels for VU meters (normalized 0.0-1.0)
+    float peakHoldLevels[16]{};
+    /// Peak hold countdown timers (frames remaining before decay)
+    int peakHoldCounters[16]{};
+
+    /// Per-channel gain sliders for Audio I/O nodes
+    OwnedArray<Slider> channelGainSliders;
+
+    /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
+    melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};
 };
 
 //------------------------------------------------------------------------------
 ///	Component representing an input or output pin for a plugin.
-class PluginPinComponent : public Component
+class PluginPinComponent : public Component, public SettableTooltipClient
 {
   public:
-	///	Constructor.
-	/*!
-		\param dir Whether this is an input (false) or output (true) pin.
-		\param id The uid of the plugin this pin is for.
-		\param chan The input/output channel of the plugin this pin represents.
-		\param param Whether this is an audio or parameter(/midi) pin.
-	 */
-	PluginPinComponent(bool dir, uint32 id, int chan, bool param);
-	///	Destructor.
-	~PluginPinComponent();
+    ///	Constructor.
+    /*!
+        \param dir Whether this is an input (false) or output (true) pin.
+        \param id The uid of the plugin this pin is for.
+        \param chan The input/output channel of the plugin this pin represents.
+        \param param Whether this is an audio or parameter(/midi) pin.
+        \param largePin If true, renders as a larger pin (for Audio I/O nodes).
+     */
+    PluginPinComponent(bool dir, uint32 id, int chan, bool param, bool largePin = false);
+    ///	Destructor.
+    ~PluginPinComponent();
 
-	///	Draws the pin.
-	void paint(Graphics& g);
+    ///	Draws the pin.
+    void paint(Graphics& g);
 
-	///	Used to create a connection to another pin.
-	void mouseDown(const MouseEvent& e);
-	///	Used to drag a connection to another pin.
-	void mouseDrag(const MouseEvent& e);
-	///	Used to make a connection or delete the connection.
-	void mouseUp(const MouseEvent& e);
+    ///	Used to create a connection to another pin.
+    void mouseDown(const MouseEvent& e);
+    ///	Used to drag a connection to another pin.
+    void mouseDrag(const MouseEvent& e);
+    ///	Used to make a connection or delete the connection.
+    void mouseUp(const MouseEvent& e);
 
-	///	Returns this pin's direction.
-	bool getDirection() const {return direction;};
-	///	Returns this pin's plugin's uid.
-	uint32 getUid() const {return uid;};
-	///	Returns which channel this pin represents on the associated plugin.
-	int getChannel() const {return channel;};
-	///	Returns whether this is an audio or parameter(/midi) pin.
-	bool getParameterPin() const {return parameterPin;};
-
+    ///	Returns this pin's direction.
+    bool getDirection() const { return direction; };
+    ///	Returns this pin's plugin's uid.
+    uint32 getUid() const { return uid; };
+    ///	Returns which channel this pin represents on the associated plugin.
+    int getChannel() const { return channel; };
+    ///	Returns whether this is an audio or parameter(/midi) pin.
+    bool getParameterPin() const { return parameterPin; };
 
   private:
-	///	Whether it's an input or an output pin.
-	bool direction;
-	///	Id of the plugin this pin is for.
-	uint32 uid;
-	///	Which channel of the plugin this pin represents.
-	int channel;
-	///	Whether this is an audio or parameter(/midi) pin.
-	bool parameterPin;
+    ///	Whether it's an input or an output pin.
+    bool direction;
+    ///	Id of the plugin this pin is for.
+    uint32 uid;
+    ///	Which channel of the plugin this pin represents.
+    int channel;
+    ///	Whether this is an audio or parameter(/midi) pin.
+    bool parameterPin;
+    /// Whether this is a large pin (for Audio I/O nodes).
+    bool largePin;
 };
 
 //------------------------------------------------------------------------------
@@ -222,117 +256,117 @@ class PluginPinComponent : public Component
 class PluginEditorWindow : public DocumentWindow
 {
   public:
-	///	Constructor.
-	PluginEditorWindow(AudioProcessorEditor *editor, PluginComponent *c);
-	///	Destructor.
-	~PluginEditorWindow();
+    ///	Constructor.
+    PluginEditorWindow(AudioProcessorEditor* editor, PluginComponent* c);
+    ///	Destructor.
+    ~PluginEditorWindow();
 
-	///	Used to close the window.
-	void closeButtonPressed();
-
+    ///	Used to close the window.
+    void closeButtonPressed();
 
   private:
-	///	The 'parent' PluginComponent.
-	PluginComponent *component;
+    ///	The 'parent' PluginComponent.
+    PluginComponent* component;
 
-	///	Wrapper Component holding a PresetBar and an AudioProcessorEditor.
-	class EditorWrapper : public Component
-	{
-	  public:
-		///	Constructor.
-		EditorWrapper(AudioProcessorEditor *ed, PluginComponent *comp);
-		///	Destructor.
-		~EditorWrapper();
+    ///	Wrapper Component holding a PresetBar and an AudioProcessorEditor.
+    class EditorWrapper : public Component
+    {
+      public:
+        ///	Constructor.
+        EditorWrapper(AudioProcessorEditor* ed, PluginComponent* comp);
+        ///	Destructor.
+        ~EditorWrapper();
 
-		///	So we can resize our child components.
-		void resized();
+        ///	So we can resize our child components.
+        void resized();
 
-		///	So we know when the editor's bounds have changed.
-		void childBoundsChanged(Component *child);
-	  private:
-		///	Our copy of the preset bar.
-		PresetBar *presetBar;
-		///	Our copy of the editor component.
-		AudioProcessorEditor *editor;
+        ///	So we know when the editor's bounds have changed.
+        void childBoundsChanged(Component* child);
 
-		///	The 'parent' PluginComponent.
-		PluginComponent *component;
-	};
+      private:
+        ///	Our copy of the preset bar.
+        PresetBar* presetBar;
+        ///	Our copy of the editor component.
+        AudioProcessorEditor* editor;
+
+        ///	The 'parent' PluginComponent.
+        PluginComponent* component;
+    };
 };
 
 //------------------------------------------------------------------------------
 ///	Component representing a connection between two plugins.
-class PluginConnection : public Component,
-						 public ChangeListener
+class PluginConnection : public Component, public ChangeListener, public SettableTooltipClient
 {
   public:
-	///	Constructor.
-	/*!
-		\param The source plugin pin.
-		\param The destination plugin pin.
-		\param If true, the user was holding shift when they created this connection;
-		when they release the mouse button, connections should be made for all the
-		outputs following this one in its source, and all the inputs following it in
-		its destination.
-	 */
-	PluginConnection(PluginPinComponent *s, PluginPinComponent *d = 0, bool allOutputs = false);
-	///	Destructor.
-	~PluginConnection();
+    ///	Constructor.
+    /*!
+        \param The source plugin pin.
+        \param The destination plugin pin.
+        \param If true, the user was holding shift when they created this connection;
+        when they release the mouse button, connections should be made for all the
+        outputs following this one in its source, and all the inputs following it in
+        its destination.
+     */
+    PluginConnection(PluginPinComponent* s, PluginPinComponent* d = 0, bool allOutputs = false);
+    ///	Destructor.
+    ~PluginConnection();
 
-	///	Draws the connection.
-	void paint(Graphics& g);
+    ///	Draws the connection.
+    void paint(Graphics& g);
 
-	///	Used to select the connection (e.g. to delete it).
-	void mouseDown(const MouseEvent& e);
-	///	Used to ensure clicks only count when the mouse is over the actual curve.
-	bool hitTest(int x, int y);
+    ///	Used to select the connection (e.g. to delete it).
+    void mouseDown(const MouseEvent& e);
+    ///	Used to ensure clicks only count when the mouse is over the actual curve.
+    bool hitTest(int x, int y);
 
-	///	Updates the component when the source or destination is moved.
-	void changeListenerCallback(ChangeBroadcaster *changedObject);
+    ///	Updates the component when the source or destination is moved.
+    void changeListenerCallback(ChangeBroadcaster* changedObject);
 
-	///	Used to drag the connection to another pin.
-	void drag(int x, int y);
-	///	Sets the destination pin of this connection.
-	void setDestination(PluginPinComponent *d);
-	///	Sets whether this connection is representing all outputs or not.
-	void setRepresentsAllOutputs(bool val);
+    ///	Used to drag the connection to another pin.
+    void drag(int x, int y);
+    ///	Sets the destination pin of this connection.
+    void setDestination(PluginPinComponent* d);
+    ///	Sets whether this connection is representing all outputs or not.
+    void setRepresentsAllOutputs(bool val);
 
-	///	Returns this connection's source pin.
-	const PluginPinComponent *getSource() const {return source;};
-	///	Returns this connection's destination pin.
-	const PluginPinComponent *getDestination() const {return destination;};
+    ///	Returns this connection's source pin.
+    const PluginPinComponent* getSource() const { return source; };
+    ///	Returns this connection's destination pin.
+    const PluginPinComponent* getDestination() const { return destination; };
 
-	///	Returns whether this connection is selected or not.
-	bool getSelected() const {return selected;};
-	///	Returns true if the connection is a parameter(/midi) connection or not.
-	bool getParameterConnection() const {return paramCon;};
-	///	Returns true if the user was holding shift when they created this connection.
-	bool getRepresentsAllOutputs() const {return representsAllOutputs;};
-
+    ///	Returns whether this connection is selected or not.
+    bool getSelected() const { return selected; };
+    ///	Returns true if the connection is a parameter(/midi) connection or not.
+    bool getParameterConnection() const { return paramCon; };
+    ///	Returns true if the user was holding shift when they created this connection.
+    bool getRepresentsAllOutputs() const { return representsAllOutputs; };
 
   private:
-	///	Helper method to help determine the component's size/bezier curve.
-	/*!
-		sX etc. are coordinates relative to the parent component.
-	 */
-	void getPoints(int& sX, int& sY, int& dX, int& dY);
-	///	Helper method to work out (and update) the component's bounds.
-	void updateBounds(int sX, int sY, int dX, int dY);
+    ///	Helper method to help determine the component's size/bezier curve.
+    /*!
+        sX etc. are coordinates relative to the parent component.
+     */
+    void getPoints(int& sX, int& sY, int& dX, int& dY);
+    ///	Helper method to work out (and update) the component's bounds.
+    void updateBounds(int sX, int sY, int dX, int dY);
 
-	///	The source plugin pin.
-	PluginPinComponent *source;
-	///	The destination plugin pin.
-	PluginPinComponent *destination;
+    ///	The source plugin pin.
+    PluginPinComponent* source;
+    ///	The destination plugin pin.
+    PluginPinComponent* destination;
 
-	///	The bezier curve that the connection is drawn as.
-	Path drawnCurve;
+    ///	The bezier curve that the connection is drawn as.
+    Path drawnCurve;
+    ///	The original bezier curve for glow rendering.
+    Path glowPath;
 
-	///	Whether the connection is selected or not.
-	bool selected;
-	///	Whether this connection is a parameter(/midi) connection or not.
-	bool paramCon;
-	///	Whether this connection is intended to represent all outputs on its source component or not.
-	bool representsAllOutputs;
+    ///	Whether the connection is selected or not.
+    bool selected;
+    ///	Whether this connection is a parameter(/midi) connection or not.
+    bool paramCon;
+    ///	Whether this connection is intended to represent all outputs on its source component or not.
+    bool representsAllOutputs;
 };
 
 #endif

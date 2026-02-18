@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Pedalboard3PatchFile>
+  <Patch tempo="120.0" name="1 - &lt;untitled&gt;">
+    <FILTERGRAPH>
+      <FILTER uid="1" x="140.0" y="80.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="Audio Input" descriptiveName="" format="Internal" category="I/O devices"
+                manufacturer="JUCE" version="1.0" file="" uniqueId="246006c0"
+                isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0"
+                numOutputs="2" isShell="0" hasARAExtension="0" uid="246006c0"/>
+        <STATE>0.</STATE>
+      </FILTER>
+      <FILTER uid="2" x="140.0" y="340.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="MIDI Input" descriptiveName="" format="Internal" category="I/O devices"
+                manufacturer="JUCE" version="1.0" file="" uniqueId="a9e4f9eb"
+                isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0"
+                numOutputs="0" isShell="0" hasARAExtension="0" uid="a9e4f9eb"/>
+        <STATE>0.</STATE>
+      </FILTER>
+      <FILTER uid="3" x="140.0" y="240.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="Virtual MIDI Input" descriptiveName="Virtual MIDI Keyboard Input"
+                format="Internal" category="MIDI Utility" manufacturer="Pedalboard3"
+                version="1.0" file="VirtualMidiInput" uniqueId="0" isInstrument="0"
+                fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="0"
+                isShell="0" hasARAExtension="0" uid="0"/>
+        <STATE>67.VMjLgnC....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVklbzUWXr0TZjkVRtAWcz8hO..</STATE>
+      </FILTER>
+      <FILTER uid="4" x="860.0" y="180.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="Audio Output" descriptiveName="" format="Internal" category="I/O devices"
+                manufacturer="JUCE" version="1.0" file="" uniqueId="724248cb"
+                isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2"
+                numOutputs="0" isShell="0" hasARAExtension="0" uid="724248cb"/>
+        <STATE>0.</STATE>
+      </FILTER>
+      <FILTER uid="16777216" x="140.0" y="440.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="OSC Input" descriptiveName="Dummy AudioProcessor so we can see at a glance which plugins have OSC mappings."
+                format="Internal" category="Internal" manufacturer="Niall Moody"
+                version="1.00" file="" uniqueId="8234cb29" isInstrument="0" fileTime="0"
+                infoUpdateTime="0" numInputs="0" numOutputs="0" isShell="0" hasARAExtension="0"
+                uid="0"/>
+        <STATE>0.</STATE>
+      </FILTER>
+      <FILTER uid="16777217" x="50.0" y="350.0" uiLastX="0" uiLastY="0" windowOpen="0"
+              program="0">
+        <PLUGIN name="Midi Interceptor" descriptiveName="Hidden Midi Interceptor plugin for mapping MIDI CCs to parameters."
+                format="Internal" category="Internal" manufacturer="Niall Moody"
+                version="1.00" file="" uniqueId="8d4c17a6" isInstrument="1" fileTime="0"
+                infoUpdateTime="0" numInputs="0" numOutputs="0" isShell="0" hasARAExtension="0"
+                uid="0"/>
+        <STATE>0.</STATE>
+      </FILTER>
+    </FILTERGRAPH>
+    <Mappings/>
+    <UserNames/>
+  </Patch>
+</Pedalboard3PatchFile>

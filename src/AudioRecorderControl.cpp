@@ -87,6 +87,8 @@ AudioRecorderControl::AudioRecorderControl (RecorderProcessor *proc, AudioThumbn
 
 	processor->addChangeListener(this);
 
+	startTimer(50); // Poll for pending audio-thread state changes
+
     //[/UserPreSize]
 
     setSize (300, 100);
@@ -100,6 +102,7 @@ AudioRecorderControl::~AudioRecorderControl()
 {
     //[Destructor_pre]. You can add your own custom destruction code here..
 
+	stopTimer();
 	processor->removeChangeListener(this);
 
     //[/Destructor_pre]
@@ -200,6 +203,12 @@ void AudioRecorderControl::changeListenerCallback(ChangeBroadcaster *source)
 
 		filename->setCurrentFile(processor->getFile(), true, dontSendNotification);
 	}
+}
+
+//------------------------------------------------------------------------------
+void AudioRecorderControl::timerCallback()
+{
+	processor->processPendingChanges();
 }
 
 //------------------------------------------------------------------------------

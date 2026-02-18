@@ -266,6 +266,10 @@ void LooperControl::timerCallback()
 {
     if (playing)
         fileDisplay->setReadPointer((float)processor->getReadPosition());
+
+    // Poll audio-thread state changes and forward to message-thread listeners
+    if (processor->checkAndClearStateChanged())
+        processor->sendChangeMessage();
 }
 
 //------------------------------------------------------------------------------
@@ -278,6 +282,12 @@ void LooperControl::changeListenerCallback(ChangeBroadcaster* source)
     }
     else if (source == processor)
     {
+        if (processor->getAndClearMemoryError())
+        {
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Looper Error",
+                                             "Not enough memory to continue. Recording stopped.");
+        }
+
         if (processor->getNewFileLoaded())
             fileDisplay->setFile(processor->getFile());
 
