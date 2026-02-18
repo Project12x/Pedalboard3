@@ -142,6 +142,40 @@ void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPe
 }
 
 //------------------------------------------------------------------------------
+void BypassableInstance::resyncChannelCount()
+{
+    int numInputs = plugin->getTotalNumInputChannels();
+    int numOutputs = plugin->getTotalNumOutputChannels();
+    int numChannels = jmax(numInputs, numOutputs);
+
+    if (numChannels <= 0)
+        numChannels = 2;
+
+    int currentTempChannels = tempBuffer.getNumChannels();
+
+    spdlog::info("[BypassableInstance::resyncChannelCount] '{}' in={} out={} maxCh={} tempBufCh={}",
+                 plugin->getName().toStdString(), numInputs, numOutputs, numChannels, currentTempChannels);
+
+    if (numChannels != currentTempChannels)
+    {
+        // Resize tempBuffer to match new channel count.
+        // Keep the same sample count (it was 2x blockSize from prepareToPlay).
+        int numSamples = tempBuffer.getNumSamples();
+        if (numSamples <= 0)
+            numSamples = 1024; // fallback
+
+        tempBuffer.setSize(numChannels, numSamples, false, true, true);
+
+        spdlog::info("[BypassableInstance::resyncChannelCount] Resized tempBuffer to {}ch x {} samples", numChannels,
+                     numSamples);
+    }
+
+    // Update the wrapper's own declared channel count so the graph
+    // allocates the right buffer size for this node.
+    setPlayConfigDetails(numInputs, numOutputs, getSampleRate(), getBlockSize());
+}
+
+//------------------------------------------------------------------------------
 void BypassableInstance::releaseResources()
 {
     plugin->releaseResources();

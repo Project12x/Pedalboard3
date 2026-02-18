@@ -426,8 +426,8 @@ void PluginComponent::paint(Graphics& g)
                 if (normalizedLevel > 0.9f)
                 {
                     float glowAlpha = jlimit(0.0f, 1.0f, (normalizedLevel - 0.9f) * 3.0f);
-                    Colour glowColour = (level >= 1.0f) ? Colours::red.withAlpha(glowAlpha)
-                                                        : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                    Colour glowColour = (level >= 1.0f) ? colours["Danger Colour"].withAlpha(glowAlpha)
+                                                        : colours["Warning Colour"].withAlpha(glowAlpha * 0.7f);
                     Path meterBar;
                     meterBar.addRoundedRectangle(mx, my, barWidth, meterHeight, 2.0f);
                     melatonin::DropShadow meterGlow{glowColour, 6, {0, 0}};
@@ -1237,6 +1237,39 @@ bool PluginComponent::isAudioIONode() const
 //------------------------------------------------------------------------------
 void PluginComponent::refreshPins()
 {
+    // Before deleting old pins, remove any PluginConnection cables that reference
+    // them. Otherwise the cable objects hold dangling pointers and crash when
+    // accessed (e.g. toggling mono/stereo on a mixer strip with cables attached).
+    uint32 myNodeId = node->nodeID.uid;
+    if (auto* parentCanvas = getParentComponent())
+    {
+        // Get the FilterGraph for removing graph-level connections
+        FilterGraph* filterGraph = nullptr;
+        if (auto* field = dynamic_cast<PluginField*>(parentCanvas))
+            filterGraph = field->getFilterGraph();
+
+        for (int i = parentCanvas->getNumChildComponents() - 1; i >= 0; --i)
+        {
+            if (auto* conn = dynamic_cast<PluginConnection*>(parentCanvas->getChildComponent(i)))
+            {
+                const auto* src = conn->getSource();
+                const auto* dst = conn->getDestination();
+                bool touchesMe = (src && src->getUid() == myNodeId) || (dst && dst->getUid() == myNodeId);
+                if (touchesMe)
+                {
+                    // Remove graph connection (safe even if already removed)
+                    if (src && dst && filterGraph)
+                    {
+                        filterGraph->removeConnection(AudioProcessorGraph::NodeID(src->getUid()), src->getChannel(),
+                                                      AudioProcessorGraph::NodeID(dst->getUid()), dst->getChannel());
+                    }
+                    parentCanvas->removeChildComponent(conn);
+                    delete conn;
+                }
+            }
+        }
+    }
+
     // Remove and delete all existing pins
     for (auto* pin : inputPins)
     {
@@ -1266,6 +1299,16 @@ void PluginComponent::refreshPins()
     // Recalculate size and recreate pins
     determineSize();
     createPins();
+
+    // Resync the BypassableInstance wrapper's channel count when a
+    // PedalboardProcessor (DawMixer/DawSplitter) dynamically changes its
+    // channel configuration. Without this, the wrapper's tempBuffer and the
+    // graph's buffer allocation stay at the old channel count.
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))
+    {
+        if (dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
+            bypassable->resyncChannelCount();
+    }
 
     // Reposition bottom buttons after size change (prevents clipping by growing controls)
     if (editButton)

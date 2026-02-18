@@ -22,8 +22,8 @@
 #define BYPASSABLEINSTANCE_H_
 
 #include <JuceHeader.h>
-
 #include <atomic>
+
 
 ///	Wrapper class to provide a bypass to AudioPluginInstance.
 class BypassableInstance : public AudioPluginInstance
@@ -114,6 +114,12 @@ class BypassableInstance : public AudioPluginInstance
     }
     bool getCachedAcceptsMidi() const { return cachedAcceptsMidi; }
     bool getCachedProducesMidi() const { return cachedProducesMidi; }
+
+    /// Resync wrapper's channel count and tempBuffer after the inner plugin
+    /// dynamically changed its channel configuration (e.g. DawMixer adding strips).
+    /// Must be called from the message thread. Updates setPlayConfigDetails on
+    /// the wrapper and resizes tempBuffer so processBlock sees the new channels.
+    void resyncChannelCount();
 
     /// Delegate bus layout support to the inner plugin.
     /// The default AudioProcessor::isBusesLayoutSupported only accepts 1-2 channel

@@ -3,9 +3,11 @@
 
 #include "DawMixerProcessor.h"
 
+#include "ColourScheme.h"
 #include "PluginComponent.h"
 
 #include <functional>
+#include <spdlog/spdlog.h>
 
 //==============================================================================
 // DawMixerProcessor
@@ -136,7 +138,7 @@ void DawMixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*m
 {
     const int numSamples = buffer.getNumSamples();
     const int ns = numStrips_.load(std::memory_order_acquire);
-    const int totalInputChannels = buffer.getNumChannels(); // clamp to actual buffer, not declared
+    const int totalInputChannels = buffer.getNumChannels();
 
     if (ns == 0 || numSamples == 0)
     {
@@ -336,9 +338,9 @@ static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, f
         int fillW = static_cast<int>(norm * bar.getWidth());
         auto filled = bar.withWidth(fillW);
         if (dbVal > 0.0f)
-            g.setColour(Colours::red);
+            g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         else if (dbVal > -6.0f)
-            g.setColour(Colours::orange);
+            g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
             g.setColour(Colour(0xFF00CC00));
         else
@@ -395,7 +397,7 @@ class DawStripRow : public Component
 
         muteBtn.setButtonText("M");
         muteBtn.setClickingTogglesState(true);
-        muteBtn.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteBtn.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
         muteBtn.onClick = [this]()
         {
             if (auto* s = processor->getStrip(index))
@@ -420,8 +422,12 @@ class DawStripRow : public Component
         fader.setSkewFactorFromMidPoint(-12.0);
         fader.onValueChange = [this]()
         {
-            if (auto* s = processor->getStrip(index))
+            auto* s = processor->getStrip(index);
+            if (s)
                 s->gainDb.store(static_cast<float>(fader.getValue()), std::memory_order_relaxed);
+            else
+                spdlog::warn("[DawMixer] fader change: index={} getStrip RETURNED NULL! numStrips={}", index,
+                             processor->getNumStrips());
         };
         addAndMakeVisible(fader);
 
@@ -486,11 +492,20 @@ class DawStripRow : public Component
         g.setColour(Colour(0xFF404040));
         g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
 
-        if (auto* s = processor->getStrip(index))
+        auto* s = processor->getStrip(index);
+        if (!s)
         {
-            // If stereo, show split VU? For now, we only have mono peakL/peakR logic in sync,
-            // but the processor computes both.
-            // Let's check if the strip is stereo to decide how to paint VU.
+            // DEBUG: log once per strip
+            static bool logged[32] = {};
+            if (index < 32 && !logged[index])
+            {
+                spdlog::warn("[DawMixer] paint: getStrip({}) returned NULL! numStrips={}", index,
+                             processor->getNumStrips());
+                logged[index] = true;
+            }
+        }
+        else
+        {
             bool isStereo = s->stereo.load(std::memory_order_relaxed);
             float peakL = s->peakL.load(std::memory_order_relaxed);
 
@@ -519,9 +534,9 @@ class DawStripRow : public Component
         int fillW = static_cast<int>(norm * bar.getWidth());
         auto filled = bar.withWidth(fillW);
         if (dbVal > 0.0f)
-            g.setColour(Colours::red);
+            g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         else if (dbVal > -6.0f)
-            g.setColour(Colours::orange);
+            g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
             g.setColour(Colour(0xFF00CC00));
         else
@@ -549,7 +564,7 @@ class DawMasterRow : public Component
     {
         muteBtn.setButtonText("M");
         muteBtn.setClickingTogglesState(true);
-        muteBtn.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteBtn.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
         muteBtn.onClick = [this]()
         { processor->masterMute.store(muteBtn.getToggleState(), std::memory_order_relaxed); };
         addAndMakeVisible(muteBtn);
