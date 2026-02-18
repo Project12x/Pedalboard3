@@ -1,6 +1,6 @@
 # UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
 
-**Last updated:** 2026-02-13  
+**Last updated:** 2026-02-18  
 **Status:** Active  
 **Supersedes:** `UI_POLISH_TASK_BOARD.md`, `UI_POLISH_2_WEEK_HANDOFF.md`
 
@@ -216,8 +216,9 @@ These are unresolved UI polish items migrated from `ROADMAP.md` Phase `6A`, refr
 ### E4. High-Fidelity Visual Assets
 - **Priority:** P2
 - **Legacy source:** `6A.4`, `6A.9`, `6A.17`
+- **Note:** blend2d was evaluated and dropped — JUCE 8 Direct2D on Windows makes a CPU-based vector engine redundant. SVG icons via `Drawable::createFromSVG()` + `BinaryData` provide crisp rendering at any zoom with zero new dependencies.
 - **Deliverables:**
-  - evaluate and optionally adopt vector rendering upgrades where quality benefit is measurable
+  - SVG icon system using JUCE Drawable + BinaryData for all toolbar/node icons
   - plugin thumbnail strategy with restrained, non-cluttered presentation
   - CPU meter redesign aligned with premium shell hierarchy
 - **Acceptance:** visual upgrades improve perceived quality without harming clarity or performance.
@@ -273,6 +274,23 @@ Completed work:
 - `SafetyLimiterProcessor` extended with input level metering
 
 **Commits:** `72ca2e8`, `9ee5629`
+
+### 2026-02-18 — DAW Mixer/Splitter + Thread Safety Hardening
+
+**Tracks affected:** B2
+
+Completed work:
+
+- **DAW Mixer plugin** — N-strip mixer with per-strip gain/pan/mute/solo/phase, stereo/mono toggle, SmoothedValue gain ramps, VU metering per channel
+- **DAW Splitter plugin** — 1-to-N splitter with matching per-strip controls
+- **Pin-to-strip alignment** via PinLayout virtual on PedalboardProcessor
+- **MIDI pin placement** fixed to bottom-left for PedalboardProcessors
+- **Button clipping fix** — e/b/m buttons reposition on strip add/remove
+- **Tech debt pass** — duplicate mute.store bug, comment cleanup, loop hoist, thread safety audit
+- **Thread/lifetime safety hardening** across 5 subsystems: CrashProtection, MainPanel OSC, Tone3000DownloadManager, Tone3000Auth, SafePluginScanner
+- **blend2d dropped** from roadmap — JUCE 8 Direct2D makes it redundant; SVG via Drawable replaces it
+
+**Commits:** `2c8e61a`, `1fddbdf`, `f856a2a`, `14b8c86`
 
 ---
 
