@@ -145,7 +145,7 @@ A focused roadmap for current development. For historical completed phases, see 
 > Active execution plan: `UI_POLISH_ROADMAP_UPGRADE.md` (`UI_POLISH_TASK_BOARD.md` and `UI_POLISH_2_WEEK_HANDOFF.md` are deprecated).
 | # | Task | Status |
 |---|------|--------|
-| 6A.4 | blend2d vectors | Planned |
+| 6A.4 | SVG icon system (JUCE Drawable, BinaryData) | Planned |
 | 6A.5 | Smooth animations | Planned |
 | 6A.7 | Hover tooltips | Planned |
 | 6A.8 | Connection highlighting | Planned |
