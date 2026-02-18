@@ -15,6 +15,7 @@
 #include <deque>
 #include <mutex>
 #include <atomic>
+#include <optional>
 
 //==============================================================================
 /**
@@ -77,8 +78,8 @@ public:
     /// Get current download queue
     std::vector<Tone3000::DownloadTask> getQueue() const;
 
-    /// Get download task by ID (returns nullptr if not found)
-    const Tone3000::DownloadTask* getTask(const juce::String& toneId) const;
+    /// Get download task by ID (returns empty if not found)
+    std::optional<Tone3000::DownloadTask> getTask(const juce::String& toneId) const;
 
     /// Check if a tone is currently downloading or queued
     bool isDownloading(const juce::String& toneId) const;
@@ -141,6 +142,7 @@ private:
     mutable std::mutex queueMutex;
 
     std::atomic<bool> shouldStop{false};
+    std::atomic<bool> cancelCurrentDownload{false};
     juce::String currentlyDownloading;
 
     juce::File cacheDirectory;

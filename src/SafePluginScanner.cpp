@@ -117,10 +117,23 @@ bool SafePluginScanner::scanNextFile(bool dontRescanIfAlreadyInList, juce::Strin
     else
     {
         // Fall back to in-process scanning with timeout protection
-        bool success = false;
+        struct ScanAttemptState
+        {
+            std::atomic<bool> success{false};
+            juce::String scannedName;
+        };
+
+        auto state = std::make_shared<ScanAttemptState>();
+        auto* scanner = baseScanner.get();
+        const bool dontRescan = dontRescanIfAlreadyInList;
 
         auto result = CrashProtection::getInstance().executeWithProtectionAndTimeout(
-            [&]() { success = baseScanner->scanNextFile(dontRescanIfAlreadyInList, nameOfPluginBeingScanned); },
+            [state, scanner, dontRescan]() {
+                juce::String scannedName;
+                const bool ok = scanner->scanNextFile(dontRescan, scannedName);
+                state->success.store(ok, std::memory_order_release);
+                state->scannedName = scannedName;
+            },
             "Plugin Scan: " + nameOfPluginBeingScanned, scanTimeoutMs, nextFile);
 
         if (result == TimedOperationResult::Timeout)
@@ -135,7 +148,8 @@ bool SafePluginScanner::scanNextFile(bool dontRescanIfAlreadyInList, juce::Strin
             return !baseScanner->getNextPluginFileThatWillBeScanned().isEmpty();
         }
 
-        return success;
+        nameOfPluginBeingScanned = state->scannedName;
+        return state->success.load(std::memory_order_acquire);
     }
 }
 

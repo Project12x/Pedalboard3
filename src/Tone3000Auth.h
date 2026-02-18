@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include <mutex>
 
 //==============================================================================
 /**
@@ -70,6 +71,9 @@ private:
     /// Exchange authorization code for tokens
     bool exchangeCodeForTokens(const juce::String& code);
 
+    /// Dispatch completion callback exactly once.
+    void dispatchCompletion(bool success, const juce::String& errorMessage);
+
     /// Send HTTP response back to browser
     void sendResponse(juce::StreamingSocket& client, int statusCode,
                       const juce::String& statusText, const juce::String& body);
@@ -78,6 +82,8 @@ private:
     // Members
 
     std::function<void(bool, juce::String)> completionCallback;
+    std::mutex completionCallbackMutex;
+    std::atomic<bool> completionDispatched{false};
     std::unique_ptr<juce::StreamingSocket> serverSocket;
     std::atomic<bool> shouldStop{false};
     std::atomic<bool> serverReady{false};

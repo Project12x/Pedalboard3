@@ -44,11 +44,17 @@ void Tone3000Auth::startAuthentication(std::function<void(bool, juce::String)> c
     if (isThreadRunning())
     {
         spdlog::warn("[Tone3000Auth] Authentication already in progress");
-        callback(false, "Authentication already in progress");
+        juce::MessageManager::callAsync([callback = std::move(callback)]() mutable {
+            callback(false, "Authentication already in progress");
+        });
         return;
     }
 
-    completionCallback = std::move(callback);
+    {
+        std::lock_guard<std::mutex> lock(completionCallbackMutex);
+        completionCallback = std::move(callback);
+    }
+    completionDispatched.store(false, std::memory_order_release);
     shouldStop = false;
     expectedState = generateState();
 
@@ -78,7 +84,9 @@ void Tone3000Auth::startAuthentication(std::function<void(bool, juce::String)> c
     if (!serverReady)
     {
         spdlog::error("[Tone3000Auth] Server failed to start in time");
-        callback(false, "Failed to start authentication server");
+        shouldStop = true;
+        stopThread(5000);
+        dispatchCompletion(false, "Failed to start authentication server");
         return;
     }
 
@@ -99,6 +107,24 @@ void Tone3000Auth::cancelAuthentication()
     spdlog::info("[Tone3000Auth] Authentication cancelled");
 }
 
+void Tone3000Auth::dispatchCompletion(bool success, const juce::String& errorMessage)
+{
+    if (completionDispatched.exchange(true, std::memory_order_acq_rel))
+        return;
+
+    std::function<void(bool, juce::String)> callbackCopy;
+    {
+        std::lock_guard<std::mutex> lock(completionCallbackMutex);
+        callbackCopy = completionCallback;
+    }
+
+    if (!callbackCopy)
+        return;
+
+    juce::MessageManager::callAsync(
+        [callback = std::move(callbackCopy), success, errorMessage]() mutable { callback(success, errorMessage); });
+}
+
 void Tone3000Auth::run()
 {
     spdlog::info("[Tone3000Auth] Starting callback server on port {}", callbackPort);
@@ -110,10 +136,7 @@ void Tone3000Auth::run()
     {
         spdlog::error("[Tone3000Auth] WSAStartup failed");
         serverReady = false;
-        juce::MessageManager::callAsync([this]() {
-            if (completionCallback)
-                completionCallback(false, "Failed to initialize network.");
-        });
+        dispatchCompletion(false, "Failed to initialize network.");
         return;
     }
 
@@ -123,10 +146,7 @@ void Tone3000Auth::run()
         spdlog::error("[Tone3000Auth] Failed to create socket: {}", WSAGetLastError());
         WSACleanup();
         serverReady = false;
-        juce::MessageManager::callAsync([this]() {
-            if (completionCallback)
-                completionCallback(false, "Failed to create socket.");
-        });
+        dispatchCompletion(false, "Failed to create socket.");
         return;
     }
 
@@ -145,10 +165,7 @@ void Tone3000Auth::run()
         closesocket(listenSocket);
         WSACleanup();
         serverReady = false;
-        juce::MessageManager::callAsync([this]() {
-            if (completionCallback)
-                completionCallback(false, "Failed to bind to port. It may be in use.");
-        });
+        dispatchCompletion(false, "Failed to bind to port. It may be in use.");
         return;
     }
 
@@ -158,10 +175,7 @@ void Tone3000Auth::run()
         closesocket(listenSocket);
         WSACleanup();
         serverReady = false;
-        juce::MessageManager::callAsync([this]() {
-            if (completionCallback)
-                completionCallback(false, "Failed to start listening.");
-        });
+        dispatchCompletion(false, "Failed to start listening.");
         return;
     }
 
@@ -184,10 +198,7 @@ void Tone3000Auth::run()
             spdlog::warn("[Tone3000Auth] Timed out waiting for callback");
             closesocket(listenSocket);
             WSACleanup();
-            juce::MessageManager::callAsync([this]() {
-                if (completionCallback)
-                    completionCallback(false, "Authentication timed out. Please try again.");
-            });
+            dispatchCompletion(false, "Authentication timed out. Please try again.");
             return;
         }
 
@@ -251,10 +262,7 @@ void Tone3000Auth::run()
                             closesocket(clientSocket);
                             closesocket(listenSocket);
                             WSACleanup();
-                            juce::MessageManager::callAsync([this]() {
-                                if (completionCallback)
-                                    completionCallback(false, "Security verification failed");
-                            });
+                            dispatchCompletion(false, "Security verification failed");
                             return;
                         }
 
@@ -271,10 +279,7 @@ void Tone3000Auth::run()
                             closesocket(clientSocket);
                             closesocket(listenSocket);
                             WSACleanup();
-                            juce::MessageManager::callAsync([this]() {
-                                if (completionCallback)
-                                    completionCallback(true, "");
-                            });
+                            dispatchCompletion(true, "");
                         }
                         else
                         {
@@ -284,10 +289,7 @@ void Tone3000Auth::run()
                             closesocket(clientSocket);
                             closesocket(listenSocket);
                             WSACleanup();
-                            juce::MessageManager::callAsync([this]() {
-                                if (completionCallback)
-                                    completionCallback(false, "Failed to exchange authorization code");
-                            });
+                            dispatchCompletion(false, "Failed to exchange authorization code");
                         }
                         return;
                     }
@@ -298,10 +300,7 @@ void Tone3000Auth::run()
                         closesocket(clientSocket);
                         closesocket(listenSocket);
                         WSACleanup();
-                        juce::MessageManager::callAsync([this]() {
-                            if (completionCallback)
-                                completionCallback(false, "Authentication was cancelled");
-                        });
+                        dispatchCompletion(false, "Authentication was cancelled");
                         return;
                     }
                     else
@@ -327,10 +326,7 @@ void Tone3000Auth::run()
     {
         spdlog::error("[Tone3000Auth] Failed to create listener on port {}", callbackPort);
         serverReady = false;
-        juce::MessageManager::callAsync([this]() {
-            if (completionCallback)
-                completionCallback(false, "Failed to start authentication server.");
-        });
+        dispatchCompletion(false, "Failed to start authentication server.");
         return;
     }
 
@@ -344,10 +340,7 @@ void Tone3000Auth::run()
     {
         if (juce::Time::getMillisecondCounter() - startTime > timeoutMs)
         {
-            juce::MessageManager::callAsync([this]() {
-                if (completionCallback)
-                    completionCallback(false, "Authentication timed out.");
-            });
+            dispatchCompletion(false, "Authentication timed out.");
             return;
         }
 
@@ -377,10 +370,7 @@ void Tone3000Auth::run()
 
                         sendResponse(*client, 200, "OK",
                             "<html><body><h1>Authentication Successful!</h1></body></html>");
-                        juce::MessageManager::callAsync([this]() {
-                            if (completionCallback)
-                                completionCallback(true, "");
-                        });
+                        dispatchCompletion(true, "");
                         return;
                     }
                 }

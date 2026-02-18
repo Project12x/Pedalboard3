@@ -565,6 +565,7 @@ MainPanel::~MainPanel()
     // Logger::setCurrentLogger(0);
 
     signalThreadShouldExit();
+    stopThread(2000);
 
     // deviceManager.setAudioCallback(0);
     if (DeviceMeterTap::getInstance() != nullptr)
@@ -1899,7 +1900,10 @@ void MainPanel::enableOscInput(bool val)
 
     // If there's no OSC input, we don't need to run the OSC thread.
     if (!val && isThreadRunning())
+    {
         signalThreadShouldExit();
+        stopThread(2000);
+    }
     else if (val && !isThreadRunning())
     {
         String port, address;

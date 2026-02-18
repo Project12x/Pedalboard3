@@ -30,6 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **CrashProtection Detached-Thread Lifetime** — Detached timeout workers captured stack locals by reference, causing use-after-free if the calling function returned before the worker completed. Moved timeout coordination state to heap-shared storage (`std::shared_ptr`) so detached threads never touch stack locals.
+- **MainPanel OSC Thread Shutdown Ordering** — OSC listener thread was not explicitly stopped before destructor teardown, risking callbacks into destroyed objects. Added `stopThread(2000)` in destructor and when disabling OSC input.
+- **Tone3000DownloadManager Queue/Thread Safety** — Worker thread held raw pointers into `downloadQueue` while the message thread could mutate it. Worker now processes copied task objects. Added `cancelCurrentDownload` atomic flag. `getTask()` returns `std::optional<DownloadTask>` by value instead of raw pointer.
+- **Tone3000Auth Callback UAF/Double-Callback** — Async completion lambdas captured `[this]` and could fire after the auth object was destroyed, or fire multiple times. Added one-shot `dispatchCompletion()` with mutex-protected callback copy. Startup-timeout path now stops thread before dispatch.
+- **SafePluginScanner Timeout Stack-Capture** — Scanner timeout detach path captured stack references in its lambda. Replaced with heap-shared coordination state to match `CrashProtection` pattern.
+
 - **Mixer/Splitter Pin Count Not Scaling** — Input/output pins on DawMixerProcessor and DawSplitterProcessor nodes were stuck at the initial channel count because `BypassableInstance` caches channel counts at construction time. `countInputChannelsFromBuses`/`countOutputChannelsFromBuses` now detect `PedalboardProcessor` inside the wrapper and query the inner plugin's current `getTotalNumChannels()` directly.
 - **Mixer/Splitter VU Meters Showing Stereo for Mono Strips** — Strip VU bars were using the stereo `paintHorizontalVU` function. Replaced with `paintMonoVU` for mono strips. Master/input rows correctly retain stereo VU display.
 - **Mixer/Splitter Pins Not Aligned with Strip Rows** — Pins used a uniform 22px spacing that didn't match the 44px strip row height. Added `PinLayout` virtual to `PedalboardProcessor` with overrides in `DawMixerProcessor` and `DawSplitterProcessor`. `PluginComponent::createPins()` now queries the inner processor's layout for custom startY/spacing, aligning each pin with its corresponding channel strip.

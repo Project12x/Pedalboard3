@@ -48,6 +48,7 @@ Tone3000DownloadManager::Tone3000DownloadManager()
 Tone3000DownloadManager::~Tone3000DownloadManager()
 {
     shouldStop = true;
+    cancelCurrentDownload.store(true, std::memory_order_release);
     stopThread(5000);
 }
 
@@ -95,6 +96,12 @@ void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const ju
     // Check if already in queue
     {
         std::lock_guard<std::mutex> lock(queueMutex);
+        if (currentlyDownloading == toneId)
+        {
+            spdlog::info("[Tone3000DownloadManager] Already downloading: {}", toneName.toStdString());
+            return;
+        }
+
         for (const auto& task : downloadQueue)
         {
             if (task.toneId == toneId.toStdString())
@@ -127,50 +134,57 @@ void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const ju
 
 void Tone3000DownloadManager::cancelDownload(const juce::String& toneId)
 {
-    std::lock_guard<std::mutex> lock(queueMutex);
+    bool notifyPendingCancellation = false;
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
 
-    // If currently downloading, mark for cancellation
-    if (currentlyDownloading == toneId)
-    {
-        for (auto& task : downloadQueue)
+        // If currently downloading, request cancellation.
+        if (currentlyDownloading == toneId)
         {
-            if (task.toneId == toneId.toStdString())
-            {
-                task.state = Tone3000::DownloadState::Cancelled;
-                break;
-            }
+            cancelCurrentDownload.store(true, std::memory_order_release);
+            return;
         }
-    }
-    else
-    {
-        // Remove from queue
+
+        // Remove from queue.
         auto it = std::remove_if(downloadQueue.begin(), downloadQueue.end(),
-            [&toneId](const Tone3000::DownloadTask& task) {
-                return task.toneId == toneId.toStdString();
-            });
+                                 [&toneId](const Tone3000::DownloadTask& task) {
+                                     return task.toneId == toneId.toStdString();
+                                 });
 
         if (it != downloadQueue.end())
         {
             downloadQueue.erase(it, downloadQueue.end());
-            notifyCancelled(toneId);
+            notifyPendingCancellation = true;
         }
+    }
+
+    if (notifyPendingCancellation)
+    {
+        notifyCancelled(toneId);
     }
 }
 
 void Tone3000DownloadManager::cancelAll()
 {
-    std::lock_guard<std::mutex> lock(queueMutex);
-
-    for (auto& task : downloadQueue)
+    std::vector<juce::String> cancelledPending;
     {
-        if (task.isActive())
+        std::lock_guard<std::mutex> lock(queueMutex);
+
+        if (!currentlyDownloading.isEmpty())
+            cancelCurrentDownload.store(true, std::memory_order_release);
+
+        cancelledPending.reserve(downloadQueue.size());
+        for (const auto& task : downloadQueue)
         {
-            task.state = Tone3000::DownloadState::Cancelled;
-            notifyCancelled(juce::String(task.toneId));
+            if (task.isActive())
+                cancelledPending.push_back(juce::String(task.toneId));
         }
+
+        downloadQueue.clear();
     }
 
-    downloadQueue.clear();
+    for (const auto& id : cancelledPending)
+        notifyCancelled(id);
 }
 
 std::vector<Tone3000::DownloadTask> Tone3000DownloadManager::getQueue() const
@@ -179,22 +193,33 @@ std::vector<Tone3000::DownloadTask> Tone3000DownloadManager::getQueue() const
     return std::vector<Tone3000::DownloadTask>(downloadQueue.begin(), downloadQueue.end());
 }
 
-const Tone3000::DownloadTask* Tone3000DownloadManager::getTask(const juce::String& toneId) const
+std::optional<Tone3000::DownloadTask> Tone3000DownloadManager::getTask(const juce::String& toneId) const
 {
     std::lock_guard<std::mutex> lock(queueMutex);
+
+    if (currentlyDownloading == toneId)
+    {
+        Tone3000::DownloadTask active;
+        active.toneId = toneId.toStdString();
+        active.state = Tone3000::DownloadState::Downloading;
+        return active;
+    }
 
     for (const auto& task : downloadQueue)
     {
         if (task.toneId == toneId.toStdString())
-            return &task;
+            return task;
     }
 
-    return nullptr;
+    return std::nullopt;
 }
 
 bool Tone3000DownloadManager::isDownloading(const juce::String& toneId) const
 {
     std::lock_guard<std::mutex> lock(queueMutex);
+
+    if (currentlyDownloading == toneId)
+        return true;
 
     for (const auto& task : downloadQueue)
     {
@@ -208,6 +233,9 @@ bool Tone3000DownloadManager::isDownloading(const juce::String& toneId) const
 bool Tone3000DownloadManager::hasActiveDownloads() const
 {
     std::lock_guard<std::mutex> lock(queueMutex);
+
+    if (!currentlyDownloading.isEmpty())
+        return true;
 
     for (const auto& task : downloadQueue)
     {
@@ -314,43 +342,34 @@ void Tone3000DownloadManager::run()
 
     while (!shouldStop && !threadShouldExit())
     {
-        Tone3000::DownloadTask* taskToProcess = nullptr;
+        std::optional<Tone3000::DownloadTask> taskToProcess;
 
         // Find next pending task
         {
             std::lock_guard<std::mutex> lock(queueMutex);
 
-            for (auto& task : downloadQueue)
+            auto it = std::find_if(downloadQueue.begin(), downloadQueue.end(), [](const Tone3000::DownloadTask& task) {
+                return task.state == Tone3000::DownloadState::Pending;
+            });
+
+            if (it != downloadQueue.end())
             {
-                if (task.state == Tone3000::DownloadState::Pending)
-                {
-                    task.state = Tone3000::DownloadState::Downloading;
-                    taskToProcess = &task;
-                    currentlyDownloading = juce::String(task.toneId);
-                    break;
-                }
+                it->state = Tone3000::DownloadState::Downloading;
+                taskToProcess = *it;
+                downloadQueue.erase(it);
+                currentlyDownloading = juce::String(taskToProcess->toneId);
+                cancelCurrentDownload.store(false, std::memory_order_release);
             }
         }
 
         if (taskToProcess)
         {
             notifyStarted(juce::String(taskToProcess->toneId));
-
-            bool success = processDownload(*taskToProcess);
-
-            // Clean up completed/failed tasks
+            processDownload(*taskToProcess);
             {
                 std::lock_guard<std::mutex> lock(queueMutex);
-
-                auto it = std::remove_if(downloadQueue.begin(), downloadQueue.end(),
-                    [](const Tone3000::DownloadTask& t) {
-                        return t.state == Tone3000::DownloadState::Completed ||
-                               t.state == Tone3000::DownloadState::Failed ||
-                               t.state == Tone3000::DownloadState::Cancelled;
-                    });
-
-                downloadQueue.erase(it, downloadQueue.end());
                 currentlyDownloading = "";
+                cancelCurrentDownload.store(false, std::memory_order_release);
             }
         }
         else
@@ -407,8 +426,11 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
             }
 
             // Check for cancellation
-            if (task.state == Tone3000::DownloadState::Cancelled)
+            if (cancelCurrentDownload.load(std::memory_order_acquire))
+            {
+                task.state = Tone3000::DownloadState::Cancelled;
                 return false;
+            }
 
             return !shouldStop && !threadShouldExit();
         });
@@ -441,7 +463,7 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
         // Download in chunks
         char buffer[DOWNLOAD_BUFFER_SIZE];
 
-        while (!shouldStop && !threadShouldExit() && task.state == Tone3000::DownloadState::Downloading)
+        while (!shouldStop && !threadShouldExit() && !cancelCurrentDownload.load(std::memory_order_acquire))
         {
             int bytesRead = stream->read(buffer, DOWNLOAD_BUFFER_SIZE);
 
@@ -489,8 +511,9 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
     }
 
     // Check if cancelled
-    if (task.state == Tone3000::DownloadState::Cancelled)
+    if (cancelCurrentDownload.load(std::memory_order_acquire) || task.state == Tone3000::DownloadState::Cancelled)
     {
+        task.state = Tone3000::DownloadState::Cancelled;
         tempFile.deleteFile();
         spdlog::info("[Tone3000DownloadManager] Download cancelled: {}", task.toneName);
         notifyCancelled(juce::String(task.toneId));

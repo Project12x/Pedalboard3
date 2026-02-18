@@ -13,6 +13,7 @@
 #include "PluginBlacklist.h"
 
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <spdlog/spdlog.h>
 
@@ -318,40 +319,43 @@ TimedOperationResult CrashProtection::executeWithTimeout(std::function<void()> o
     spdlog::debug("[CrashProtection] Starting timed operation: {} (timeout: {}ms)", operationName.toStdString(),
                   timeoutMs);
 
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool completed = false;
-    bool success = false;
-    std::exception_ptr exceptionPtr = nullptr;
+    struct SharedTimeoutState
+    {
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool completed = false;
+        bool success = false;
+    };
+
+    auto state = std::make_shared<SharedTimeoutState>();
 
     // Run operation in a separate thread
-    std::thread worker([&]() {
+    std::thread worker([state, operation = std::move(operation)]() mutable {
         try
         {
             operation();
-            success = true;
+            state->success = true;
         }
         catch (...)
         {
-            exceptionPtr = std::current_exception();
-            success = false;
+            state->success = false;
         }
 
         {
-            std::lock_guard<std::mutex> lock(mtx);
-            completed = true;
+            std::lock_guard<std::mutex> lock(state->mtx);
+            state->completed = true;
         }
-        cv.notify_one();
+        state->cv.notify_one();
     });
 
     // Wait for completion or timeout
     TimedOperationResult result;
     {
-        std::unique_lock<std::mutex> lock(mtx);
-        if (cv.wait_for(lock, std::chrono::milliseconds(timeoutMs), [&] { return completed; }))
+        std::unique_lock<std::mutex> lock(state->mtx);
+        if (state->cv.wait_for(lock, std::chrono::milliseconds(timeoutMs), [state] { return state->completed; }))
         {
             // Operation completed
-            if (success)
+            if (state->success)
             {
                 result = TimedOperationResult::Success;
                 spdlog::debug("[CrashProtection] Timed operation completed successfully: {}",
@@ -409,7 +413,7 @@ TimedOperationResult CrashProtection::executeWithProtectionAndTimeout(std::funct
                                                                       const juce::String& pluginPath)
 {
     // Wrap the operation with SEH protection, then apply timeout
-    auto protectedOp = [this, &operation, &operationName, &pluginPath]() {
+    auto protectedOp = [this, operation = std::move(operation), operationName, pluginPath]() mutable {
         bool success = executeWithProtection(operation, operationName, pluginPath);
         if (!success)
         {
