@@ -1,4 +1,4 @@
-# UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
+﻿# UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
 
 **Last updated:** 2026-02-18  
 **Status:** Active  
@@ -11,6 +11,8 @@
 Create a premium, modern, and durable visual language for Pedalboard3 that feels "expensive" without depending on trend-driven or dated UI styles.
 
 This roadmap consolidates previous UI polish plans, removes already-completed foundation work, and upgrades remaining work into a production-ready execution plan.
+
+Execution principle: polish must improve clarity and consistency without adding decorative visual load or avoidable rendering cost.
 
 ---
 
@@ -56,9 +58,10 @@ Design targets:
 
 1. **Precision over decoration**: tight spacing rhythm, strong alignment, intentional hierarchy.
 2. **Depth through layering, not gimmicks**: subtle elevation, restrained contrast, minimal glow.
-3. **Motion with purpose**: short, quiet transitions that clarify state changes.
+3. **Motion with purpose**: short, quiet transitions only where state clarity improves.
 4. **Readable density**: complex patches remain scannable under load.
 5. **Theme resilience**: same hierarchy quality across dark/light and custom schemes.
+6. **Performance-first restraint**: preserve responsiveness and frame stability over decorative effects.
 
 Avoid:
 
@@ -66,6 +69,7 @@ Avoid:
 2. Excessive blur/glass effects as primary style language
 3. Neon-heavy accent overuse outside targeted semantic signals
 4. Trend-only motifs that age quickly
+5. Decorative-only animation/effects that do not improve task clarity
 
 ---
 
@@ -78,6 +82,7 @@ Definition of Done for this roadmap:
 3. No regressions in patch switching, transport, graph edit, and stage workflows
 4. Verified at 100%, 150%, and 200% scaling
 5. Screenshot-reviewed before/after evidence for each milestone
+6. No measurable UI responsiveness regressions from polish work (normal and dense patch scenarios)
 
 ---
 
@@ -148,7 +153,7 @@ Definition of Done for this roadmap:
 - **Goal:** make interaction feel intentional and high-end.
 - **Files:** `src/BranchesLAF.cpp`, `src/PluginField.cpp`, `src/PluginComponent.cpp`, `src/MainPanel.cpp`
 - **Deliverables:**
-  - subtle transitions for selection, hover, and active states
+  - minimal transitions for selection, hover, and active states (clarity-first, no decorative motion)
   - stronger drag targets and connection feedback
   - consistent focus-ring behavior for keyboard navigation
 - **Acceptance:** users can reliably identify interaction state without ambiguity.
@@ -216,7 +221,7 @@ These are unresolved UI polish items migrated from `ROADMAP.md` Phase `6A`, refr
 ### E4. High-Fidelity Visual Assets
 - **Priority:** P2
 - **Legacy source:** `6A.4`, `6A.9`, `6A.17`
-- **Note:** blend2d was evaluated and dropped — JUCE 8 Direct2D on Windows makes a CPU-based vector engine redundant. SVG icons via `Drawable::createFromSVG()` + `BinaryData` provide crisp rendering at any zoom with zero new dependencies.
+- **Note:** blend2d was evaluated and dropped - JUCE 8 Direct2D on Windows makes a CPU-based vector engine redundant. SVG icons via `Drawable::createFromSVG()` + `BinaryData` provide crisp rendering at any zoom with zero new dependencies.
 - **Deliverables:**
   - SVG icon system using JUCE Drawable + BinaryData for all toolbar/node icons
   - plugin thumbnail strategy with restrained, non-cluttered presentation
@@ -258,7 +263,7 @@ These are unresolved UI polish items migrated from `ROADMAP.md` Phase `6A`, refr
 
 ## Progress Log
 
-### 2026-02-13 — Master Gain Controls + VU Meter Upgrade
+### 2026-02-13 - Master Gain Controls + VU Meter Upgrade
 
 **Tracks affected:** B1, B2, B3
 
@@ -275,20 +280,20 @@ Completed work:
 
 **Commits:** `72ca2e8`, `9ee5629`
 
-### 2026-02-18 — DAW Mixer/Splitter + Thread Safety Hardening
+### 2026-02-18 - DAW Mixer/Splitter + Thread Safety Hardening
 
 **Tracks affected:** B2
 
 Completed work:
 
-- **DAW Mixer plugin** — N-strip mixer with per-strip gain/pan/mute/solo/phase, stereo/mono toggle, SmoothedValue gain ramps, VU metering per channel
-- **DAW Splitter plugin** — 1-to-N splitter with matching per-strip controls
+- **DAW Mixer plugin** - N-strip mixer with per-strip gain/pan/mute/solo/phase, stereo/mono toggle, SmoothedValue gain ramps, VU metering per channel
+- **DAW Splitter plugin** - 1-to-N splitter with matching per-strip controls
 - **Pin-to-strip alignment** via PinLayout virtual on PedalboardProcessor
 - **MIDI pin placement** fixed to bottom-left for PedalboardProcessors
-- **Button clipping fix** — e/b/m buttons reposition on strip add/remove
-- **Tech debt pass** — duplicate mute.store bug, comment cleanup, loop hoist, thread safety audit
+- **Button clipping fix** - e/b/m buttons reposition on strip add/remove
+- **Tech debt pass** - duplicate mute.store bug, comment cleanup, loop hoist, thread safety audit
 - **Thread/lifetime safety hardening** across 5 subsystems: CrashProtection, MainPanel OSC, Tone3000DownloadManager, Tone3000Auth, SafePluginScanner
-- **blend2d dropped** from roadmap — JUCE 8 Direct2D makes it redundant; SVG via Drawable replaces it
+- **blend2d dropped** from roadmap - JUCE 8 Direct2D makes it redundant; SVG via Drawable replaces it
 
 **Commits:** `2c8e61a`, `1fddbdf`, `f856a2a`, `14b8c86`
 
@@ -296,10 +301,11 @@ Completed work:
 
 ## Working Rules
 
-1. One P0 item in active implementation at a time.
+1. Parallel active implementation is allowed (including multiple P0 items) when scope, ownership, and QA evidence are clear per item.
 2. No milestone closes without screenshot evidence and test notes.
 3. No style changes merged without theme-switch and DPI checks.
 4. Prefer timeless clarity over trend-heavy styling.
+5. Default to low-flair visuals: every animation/effect must justify clarity value and negligible performance impact.
 
 ---
 
@@ -310,3 +316,4 @@ The target aesthetic is **high-end live-performance software**:
 1. calm, controlled, and technical
 2. high information density with low cognitive noise
 3. durable style that will still look current after multiple release cycles
+

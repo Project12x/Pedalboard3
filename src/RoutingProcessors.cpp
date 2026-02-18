@@ -26,13 +26,13 @@ class SplitterControl : public Component, public Button::Listener
         addAndMakeVisible(muteA);
         muteA.setButtonText("A");
         muteA.setClickingTogglesState(true);
-        muteA.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteA.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
         muteA.addListener(this);
 
         addAndMakeVisible(muteB);
         muteB.setButtonText("B");
         muteB.setClickingTogglesState(true);
-        muteB.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteB.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
         muteB.addListener(this);
 
         // Update state
@@ -287,7 +287,7 @@ Component* MixerProcessor::getControls()
                 auto& m = muteButtons[ch];
                 m.setButtonText("M");
                 m.setClickingTogglesState(true);
-                m.setColour(TextButton::buttonOnColourId, Colours::red);
+                m.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
                 m.setToggleState(processor->getChannelMute(ch), dontSendNotification);
                 m.onClick = [this, ch]() { processor->setChannelMute(ch, muteButtons[ch].getToggleState()); };
                 addAndMakeVisible(m);

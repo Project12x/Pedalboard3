@@ -10,13 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Semantic Colour Tokens** — Added `Danger Colour`, `Warning Colour`, and `Success Colour` tokens to all 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest). Theme-appropriate palette per scheme (e.g. Synthwave uses neon pink/orange/green).
+
 ### Fixed
 
-- **Token Audit Pass 1** - Replaced hardcoded `Colours::black` label text in MainPanel (3 labels) and `Colours::darkgrey` dialog background with `ColourScheme` tokens. Replaced 13 `Colours::white` text callsites in StageView with `"Text Colour"` token - white text was invisible on Daylight theme where stage backgrounds are light grey.
+- **Token Audit Pass 1** — Replaced hardcoded `Colours::black` label text in MainPanel (3 labels) and `Colours::darkgrey` dialog background with `ColourScheme` tokens. Replaced 13 `Colours::white` text callsites in StageView with `"Text Colour"` token — white text was invisible on Daylight theme where stage backgrounds are light grey.
+- **Token Audit Pass 2** — Replaced hardcoded `Colours::red`, `Colours::green`, `Colours::orange`, `Colours::darkred`, `Colours::darkgreen` with semantic tokens (`Danger Colour`, `Warning Colour`, `Success Colour`) across 11 files: DawSplitterProcessor, RoutingProcessors (A/B Splitter mute buttons, old Mixer mute buttons), StageView (panic button, VU glow), TunerControl (needle ticks, strobe glow, LED indicators), ToneGeneratorControl (play/stop button), NAMOnlineBrowser (cached/done/failed status), NotesControl (bold markdown text), MarkdownTokeniser (bold token), Tone3000Auth (error outlines).
+- **Mixer Strips Beyond 2 Non-Functional** — VU meters, mute, fader, and pan controls did not work on mixer strips beyond the first two. Root cause: `BypassableInstance` cached initial channel counts and never updated when `DawMixerProcessor` added strips. Added `BypassableInstance::resyncChannelCount()` to resize `tempBuffer` and call `setPlayConfigDetails()`, invoked from `PluginComponent::refreshPins()` for dynamic-channel processors.
+- **Stereo Toggle Cable Crash** — Toggling a mixer strip between mono/stereo with cables connected caused a crash. Root cause: `refreshPins()` deleted all `PluginPinComponent` objects while `PluginConnection` objects still held raw pointers to them. Fix: `refreshPins()` now removes all `PluginConnection` objects and their graph connections before destroying pins.
 
 ### Changed
 
 - **Tech Debt Cleanup** — Fixed duplicate `mute.store()` bug in `StripState::resetDefaults()` (both mixer and splitter) where `solo` was never reset. Removed 28-line deliberation comment block from `DawSplitterProcessor::processBlock`. Fixed duplicate doc comment in `PedalboardProcessors.h`. Hoisted `numStrips_` atomic load out of `prepareToPlay` loop in both processors (was redundantly loaded 32x per call).
+- **Code Formatting Pass** — clang-format applied across NAMOnlineBrowser, Tone3000Auth, ToneGeneratorControl, and other files for consistent brace/indent style.
 
 - **Gain Smoothing** — Master input/output gain now uses `SmoothedValue<float, Multiplicative>` with a 50ms ramp to eliminate zipper noise during gain changes. Pre-computed ramp buffers ensure correct smoothing rate independent of channel count.
 - **VU Meter Ballistics** — New `VuMeterDsp` class provides standard 300ms VU integration (IEC 60268-17) using a 2-pole cascaded lowpass filter. Integrated into `SafetyLimiterProcessor` alongside existing peak metering. VU levels exposed via `getOutputVuLevel()`/`getInputVuLevel()`.

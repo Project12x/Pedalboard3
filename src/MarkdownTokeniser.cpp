@@ -1,5 +1,7 @@
 #include "MarkdownTokeniser.h"
 
+#include "ColourScheme.h"
+
 int MarkdownTokeniser::readNextToken(CodeDocument::Iterator& source)
 {
     source.skipWhitespace();
@@ -98,14 +100,14 @@ CodeEditorComponent::ColourScheme MarkdownTokeniser::getDefaultColourScheme()
     };
     */
 
-    cs.set("Plain Text", Colours::white); // 0
-    cs.set("Header", Colours::gold);      // 1
-    cs.set("Bold", Colours::orange);      // 2
-    cs.set("Italic", Colours::lightblue); // 3
-    cs.set("Quote", Colours::grey);       // 4
-    cs.set("List", Colours::lightgreen);  // 5
-    cs.set("Code", Colours::pink);        // 6
-    cs.set("Link", Colours::cyan);        // 7
+    cs.set("Plain Text", Colours::white);                                  // 0
+    cs.set("Header", Colours::gold);                                       // 1
+    cs.set("Bold", ColourScheme::getInstance().colours["Warning Colour"]); // 2
+    cs.set("Italic", Colours::lightblue);                                  // 3
+    cs.set("Quote", Colours::grey);                                        // 4
+    cs.set("List", Colours::lightgreen);                                   // 5
+    cs.set("Code", Colours::pink);                                         // 6
+    cs.set("Link", Colours::cyan);                                         // 7
 
     return cs;
 }

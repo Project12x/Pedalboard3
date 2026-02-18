@@ -1,5 +1,6 @@
 #include "NotesControl.h"
 
+#include "ColourScheme.h"
 #include "NotesProcessor.h"
 #include "md4c.h"
 
@@ -222,7 +223,7 @@ static int enter_span(MD_SPANTYPE type, void* detail, void* userdata)
     if (type == MD_SPAN_STRONG)
     {
         ctx->current().font = ctx->current().font.boldened();
-        ctx->current().colour = Colours::orange;
+        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"];
     }
     else if (type == MD_SPAN_EM)
     {

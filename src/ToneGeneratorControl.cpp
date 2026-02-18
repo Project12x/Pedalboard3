@@ -111,7 +111,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Play button
     playButton = std::make_unique<TextButton>("PLAY");
     playButton->addListener(this);
-    playButton->setColour(TextButton::buttonColourId, Colours::darkgreen);
+    playButton->setColour(TextButton::buttonColourId, colours["Success Colour"].darker(0.3f));
     addAndMakeVisible(playButton.get());
 
     // Update display at 30fps
@@ -128,6 +128,7 @@ ToneGeneratorControl::~ToneGeneratorControl()
 //==============================================================================
 void ToneGeneratorControl::buttonClicked(Button* button)
 {
+    auto& colours = ColourScheme::getInstance().colours;
     if (toneProcessor == nullptr)
         return;
 
@@ -184,7 +185,8 @@ void ToneGeneratorControl::buttonClicked(Button* button)
         bool nowPlaying = !toneProcessor->isPlaying();
         toneProcessor->setPlaying(nowPlaying);
         playButton->setButtonText(nowPlaying ? "STOP" : "PLAY");
-        playButton->setColour(TextButton::buttonColourId, nowPlaying ? Colours::darkred : Colours::darkgreen);
+        playButton->setColour(TextButton::buttonColourId, nowPlaying ? colours["Danger Colour"].darker(0.3f)
+                                                                     : colours["Success Colour"].darker(0.3f));
     }
 
     repaint();
@@ -314,9 +316,8 @@ void ToneGeneratorControl::resized()
     playButton->setBounds(modeRow);
 
     // Style all buttons
-    for (auto* btn : {sineBtn.get(), sawBtn.get(), squareBtn.get(), noiseBtn.get(),
-                      detune1Btn.get(), detune5Btn.get(), detune50Btn.get(), detune99Btn.get(),
-                      staticBtn.get(), sweepBtn.get(), driftBtn.get()})
+    for (auto* btn : {sineBtn.get(), sawBtn.get(), squareBtn.get(), noiseBtn.get(), detune1Btn.get(), detune5Btn.get(),
+                      detune50Btn.get(), detune99Btn.get(), staticBtn.get(), sweepBtn.get(), driftBtn.get()})
     {
         btn->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.1f));
         btn->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));

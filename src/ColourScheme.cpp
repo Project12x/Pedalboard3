@@ -208,6 +208,9 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Stage Panel Background"] = Colour(0xFF2a2a3e);
         colours["Dialog Background"] = Colour(0xFFEEECE1);
         colours["Tuner Active Colour"] = Colour(0xFF00AA55);
+        colours["Danger Colour"] = Colour(0xFFDC2626);
+        colours["Warning Colour"] = Colour(0xFFF59E0B);
+        colours["Success Colour"] = Colour(0xFF16A34A);
     }
     else if (name == "Daylight")
     {
@@ -239,6 +242,9 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Stage Panel Background"] = Colour(0xFFCCCCCC);
         colours["Dialog Background"] = Colour(0xFFF0F0F0);
         colours["Tuner Active Colour"] = Colour(0xFF00AA00);
+        colours["Danger Colour"] = Colour(0xFFDC2626);
+        colours["Warning Colour"] = Colour(0xFFD97706);
+        colours["Success Colour"] = Colour(0xFF16A34A);
     }
     else if (name == "Synthwave")
     {
@@ -270,6 +276,9 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Stage Panel Background"] = Colour(0xFF2D0A4E);
         colours["Dialog Background"] = Colour(0xFF1A0533);
         colours["Tuner Active Colour"] = Colour(0xFF00FF88);
+        colours["Danger Colour"] = Colour(0xFFFF0055);
+        colours["Warning Colour"] = Colour(0xFFFF6600);
+        colours["Success Colour"] = Colour(0xFF00FF88);
     }
     else if (name == "Deep Ocean")
     {
@@ -301,6 +310,9 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Stage Panel Background"] = Colour(0xFF142D4C);
         colours["Dialog Background"] = Colour(0xFF0D1F3C);
         colours["Tuner Active Colour"] = Colour(0xFF00DDAA);
+        colours["Danger Colour"] = Colour(0xFFEF4444);
+        colours["Warning Colour"] = Colour(0xFFF59E0B);
+        colours["Success Colour"] = Colour(0xFF00DDAA);
     }
     else if (name == "Forest")
     {
@@ -332,6 +344,9 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Stage Panel Background"] = Colour(0xFF244024);
         colours["Dialog Background"] = Colour(0xFF1A2F1A);
         colours["Tuner Active Colour"] = Colour(0xFF66CC66);
+        colours["Danger Colour"] = Colour(0xFFDD4444);
+        colours["Warning Colour"] = Colour(0xFFCCAA44);
+        colours["Success Colour"] = Colour(0xFF44BB44);
     }
     else
     {

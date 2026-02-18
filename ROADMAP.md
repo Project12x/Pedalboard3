@@ -6,7 +6,11 @@ A focused roadmap for current development. For historical completed phases, see 
 
 ## Current Status
 
-**Phase 4 (Launch)** - COMPLETE
+**Phase 6 (Stability & Polish)** — IN PROGRESS
+
+Active work: semantic colour token adoption, mixer/splitter stability, UI polish roadmap execution.
+
+**Phase 4 (Launch)** — COMPLETE
 | # | Feature | Status |
 |---|---------|--------|
 | 4.1 | Undo/Redo system | ✅ Complete |
@@ -166,6 +170,10 @@ A focused roadmap for current development. For historical completed phases, see 
 | 6A.24 | DAW Mixer plugin (N-strip, gain/pan/mute/solo/phase, stereo toggle) | Done |
 | 6A.25 | DAW Splitter plugin (1-to-N, per-strip gain/mute/solo/phase) | Done |
 | 6A.26 | Pin-to-strip alignment, MIDI pin placement, button clipping fix | Done |
+| 6A.27 | Mixer/Splitter dynamic channel sync (resyncChannelCount) | Done |
+| 6A.28 | Stereo toggle cable crash fix (refreshPins connection cleanup) | Done |
+| 6A.29 | Semantic colour tokens (Danger/Warning/Success across all themes) | Done |
+| 6A.30 | Hardcoded colour purge (Token Audit Pass 1 + 2, 11 files) | Done |
 
 ### 6B: Testing & Protection
 | # | Task | Status |
@@ -358,5 +366,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-18*
+*Last updated: 2026-02-18 (afternoon)*
 

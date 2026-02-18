@@ -4,6 +4,7 @@
 
 #include "DawSplitterProcessor.h"
 
+#include "ColourScheme.h"
 #include "PluginComponent.h"
 
 #include <functional>
@@ -314,9 +315,9 @@ static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, f
         int fillW = static_cast<int>(norm * bar.getWidth());
         auto filled = bar.withWidth(fillW);
         if (dbVal > 0.0f)
-            g.setColour(Colours::red);
+            g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         else if (dbVal > -6.0f)
-            g.setColour(Colours::orange);
+            g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
             g.setColour(Colour(0xFF00CC00));
         else
@@ -373,7 +374,7 @@ class SplitterStripRow : public Component
 
         muteBtn.setButtonText("M");
         muteBtn.setClickingTogglesState(true);
-        muteBtn.setColour(TextButton::buttonOnColourId, Colours::red);
+        muteBtn.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
         muteBtn.onClick = [this]()
         {
             if (auto* s = processor->getStrip(index))
@@ -480,9 +481,9 @@ class SplitterStripRow : public Component
         int fillW = static_cast<int>(norm * bar.getWidth());
         auto filled = bar.withWidth(fillW);
         if (dbVal > 0.0f)
-            g.setColour(Colours::red);
+            g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         else if (dbVal > -6.0f)
-            g.setColour(Colours::orange);
+            g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
             g.setColour(Colour(0xFF00CC00));
         else

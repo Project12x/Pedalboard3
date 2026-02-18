@@ -8,21 +8,21 @@
 */
 
 #include "NAMOnlineBrowser.h"
-#include "NAMProcessor.h"
-#include "Tone3000Client.h"
-#include "Tone3000Auth.h"
+
 #include "ColourScheme.h"
+#include "NAMProcessor.h"
+#include "Tone3000Auth.h"
+#include "Tone3000Client.h"
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
+
 
 //==============================================================================
 // Tone3000ResultsListModel
 //==============================================================================
 
-Tone3000ResultsListModel::Tone3000ResultsListModel()
-{
-}
+Tone3000ResultsListModel::Tone3000ResultsListModel() {}
 
 void Tone3000ResultsListModel::setResults(const std::vector<Tone3000::ToneInfo>& results)
 {
@@ -51,8 +51,8 @@ int Tone3000ResultsListModel::getNumRows()
     return static_cast<int>(tones.size());
 }
 
-void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g,
-                                                  int width, int height, bool rowIsSelected)
+void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height,
+                                                bool rowIsSelected)
 {
     if (rowNumber < 0 || rowNumber >= static_cast<int>(tones.size()))
         return;
@@ -91,7 +91,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (tone.isCached())
     {
         // Cached - show checkmark
-        g.setColour(juce::Colours::green);
+        g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
         g.setFont(juce::Font(11.0f));
         g.drawText("Cached", statusArea, juce::Justification::centred);
     }
@@ -103,8 +103,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
 
         g.setColour(colours["Accent Colour"]);
         auto progressWidth = statusArea.getWidth() * progress;
-        g.fillRoundedRectangle(statusArea.getX(), statusArea.getY(),
-                               progressWidth, statusArea.getHeight(), 3.0f);
+        g.fillRoundedRectangle(statusArea.getX(), statusArea.getY(), progressWidth, statusArea.getHeight(), 3.0f);
 
         g.setColour(colours["Text Colour"]);
         g.setFont(juce::Font(10.0f));
@@ -114,14 +113,14 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     else if (progress > 1.5f)
     {
         // Complete
-        g.setColour(juce::Colours::green);
+        g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
         g.setFont(juce::Font(11.0f));
         g.drawText("Done", statusArea, juce::Justification::centred);
     }
     else if (progress < -1.5f)
     {
         // Failed
-        g.setColour(juce::Colours::red);
+        g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         g.setFont(juce::Font(11.0f));
         g.drawText("Failed", statusArea, juce::Justification::centred);
     }
@@ -162,12 +161,12 @@ void Tone3000ResultsListModel::setDownloadProgress(const juce::String& toneId, f
 
 void Tone3000ResultsListModel::setDownloadComplete(const juce::String& toneId)
 {
-    downloadProgress[toneId.toStdString()] = 2.0f;  // > 1 means complete
+    downloadProgress[toneId.toStdString()] = 2.0f; // > 1 means complete
 }
 
 void Tone3000ResultsListModel::setDownloadFailed(const juce::String& toneId)
 {
-    downloadProgress[toneId.toStdString()] = -2.0f;  // < -1 means failed
+    downloadProgress[toneId.toStdString()] = -2.0f; // < -1 means failed
 }
 
 void Tone3000ResultsListModel::setCached(const juce::String& toneId, const juce::String& localPath)
@@ -187,10 +186,8 @@ void Tone3000ResultsListModel::setCached(const juce::String& toneId, const juce:
 // NAMOnlineBrowserComponent
 //==============================================================================
 
-NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor,
-                                                       std::function<void()> onModelLoaded)
-    : namProcessor(processor)
-    , onModelLoadedCallback(std::move(onModelLoaded))
+NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, std::function<void()> onModelLoaded)
+    : namProcessor(processor), onModelLoadedCallback(std::move(onModelLoaded))
 {
     auto& colours = ColourScheme::getInstance().colours;
 
@@ -253,7 +250,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor,
     detailsTitle->setColour(juce::Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(detailsTitle.get());
 
-    auto createDetailLabel = [&colours](const juce::String& text) {
+    auto createDetailLabel = [&colours](const juce::String& text)
+    {
         auto label = std::make_unique<juce::Label>();
         label->setText(text, juce::dontSendNotification);
         label->setFont(juce::Font(12.0f));
@@ -261,7 +259,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor,
         return label;
     };
 
-    auto createValueLabel = [&colours]() {
+    auto createValueLabel = [&colours]()
+    {
         auto label = std::make_unique<juce::Label>();
         label->setFont(juce::Font(12.0f));
         label->setColour(juce::Label::textColourId, colours["Text Colour"]);
@@ -365,19 +364,19 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     auto bgColour = colours["Window Background"];
 
     // Gradient background
-    juce::ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0,
-                                     bgColour.darker(0.06f), 0, static_cast<float>(getHeight()), false);
+    juce::ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0, bgColour.darker(0.06f), 0,
+                                    static_cast<float>(getHeight()), false);
     g.setGradientFill(bgGradient);
     g.fillAll();
 
     // Calculate panel areas
     auto bounds = getLocalBounds().reduced(8);
-    bounds.removeFromTop(70);  // Search + filters
-    bounds.removeFromBottom(32);  // Status bar
+    bounds.removeFromTop(70);    // Search + filters
+    bounds.removeFromBottom(32); // Status bar
 
     int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
     auto listArea = bounds.removeFromLeft(listWidth);
-    bounds.removeFromLeft(16);  // Gap
+    bounds.removeFromLeft(16); // Gap
 
     // Draw rounded list background
     auto listBounds = listArea.toFloat();
@@ -396,10 +395,9 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     shadow.render(g, detailsPath);
 
     // Card fill with subtle gradient
-    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f),
-                                   detailsBounds.getX(), detailsBounds.getY(),
-                                   colours["Dialog Inner Background"].darker(0.04f),
-                                   detailsBounds.getX(), detailsBounds.getBottom(), false);
+    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f), detailsBounds.getX(),
+                                  detailsBounds.getY(), colours["Dialog Inner Background"].darker(0.04f),
+                                  detailsBounds.getX(), detailsBounds.getBottom(), false);
     g.setGradientFill(cardGrad);
     g.fillPath(detailsPath);
 
@@ -450,7 +448,7 @@ void NAMOnlineBrowserComponent::resized()
     auto listArea = bounds.removeFromLeft(listWidth);
     resultsList->setBounds(listArea);
 
-    bounds.removeFromLeft(16);  // Gap
+    bounds.removeFromLeft(16); // Gap
 
     // Details panel
     auto detailsArea = bounds;
@@ -460,7 +458,8 @@ void NAMOnlineBrowserComponent::resized()
     int labelWidth = 80;
     int rowHeight = 20;
 
-    auto detailRow = [&]() {
+    auto detailRow = [&]()
+    {
         auto row = detailsArea.removeFromTop(rowHeight);
         detailsArea.removeFromTop(4);
         return row;
@@ -554,9 +553,7 @@ void NAMOnlineBrowserComponent::mouseUp(const juce::MouseEvent& event)
     if (resultsList != nullptr && resultsList->isParentOf(event.eventComponent))
     {
         // Defer the selection check to allow JUCE to update the selection first
-        juce::MessageManager::callAsync([this]() {
-            onListSelectionChanged();
-        });
+        juce::MessageManager::callAsync([this]() { onListSelectionChanged(); });
     }
 }
 
@@ -565,8 +562,7 @@ void NAMOnlineBrowserComponent::mouseMove(const juce::MouseEvent& event)
     if (resultsList != nullptr && resultsList->isParentOf(event.eventComponent))
     {
         auto localPoint = resultsList->getLocalPoint(event.eventComponent, event.position);
-        int row = resultsList->getRowContainingPosition(static_cast<int>(localPoint.x),
-                                                         static_cast<int>(localPoint.y));
+        int row = resultsList->getRowContainingPosition(static_cast<int>(localPoint.x), static_cast<int>(localPoint.y));
         if (row != listModel.getHoveredRow())
         {
             listModel.setHoveredRow(row);
@@ -591,11 +587,21 @@ void NAMOnlineBrowserComponent::comboBoxChanged(juce::ComboBox* comboBox)
         int id = gearTypeCombo->getSelectedId();
         switch (id)
         {
-            case 1: currentGearType = Tone3000::GearType::All; break;
-            case 2: currentGearType = Tone3000::GearType::Amp; break;
-            case 3: currentGearType = Tone3000::GearType::Pedal; break;
-            case 4: currentGearType = Tone3000::GearType::FullRig; break;
-            default: currentGearType = Tone3000::GearType::All; break;
+        case 1:
+            currentGearType = Tone3000::GearType::All;
+            break;
+        case 2:
+            currentGearType = Tone3000::GearType::Amp;
+            break;
+        case 3:
+            currentGearType = Tone3000::GearType::Pedal;
+            break;
+        case 4:
+            currentGearType = Tone3000::GearType::FullRig;
+            break;
+        default:
+            currentGearType = Tone3000::GearType::All;
+            break;
         }
     }
     else if (comboBox == sortCombo.get())
@@ -603,11 +609,21 @@ void NAMOnlineBrowserComponent::comboBoxChanged(juce::ComboBox* comboBox)
         int id = sortCombo->getSelectedId();
         switch (id)
         {
-            case 1: currentSortOrder = Tone3000::SortOrder::Trending; break;
-            case 2: currentSortOrder = Tone3000::SortOrder::Newest; break;
-            case 3: currentSortOrder = Tone3000::SortOrder::DownloadsAllTime; break;
-            case 4: currentSortOrder = Tone3000::SortOrder::BestMatch; break;
-            default: currentSortOrder = Tone3000::SortOrder::Trending; break;
+        case 1:
+            currentSortOrder = Tone3000::SortOrder::Trending;
+            break;
+        case 2:
+            currentSortOrder = Tone3000::SortOrder::Newest;
+            break;
+        case 3:
+            currentSortOrder = Tone3000::SortOrder::DownloadsAllTime;
+            break;
+        case 4:
+            currentSortOrder = Tone3000::SortOrder::BestMatch;
+            break;
+        default:
+            currentSortOrder = Tone3000::SortOrder::Trending;
+            break;
         }
     }
 
@@ -637,40 +653,43 @@ void NAMOnlineBrowserComponent::performSearch()
 
     Tone3000Client::getInstance().search(
         currentQuery, currentGearType, currentSortOrder, currentPage,
-        [this](Tone3000::SearchResult result, Tone3000::ApiError error) {
-            juce::MessageManager::callAsync([this, result, error]() {
-                isSearching = false;
-                searchButton->setEnabled(true);
-
-                if (error.isError())
+        [this](Tone3000::SearchResult result, Tone3000::ApiError error)
+        {
+            juce::MessageManager::callAsync(
+                [this, result, error]()
                 {
-                    spdlog::error("[NAMOnlineBrowser] Search failed: {}", error.message);
-                    statusLabel->setText("Search failed: " + juce::String(error.message),
-                                         juce::dontSendNotification);
-                    return;
-                }
+                    isSearching = false;
+                    searchButton->setEnabled(true);
 
-                listModel.setResults(result.tones);
-                resultsList->updateContent();
-                resultsList->deselectAllRows();
+                    if (error.isError())
+                    {
+                        spdlog::error("[NAMOnlineBrowser] Search failed: {}", error.message);
+                        statusLabel->setText("Search failed: " + juce::String(error.message),
+                                             juce::dontSendNotification);
+                        return;
+                    }
 
-                totalResults = result.totalCount;
-                hasMorePages = result.hasMore();
-                currentPage = result.page;
+                    listModel.setResults(result.tones);
+                    resultsList->updateContent();
+                    resultsList->deselectAllRows();
 
-                updateStatusLabel();
-                updateDetailsPanel(nullptr);
+                    totalResults = result.totalCount;
+                    hasMorePages = result.hasMore();
+                    currentPage = result.page;
 
-                prevPageButton->setEnabled(currentPage > 1);
-                nextPageButton->setEnabled(hasMorePages);
+                    updateStatusLabel();
+                    updateDetailsPanel(nullptr);
 
-                juce::String pageText = "Page " + juce::String(currentPage);
-                if (totalResults > 0)
-                    pageText += " (" + juce::String(totalResults) + " results)";
-                pageLabel->setText(pageText, juce::dontSendNotification);
+                    prevPageButton->setEnabled(currentPage > 1);
+                    nextPageButton->setEnabled(hasMorePages);
 
-                spdlog::info("[NAMOnlineBrowser] Found {} results", result.tones.size());
-            });
+                    juce::String pageText = "Page " + juce::String(currentPage);
+                    if (totalResults > 0)
+                        pageText += " (" + juce::String(totalResults) + " results)";
+                    pageLabel->setText(pageText, juce::dontSendNotification);
+
+                    spdlog::info("[NAMOnlineBrowser] Found {} results", result.tones.size());
+                });
         });
 }
 
@@ -791,82 +810,100 @@ void NAMOnlineBrowserComponent::showLoginDialog()
     // Use SafePointer to avoid crash if component is destroyed before callback
     juce::Component::SafePointer<NAMOnlineBrowserComponent> safeThis(this);
 
-    auth->startAuthentication([safeThis, auth](bool success, juce::String errorMessage) {
-        spdlog::info("[NAMOnlineBrowser] Auth callback fired: success={}, error='{}', safeThis valid={}",
-            success, errorMessage.toStdString(), safeThis != nullptr);
-
-        // Clean up auth object
-        spdlog::debug("[NAMOnlineBrowser] Deleting auth object at {}", (void*)auth);
-        delete auth;
-        spdlog::debug("[NAMOnlineBrowser] Auth object deleted");
-
-        if (success)
+    auth->startAuthentication(
+        [safeThis, auth](bool success, juce::String errorMessage)
         {
-            spdlog::info("[NAMOnlineBrowser] Authentication successful, queuing UI update");
-            juce::MessageManager::callAsync([safeThis]() {
-                spdlog::debug("[NAMOnlineBrowser] Success callAsync executing, safeThis valid={}", safeThis != nullptr);
-                if (safeThis == nullptr)
-                {
-                    spdlog::warn("[NAMOnlineBrowser] Component destroyed before success callback could run");
-                    return;
-                }
-                spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState()");
-                safeThis->refreshAuthState();
-                spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
-                if (safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
-                {
-                    spdlog::debug("[NAMOnlineBrowser] Enabling download button");
-                    safeThis->downloadButton->setEnabled(true);
-                }
-                spdlog::info("[NAMOnlineBrowser] UI update complete after successful auth");
-            });
-        }
-        else
-        {
-            spdlog::warn("[NAMOnlineBrowser] OAuth failed ({}), queuing manual dialog", errorMessage.toStdString());
+            spdlog::info("[NAMOnlineBrowser] Auth callback fired: success={}, error='{}', safeThis valid={}", success,
+                         errorMessage.toStdString(), safeThis != nullptr);
 
-            // Fall back to manual dialog
-            juce::MessageManager::callAsync([safeThis]() {
-                spdlog::debug("[NAMOnlineBrowser] Failure callAsync executing, safeThis valid={}", safeThis != nullptr);
-                if (safeThis == nullptr)
-                {
-                    spdlog::warn("[NAMOnlineBrowser] Component destroyed before failure callback could run");
-                    return;
-                }
+            // Clean up auth object
+            spdlog::debug("[NAMOnlineBrowser] Deleting auth object at {}", (void*)auth);
+            delete auth;
+            spdlog::debug("[NAMOnlineBrowser] Auth object deleted");
 
-                spdlog::info("[NAMOnlineBrowser] Launching manual auth dialog");
-                auto* manualDialog = new Tone3000ManualAuthDialog([safeThis](bool manualSuccess) {
-                    spdlog::info("[NAMOnlineBrowser] Manual dialog callback: success={}", manualSuccess);
-                    juce::MessageManager::callAsync([safeThis, manualSuccess]() {
-                        spdlog::debug("[NAMOnlineBrowser] Manual dialog callAsync executing, safeThis valid={}", safeThis != nullptr);
+            if (success)
+            {
+                spdlog::info("[NAMOnlineBrowser] Authentication successful, queuing UI update");
+                juce::MessageManager::callAsync(
+                    [safeThis]()
+                    {
+                        spdlog::debug("[NAMOnlineBrowser] Success callAsync executing, safeThis valid={}",
+                                      safeThis != nullptr);
                         if (safeThis == nullptr)
                         {
-                            spdlog::warn("[NAMOnlineBrowser] Component destroyed before manual dialog callback could run");
+                            spdlog::warn("[NAMOnlineBrowser] Component destroyed before success callback could run");
                             return;
                         }
-                        spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState() after manual auth");
+                        spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState()");
                         safeThis->refreshAuthState();
-                        if (manualSuccess && safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
+                        spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
+                        if (safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
                         {
-                            spdlog::debug("[NAMOnlineBrowser] Enabling download button after manual auth");
+                            spdlog::debug("[NAMOnlineBrowser] Enabling download button");
                             safeThis->downloadButton->setEnabled(true);
                         }
-                        spdlog::info("[NAMOnlineBrowser] UI update complete after manual auth");
+                        spdlog::info("[NAMOnlineBrowser] UI update complete after successful auth");
                     });
-                });
+            }
+            else
+            {
+                spdlog::warn("[NAMOnlineBrowser] OAuth failed ({}), queuing manual dialog", errorMessage.toStdString());
 
-                juce::DialogWindow::LaunchOptions options;
-                options.content.setOwned(manualDialog);
-                options.dialogTitle = "TONE3000 Login";
-                options.dialogBackgroundColour = ColourScheme::getInstance().colours["Window Background"];
-                options.escapeKeyTriggersCloseButton = true;
-                options.useNativeTitleBar = true;
-                options.resizable = false;
-                options.launchAsync();
-                spdlog::debug("[NAMOnlineBrowser] Manual auth dialog launched");
-            });
-        }
-    });
+                // Fall back to manual dialog
+                juce::MessageManager::callAsync(
+                    [safeThis]()
+                    {
+                        spdlog::debug("[NAMOnlineBrowser] Failure callAsync executing, safeThis valid={}",
+                                      safeThis != nullptr);
+                        if (safeThis == nullptr)
+                        {
+                            spdlog::warn("[NAMOnlineBrowser] Component destroyed before failure callback could run");
+                            return;
+                        }
+
+                        spdlog::info("[NAMOnlineBrowser] Launching manual auth dialog");
+                        auto* manualDialog = new Tone3000ManualAuthDialog(
+                            [safeThis](bool manualSuccess)
+                            {
+                                spdlog::info("[NAMOnlineBrowser] Manual dialog callback: success={}", manualSuccess);
+                                juce::MessageManager::callAsync(
+                                    [safeThis, manualSuccess]()
+                                    {
+                                        spdlog::debug(
+                                            "[NAMOnlineBrowser] Manual dialog callAsync executing, safeThis valid={}",
+                                            safeThis != nullptr);
+                                        if (safeThis == nullptr)
+                                        {
+                                            spdlog::warn("[NAMOnlineBrowser] Component destroyed before manual dialog "
+                                                         "callback could run");
+                                            return;
+                                        }
+                                        spdlog::debug(
+                                            "[NAMOnlineBrowser] Calling refreshAuthState() after manual auth");
+                                        safeThis->refreshAuthState();
+                                        if (manualSuccess && safeThis->selectedTone != nullptr &&
+                                            !safeThis->selectedTone->isCached())
+                                        {
+                                            spdlog::debug(
+                                                "[NAMOnlineBrowser] Enabling download button after manual auth");
+                                            safeThis->downloadButton->setEnabled(true);
+                                        }
+                                        spdlog::info("[NAMOnlineBrowser] UI update complete after manual auth");
+                                    });
+                            });
+
+                        juce::DialogWindow::LaunchOptions options;
+                        options.content.setOwned(manualDialog);
+                        options.dialogTitle = "TONE3000 Login";
+                        options.dialogBackgroundColour = ColourScheme::getInstance().colours["Window Background"];
+                        options.escapeKeyTriggersCloseButton = true;
+                        options.useNativeTitleBar = true;
+                        options.resizable = false;
+                        options.launchAsync();
+                        spdlog::debug("[NAMOnlineBrowser] Manual auth dialog launched");
+                    });
+            }
+        });
     spdlog::debug("[NAMOnlineBrowser] startAuthentication() called, waiting for callback");
 }
 
@@ -913,7 +950,7 @@ void NAMOnlineBrowserComponent::downloadStarted(const juce::String& toneId)
 }
 
 void NAMOnlineBrowserComponent::downloadProgress(const juce::String& toneId, float progress,
-                                                   int64_t /*bytesDownloaded*/, int64_t /*totalBytes*/)
+                                                 int64_t /*bytesDownloaded*/, int64_t /*totalBytes*/)
 {
     listModel.setDownloadProgress(toneId, progress);
     resultsList->repaint();
@@ -957,7 +994,7 @@ void NAMOnlineBrowserComponent::downloadFailed(const juce::String& toneId, const
 
 void NAMOnlineBrowserComponent::downloadCancelled(const juce::String& toneId)
 {
-    listModel.setDownloadProgress(toneId, -1.0f);  // Reset state
+    listModel.setDownloadProgress(toneId, -1.0f); // Reset state
     resultsList->repaint();
 
     if (selectedTone && selectedTone->id == toneId.toStdString())
@@ -966,4 +1003,3 @@ void NAMOnlineBrowserComponent::downloadCancelled(const juce::String& toneId)
         downloadButton->setEnabled(true);
     }
 }
-

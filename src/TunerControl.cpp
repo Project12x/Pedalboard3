@@ -141,7 +141,7 @@ void TunerControl::drawNoteDisplay(Graphics& g, Rectangle<float> bounds)
         {
             float expand = i * 8.0f;
             float alpha = glowIntensity * (0.12f - i * 0.03f);
-            g.setColour(Colours::green.withAlpha(alpha));
+            g.setColour(colours["Success Colour"].withAlpha(alpha));
             g.fillEllipse(centre.x - (glowSize + expand) / 2, centre.y - (glowSize * 0.6f + expand) / 2 + 2,
                           glowSize + expand, glowSize * 0.6f + expand);
         }
@@ -187,11 +187,11 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
             innerR = meterRadius - 14;
         }
         else if (std::abs(i) <= 1)
-            tickCol = Colours::green.withAlpha(0.8f);
+            tickCol = colours["Success Colour"].withAlpha(0.8f);
         else if (std::abs(i) <= 2)
             tickCol = Colours::yellow.withAlpha(0.7f);
         else
-            tickCol = Colours::red.withAlpha(0.6f);
+            tickCol = colours["Danger Colour"].withAlpha(0.6f);
 
         g.setColour(tickCol);
         float thickness = (i == 0) ? 3.0f : 2.0f;
@@ -320,7 +320,7 @@ void TunerControl::drawStrobeDisc(Graphics& g, Rectangle<float> bounds)
     // In-tune glow
     if (glowIntensity > 0.1f)
     {
-        g.setColour(Colours::green.withAlpha(glowIntensity * 0.15f));
+        g.setColour(colours["Success Colour"].withAlpha(glowIntensity * 0.15f));
         g.fillEllipse(centreX - radius, centreY - radius, radius * 2, radius * 2);
     }
 
@@ -386,13 +386,13 @@ void TunerControl::drawLedIndicators(Graphics& g, Rectangle<float> bounds)
 
         Colour baseColour;
         if (isCenter)
-            baseColour = Colours::green;
+            baseColour = colours["Success Colour"];
         else if (std::abs(i - 5) == 1)
-            baseColour = Colours::limegreen;
+            baseColour = colours["Success Colour"].brighter(0.2f);
         else if (std::abs(i - 5) == 2)
-            baseColour = Colours::yellow;
+            baseColour = colours["Warning Colour"];
         else
-            baseColour = Colours::red;
+            baseColour = colours["Danger Colour"];
 
         if (isLit)
         {

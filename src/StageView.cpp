@@ -40,7 +40,7 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     // Panic button
     panicButton = std::make_unique<TextButton>("PANIC");
     panicButton->addListener(this);
-    panicButton->setColour(TextButton::buttonColourId, Colours::darkred);
+    panicButton->setColour(TextButton::buttonColourId, colours["Danger Colour"].darker(0.2f));
     panicButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(panicButton.get());
 
@@ -289,8 +289,8 @@ void StageView::paint(Graphics& g)
                     if (normalized > 0.9f)
                     {
                         float glowAlpha = (normalized - 0.9f) * 3.0f;
-                        Colour glowCol =
-                            (level >= 1.0f) ? colRed.withAlpha(glowAlpha) : Colours::orange.withAlpha(glowAlpha * 0.7f);
+                        Colour glowCol = (level >= 1.0f) ? colRed.withAlpha(glowAlpha)
+                                                         : colours["Warning Colour"].withAlpha(glowAlpha * 0.7f);
                         g.setColour(glowCol);
                         g.fillRoundedRectangle(mx - 1.0f, my - 1.0f, barWidth + 2.0f, meterH + 2.0f, 4.0f);
                     }
