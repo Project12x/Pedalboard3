@@ -43,6 +43,7 @@ class DawSplitterProcessor : public PedalboardProcessor
         std::atomic<float> pan{0.0f};    // -1 (L) to +1 (R)
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
+        std::atomic<bool> stereo{false};
         std::atomic<bool> phaseInvert{false};
 
         // VU metering -- audio writes, UI reads
@@ -59,7 +60,9 @@ class DawSplitterProcessor : public PedalboardProcessor
             gainDb.store(0.0f, std::memory_order_relaxed);
             pan.store(0.0f, std::memory_order_relaxed);
             mute.store(false, std::memory_order_relaxed);
+            mute.store(false, std::memory_order_relaxed);
             solo.store(false, std::memory_order_relaxed);
+            stereo.store(false, std::memory_order_relaxed);
             phaseInvert.store(false, std::memory_order_relaxed);
             vuL.store(0.0f, std::memory_order_relaxed);
             vuR.store(0.0f, std::memory_order_relaxed);
@@ -108,19 +111,8 @@ class DawSplitterProcessor : public PedalboardProcessor
     Point<int> getSize() override;
 
     // Pin alignment: input pins in input row, output pins match strip rows
-    PinLayout getInputPinLayout() const override
-    {
-        // Input row starts at: controls y(24) + header(24) = 48
-        // 2 stereo input pins centered in the 44px input row
-        // First pin center at 48 + 11 = 59, startY = 59 - 8 = 51
-        return {51, 22};
-    }
-    PinLayout getOutputPinLayout() const override
-    {
-        // Strip rows start after input row: 48 + 44 = 92
-        // Pin center at strip center: 92 + 22 = 114, startY = 114 - 8 = 106
-        return {106, 44};
-    }
+    PinLayout getInputPinLayout() const override;
+    PinLayout getOutputPinLayout() const override;
 
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
@@ -160,6 +152,10 @@ class DawSplitterProcessor : public PedalboardProcessor
     const String getParameterText(int) { return ""; }
     void setParameter(int, float) {}
 
+    // Stereo support helper
+    int countTotalOutputChannels() const;
+    void updateChannelConfig();
+
   private:
     // Fixed-size strip storage -- never resized, fully RT-safe
     std::array<StripState, MaxStrips> strips_;
@@ -176,7 +172,6 @@ class DawSplitterProcessor : public PedalboardProcessor
     float peakDecay_ = 0.0f;
 
     void computeVuDecay(double sampleRate);
-    void updateChannelConfig();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawSplitterProcessor)
 };

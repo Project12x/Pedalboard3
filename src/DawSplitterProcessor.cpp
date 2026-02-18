@@ -6,6 +6,8 @@
 
 #include "PluginComponent.h"
 
+#include <functional>
+
 //==============================================================================
 // DawSplitterProcessor
 //==============================================================================
@@ -21,10 +23,23 @@ DawSplitterProcessor::DawSplitterProcessor()
 
 DawSplitterProcessor::~DawSplitterProcessor() {}
 
+// Stereo support helper
+int DawSplitterProcessor::countTotalOutputChannels() const
+{
+    int total = 0;
+    int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+    {
+        bool isStereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        total += isStereo ? 2 : 1;
+    }
+    return total;
+}
+
 void DawSplitterProcessor::updateChannelConfig()
 {
-    int numInputChannels = 2;                                           // stereo input
-    int numOutputChannels = numStrips_.load(std::memory_order_acquire); // 1 mono channel per strip
+    int numInputChannels = 2; // stereo input
+    int numOutputChannels = countTotalOutputChannels();
     setPlayConfigDetails(numInputChannels, numOutputChannels, getSampleRate(), getBlockSize());
 }
 
@@ -149,28 +164,87 @@ void DawSplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& 
         }
     }
 
-    // Process each output strip (stereo input -> mono output per strip)
+    // Process each output strip
+    int currentOutputChannel = 0;
+
     for (int s = 0; s < ns; ++s)
     {
         auto& strip = strips_[static_cast<size_t>(s)];
         auto& dsp = stripDsp_[static_cast<size_t>(s)];
 
-        // Each strip is a single mono output channel
-        if (s >= totalOutputChannels)
-            continue;
+        bool isStereo = strip.stereo.load(std::memory_order_relaxed);
+        int channelsNeeded = isStereo ? 2 : 1;
 
-        float* dst = buffer.getWritePointer(s);
+        // Skip if we run out of output channels
+        if (currentOutputChannel + channelsNeeded > totalOutputChannels)
+            break;
+
+        float* dstL = buffer.getWritePointer(currentOutputChannel);
+        float* dstR = isStereo ? buffer.getWritePointer(currentOutputChannel + 1) : nullptr;
+        currentOutputChannel += channelsNeeded;
 
         // Read atomic state once per block
         bool mute = strip.mute.load(std::memory_order_relaxed);
         bool solo = strip.solo.load(std::memory_order_relaxed);
         bool phaseInv = strip.phaseInvert.load(std::memory_order_relaxed);
         float gainDb = strip.gainDb.load(std::memory_order_relaxed);
+        float pan = strip.pan.load(std::memory_order_relaxed);
         bool effectiveMute = mute || (anySolo && !solo);
 
         // Update smoothed gain target
         float gainLin = Decibels::decibelsToGain(gainDb);
         dsp.smoothedGain.setTargetValue(gainLin);
+
+        // Pan/Balance calculation
+        float panL, panR;
+        if (isStereo)
+        {
+            // Stereo Balance
+            if (pan <= 0.0f)
+            {
+                panL = 1.0f;
+                panR = 1.0f + pan;
+            }
+            else
+            {
+                panL = 1.0f - pan;
+                panR = 1.0f;
+            }
+        }
+        else
+        {
+            // Mono Pan (applied to mono output? No, splitter usually just sums to mono.
+            // But if we want to support panning a mono output within the stereo field...
+            // wait, this is a splitter. The output IS the destination.
+            // The user said: "Pan can exist for both. for mono, it sets placement in the stereo bus."
+            // BUT DawSplitterProcessor outputs N discrete channels.
+            // If strip S is mono, it outputs to channel C. Panning implies it goes to C and C+1?
+            // No, that would be a stereo strip.
+            //
+            // Re-reading user: "Splitter behavior: stereo output strip = 2 output channels"
+            // "Pan can exist for both... for mono, it sets placement in the stereo bus" -> meaningful for Mixer, but
+            // for Splitter? If I have a mono output pin, I can't pan it "in the stereo bus" because the "bus" is just
+            // that 1 pin connected to something else.
+            //
+            // However, if the mono strip is feeding a stereo destination *downstream*, the splitter doesn't know that.
+            //
+            // Let's stick to the classic interpretation:
+            // Stereo Strip: L/R pairs. Pan behaves as balance between L/R pins.
+            // Mono Strip: Sum L+R to 1 pin. Pan is... maybe not useful here?
+            // Or maybe it determines the mix of input L/R that goes to the mono output?
+            // "for mono, it sets placement in the stereo bus" <-- This applies to mixer input->master.
+            // For Splitter (input->outputs), maybe pan controls the *input* balance fed to the strip?
+            //
+            // Let's assume for Mono Splitter Strip: Sum L+R. Maybe Pan adjusts L vs R contribution?
+            // For now, I'll stick to simple Sum L+R for mono, and Balance for Stereo.
+            //
+            // Actually, wait. User: "Mixer behavior - it should consume 2 input channels... same for stereo output
+            // strip 2 output channels." "Pan can exist for both... for mono, it sets placement in the stereo bus" -
+            // context implies Mixer. For Splitter, let's implement Balance for Stereo. For Mono, we'll just sum.
+
+            panL = 1.0f;
+            panR = 1.0f;
+        }
 
         // Peak metering
         float peakL = strip.peakL.load(std::memory_order_relaxed);
@@ -180,37 +254,105 @@ void DawSplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& 
         {
             float gain = dsp.smoothedGain.getNextValue();
 
-            // Sum stereo input to mono
-            float sample = (inL[i] + inR[i]) * 0.5f;
+            float outL, outR;
 
-            if (phaseInv)
-                sample = -sample;
+            if (isStereo)
+            {
+                // Stereo pass-through with balance
+                float l = inL[i];
+                float r = inR[i];
 
-            sample *= gain;
+                if (phaseInv)
+                {
+                    l = -l;
+                    r = -r;
+                }
 
-            // Peak (post-gain, pre-mute)
-            float absSample = std::abs(sample);
-            peakL = (absSample > peakL) ? absSample : peakL * peakDecay_;
-            peakR = peakL; // mono -- same for both
+                outL = l * gain * panL;
+                outR = r * gain * panR;
+            }
+            else
+            {
+                // Sum to mono
+                float sample = (inL[i] + inR[i]) * 0.5f;
+                if (phaseInv)
+                    sample = -sample;
+                outL = sample * gain;
+                outR = outL; // internal var only
+            }
+
+            // Peak detection
+            float absL = std::abs(outL);
+            float absR = std::abs(outR);
+
+            peakL = (absL > peakL) ? absL : peakL * peakDecay_;
+            if (isStereo)
+                peakR = (absR > peakR) ? absR : peakR * peakDecay_;
+            else
+                peakR = peakL;
 
             if (effectiveMute)
-                dst[i] = 0.0f;
+            {
+                dstL[i] = 0.0f;
+                if (dstR)
+                    dstR[i] = 0.0f;
+            }
             else
-                dst[i] = sample;
+            {
+                dstL[i] = outL;
+                if (dstR)
+                    dstR[i] = outR;
+            }
         }
 
         if (peakL < 1e-10f)
             peakL = 0.0f;
+        if (peakR < 1e-10f)
+            peakR = 0.0f;
+
         strip.peakL.store(peakL, std::memory_order_relaxed);
-        strip.peakR.store(peakL, std::memory_order_relaxed);
+        strip.peakR.store(peakR, std::memory_order_relaxed);
         strip.vuL.store(peakL, std::memory_order_relaxed);
-        strip.vuR.store(peakL, std::memory_order_relaxed);
+        strip.vuR.store(peakR, std::memory_order_relaxed);
     }
 
-    // Clear any unused output channels beyond our strips
-    int usedOutputs = ns;
-    for (int ch = usedOutputs; ch < totalOutputChannels; ++ch)
+    // Clear unused output channels beyond what we wrote
+    for (int ch = currentOutputChannel; ch < totalOutputChannels; ++ch)
         buffer.clear(ch, 0, numSamples);
+}
+
+//==============================================================================
+// Shared VU painting helper (used by both SplitterStripRow and SplitterInputRow)
+//==============================================================================
+static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, float peakR)
+{
+    if (area.isEmpty())
+        return;
+    int halfH = area.getHeight() / 2;
+    auto barL = area.removeFromTop(halfH).reduced(0, 1);
+    auto barR = area.reduced(0, 1);
+
+    auto drawBar = [&](Rectangle<int> bar, float peak)
+    {
+        float dbVal = Decibels::gainToDecibels(peak, -60.0f);
+        float norm = jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
+        g.setColour(Colour(0xFF1A1A1A));
+        g.fillRect(bar);
+        int fillW = static_cast<int>(norm * bar.getWidth());
+        auto filled = bar.withWidth(fillW);
+        if (dbVal > 0.0f)
+            g.setColour(Colours::red);
+        else if (dbVal > -6.0f)
+            g.setColour(Colours::orange);
+        else if (dbVal > -18.0f)
+            g.setColour(Colour(0xFF00CC00));
+        else
+            g.setColour(Colour(0xFF008800));
+        g.fillRect(filled);
+    };
+
+    drawBar(barL, peakL);
+    drawBar(barR, peakR);
 }
 
 //==============================================================================
@@ -220,8 +362,32 @@ void DawSplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& 
 class SplitterStripRow : public Component
 {
   public:
-    SplitterStripRow(DawSplitterProcessor* proc, int stripIndex) : processor(proc), index(stripIndex)
+    SplitterStripRow(DawSplitterProcessor* proc, int stripIndex, std::function<void()> onLayoutChange)
+        : processor(proc), index(stripIndex), layoutChangeCallback(std::move(onLayoutChange))
     {
+        stereoBtn.setButtonText("ST");
+        stereoBtn.setClickingTogglesState(true);
+        stereoBtn.setColour(TextButton::buttonOnColourId, Colours::cyan);
+        stereoBtn.setColour(TextButton::buttonColourId, Colour(0xFF505050)); // Explicit off-state grey
+        stereoBtn.setColour(TextButton::textColourOffId, Colours::white);
+        stereoBtn.setColour(TextButton::textColourOnId, Colours::black);
+        stereoBtn.setTooltip("Toggle Stereo/Mono Strip");
+        stereoBtn.onClick = [this]()
+        {
+            if (auto* s = processor->getStrip(index))
+            {
+                bool newState = stereoBtn.getToggleState();
+                if (s->stereo.load(std::memory_order_relaxed) != newState)
+                {
+                    s->stereo.store(newState, std::memory_order_relaxed);
+                    processor->updateChannelConfig();
+                    if (layoutChangeCallback)
+                        layoutChangeCallback();
+                }
+            }
+        };
+        addAndMakeVisible(stereoBtn);
+
         phaseBtn.setButtonText(CharPointer_UTF8("\xc3\x98"));
         phaseBtn.setClickingTogglesState(true);
         phaseBtn.setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
@@ -280,6 +446,7 @@ class SplitterStripRow : public Component
             muteBtn.setToggleState(s->mute.load(std::memory_order_relaxed), dontSendNotification);
             soloBtn.setToggleState(s->solo.load(std::memory_order_relaxed), dontSendNotification);
             phaseBtn.setToggleState(s->phaseInvert.load(std::memory_order_relaxed), dontSendNotification);
+            stereoBtn.setToggleState(s->stereo.load(std::memory_order_relaxed), dontSendNotification);
             nameLabel.setText(s->name, dontSendNotification);
         }
     }
@@ -291,8 +458,9 @@ class SplitterStripRow : public Component
         auto row1 = r.removeFromTop(halfH);
         auto row2 = r;
 
-        // Row 1: [name 40] [Phase 22] [M 22] [S 22] [gap 4] [VU rest]
-        nameLabel.setBounds(row1.removeFromLeft(40));
+        // Row 1: [name 30] [ST 24] [Ph 22] [M 22] [S 22] [gap 4] [VU rest]
+        nameLabel.setBounds(row1.removeFromLeft(30));
+        stereoBtn.setBounds(row1.removeFromLeft(28));
         phaseBtn.setBounds(row1.removeFromLeft(22));
         muteBtn.setBounds(row1.removeFromLeft(22));
         soloBtn.setBounds(row1.removeFromLeft(22));
@@ -312,8 +480,17 @@ class SplitterStripRow : public Component
 
         if (auto* s = processor->getStrip(index))
         {
-            float peak = s->peakL.load(std::memory_order_relaxed);
-            paintMonoVU(g, vuArea, peak);
+            bool isStereo = s->stereo.load(std::memory_order_relaxed);
+            float peakL = s->peakL.load(std::memory_order_relaxed);
+            if (isStereo)
+            {
+                float peakR = s->peakR.load(std::memory_order_relaxed);
+                paintStereoVUHelper(g, vuArea, peakL, peakR);
+            }
+            else
+            {
+                paintMonoVU(g, vuArea, peakL);
+            }
         }
     }
 
@@ -343,7 +520,8 @@ class SplitterStripRow : public Component
   private:
     DawSplitterProcessor* processor;
     int index;
-    TextButton phaseBtn, muteBtn, soloBtn;
+    std::function<void()> layoutChangeCallback;
+    TextButton phaseBtn, muteBtn, soloBtn, stereoBtn;
     Slider fader;
     Label nameLabel;
     Rectangle<int> vuArea;
@@ -379,38 +557,7 @@ class SplitterInputRow : public Component
         g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
         float peakL = processor->inputPeakL.load(std::memory_order_relaxed);
         float peakR = processor->inputPeakR.load(std::memory_order_relaxed);
-        paintStereoVU(g, vuArea, peakL, peakR);
-    }
-
-    static void paintStereoVU(Graphics& g, Rectangle<int> area, float peakL, float peakR)
-    {
-        if (area.isEmpty())
-            return;
-        int halfH = area.getHeight() / 2;
-        auto barL = area.removeFromTop(halfH).reduced(0, 1);
-        auto barR = area.reduced(0, 1);
-
-        auto drawBar = [&](Rectangle<int> bar, float peak)
-        {
-            float dbVal = Decibels::gainToDecibels(peak, -60.0f);
-            float norm = jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
-            g.setColour(Colour(0xFF1A1A1A));
-            g.fillRect(bar);
-            int fillW = static_cast<int>(norm * bar.getWidth());
-            auto filled = bar.withWidth(fillW);
-            if (dbVal > 0.0f)
-                g.setColour(Colours::red);
-            else if (dbVal > -6.0f)
-                g.setColour(Colours::orange);
-            else if (dbVal > -18.0f)
-                g.setColour(Colour(0xFF00CC00));
-            else
-                g.setColour(Colour(0xFF008800));
-            g.fillRect(filled);
-        };
-
-        drawBar(barL, peakL);
-        drawBar(barR, peakR);
+        paintStereoVUHelper(g, vuArea, peakL, peakR);
     }
 
   private:
@@ -456,7 +603,7 @@ class DawSplitterControl : public Component, private Timer
         int n = processor->getNumStrips();
         for (int i = 0; i < n; ++i)
         {
-            auto* row = new SplitterStripRow(processor, i);
+            auto* row = new SplitterStripRow(processor, i, [this]() { notifyParentResize(); });
             addAndMakeVisible(row);
             stripRows.add(row);
         }
@@ -486,7 +633,7 @@ class DawSplitterControl : public Component, private Timer
     void paint(Graphics& g) override { g.fillAll(Colour(0xFF222222)); }
 
   private:
-    static constexpr int stripRowHeight = 44;
+    static constexpr int stripRowHeight = 52;
     DawSplitterProcessor* processor;
     Label titleLabel;
     TextButton addBtn, removeBtn;
@@ -532,7 +679,7 @@ Component* DawSplitterProcessor::getControls()
 Point<int> DawSplitterProcessor::getSize()
 {
     int n = numStrips_.load(std::memory_order_acquire);
-    int height = 24 + (n + 1) * 44; // header + input row + strips
+    int height = 24 + (n + 1) * 52; // header + input row + strips
     return Point<int>(340, jmax(160, height));
 }
 
@@ -558,6 +705,7 @@ void DawSplitterProcessor::getStateInformation(MemoryBlock& destData)
         stripXml->setAttribute("mute", s.mute.load(std::memory_order_relaxed) ? 1 : 0);
         stripXml->setAttribute("solo", s.solo.load(std::memory_order_relaxed) ? 1 : 0);
         stripXml->setAttribute("phase", s.phaseInvert.load(std::memory_order_relaxed) ? 1 : 0);
+        stripXml->setAttribute("stereo", s.stereo.load(std::memory_order_relaxed) ? 1 : 0);
         stripXml->setAttribute("name", s.name);
     }
 
@@ -593,6 +741,7 @@ void DawSplitterProcessor::setStateInformation(const void* data, int sizeInBytes
             bool solo = stripXml->getIntAttribute("solo", 0) != 0;
             s.solo.store(solo, std::memory_order_relaxed);
             s.phaseInvert.store(stripXml->getIntAttribute("phase", 0) != 0, std::memory_order_relaxed);
+            s.stereo.store(stripXml->getIntAttribute("stereo", 0) != 0, std::memory_order_relaxed);
             s.name = stripXml->getStringAttribute("name", "Out " + String(i + 1));
         }
     }
@@ -603,6 +752,45 @@ void DawSplitterProcessor::setStateInformation(const void* data, int sizeInBytes
 //==============================================================================
 // Plugin Description
 //==============================================================================
+
+//==============================================================================
+// Pin Layout
+//==============================================================================
+
+PedalboardProcessor::PinLayout DawSplitterProcessor::getInputPinLayout() const
+{
+    // Input row is always stereo. In PC coords:
+    // PC title=24, control at PC Y=24, control header=24
+    // => input row top = 48
+    // Within a 52px row: L center = +14, R center = +38
+    PinLayout layout;
+    layout.pinY.push_back(48 + 6);  // L (pin top = center - 8)
+    layout.pinY.push_back(48 + 30); // R
+    return layout;
+}
+
+PedalboardProcessor::PinLayout DawSplitterProcessor::getOutputPinLayout() const
+{
+    // Strip rows start after input row.
+    // strip row i top in PC coords = 48 + 52 + i * 52 = 100 + i * 52
+    PinLayout layout;
+    int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+    {
+        int rowTop = 100 + i * 52;
+        bool isStereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        if (isStereo)
+        {
+            layout.pinY.push_back(rowTop + 6);  // L
+            layout.pinY.push_back(rowTop + 30); // R
+        }
+        else
+        {
+            layout.pinY.push_back(rowTop + 18); // Mono centered
+        }
+    }
+    return layout;
+}
 
 bool DawSplitterProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
@@ -618,8 +806,26 @@ const String DawSplitterProcessor::getInputChannelName(int channelIndex) const
 
 const String DawSplitterProcessor::getOutputChannelName(int channelIndex) const
 {
-    if (channelIndex < numStrips_.load(std::memory_order_acquire))
-        return strips_[static_cast<size_t>(channelIndex)].name;
+    if (channelIndex < countTotalOutputChannels())
+    {
+        // Recursively find which strip this channel belongs to
+        int currentCh = 0;
+        int n = numStrips_.load(std::memory_order_acquire);
+        for (int i = 0; i < n; ++i)
+        {
+            auto& s = strips_[static_cast<size_t>(i)];
+            bool isStereo = s.stereo.load(std::memory_order_relaxed);
+            int chans = isStereo ? 2 : 1;
+
+            if (channelIndex < currentCh + chans)
+            {
+                if (isStereo)
+                    return s.name + (channelIndex == currentCh ? " L" : " R");
+                return s.name;
+            }
+            currentCh += chans;
+        }
+    }
     return "Output " + String(channelIndex + 1);
 }
 

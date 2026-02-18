@@ -23,6 +23,8 @@
 #include <JuceHeader.h>
 #include <atomic>
 #include <stdint.h>
+#include <vector>
+
 
 class LooperControl;
 
@@ -43,16 +45,16 @@ class PedalboardProcessor : public AudioPluginInstance
     virtual Point<int> getSize() = 0;
 
     /// Pin layout info for aligning pins with strip rows.
+    /// Pin layout info for aligning pins with strip rows.
     struct PinLayout
     {
-        int startY;  ///< Y offset from PluginComponent top for the first pin.
-        int spacing; ///< Y spacing between consecutive pins.
+        std::vector<int> pinY;
     };
 
     /// Returns pin layout for input (left) pins.  Override for custom alignment.
-    virtual PinLayout getInputPinLayout() const { return {34, 22}; }
+    virtual PinLayout getInputPinLayout() const { return {}; }
     /// Returns pin layout for output (right) pins. Override for custom alignment.
-    virtual PinLayout getOutputPinLayout() const { return {34, 22}; }
+    virtual PinLayout getOutputPinLayout() const { return {}; }
 };
 
 //------------------------------------------------------------------------------
@@ -709,7 +711,7 @@ class MetronomeProcessor : public PedalboardProcessor, public ChangeListener, pu
     ///	Used to decrement clickCount (audio-thread only).
     float clickDec;
     ///	Used to count down to the next start of the measure (written by message thread on play start, read/written by
-    ///audio thread).
+    /// audio thread).
     std::atomic<int> measureCount{0};
     ///	Whether we're currently playing the accent or the click.
     bool isAccent;
@@ -942,7 +944,7 @@ class LooperProcessor : public PedalboardProcessor,
     ///	Used to decrement clickCount (written by message thread on record start, read/written by audio thread).
     std::atomic<float> clickDec{0.0f};
     ///	Used to count down to the next start of the measure (written by message thread on record start, read/written by
-    ///audio thread).
+    /// audio thread).
     std::atomic<int> measureCount{0};
 
     ///	The samplerate passed to prepareToPlay().

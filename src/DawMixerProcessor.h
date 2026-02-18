@@ -43,6 +43,7 @@ class DawMixerProcessor : public PedalboardProcessor
         std::atomic<float> pan{0.0f};    // -1 (L) to +1 (R)
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
+        std::atomic<bool> stereo{false};
         std::atomic<bool> phaseInvert{false};
 
         // VU metering -- audio writes, UI reads
@@ -59,7 +60,9 @@ class DawMixerProcessor : public PedalboardProcessor
             gainDb.store(0.0f, std::memory_order_relaxed);
             pan.store(0.0f, std::memory_order_relaxed);
             mute.store(false, std::memory_order_relaxed);
+            mute.store(false, std::memory_order_relaxed);
             solo.store(false, std::memory_order_relaxed);
+            stereo.store(false, std::memory_order_relaxed);
             phaseInvert.store(false, std::memory_order_relaxed);
             vuL.store(0.0f, std::memory_order_relaxed);
             vuR.store(0.0f, std::memory_order_relaxed);
@@ -110,23 +113,8 @@ class DawMixerProcessor : public PedalboardProcessor
     Point<int> getSize() override;
 
     // Pin alignment: input pins match strip rows, output pins at master row
-    PinLayout getInputPinLayout() const override
-    {
-        // Strip rows start at: controls y(24) + header(24) = 48
-        // Pin center should be at strip center: 48 + stripHeight/2 = 70
-        // Pin top = center - pinHeight/2 = 70 - 8 = 62
-        return {62, 44};
-    }
-    PinLayout getOutputPinLayout() const override
-    {
-        // Master row is after all strips: 48 + N*44
-        // 2 stereo output pins centered in the master row (44px)
-        int n = numStrips_.load(std::memory_order_acquire);
-        int masterRowTop = 48 + n * 44;
-        // First pin center at masterRowTop + 11, second at masterRowTop + 33
-        // → startY = masterRowTop + 11 - 8 = masterRowTop + 3
-        return {masterRowTop + 3, 22};
-    }
+    PinLayout getInputPinLayout() const override;
+    PinLayout getOutputPinLayout() const override;
 
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
@@ -166,6 +154,10 @@ class DawMixerProcessor : public PedalboardProcessor
     const String getParameterText(int) { return ""; }
     void setParameter(int, float) {}
 
+    // Stereo support helper
+    int countTotalInputChannels() const;
+    void updateChannelConfig();
+
   private:
     // Fixed-size strip storage -- never resized, fully RT-safe
     std::array<StripState, MaxStrips> strips_;
@@ -186,7 +178,6 @@ class DawMixerProcessor : public PedalboardProcessor
     float peakDecay_ = 0.0f;
 
     void computeVuDecay(double sampleRate);
-    void updateChannelConfig();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawMixerProcessor)
 };

@@ -1347,8 +1347,8 @@ void PluginComponent::createPins()
     const bool largePin = isAudioIONode();
 
     // Check for PedalboardProcessor custom pin layout (mixer/splitter alignment)
-    PedalboardProcessor::PinLayout inputLayout{largePin ? 40 : 34, largePin ? 40 : 22};
-    PedalboardProcessor::PinLayout outputLayout{largePin ? 40 : 34, largePin ? 40 : 22};
+    PedalboardProcessor::PinLayout inputLayout;
+    PedalboardProcessor::PinLayout outputLayout;
 
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(plugin))
     {
@@ -1364,27 +1364,56 @@ void PluginComponent::createPins()
         outputLayout = pbProc->getOutputPinLayout();
     }
 
+    // Fallback generation if empty (for standard plugins or when layout not provided)
+    if (inputLayout.pinY.empty())
+    {
+        int startY = largePin ? 40 : 34;
+        int spacing = largePin ? 40 : 22;
+        for (int k = 0; k < 256; ++k)
+            inputLayout.pinY.push_back(startY + k * spacing);
+    }
+    if (outputLayout.pinY.empty())
+    {
+        int startY = largePin ? 40 : 34;
+        int spacing = largePin ? 40 : 22;
+        for (int k = 0; k < 256; ++k)
+            outputLayout.pinY.push_back(startY + k * spacing);
+    }
+
     const int pinXOffset = largePin ? -10 : -8;
     const int pinXOffsetRight = largePin ? (getWidth() - 8) : (getWidth() - 6);
 
-    y = inputLayout.startY;
-    for (i = 0; i < countInputChannelsFromBuses(plugin); ++i)
+    // Setup Input Pins
+    int numIn = countInputChannelsFromBuses(plugin);
+    for (i = 0; i < numIn; ++i)
     {
         Point<int> pinPos;
 
         pin = new PluginPinComponent(false, uid, i, false, largePin);
         pin->setTooltip(getInputChannelNameSafe(plugin, i));
+
+        // Use layout or extrapolate
+        if (i < (int)inputLayout.pinY.size())
+            y = inputLayout.pinY[i];
+        else
+            y = inputLayout.pinY.back() + (i - inputLayout.pinY.size() + 1) * 22;
+
         pinPos.setXY(pinXOffset, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         inputPins.add(pin);
-
-        y += inputLayout.spacing;
     }
 
-    if ((acceptsMidiSafe(plugin) || (countInputChannelsFromBuses(plugin) > 0) ||
-         (countOutputChannelsFromBuses(plugin) > 0)) &&
+    // Determine Y passed the last input pin for the param pin
+    if (numIn < (int)inputLayout.pinY.size())
+        y = inputLayout.pinY[numIn];
+    else
+        y = inputLayout.pinY.back() + (numIn - inputLayout.pinY.size() + 1) * 22;
+
+    int numOut = countOutputChannelsFromBuses(plugin);
+
+    if ((acceptsMidiSafe(plugin) || (numIn > 0) || (numOut > 0)) &&
         ((pluginName != "Audio Input") && (pluginName != "Audio Output")))
     {
         Point<int> pinPos;
@@ -1400,21 +1429,32 @@ void PluginComponent::createPins()
         y += 22;
     }
 
-    y = outputLayout.startY;
-    for (i = 0; i < countOutputChannelsFromBuses(plugin); ++i)
+    // Setup Output Pins
+    for (i = 0; i < numOut; ++i)
     {
         Point<int> pinPos;
 
         pin = new PluginPinComponent(true, uid, i, false, largePin);
         pin->setTooltip(getOutputChannelNameSafe(plugin, i));
+
+        // Use layout or extrapolate
+        if (i < (int)outputLayout.pinY.size())
+            y = outputLayout.pinY[i];
+        else
+            y = outputLayout.pinY.back() + (i - outputLayout.pinY.size() + 1) * 22;
+
         pinPos.setXY(pinXOffsetRight, y);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
         outputPins.add(pin);
-
-        y += outputLayout.spacing;
     }
+
+    // Determine Y passed the last output pin for the param/MIDI out pin
+    if (numOut < (int)outputLayout.pinY.size())
+        y = outputLayout.pinY[numOut];
+    else
+        y = outputLayout.pinY.back() + (numOut - outputLayout.pinY.size() + 1) * 22;
 
     if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
     {
