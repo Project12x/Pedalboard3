@@ -55,6 +55,16 @@
 - Done: VU meter ballistics (VuMeterDsp, 300ms IEC 60268-17)
 - Done: Dual metering UI (VU bar + peak hold indicator)
 
+**DAW Mixer & Splitter (Complete - Feb 18 2026):**
+- Done: DawMixerProcessor — N-strip mixer with per-strip gain/pan/mute/solo/phase
+- Done: DawSplitterProcessor — 1-to-N splitter with per-strip gain/mute/solo/phase
+- Done: Stereo/mono toggle per strip with dynamic channel config
+- Done: Pin-to-strip alignment via PinLayout virtual
+- Done: MIDI pin bottom-left placement for PedalboardProcessors
+- Done: Button clipping fix (e/b/m buttons reposition on resize)
+- Done: Tech debt pass (duplicate mute.store bug, comment cleanup, loop hoist)
+- Done: Thread safety audit — no high-risk issues found
+
 ---
 
 ## Effect Rack Status
@@ -111,6 +121,8 @@
 | Master Bus Insert | ✅ Complete |
 | Gain Smoothing | ✅ Complete |
 | VU Metering | ✅ Complete |
+| DAW Mixer | ✅ Complete |
+| DAW Splitter | ✅ Complete |
 | MIDI Mapping | ⚠️ Legacy (works) |
 | OSC Mapping | ⚠️ Legacy (works) |
 
@@ -127,4 +139,4 @@
 
 ---
 
-*Last updated: 2026-02-17*
+*Last updated: 2026-02-18*

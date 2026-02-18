@@ -163,6 +163,9 @@ A focused roadmap for current development. For historical completed phases, see 
 | 6A.21 | Premium typography (Inter font family) | Done |
 | 6A.22 | Infrastructure node polish (MIDI/OSC pins, buttons, sizing) | Done |
 | 6A.23 | Canvas fit-to-screen and smooth viewport scrolling | Done |
+| 6A.24 | DAW Mixer plugin (N-strip, gain/pan/mute/solo/phase, stereo toggle) | Done |
+| 6A.25 | DAW Splitter plugin (1-to-N, per-strip gain/mute/solo/phase) | Done |
+| 6A.26 | Pin-to-strip alignment, MIDI pin placement, button clipping fix | Done |
 
 ### 6B: Testing & Protection
 | # | Task | Status |
@@ -355,5 +358,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-18*
 
