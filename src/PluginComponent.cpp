@@ -1267,6 +1267,14 @@ void PluginComponent::refreshPins()
     determineSize();
     createPins();
 
+    // Reposition bottom buttons after size change (prevents clipping by growing controls)
+    if (editButton)
+        editButton->setBounds(10, getHeight() - 30, 20, 20);
+    if (mappingsButton)
+        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+    if (bypassButton)
+        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+
     // Reposition the internal PedalboardProcessor control component if present
     // (mirrors the positioning logic in the constructor)
     if (auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor()))
@@ -1349,6 +1357,7 @@ void PluginComponent::createPins()
     // Check for PedalboardProcessor custom pin layout (mixer/splitter alignment)
     PedalboardProcessor::PinLayout inputLayout;
     PedalboardProcessor::PinLayout outputLayout;
+    bool isPedalboardProc = false;
 
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(plugin))
     {
@@ -1356,12 +1365,14 @@ void PluginComponent::createPins()
         {
             inputLayout = pbProc->getInputPinLayout();
             outputLayout = pbProc->getOutputPinLayout();
+            isPedalboardProc = true;
         }
     }
     else if (auto* pbProc = dynamic_cast<PedalboardProcessor*>(plugin))
     {
         inputLayout = pbProc->getInputPinLayout();
         outputLayout = pbProc->getOutputPinLayout();
+        isPedalboardProc = true;
     }
 
     // Fallback generation if empty (for standard plugins or when layout not provided)
@@ -1420,7 +1431,11 @@ void PluginComponent::createPins()
 
         pin = new PluginPinComponent(false, uid, AudioProcessorGraph::midiChannelIndex, true);
         pin->setTooltip("MIDI In");
-        pinPos.setXY(-8, y);
+
+        // For PedalboardProcessors (mixer/splitter), place MIDI pin at bottom-left
+        // so it doesn't float after the last audio pin
+        int midiY = isPedalboardProc ? (getHeight() - 40) : y;
+        pinPos.setXY(-8, midiY);
         pin->setTopLeftPosition(pinPos.getX(), pinPos.getY());
         addAndMakeVisible(pin);
 
