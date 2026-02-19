@@ -40,7 +40,11 @@ class NAMProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(400, 310); }
+    Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 490); }
+
+    // F1: Collapsible editor
+    bool isEditorCollapsed() const { return editorCollapsed.load(); }
+    void setEditorCollapsed(bool c) { editorCollapsed.store(c); }
 
     void updateEditorBounds(const juce::Rectangle<int>& bounds);
 
@@ -174,12 +178,10 @@ class NAMProcessor : public PedalboardProcessor
     juce::File currentIRFile;
 
     // IR filters (high-pass before convolution, low-pass after)
-    std::atomic<float> irLowCut{80.0f};      // Hz (high-pass cutoff)
-    std::atomic<float> irHighCut{12000.0f};  // Hz (low-pass cutoff)
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
-                                    juce::dsp::IIR::Coefficients<float>> irLowCutFilter;
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
-                                    juce::dsp::IIR::Coefficients<float>> irHighCutFilter;
+    std::atomic<float> irLowCut{80.0f};     // Hz (high-pass cutoff)
+    std::atomic<float> irHighCut{12000.0f}; // Hz (low-pass cutoff)
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> irLowCutFilter;
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> irHighCutFilter;
 
     // Audio-thread-only tracking for lazy coefficient updates
     float lastIRLowCut = 0.0f;
@@ -194,12 +196,12 @@ class NAMProcessor : public PedalboardProcessor
 
     //==========================================================================
     // Parameters (atomic for thread safety)
-    std::atomic<float> inputGain{0.0f};      // dB
-    std::atomic<float> outputGain{0.0f};     // dB
+    std::atomic<float> inputGain{0.0f};            // dB
+    std::atomic<float> outputGain{0.0f};           // dB
     std::atomic<float> noiseGateThreshold{-80.0f}; // dB, -101 = off
-    std::atomic<float> bass{5.0f};           // 0-10
-    std::atomic<float> mid{5.0f};            // 0-10
-    std::atomic<float> treble{5.0f};         // 0-10
+    std::atomic<float> bass{5.0f};                 // 0-10
+    std::atomic<float> mid{5.0f};                  // 0-10
+    std::atomic<float> treble{5.0f};               // 0-10
     std::atomic<bool> toneStackEnabled{true};
     std::atomic<bool> normalizeOutput{false};
 
@@ -208,6 +210,9 @@ class NAMProcessor : public PedalboardProcessor
     double currentSampleRate = 44100.0;
     int currentBlockSize = 512;
     bool isPrepared = false;
+
+    // F1: Editor collapse state
+    std::atomic<bool> editorCollapsed{false};
 
     // Noise gate fixed parameters
     static constexpr double kNoiseGateTime = 0.01;

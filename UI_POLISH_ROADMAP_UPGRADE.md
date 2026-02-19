@@ -1,4 +1,4 @@
-﻿# UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
+# UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
 
 **Last updated:** 2026-02-18  
 **Status:** Active  
@@ -70,6 +70,7 @@ Avoid:
 3. Neon-heavy accent overuse outside targeted semantic signals
 4. Trend-only motifs that age quickly
 5. Decorative-only animation/effects that do not improve task clarity
+6. **Garish or saturated colors** -- all accents, LED glows, and processor palettes must feel muted, professional, and harmonious with the overall theme. If a color draws attention to itself before its content, it is too loud.
 
 ---
 
@@ -230,14 +231,79 @@ These are unresolved UI polish items migrated from `ROADMAP.md` Phase `6A`, refr
 
 ---
 
+## Track F: Internal Plugin Premium Polish (P1)
+
+Commercial-grade polish for internal processors (starting with NAM), inspired by NeuralDSP / TONEX quality level. Leverages existing `FontManager` infrastructure (Space Grotesk, Inter, JetBrains Mono) and `PluginComponent` dynamic resizing.
+
+### F1. NAM Collapsible Editor
+- **Priority:** P1
+- **Goal:** NAM node can collapse to a compact header bar (matching wrapped VST plugin node footprint) and expand to full editor on demand.
+- **Files:** `src/NAMControl.cpp`, `src/NAMControl.h`, `src/NAMProcessor.h`, `src/NAMProcessor.cpp`, `src/PluginComponent.cpp`
+- **Architecture:**
+  - `NAMProcessor` stores `collapsed` state, `getSize()` returns header-only height (~40px) or full height (490px)
+  - Collapsed view: header bar with model name + LED + expand chevron. Pins and E/M/B buttons remain visible (rendered by `PluginComponent`, outside control area)
+  - `PluginComponent::update()` already re-queries `getSize()` and relayouts, so toggling collapsed triggers natural resize
+  - Collapsed state persists across sessions (saved in processor state)
+- **Deliverables:**
+  - collapse/expand toggle via chevron button or double-click on header
+  - smooth animated transition (optional, clarity-first)
+  - pins + E/M/B buttons always visible in both states
+- **Acceptance:** collapsed NAM node has same visual footprint as a wrapped VST plugin node; expand reveals full editor without layout glitches.
+
+### F2. Multi-Font Typography System
+- **Priority:** P1
+- **Goal:** use font variety for stronger visual hierarchy and professional feel across all internal plugin editors.
+- **Files:** `src/NAMControl.cpp`, `src/NAMLookAndFeel.h`, `src/FontManager.h`, `src/FontManager.cpp`, other editor files
+- **Deliverables:**
+  - **JetBrains Mono** for all numeric readouts (dB values, Hz values, knob text boxes, VU readings)
+  - **Space Grotesk Bold** for section headers (SIGNAL CHAIN, GAIN, TONE)
+  - **Inter** for body labels and button text
+  - Typography tier documented in `FontManager` comments with explicit usage map
+  - Apply consistently to NAM editor first, then extend to Mixer/Splitter/Level/IR Loader
+- **Acceptance:** numeric values visually distinct from labels; section headers clearly hierarchical; consistent across all internal editors.
+
+### F3. NAM Commercial-Grade Visual Polish
+- **Priority:** P1
+- **Goal:** close the visual gap with NeuralDSP / TONEX products.
+- **Files:** `src/NAMControl.cpp`, `src/NAMLookAndFeel.cpp`
+- **Deliverables:**
+  - **Panel textures:** subtle noise or brushed-metal overlay on section backgrounds (procedural, not image-based)
+  - **Enhanced knobs:** stronger 3D lighting model with top-left specular highlight and proper shadow arc
+  - **LCD-style value displays:** inset recessed styling with subtle glow for dB/Hz readout boxes
+  - **Button polish:** embossed physical-button feel with inner shadow + top-edge highlight
+  - **Background depth:** subtle radial or noise gradient behind the whole panel
+- **Clarification on skeuomorphism:** the "avoid heavy skeuomorphism" rule in Visual Direction applies to the broader app shell (canvas, main panel, stage view). Internal plugin editors like NAM are explicitly allowed _tasteful_ amp-style textures because they represent physical gear. The constraint is: textures must be procedural (no bitmap dependencies), subtle (not kitschy), and theme-adaptive.
+- **Acceptance:** screenshot comparison with NeuralDSP shows competitive visual quality; no performance regression; all colors derived from F5 theme tokens.
+
+### F4. Internal Editor Consistency Roll-Out
+- **Priority:** P2
+- **Goal:** propagate F2/F3 quality level to all internal plugin editors.
+- **Files:** `src/MixerControl.cpp`, `src/SplitterControl.cpp`, `src/LevelEditors.cpp`, `src/IRLoaderControl.cpp`, `src/TunerControl.cpp`, other internal editors
+- **Deliverables:**
+  - shared rendering primitives (drawSectionPanel, drawInsetValue, etc.) extracted from NAM LAF
+  - consistent multi-font typography across all internal editors
+  - consistent knob/slider/button styling
+- **Acceptance:** all internal plugin editors share the same visual language quality.
+
+### F5. Shared Processor Color Derivation
+- **Priority:** P1
+- **Goal:** standardize how internal processors derive their palettes from existing theme tokens so all processors look cohesive -- no new theme tokens needed.
+- **Files:** `src/NAMLookAndFeel.cpp`, `src/MixerControl.cpp`, `src/SplitterControl.cpp`, other internal editor LAFs
+- **Approach:** extract a shared helper (e.g. `ProcessorPalette::fromTheme()`) that derives surface, accent, header, LED, and inset colors from existing tokens (`Plugin Background`, `Slider Colour`, `Warning Colour`, `Success Colour`) using consistent `.darker()`/`.brighter()`/`.withAlpha()` recipes. Each processor consumes the same derivation instead of inventing its own.
+- **Design constraint:** derived colors must feel muted and harmonious. Alpha-masked overlays preferred over heavy saturation shifts.
+- **Acceptance:** switching themes produces coherent processor editors; one shared derivation replaces per-processor ad-hoc color logic.
+
+---
+
 ## Milestones
 
 1. **M1 - System Lock (Week 1):** A1, A2 complete
 2. **M2 - Core Premium (Week 2):** B1, B2 complete
 3. **M3 - Stage Excellence (Week 3):** B3 complete
 4. **M4 - Interaction/Surface Finish (Week 4):** C1, C2, E1 complete
-5. **M5 - Legacy Carry-Forward (Week 5):** E2, E3, E4 complete
-6. **M6 - Final QA Gate (Week 6):** D1, D2 complete
+5. **M4.5 - NAM Premium (Week 4-5):** F1, F2, F3, F5 complete
+6. **M5 - Legacy Carry-Forward (Week 5-6):** E2, E3, E4, F4 complete
+7. **M6 - Final QA Gate (Week 6-7):** D1, D2 complete
 
 ---
 
@@ -258,6 +324,11 @@ These are unresolved UI polish items migrated from `ROADMAP.md` Phase `6A`, refr
 | E2 | Connection and bypass signal cues | P1 | Planned |
 | E3 | Utility discoverability cues | P2 | Planned |
 | E4 | High-fidelity visual assets | P2 | Planned |
+| F1 | NAM collapsible editor | P1 | Planned |
+| F2 | Multi-font typography system | P1 | Planned |
+| F3 | NAM commercial-grade visual polish | P1 | Planned |
+| F4 | Internal editor consistency roll-out | P2 | Planned |
+| F5 | Theme processor color palette | P1 | Planned |
 
 ---
 
@@ -297,6 +368,18 @@ Completed work:
 
 **Commits:** `2c8e61a`, `1fddbdf`, `f856a2a`, `14b8c86`
 
+### 2026-02-19 - NAM Interface Layout & Sizing Fix
+
+**Tracks affected:** F1 (foundation), F3 (foundation)
+
+Completed work:
+
+- **NAM header** now shows loaded model name (or "No Model") with status LED -- removes redundant internal title bar
+- **`getSize()`** updated to 420x490 for content-first sizing with breathing room
+- **Layout constants shared** between `paint()` and `resized()` (headerH=34, signalH=155, gainH=115, sectionGap=6)
+- **68px knobs** render fully without clipping in the Tone section
+- All sections fit proportionally with consistent panel margins and section padding
+
 ---
 
 ## Working Rules
@@ -306,6 +389,7 @@ Completed work:
 3. No style changes merged without theme-switch and DPI checks.
 4. Prefer timeless clarity over trend-heavy styling.
 5. Default to low-flair visuals: every animation/effect must justify clarity value and negligible performance impact.
+6. **Exception for internal plugin editors:** tasteful amp/pedal-style textures are permitted when they represent physical gear, provided they are procedural, subtle, and theme-adaptive.
 
 ---
 
@@ -316,4 +400,5 @@ The target aesthetic is **high-end live-performance software**:
 1. calm, controlled, and technical
 2. high information density with low cognitive noise
 3. durable style that will still look current after multiple release cycles
+4. internal plugin editors aspire to NeuralDSP / TONEX quality level
 

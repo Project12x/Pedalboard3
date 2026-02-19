@@ -39,25 +39,25 @@ void NAMLookAndFeel::refreshColours()
 
     // Build the amp palette: darker and warmer than the base theme
     ampBackground = pluginBg.darker(0.6f);
-    ampSurface = pluginBg.darker(0.3f);
-    ampBorder = pluginBg.darker(0.8f);
-    ampHeaderBg = pluginBg.darker(0.4f);
+    ampSurface = pluginBg.darker(0.25f);
+    ampBorder = pluginBg.darker(0.85f).interpolatedWith(Colour(0xff606060), 0.15f);
+    ampHeaderBg = pluginBg.darker(0.5f);
     ampAccent = warnCol;            // Warm orange/amber
     ampAccentSecondary = sliderCol; // Theme slider colour
     ampTextBright = textCol;
-    ampTextDim = textCol.withAlpha(0.55f);
+    ampTextDim = textCol.withAlpha(0.6f);
     ampLedOn = successCol.brighter(0.4f);
     ampLedOff = pluginBg.darker(0.5f);
-    ampKnobBody = pluginBg.darker(0.2f);
-    ampKnobRing = pluginBg.interpolatedWith(Colour(0xff808080), 0.3f);
-    ampTrackBg = ampBackground.darker(0.3f);
-    ampButtonBg = buttonCol.darker(0.5f);
-    ampButtonHover = buttonHi.darker(0.3f);
-    ampInsetBg = ampBackground.darker(0.4f);
+    ampKnobBody = pluginBg.darker(0.15f);
+    ampKnobRing = pluginBg.interpolatedWith(Colour(0xffa0a0a0), 0.35f);
+    ampTrackBg = ampBackground.darker(0.4f);
+    ampButtonBg = buttonCol.darker(0.35f);
+    ampButtonHover = buttonHi.darker(0.15f);
+    ampInsetBg = ampBackground.darker(0.5f);
 
     // Apply to JUCE colour IDs
     setColour(Slider::backgroundColourId, ampTrackBg);
-    setColour(Slider::trackColourId, ampAccentSecondary);
+    setColour(Slider::trackColourId, ampAccentSecondary); // Theme slider colour
     setColour(Slider::thumbColourId, ampTextBright);
     setColour(Slider::textBoxTextColourId, ampTextBright);
     setColour(Slider::textBoxBackgroundColourId, ampInsetBg);
@@ -74,7 +74,7 @@ void NAMLookAndFeel::refreshColours()
 void NAMLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
                                       float rotaryStartAngle, float rotaryEndAngle, Slider& slider)
 {
-    const float radius = jmin(width / 2.0f, height / 2.0f) - 6.0f;
+    const float radius = jmin(width / 2.0f, height / 2.0f) - 8.0f;
     const float centreX = x + width * 0.5f;
     const float centreY = y + height * 0.5f;
     const float rx = centreX - radius;
@@ -82,57 +82,78 @@ void NAMLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, int 
     const float rw = radius * 2.0f;
     const float angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    // Shadow ring
-    g.setColour(Colours::black.withAlpha(0.25f));
-    g.fillEllipse(rx - 2, ry + 1, rw + 4, rw + 4);
+    // Drop shadow
+    g.setColour(Colours::black.withAlpha(0.35f));
+    g.fillEllipse(rx - 1, ry + 2, rw + 2, rw + 2);
+
+    // Value arc background (full range, dimmed)
+    Path bgArc;
+    bgArc.addCentredArc(centreX, centreY, radius + 6.0f, radius + 6.0f, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
+    g.setColour(ampTrackBg.brighter(0.05f));
+    g.strokePath(bgArc, PathStrokeType(3.5f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    // Value arc (filled segment showing current position)
+    Path valueArc;
+    valueArc.addCentredArc(centreX, centreY, radius + 6.0f, radius + 6.0f, 0.0f, rotaryStartAngle, angle, true);
+    g.setColour(ampAccent);
+    g.strokePath(valueArc, PathStrokeType(3.5f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    // Value arc glow
+    g.setColour(ampAccent.withAlpha(0.2f));
+    g.strokePath(valueArc, PathStrokeType(8.0f, PathStrokeType::curved, PathStrokeType::rounded));
 
     // Outer metallic ring
-    ColourGradient outerGradient(ampKnobRing.brighter(0.15f), centreX, centreY - radius, ampKnobRing.darker(0.2f),
+    ColourGradient outerGradient(ampKnobRing.brighter(0.25f), centreX, centreY - radius, ampKnobRing.darker(0.15f),
                                  centreX, centreY + radius, false);
     g.setGradientFill(outerGradient);
-    g.fillEllipse(rx - 2, ry - 2, rw + 4, rw + 4);
+    g.fillEllipse(rx - 2.5f, ry - 2.5f, rw + 5, rw + 5);
+
+    // Outer ring border
+    g.setColour(ampBorder.darker(0.3f));
+    g.drawEllipse(rx - 2.5f, ry - 2.5f, rw + 5, rw + 5, 0.75f);
 
     // Main knob body
-    ColourGradient knobGradient(ampKnobBody.brighter(0.1f), centreX, centreY - radius, ampKnobBody.darker(0.3f),
+    ColourGradient knobGradient(ampKnobBody.brighter(0.15f), centreX, centreY - radius, ampKnobBody.darker(0.35f),
                                 centreX, centreY + radius, false);
     g.setGradientFill(knobGradient);
     g.fillEllipse(rx, ry, rw, rw);
 
-    // Inner recess
-    const float innerRadius = radius * 0.65f;
-    ColourGradient innerGradient(ampKnobBody.darker(0.2f), centreX, centreY - innerRadius, ampKnobBody.darker(0.5f),
+    // Inner recess (concave look)
+    const float innerRadius = radius * 0.6f;
+    ColourGradient innerGradient(ampKnobBody.darker(0.25f), centreX, centreY - innerRadius, ampKnobBody.darker(0.55f),
                                  centreX, centreY + innerRadius, false);
     g.setGradientFill(innerGradient);
     g.fillEllipse(centreX - innerRadius, centreY - innerRadius, innerRadius * 2.0f, innerRadius * 2.0f);
 
-    // Value arc (filled segment showing current position)
-    Path valueArc;
-    valueArc.addCentredArc(centreX, centreY, radius + 5.0f, radius + 5.0f, 0.0f, rotaryStartAngle, angle, true);
-    g.setColour(ampAccent.withAlpha(0.8f));
-    g.strokePath(valueArc, PathStrokeType(3.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-    // Value arc glow
-    g.setColour(ampAccent.withAlpha(0.15f));
-    g.strokePath(valueArc, PathStrokeType(7.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    // Inner recess rim
+    g.setColour(Colours::black.withAlpha(0.15f));
+    g.drawEllipse(centreX - innerRadius, centreY - innerRadius, innerRadius * 2.0f, innerRadius * 2.0f, 0.5f);
 
     // Pointer indicator
     Path p;
-    const float pointerLength = radius * 0.55f;
-    const float pointerThickness = 3.0f;
+    const float pointerLength = radius * 0.5f;
+    const float pointerThickness = 3.5f;
     p.addRoundedRectangle(-pointerThickness * 0.5f, -pointerLength, pointerThickness, pointerLength, 1.5f);
     p.applyTransform(AffineTransform::rotation(angle).translated(centreX, centreY));
+
+    // Pointer glow
+    g.setColour(ampAccent.withAlpha(0.3f));
+    Path pGlow;
+    pGlow.addRoundedRectangle(-pointerThickness, -pointerLength - 1, pointerThickness * 2, pointerLength + 1, 2.0f);
+    pGlow.applyTransform(AffineTransform::rotation(angle).translated(centreX, centreY));
+    g.fillPath(pGlow);
 
     g.setColour(ampAccent);
     g.fillPath(p);
 
     // Tick marks
-    g.setColour(ampTextDim.withAlpha(0.4f));
+    g.setColour(ampTextDim.withAlpha(0.35f));
     const int numTicks = 11;
     for (int i = 0; i < numTicks; ++i)
     {
         const float tickAngle = rotaryStartAngle + (float)i / (numTicks - 1) * (rotaryEndAngle - rotaryStartAngle);
-        const float tickInnerRadius = radius + 9.0f;
-        const float tickOuterRadius = radius + 13.0f;
+        const float tickInnerRadius = radius + 11.0f;
+        const float tickOuterRadius = radius + 15.0f;
 
         Point<float> innerPoint(centreX + tickInnerRadius * std::sin(tickAngle),
                                 centreY - tickInnerRadius * std::cos(tickAngle));
@@ -148,7 +169,7 @@ void NAMLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int 
                                       Slider& slider)
 {
     const bool isHorizontal = (style == Slider::LinearHorizontal || style == Slider::LinearBar);
-    const float trackThickness = 4.0f;
+    const float trackThickness = 6.0f;
 
     Rectangle<float> track;
     if (isHorizontal)
@@ -160,13 +181,18 @@ void NAMLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int 
         track = Rectangle<float>(x + (width - trackThickness) * 0.5f, y, trackThickness, height);
     }
 
-    // Track background (inset)
+    // Track background (inset with subtle inner shadow)
     g.setColour(ampTrackBg);
-    g.fillRoundedRectangle(track, 2.0f);
-    g.setColour(ampBorder);
-    g.drawRoundedRectangle(track, 2.0f, 1.0f);
+    g.fillRoundedRectangle(track, 3.0f);
+    // Inner shadow on track
+    ColourGradient trackShadow(Colours::black.withAlpha(0.15f), track.getX(), track.getY(), Colours::transparentBlack,
+                               track.getX(), track.getY() + 3.0f, false);
+    g.setGradientFill(trackShadow);
+    g.fillRoundedRectangle(track, 3.0f);
+    g.setColour(ampBorder.darker(0.2f));
+    g.drawRoundedRectangle(track, 3.0f, 0.75f);
 
-    // Filled portion
+    // Filled portion with accent colour
     Rectangle<float> filledTrack;
     if (isHorizontal)
     {
@@ -179,14 +205,19 @@ void NAMLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int 
         filledTrack = Rectangle<float>(track.getX(), sliderPos, trackThickness, fillHeight);
     }
 
+    // Gradient fill using theme slider colour
     ColourGradient fillGradient(ampAccentSecondary, filledTrack.getX(), filledTrack.getY(),
-                                ampAccentSecondary.darker(0.3f), filledTrack.getRight(), filledTrack.getBottom(),
+                                ampAccentSecondary.darker(0.4f), filledTrack.getRight(), filledTrack.getBottom(),
                                 false);
     g.setGradientFill(fillGradient);
-    g.fillRoundedRectangle(filledTrack, 2.0f);
+    g.fillRoundedRectangle(filledTrack, 3.0f);
+
+    // Filled track glow
+    g.setColour(ampAccentSecondary.withAlpha(0.1f));
+    g.fillRoundedRectangle(filledTrack.expanded(0, 2.0f), 3.0f);
 
     // Thumb
-    const float thumbSize = 14.0f;
+    const float thumbSize = 18.0f;
     float thumbX, thumbY;
     if (isHorizontal)
     {
@@ -200,17 +231,22 @@ void NAMLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int 
     }
 
     // Thumb shadow
-    g.setColour(Colours::black.withAlpha(0.25f));
+    g.setColour(Colours::black.withAlpha(0.3f));
     g.fillEllipse(thumbX + 1, thumbY + 1, thumbSize, thumbSize);
 
-    // Thumb body
-    ColourGradient thumbGradient(ampKnobRing.brighter(0.1f), thumbX, thumbY, ampKnobRing.darker(0.15f), thumbX,
+    // Thumb body with metallic gradient
+    ColourGradient thumbGradient(ampKnobRing.brighter(0.2f), thumbX, thumbY, ampKnobRing.darker(0.15f), thumbX,
                                  thumbY + thumbSize, false);
     g.setGradientFill(thumbGradient);
     g.fillEllipse(thumbX, thumbY, thumbSize, thumbSize);
 
+    // Thumb centre dot
+    g.setColour(ampAccent.withAlpha(0.6f));
+    const float dotSize = 4.0f;
+    g.fillEllipse(thumbX + (thumbSize - dotSize) * 0.5f, thumbY + (thumbSize - dotSize) * 0.5f, dotSize, dotSize);
+
     // Thumb rim
-    g.setColour(ampBorder.brighter(0.3f));
+    g.setColour(ampBorder.brighter(0.4f));
     g.drawEllipse(thumbX, thumbY, thumbSize, thumbSize, 1.0f);
 }
 
@@ -219,7 +255,7 @@ void NAMLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool sh
 {
     const int width = button.getWidth();
     const int height = button.getHeight();
-    const float ledSize = 10.0f;
+    const float ledSize = 12.0f;
     const float ledX = 4.0f;
     const float ledY = (height - ledSize) * 0.5f;
 
@@ -228,26 +264,36 @@ void NAMLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool sh
 
     if (button.getToggleState())
     {
-        g.setColour(ledColour.withAlpha(0.25f));
-        g.fillEllipse(ledX - 3, ledY - 3, ledSize + 6, ledSize + 6);
+        // Outer glow
+        g.setColour(ledColour.withAlpha(0.2f));
+        g.fillEllipse(ledX - 4, ledY - 4, ledSize + 8, ledSize + 8);
+        g.setColour(ledColour.withAlpha(0.35f));
+        g.fillEllipse(ledX - 2, ledY - 2, ledSize + 4, ledSize + 4);
     }
 
     // LED body
-    ColourGradient ledGradient(ledColour.brighter(0.2f), ledX, ledY, ledColour.darker(0.2f), ledX, ledY + ledSize,
+    ColourGradient ledGradient(ledColour.brighter(0.3f), ledX, ledY, ledColour.darker(0.2f), ledX, ledY + ledSize,
                                false);
     g.setGradientFill(ledGradient);
     g.fillEllipse(ledX, ledY, ledSize, ledSize);
 
+    // LED specular highlight
+    if (button.getToggleState())
+    {
+        g.setColour(Colours::white.withAlpha(0.2f));
+        g.fillEllipse(ledX + 2, ledY + 1, ledSize * 0.4f, ledSize * 0.3f);
+    }
+
     // LED rim
-    g.setColour(ampBorder);
+    g.setColour(ampBorder.darker(0.1f));
     g.drawEllipse(ledX, ledY, ledSize, ledSize, 1.0f);
 
     // Text
     auto& fm = FontManager::getInstance();
     g.setColour(button.getToggleState() ? ampTextBright : ampTextDim);
-    g.setFont(fm.getUIFont(12.0f));
+    g.setFont(fm.getUIFont(12.0f, true));
     g.drawText(button.getButtonText(),
-               Rectangle<int>((int)(ledX + ledSize + 4), 0, width - (int)(ledX + ledSize + 4), height),
+               Rectangle<int>((int)(ledX + ledSize + 5), 0, width - (int)(ledX + ledSize + 5), height),
                Justification::centredLeft);
 }
 
@@ -256,23 +302,49 @@ void NAMLookAndFeel::drawButtonBackground(Graphics& g, Button& button, const Col
 {
     auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
-    Colour baseColour = shouldDrawButtonAsDown          ? ampButtonBg.darker(0.2f)
+    Colour baseColour = shouldDrawButtonAsDown          ? ampButtonBg.darker(0.3f)
                         : shouldDrawButtonAsHighlighted ? ampButtonHover
                                                         : ampButtonBg;
 
-    // Shadow
-    g.setColour(Colours::black.withAlpha(0.2f));
-    g.fillRoundedRectangle(bounds.translated(0, 1), 4.0f);
+    // Drop shadow
+    g.setColour(Colours::black.withAlpha(0.25f));
+    g.fillRoundedRectangle(bounds.translated(0, 1.5f), 4.0f);
 
-    // Body gradient
-    ColourGradient buttonGradient(baseColour.brighter(0.08f), bounds.getX(), bounds.getY(), baseColour.darker(0.08f),
+    // Body gradient (more pronounced)
+    ColourGradient buttonGradient(baseColour.brighter(0.15f), bounds.getX(), bounds.getY(), baseColour.darker(0.15f),
                                   bounds.getX(), bounds.getBottom(), false);
     g.setGradientFill(buttonGradient);
     g.fillRoundedRectangle(bounds, 4.0f);
 
-    // Border -- accent on hover
-    g.setColour(shouldDrawButtonAsHighlighted ? ampAccent.withAlpha(0.5f) : ampBorder.brighter(0.15f));
-    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+    // Top highlight bevel
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.fillRoundedRectangle(bounds.removeFromTop(bounds.getHeight() * 0.45f), 4.0f);
+
+    // Border -- accent on hover, otherwise subtle
+    if (shouldDrawButtonAsHighlighted)
+    {
+        g.setColour(ampAccent.withAlpha(0.6f));
+        g.drawRoundedRectangle(button.getLocalBounds().toFloat().reduced(0.5f), 4.0f, 1.5f);
+    }
+    else
+    {
+        g.setColour(ampBorder.brighter(0.25f));
+        g.drawRoundedRectangle(button.getLocalBounds().toFloat().reduced(0.5f), 4.0f, 1.0f);
+    }
+}
+
+Label* NAMLookAndFeel::createSliderTextBox(Slider& slider)
+{
+    auto* label = LookAndFeel_V4::createSliderTextBox(slider);
+    auto& fm = FontManager::getInstance();
+    label->setFont(fm.getMonoFont(12.0f));
+    return label;
+}
+
+Font NAMLookAndFeel::getTextButtonFont(TextButton& /*button*/, int buttonHeight)
+{
+    auto& fm = FontManager::getInstance();
+    return fm.getUIFont(jmin(13.0f, (float)buttonHeight * 0.55f));
 }
 
 //==============================================================================
@@ -337,12 +409,12 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     irLowCutSlider->setSkewFactorFromMidPoint(100.0);
     irLowCutSlider->addListener(this);
     irLowCutSlider->setTextValueSuffix(" Hz");
-    irLowCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    irLowCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 60, 20);
     addAndMakeVisible(irLowCutSlider.get());
 
     irLowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
     irLowCutLabel->setJustificationType(Justification::centredRight);
-    irLowCutLabel->setFont(fm.getUIFont(11.0f, true));
+    irLowCutLabel->setFont(fm.getUIFont(10.0f, true));
     addAndMakeVisible(irLowCutLabel.get());
 
     irHighCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
@@ -351,12 +423,12 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     irHighCutSlider->setSkewFactorFromMidPoint(8000.0);
     irHighCutSlider->addListener(this);
     irHighCutSlider->setTextValueSuffix(" Hz");
-    irHighCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    irHighCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 70, 20);
     addAndMakeVisible(irHighCutSlider.get());
 
     irHighCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
     irHighCutLabel->setJustificationType(Justification::centredRight);
-    irHighCutLabel->setFont(fm.getUIFont(11.0f, true));
+    irHighCutLabel->setFont(fm.getUIFont(10.0f, true));
     addAndMakeVisible(irHighCutLabel.get());
 
     // Effects loop controls
@@ -376,7 +448,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     inputGainSlider->setValue(namProcessor->getInputGain());
     inputGainSlider->addListener(this);
     inputGainSlider->setTextValueSuffix(" dB");
-    inputGainSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    inputGainSlider->setTextBoxStyle(Slider::TextBoxRight, false, 65, 20);
     addAndMakeVisible(inputGainSlider.get());
 
     inputGainLabel = std::make_unique<Label>("inputLabel", "INPUT");
@@ -390,7 +462,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     outputGainSlider->setValue(namProcessor->getOutputGain());
     outputGainSlider->addListener(this);
     outputGainSlider->setTextValueSuffix(" dB");
-    outputGainSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    outputGainSlider->setTextBoxStyle(Slider::TextBoxRight, false, 65, 20);
     addAndMakeVisible(outputGainSlider.get());
 
     outputGainLabel = std::make_unique<Label>("outputLabel", "OUTPUT");
@@ -404,7 +476,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     noiseGateSlider->setValue(namProcessor->getNoiseGateThreshold());
     noiseGateSlider->addListener(this);
     noiseGateSlider->setTextValueSuffix(" dB");
-    noiseGateSlider->setTextBoxStyle(Slider::TextBoxRight, false, 55, 18);
+    noiseGateSlider->setTextBoxStyle(Slider::TextBoxRight, false, 65, 20);
     addAndMakeVisible(noiseGateSlider.get());
 
     noiseGateLabel = std::make_unique<Label>("gateLabel", "GATE");
@@ -506,6 +578,34 @@ void NAMControl::refreshColours()
     repaint();
 }
 
+void NAMControl::setCollapsed(bool shouldCollapse)
+{
+    if (collapsed == shouldCollapse)
+        return;
+
+    collapsed = shouldCollapse;
+    namProcessor->setEditorCollapsed(collapsed);
+
+    // Show/hide all child controls
+    for (auto* child : getChildren())
+        child->setVisible(!collapsed);
+
+    // Resize self to match processor's reported size
+    auto newSize = namProcessor->getSize();
+    setSize(newSize.getX(), newSize.getY());
+
+    // Notify parent PluginComponent to relayout
+    if (auto* parent = getParentComponent())
+    {
+        parent->resized();
+        if (auto* grandparent = parent->getParentComponent())
+            grandparent->resized();
+    }
+
+    resized();
+    repaint();
+}
+
 void NAMControl::timerCallback()
 {
     if (namProcessor->isModelLoaded())
@@ -514,126 +614,166 @@ void NAMControl::timerCallback()
         if (ledPulsePhase > MathConstants<float>::twoPi)
             ledPulsePhase -= MathConstants<float>::twoPi;
 
-        // Only repaint the header area for LED animation (minimal cost)
+        // Only repaint the header area for LED animation
         repaint(0, 0, getWidth(), 36);
     }
+}
+
+void NAMControl::mouseDown(const MouseEvent& event)
+{
+    // Click in header area toggles collapse
+    if (event.y < 40)
+        setCollapsed(!collapsed);
 }
 
 //==============================================================================
 void NAMControl::paint(Graphics& g)
 {
     auto& laf = namLookAndFeel;
+    auto& fm = FontManager::getInstance();
     auto bounds = getLocalBounds();
+
+    // Layout constants -- shared with resized()
+    const int headerH = 34;
+    const int panelMargin = 8;
+    const int sectionGap = 6;
+    const int signalH = 155;
+    const int gainH = 115;
 
     // Main background gradient
     ColourGradient bgGradient(laf.ampSurface, 0, 0, laf.ampBackground, 0, (float)getHeight(), false);
     g.setGradientFill(bgGradient);
-    g.fillRoundedRectangle(bounds.toFloat(), 3.0f);
+    g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
 
     // Outer border (double-line bevel)
-    g.setColour(laf.ampBorder);
-    g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 3.0f, 1.0f);
-    g.setColour(laf.ampBorder.brighter(0.2f));
-    g.drawRoundedRectangle(bounds.toFloat().reduced(1.5f), 2.5f, 0.5f);
+    g.setColour(laf.ampBorder.darker(0.3f));
+    g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 4.0f, 1.5f);
+    g.setColour(laf.ampBorder.brighter(0.15f));
+    g.drawRoundedRectangle(bounds.toFloat().reduced(2.0f), 3.0f, 0.5f);
 
-    // Header bar
-    Rectangle<int> headerBounds(0, 0, getWidth(), 34);
-    ColourGradient headerGradient(laf.ampHeaderBg.brighter(0.05f), 0, 0, laf.ampHeaderBg.darker(0.1f), 0, 34, false);
+    // Header bar -- shows current model name
+    Rectangle<int> headerBounds(2, 2, getWidth() - 4, headerH);
+    ColourGradient headerGradient(laf.ampHeaderBg.brighter(0.08f), 0, 2, laf.ampHeaderBg.darker(0.15f), 0,
+                                  (float)headerH, false);
     g.setGradientFill(headerGradient);
-    g.fillRect(headerBounds);
+    g.fillRoundedRectangle(headerBounds.toFloat(), 3.0f);
 
     // Header accent underline
-    g.setColour(laf.ampAccent.withAlpha(0.6f));
-    g.fillRect(0, 33, getWidth(), 1);
-    g.setColour(laf.ampBorder);
-    g.fillRect(0, 34, getWidth(), 1);
+    g.setColour(laf.ampAccent.withAlpha(0.7f));
+    g.fillRect(2, headerH + 2, getWidth() - 4, 2);
+    g.setColour(laf.ampBorder.darker(0.2f));
+    g.fillRect(2, headerH + 4, getWidth() - 4, 1);
 
-    // Title text
-    auto& fm = FontManager::getInstance();
-    g.setColour(laf.ampTextBright);
+    // Model name in header
+    String headerText = namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No Model";
+    g.setColour(namProcessor->isModelLoaded() ? laf.ampTextBright : laf.ampTextDim);
     g.setFont(fm.getUIFont(14.0f, true));
-    g.drawText("NAM LOADER", headerBounds.reduced(12, 0), Justification::centredLeft);
+    g.drawText(headerText, headerBounds.reduced(12, 0).withTrimmedRight(30), Justification::centredLeft, true);
 
-    // Status LED (model loaded indicator)
-    const float ledSize = 10.0f;
-    const float ledX = getWidth() - 22.0f;
-    const float ledY = (34 - ledSize) * 0.5f;
+    // Status LED in header (right side)
+    const float ledSize = 12.0f;
+    const float ledX = (float)getWidth() - 22.0f;
+    const float ledY = (headerH - ledSize) * 0.5f + 2;
 
     Colour ledColour = namProcessor->isModelLoaded() ? laf.ampLedOn : laf.ampLedOff;
 
-    // LED glow with pulse animation
     if (namProcessor->isModelLoaded())
     {
-        float pulse = 0.25f + 0.1f * std::sin(ledPulsePhase);
+        float pulse = 0.2f + 0.12f * std::sin(ledPulsePhase);
         g.setColour(ledColour.withAlpha(pulse));
         g.fillEllipse(ledX - 4, ledY - 4, ledSize + 8, ledSize + 8);
     }
 
-    // LED body
     ColourGradient ledGradient(ledColour.brighter(0.3f), ledX, ledY, ledColour.darker(0.2f), ledX, ledY + ledSize,
                                false);
     g.setGradientFill(ledGradient);
     g.fillEllipse(ledX, ledY, ledSize, ledSize);
-
-    // LED rim
-    g.setColour(laf.ampBorder);
+    g.setColour(laf.ampBorder.darker(0.2f));
     g.drawEllipse(ledX, ledY, ledSize, ledSize, 1.0f);
 
-    // Section panels
-    const int panelMargin = 8;
-    const int headerH = 36;
-    auto contentArea = bounds.reduced(panelMargin, 0);
-    contentArea.removeFromTop(headerH);
+    if (namProcessor->isModelLoaded())
+    {
+        g.setColour(Colours::white.withAlpha(0.2f));
+        g.fillEllipse(ledX + 2, ledY + 1, ledSize * 0.35f, ledSize * 0.25f);
+    }
 
-    // Calculate section bounds for panel rendering
-    // Signal Chain section (Model + IR + FX Loop)
-    int signalChainHeight = 120;
-    auto signalBounds = contentArea.removeFromTop(signalChainHeight).reduced(0, 3);
+    // Collapse chevron (right of LED)
+    {
+        const float chevX = (float)getWidth() - 40.0f;
+        const float chevY = (headerH - 8.0f) * 0.5f + 2;
+        Path chevron;
+        if (collapsed)
+        {
+            chevron.addTriangle(chevX, chevY, chevX, chevY + 8.0f, chevX + 6.0f, chevY + 4.0f);
+        }
+        else
+        {
+            chevron.addTriangle(chevX, chevY, chevX + 8.0f, chevY, chevX + 4.0f, chevY + 6.0f);
+        }
+        g.setColour(laf.ampTextDim);
+        g.fillPath(chevron);
+    }
+
+    // When collapsed, only draw header
+    if (collapsed)
+        return;
+
+    // Section panels
+    auto contentArea = bounds.reduced(panelMargin, 0);
+    contentArea.removeFromTop(headerH + 7);
+
+    auto signalBounds = contentArea.removeFromTop(signalH).reduced(0, 2);
     drawSectionPanel(g, signalBounds, "SIGNAL CHAIN");
 
-    contentArea.removeFromTop(2);
+    contentArea.removeFromTop(sectionGap);
 
-    // Gain section
-    int gainSectionHeight = 90;
-    auto gainBounds = contentArea.removeFromTop(gainSectionHeight).reduced(0, 3);
+    auto gainBounds = contentArea.removeFromTop(gainH).reduced(0, 2);
     drawSectionPanel(g, gainBounds, "GAIN");
 
-    contentArea.removeFromTop(2);
+    contentArea.removeFromTop(sectionGap);
 
-    // ToneStack section
-    auto eqBounds = contentArea.reduced(0, 3);
+    auto eqBounds = contentArea.reduced(0, 2);
     drawSectionPanel(g, eqBounds, "TONE");
 }
 
 void NAMControl::resized()
 {
+    if (collapsed)
+        return;
+
     auto bounds = getLocalBounds();
-    const int headerH = 36;
+
+    // Layout constants -- must match paint()
+    const int headerH = 34;
     const int panelMargin = 8;
-    bounds.removeFromTop(headerH);
+    const int sectionGap = 6;
+    const int signalH = 155;
+    const int gainH = 115;
+
+    bounds.removeFromTop(headerH + 7); // header + accent + gap
     bounds = bounds.reduced(panelMargin, 0);
 
-    const int rowHeight = 24;
-    const int labelWidth = 50;
-    const int buttonWidth = 75;
-    const int clearButtonWidth = 24;
-    const int spacing = 5;
-    const int sectionHeaderH = 18;
+    const int rowHeight = 26;
+    const int labelWidth = 60;
+    const int buttonWidth = 80;
+    const int clearButtonWidth = 26;
+    const int spacing = 6;
+    const int sectionHeaderH = 20;
+    const int sectionPad = 8;
 
-    // SIGNAL CHAIN section
-    auto signalArea = bounds.removeFromTop(120).reduced(4, 3);
-    signalArea.removeFromTop(sectionHeaderH); // Skip section header space
+    // ===================== SIGNAL CHAIN section =====================
+    auto signalArea = bounds.removeFromTop(signalH).reduced(sectionPad, 2);
+    signalArea.removeFromTop(sectionHeaderH);
 
     // Model row
     auto modelRow = signalArea.removeFromTop(rowHeight);
     loadModelButton->setBounds(modelRow.removeFromLeft(buttonWidth));
     modelRow.removeFromLeft(spacing);
-    browseModelsButton->setBounds(modelRow.removeFromLeft(60));
+    browseModelsButton->setBounds(modelRow.removeFromLeft(64));
     modelRow.removeFromLeft(spacing);
     clearModelButton->setBounds(modelRow.removeFromLeft(clearButtonWidth));
     modelRow.removeFromLeft(spacing);
 
-    // Architecture badge on the right
     if (modelArchLabel->getText().isNotEmpty())
     {
         modelArchLabel->setBounds(modelRow.removeFromRight(50));
@@ -643,7 +783,6 @@ void NAMControl::resized()
     {
         modelArchLabel->setBounds(Rectangle<int>());
     }
-
     modelNameLabel->setBounds(modelRow);
 
     signalArea.removeFromTop(spacing);
@@ -654,7 +793,7 @@ void NAMControl::resized()
     irRow.removeFromLeft(spacing);
     clearIRButton->setBounds(irRow.removeFromLeft(clearButtonWidth));
     irRow.removeFromLeft(spacing);
-    irEnabledButton->setBounds(irRow.removeFromRight(45));
+    irEnabledButton->setBounds(irRow.removeFromRight(50));
     irRow.removeFromRight(spacing);
     irNameLabel->setBounds(irRow);
 
@@ -680,14 +819,14 @@ void NAMControl::resized()
 
     // FX Loop row
     auto fxRow = signalArea.removeFromTop(rowHeight);
-    fxLoopEnabledButton->setBounds(fxRow.removeFromLeft(70));
+    fxLoopEnabledButton->setBounds(fxRow.removeFromLeft(75));
     fxRow.removeFromLeft(spacing);
-    editFxLoopButton->setBounds(fxRow.removeFromLeft(70));
+    editFxLoopButton->setBounds(fxRow.removeFromLeft(80));
 
-    bounds.removeFromTop(2); // gap between sections
+    bounds.removeFromTop(sectionGap);
 
-    // GAIN section
-    auto gainArea = bounds.removeFromTop(90).reduced(4, 3);
+    // ===================== GAIN section =====================
+    auto gainArea = bounds.removeFromTop(gainH).reduced(sectionPad, 2);
     gainArea.removeFromTop(sectionHeaderH);
 
     auto inputRow = gainArea.removeFromTop(rowHeight);
@@ -695,49 +834,49 @@ void NAMControl::resized()
     inputRow.removeFromLeft(spacing);
     inputGainSlider->setBounds(inputRow);
 
-    gainArea.removeFromTop(spacing - 1);
+    gainArea.removeFromTop(spacing);
 
     auto outputRow = gainArea.removeFromTop(rowHeight);
     outputGainLabel->setBounds(outputRow.removeFromLeft(labelWidth));
     outputRow.removeFromLeft(spacing);
     outputGainSlider->setBounds(outputRow);
 
-    gainArea.removeFromTop(spacing - 1);
+    gainArea.removeFromTop(spacing);
 
     auto gateRow = gainArea.removeFromTop(rowHeight);
     noiseGateLabel->setBounds(gateRow.removeFromLeft(labelWidth));
     gateRow.removeFromLeft(spacing);
     noiseGateSlider->setBounds(gateRow);
 
-    bounds.removeFromTop(2); // gap between sections
+    bounds.removeFromTop(sectionGap);
 
-    // TONE section
-    auto eqArea = bounds.reduced(4, 3);
+    // ===================== TONE section =====================
+    auto eqArea = bounds.reduced(sectionPad, 2);
     eqArea.removeFromTop(sectionHeaderH);
 
-    auto eqHeaderRow = eqArea.removeFromTop(20);
-    toneStackEnabledButton->setBounds(eqHeaderRow.removeFromLeft(50));
+    auto eqHeaderRow = eqArea.removeFromTop(24);
+    toneStackEnabledButton->setBounds(eqHeaderRow.removeFromLeft(55));
     eqHeaderRow.removeFromLeft(spacing * 4);
-    normalizeButton->setBounds(eqHeaderRow.removeFromLeft(90));
+    normalizeButton->setBounds(eqHeaderRow.removeFromLeft(100));
 
-    eqArea.removeFromTop(4);
+    eqArea.removeFromTop(6);
 
-    // Knobs row -- larger knobs
+    // Knobs row -- use remaining space
     auto knobRow = eqArea;
     const int knobWidth = knobRow.getWidth() / 3;
-    const int knobSize = 64;
+    const int knobSize = 68;
 
     auto bassArea = knobRow.removeFromLeft(knobWidth);
-    bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize).translated(0, -8));
-    bassLabel->setBounds(bassArea.removeFromBottom(16));
+    bassLabel->setBounds(bassArea.removeFromBottom(18));
+    bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize));
 
     auto midArea = knobRow.removeFromLeft(knobWidth);
-    midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize).translated(0, -8));
-    midLabel->setBounds(midArea.removeFromBottom(16));
+    midLabel->setBounds(midArea.removeFromBottom(18));
+    midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize));
 
     auto trebleArea = knobRow;
-    trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize).translated(0, -8));
-    trebleLabel->setBounds(trebleArea.removeFromBottom(16));
+    trebleLabel->setBounds(trebleArea.removeFromBottom(18));
+    trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize));
 }
 
 //==============================================================================
@@ -933,29 +1072,30 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
     auto& laf = namLookAndFeel;
     auto& fm = FontManager::getInstance();
 
-    // Panel background with subtle inset
-    g.setColour(laf.ampBackground.brighter(0.03f));
-    g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
+    // Panel background (more visible contrast)
+    g.setColour(laf.ampBackground.brighter(0.06f));
+    g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
 
-    // Inner shadow effect (top and left edges darker)
-    ColourGradient shadowGrad(Colours::black.withAlpha(0.08f), bounds.getX(), bounds.getY(), Colours::transparentBlack,
-                              bounds.getX(), bounds.getY() + 8.0f, false);
+    // Inner shadow effect (top edge darker for depth)
+    ColourGradient shadowGrad(Colours::black.withAlpha(0.12f), (float)bounds.getX(), (float)bounds.getY(),
+                              Colours::transparentBlack, (float)bounds.getX(), bounds.getY() + 10.0f, false);
     g.setGradientFill(shadowGrad);
-    g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
+    g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
 
-    // Panel border
-    g.setColour(laf.ampBorder.brighter(0.1f));
-    g.drawRoundedRectangle(bounds.toFloat(), 4.0f, 0.75f);
+    // Panel border (stronger, more visible)
+    g.setColour(laf.ampBorder.brighter(0.2f));
+    g.drawRoundedRectangle(bounds.toFloat(), 5.0f, 1.25f);
 
-    // Section title (inside panel, top-left)
+    // Section title
     if (title.isNotEmpty())
     {
-        g.setColour(laf.ampTextDim);
-        g.setFont(fm.getUIFont(9.0f, true));
-        g.drawText(title, bounds.getX() + 8, bounds.getY() + 2, 80, 14, Justification::centredLeft);
+        // Accent dot
+        g.setColour(laf.ampAccent);
+        g.fillEllipse(bounds.getX() + 6.0f, bounds.getY() + 6.5f, 4.0f, 4.0f);
 
-        // Accent dot next to title
-        g.setColour(laf.ampAccent.withAlpha(0.5f));
-        g.fillEllipse(bounds.getX() + 4.0f, bounds.getY() + 6.0f, 3.0f, 3.0f);
+        // Title text
+        g.setColour(laf.ampTextDim.brighter(0.15f));
+        g.setFont(fm.getUIFont(10.0f, true));
+        g.drawText(title, bounds.getX() + 14, bounds.getY() + 2, 100, 16, Justification::centredLeft);
     }
 }

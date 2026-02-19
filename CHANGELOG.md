@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Semantic Colour Tokens** — Added `Danger Colour`, `Warning Colour`, and `Success Colour` tokens to all 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest). Theme-appropriate palette per scheme (e.g. Synthwave uses neon pink/orange/green).
+- **NAM Collapsible Editor (F1)** — Click the NAM header bar to collapse to a 40px header-only view showing model name, LED, and chevron. Children hidden; PluginComponent relayouts automatically. Pins and E/M/B buttons remain visible.
+- **NAM Multi-Font Typography (F2)** — Slider numeric readouts now use JetBrains Mono. Button text uses Inter. Section headers remain Space Grotesk Bold.
 
 ### Changed
 

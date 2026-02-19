@@ -15,7 +15,6 @@
 
 #include <JuceHeader.h>
 
-
 class NAMProcessor;
 
 //==============================================================================
@@ -39,6 +38,10 @@ class NAMLookAndFeel : public LookAndFeel_V4
 
     void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
                               bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    // F2: Typography overrides -- JetBrains Mono for numeric readouts, Inter for buttons
+    Label* createSliderTextBox(Slider& slider) override;
+    Font getTextButtonFont(TextButton& button, int buttonHeight) override;
 
     // Refresh colours from ColourScheme
     void refreshColours();
@@ -80,9 +83,14 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     void buttonClicked(Button* button) override;
     void sliderValueChanged(Slider* slider) override;
     void timerCallback() override;
+    void mouseDown(const MouseEvent& event) override;
 
     // Refresh theme colours
     void refreshColours();
+
+    // F1: Collapsible editor
+    void setCollapsed(bool collapsed);
+    bool isCollapsed() const { return collapsed; }
 
   private:
     void updateModelDisplay();
@@ -91,6 +99,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
 
     NAMProcessor* namProcessor;
     NAMLookAndFeel namLookAndFeel;
+    bool collapsed = false;
 
     // LED animation state
     float ledPulsePhase = 0.0f;
