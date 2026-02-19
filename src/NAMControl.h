@@ -3,42 +3,63 @@
 
     NAMControl.h
     UI control for the NAM (Neural Amp Modeler) processor
-    Professional amp-style interface
+    Professional amp-style interface with theme-complementary colours
 
   ==============================================================================
 */
 
 #pragma once
 
+#include "ColourScheme.h"
+#include "FontManager.h"
+
 #include <JuceHeader.h>
+
 
 class NAMProcessor;
 
 //==============================================================================
 /**
     Custom LookAndFeel for amp-style controls.
+    Derives its palette from the active ColourScheme for theme consistency.
 */
 class NAMLookAndFeel : public LookAndFeel_V4
 {
   public:
     NAMLookAndFeel();
 
-    void drawRotarySlider(Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, float rotaryStartAngle,
+    void drawRotarySlider(Graphics& g, int x, int y, int width, int height, float sliderPos, float rotaryStartAngle,
                           float rotaryEndAngle, Slider& slider) override;
 
-    void drawLinearSlider(Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, float minSliderPos, float maxSliderPos,
-                          const Slider::SliderStyle style, Slider& slider) override;
+    void drawLinearSlider(Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos,
+                          float maxSliderPos, const Slider::SliderStyle style, Slider& slider) override;
 
-    void drawToggleButton(Graphics& g, ToggleButton& button,
-                          bool shouldDrawButtonAsHighlighted,
+    void drawToggleButton(Graphics& g, ToggleButton& button, bool shouldDrawButtonAsHighlighted,
                           bool shouldDrawButtonAsDown) override;
 
-    void drawButtonBackground(Graphics& g, Button& button,
-                              const Colour& backgroundColour,
-                              bool shouldDrawButtonAsHighlighted,
-                              bool shouldDrawButtonAsDown) override;
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    // Refresh colours from ColourScheme
+    void refreshColours();
+
+    // Theme-derived palette (public for NAMControl::paint to use)
+    Colour ampBackground;      // Darkened plugin background
+    Colour ampSurface;         // Slightly lighter surface for panels
+    Colour ampBorder;          // Panel borders
+    Colour ampHeaderBg;        // Header bar background
+    Colour ampAccent;          // Primary accent (warm orange from Warning Colour)
+    Colour ampAccentSecondary; // Secondary accent (from Slider Colour)
+    Colour ampTextBright;      // Primary text
+    Colour ampTextDim;         // Secondary/label text
+    Colour ampLedOn;           // Active LED colour
+    Colour ampLedOff;          // Inactive LED colour
+    Colour ampKnobBody;        // Rotary knob body
+    Colour ampKnobRing;        // Knob outer ring
+    Colour ampTrackBg;         // Slider track background
+    Colour ampButtonBg;        // Button background
+    Colour ampButtonHover;     // Button hover state
+    Colour ampInsetBg;         // Recessed display areas
 };
 
 //==============================================================================
@@ -46,8 +67,9 @@ class NAMLookAndFeel : public LookAndFeel_V4
     Control component for NAMProcessor.
     Professional amp-style interface with model/IR loading,
     gain controls, noise gate, and tone stack.
+    Colours are derived from the active theme for consistency.
 */
-class NAMControl : public Component, public Button::Listener, public Slider::Listener
+class NAMControl : public Component, public Button::Listener, public Slider::Listener, public Timer
 {
   public:
     NAMControl(NAMProcessor* processor);
@@ -57,21 +79,28 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     void resized() override;
     void buttonClicked(Button* button) override;
     void sliderValueChanged(Slider* slider) override;
+    void timerCallback() override;
+
+    // Refresh theme colours
+    void refreshColours();
 
   private:
     void updateModelDisplay();
     void updateIRDisplay();
-    void drawSectionPanel(Graphics& g, const Rectangle<int>& bounds,
-                          const String& title, Colour headerColour);
+    void drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, const String& title);
 
     NAMProcessor* namProcessor;
     NAMLookAndFeel namLookAndFeel;
+
+    // LED animation state
+    float ledPulsePhase = 0.0f;
 
     // Model loading
     std::unique_ptr<TextButton> loadModelButton;
     std::unique_ptr<TextButton> browseModelsButton;
     std::unique_ptr<TextButton> clearModelButton;
     std::unique_ptr<Label> modelNameLabel;
+    std::unique_ptr<Label> modelArchLabel; // Architecture type badge
 
     // IR loading
     std::unique_ptr<TextButton> loadIRButton;
@@ -114,18 +143,6 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     // File choosers (kept alive for async operation)
     std::unique_ptr<FileChooser> modelFileChooser;
     std::unique_ptr<FileChooser> irFileChooser;
-
-    // Color scheme
-    static constexpr uint32 kBackgroundDark = 0xff1a1a1a;
-    static constexpr uint32 kBackgroundMid = 0xff252525;
-    static constexpr uint32 kPanelBackground = 0xff2d2d2d;
-    static constexpr uint32 kHeaderAccent = 0xff3a3a3a;
-    static constexpr uint32 kAccentOrange = 0xffff8c00;
-    static constexpr uint32 kAccentBlue = 0xff4a90d9;
-    static constexpr uint32 kTextBright = 0xffe0e0e0;
-    static constexpr uint32 kTextDim = 0xff909090;
-    static constexpr uint32 kLedOn = 0xff00ff66;
-    static constexpr uint32 kLedOff = 0xff404040;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMControl)
 };

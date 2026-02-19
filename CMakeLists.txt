@@ -58,11 +58,12 @@ CPMAddPackage(
 )
 
 # Eigen - Linear algebra library (required for NeuralAmpModeler)
-# Using master branch for full lastN/indexing support
+# Needs Eigen::placeholders::lastN (post-3.4.x). Pinned to 5.0.0 stable
+# to avoid GCC-only __attribute__((always_inline)) on lambdas in master.
 CPMAddPackage(
     NAME Eigen3
     GITLAB_REPOSITORY libeigen/eigen
-    GIT_TAG master
+    GIT_TAG 5.0.0
     OPTIONS "EIGEN_BUILD_DOC OFF" "BUILD_TESTING OFF" "EIGEN_BUILD_PKGCONFIG OFF"
 )
 

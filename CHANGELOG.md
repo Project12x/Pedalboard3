@@ -12,7 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Semantic Colour Tokens** — Added `Danger Colour`, `Warning Colour`, and `Success Colour` tokens to all 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest). Theme-appropriate palette per scheme (e.g. Synthwave uses neon pink/orange/green).
 
+### Changed
+
+- **NAM Interface Premium Polish** — Complete visual rewrite of `NAMControl`. Theme-derived 16-colour palette from `ColourScheme` (replaces all hardcoded hex colours). Value arcs on rotary knobs with glow effect and tick marks. Inner-recessed knob rendering with metallic outer ring. LED pulse animation for model-loaded status. Section panels (Signal Chain / Gain / Tone) with inner shadow and accent dots. `FontManager` integration for all typography. Architecture badge label. Larger 64px knobs. Improved linear slider rendering with gradient-filled tracks and shadowed thumbs. Toggle buttons rendered as LED indicators with glow.
+
 ### Fixed
+
+- **Eigen MSVC Build Error** — Pinned Eigen dependency from `master` to `5.0.0`. The `master` branch had GCC-specific `__attribute__((always_inline))` on lambdas in `GeneralBlockPanelKernel.h` causing MSVC C3260. Version 3.4.x was too old (lacked `Eigen::placeholders::lastN` required by NAM's `lstm.h`). 5.0.0 is the stable release with both features.
 
 - **Token Audit Pass 1** — Replaced hardcoded `Colours::black` label text in MainPanel (3 labels) and `Colours::darkgrey` dialog background with `ColourScheme` tokens. Replaced 13 `Colours::white` text callsites in StageView with `"Text Colour"` token — white text was invisible on Daylight theme where stage backgrounds are light grey.
 - **Token Audit Pass 2** — Replaced hardcoded `Colours::red`, `Colours::green`, `Colours::orange`, `Colours::darkred`, `Colours::darkgreen` with semantic tokens (`Danger Colour`, `Warning Colour`, `Success Colour`) across 11 files: DawSplitterProcessor, RoutingProcessors (A/B Splitter mute buttons, old Mixer mute buttons), StageView (panic button, VU glow), TunerControl (needle ticks, strobe glow, LED indicators), ToneGeneratorControl (play/stop button), NAMOnlineBrowser (cached/done/failed status), NotesControl (bold markdown text), MarkdownTokeniser (bold token), Tone3000Auth (error outlines).
