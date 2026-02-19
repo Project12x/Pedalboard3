@@ -1270,6 +1270,7 @@ void PluginComponent::updateNodeSize()
         }
     }
 
+    createPins();
     repaint();
 }
 
