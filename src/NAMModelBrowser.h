@@ -9,11 +9,12 @@
 
 #pragma once
 
-#include <JuceHeader.h>
 #include "NAMCore.h"
 
+#include <JuceHeader.h>
 #include <functional>
 #include <vector>
+
 
 class NAMProcessor;
 class NAMOnlineBrowserComponent;
@@ -97,9 +98,7 @@ class IRListModel : public ListBoxModel
     Main component for the NAM model browser.
     Contains a model list, search box, and details panel.
 */
-class NAMModelBrowserComponent : public Component,
-                                  public Button::Listener,
-                                  public TextEditor::Listener
+class NAMModelBrowserComponent : public Component, public Button::Listener, public TextEditor::Listener
 {
   public:
     NAMModelBrowserComponent(NAMProcessor* processor, std::function<void()> onModelLoaded);
@@ -116,6 +115,7 @@ class NAMModelBrowserComponent : public Component,
 
     void scanDirectory(const File& directory);
     void refreshModelList();
+    void refreshColours();
 
   private:
     void updateDetailsPanel(const NAMModelInfo* model);
@@ -138,7 +138,7 @@ class NAMModelBrowserComponent : public Component,
     std::unique_ptr<TextButton> localTabButton;
     std::unique_ptr<TextButton> onlineTabButton;
     std::unique_ptr<TextButton> irTabButton;
-    int currentTab = 0;  // 0 = Local, 1 = Online, 2 = IRs
+    int currentTab = 0; // 0 = Local, 1 = Online, 2 = IRs
 
     // Online browser component
     std::unique_ptr<NAMOnlineBrowserComponent> onlineBrowser;
@@ -244,9 +244,7 @@ class NAMModelBrowser : public DocumentWindow
     Simple IR browser component for standalone IR loading.
     Used by IRLoaderProcessor to browse and load IR files.
 */
-class IRBrowserComponent : public Component,
-                           public Button::Listener,
-                           public TextEditor::Listener
+class IRBrowserComponent : public Component, public Button::Listener, public TextEditor::Listener
 {
   public:
     IRBrowserComponent(std::function<void(const File&)> onIRSelected);
@@ -297,7 +295,7 @@ class IRBrowserComponent : public Component,
     std::unique_ptr<Label> statusLabel;
 
     File currentDirectory;
-    File namModelsDirectory;  // Also scan NAM Models folder for IRs
+    File namModelsDirectory; // Also scan NAM Models folder for IRs
     std::vector<IRFileInfo> irFiles;
 
     std::unique_ptr<FileChooser> folderChooser;

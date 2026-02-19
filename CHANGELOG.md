@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **NAM Header Clipping** — NAM control component was positioned 1px below the 23px header (y=24), causing the opaque background to overlap the header separator. Moved control to y=26 in constructor, `updateNodeSize`, and `refreshPins`; adjusted height offset from +62 to +64.
+- **NAM Theme Colors Not Updating** — Changing themes did not update NAM control or model browser colors at runtime. Added `NAMModelBrowserComponent::refreshColours()` and wired `MainPanel::changeListenerCallback` to recursively walk the desktop component tree and call `refreshColours()` on all `NAMControl` and `NAMModelBrowserComponent` instances.
 - **Eigen MSVC Build Error** — Pinned Eigen dependency from `master` to `5.0.0`. The `master` branch had GCC-specific `__attribute__((always_inline))` on lambdas in `GeneralBlockPanelKernel.h` causing MSVC C3260. Version 3.4.x was too old (lacked `Eigen::placeholders::lastN` required by NAM's `lstm.h`). 5.0.0 is the stable release with both features.
 
 - **Token Audit Pass 1** — Replaced hardcoded `Colours::black` label text in MainPanel (3 labels) and `Colours::darkgrey` dialog background with `ColourScheme` tokens. Replaced 13 `Colours::white` text callsites in StageView with `"Text Colour"` token — white text was invisible on Daylight theme where stage backgrounds are light grey.

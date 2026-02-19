@@ -217,7 +217,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
                       compSize.getX(), compSize.getY());
 
         tempint = (getWidth() / 2) - (compSize.getX() / 2);
-        comp->setTopLeftPosition(tempint, 24);
+        comp->setTopLeftPosition(tempint, 26);
         comp->setSize(compSize.getX(), compSize.getY()); // Ensure size is set explicitly
 
         spdlog::debug("[PluginComponent] Control positioned: x={}, y=24, PluginComponent size={}x{}", tempint,
@@ -1206,7 +1206,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         else
             w = (int)(compSize.getX() + 24.0f);
 
-        h = compSize.getY() + 62;
+        h = compSize.getY() + 64;
     }
 
     // Enforce matching size for MIDI input node pair
@@ -1264,7 +1264,7 @@ void PluginComponent::updateNodeSize()
             if (dynamic_cast<Slider*>(child) != nullptr)
                 continue;
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
-            child->setTopLeftPosition(cx, 24);
+            child->setTopLeftPosition(cx, 26);
             child->setSize(compSize.getX(), compSize.getY());
             break;
         }
@@ -1377,7 +1377,7 @@ void PluginComponent::refreshPins()
                 continue;
             // This should be the PedalboardProcessor's control component
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
-            child->setTopLeftPosition(cx, 24);
+            child->setTopLeftPosition(cx, 26);
             child->setSize(compSize.getX(), compSize.getY());
             break;
         }

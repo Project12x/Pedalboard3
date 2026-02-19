@@ -8,16 +8,17 @@
 */
 
 #include "NAMModelBrowser.h"
-#include "NAMOnlineBrowser.h"
-#include "NAMProcessor.h"
+
 #include "ColourScheme.h"
 #include "IconManager.h"
+#include "NAMOnlineBrowser.h"
+#include "NAMProcessor.h"
 
 #include <melatonin_blur/melatonin_blur.h>
-#include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
-
 #include <set>
+#include <spdlog/spdlog.h>
+
 
 //==============================================================================
 // NAMModelListModel
@@ -45,9 +46,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     auto& colours = ColourScheme::getInstance().colours;
     const int margin = 6;
     const float cornerRadius = 6.0f;
-    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f,
-                                 static_cast<float>(width - margin * 2),
-                                 static_cast<float>(height - 4));
+    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
+                                static_cast<float>(height - 4));
 
     // Background with rounded corners
     if (rowIsSelected)
@@ -121,20 +121,18 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         Colour archColour;
         String archShort(model.architecture);
         if (archShort.containsIgnoreCase("LSTM"))
-            archColour = Colour(0xff4a9eff);  // Blue
+            archColour = Colour(0xff4a9eff); // Blue
         else if (archShort.containsIgnoreCase("WaveNet"))
-            archColour = Colour(0xff9b59b6);  // Purple
+            archColour = Colour(0xff9b59b6); // Purple
         else if (archShort.containsIgnoreCase("ConvNet"))
-            archColour = Colour(0xff2ecc71);  // Green
+            archColour = Colour(0xff2ecc71); // Green
         else if (archShort.containsIgnoreCase("Linear"))
-            archColour = Colour(0xffe67e22);  // Orange
+            archColour = Colour(0xffe67e22); // Orange
         else
             archColour = colours["Text Colour"].withAlpha(0.4f);
 
-        Rectangle<float> archBadgeBounds(static_cast<float>(badgeX),
-                                          (height - badgeHeight) / 2.0f,
-                                          static_cast<float>(archBadgeWidth),
-                                          static_cast<float>(badgeHeight));
+        Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                         static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
         g.setColour(archColour.withAlpha(0.15f));
         g.fillRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f);
         g.setColour(archColour.withAlpha(0.6f));
@@ -155,36 +153,34 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             if (typeDisplay.contains("preamp") || typeDisplay.contains("pre-amp"))
             {
                 typeDisplay = "Preamp";
-                typeColour = Colour(0xfff39c12);  // Yellow/gold
+                typeColour = Colour(0xfff39c12); // Yellow/gold
             }
             else if (typeDisplay.contains("full") || typeDisplay.contains("chain") || typeDisplay.contains("rig"))
             {
                 typeDisplay = "Full Rig";
-                typeColour = Colour(0xff1abc9c);  // Teal
+                typeColour = Colour(0xff1abc9c); // Teal
             }
             else if (typeDisplay.contains("pedal"))
             {
                 typeDisplay = "Pedal";
-                typeColour = Colour(0xffe74c3c);  // Red
+                typeColour = Colour(0xffe74c3c); // Red
             }
             else if (typeDisplay.contains("amp"))
             {
                 typeDisplay = "Amp";
-                typeColour = Colour(0xff3498db);  // Blue
+                typeColour = Colour(0xff3498db); // Blue
             }
             else
             {
-                typeDisplay = modelType.substring(0, 10);  // Truncate unknown types
+                typeDisplay = modelType.substring(0, 10); // Truncate unknown types
                 typeColour = colours["Text Colour"].withAlpha(0.5f);
             }
 
             int typeBadgeWidth = static_cast<int>(Font(9.0f).getStringWidthFloat(typeDisplay)) + 12;
             badgeX -= typeBadgeWidth;
 
-            Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX),
-                                              (height - badgeHeight) / 2.0f,
-                                              static_cast<float>(typeBadgeWidth),
-                                              static_cast<float>(badgeHeight));
+            Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                             static_cast<float>(typeBadgeWidth), static_cast<float>(badgeHeight));
             g.setColour(typeColour.withAlpha(0.15f));
             g.fillRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f);
             g.setColour(typeColour.withAlpha(0.6f));
@@ -199,8 +195,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         const int textEndX = badgeX - 8;
         g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
         g.setFont(Font(13.0f, Font::bold));
-        g.drawText(String(model.name), textX, 4, textEndX - textX, height / 2,
-                   Justification::centredLeft, true);
+        g.drawText(String(model.name), textX, 4, textEndX - textX, height / 2, Justification::centredLeft, true);
 
         // Rig type and sample rate info on bottom line
         String infoLine;
@@ -213,7 +208,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         }
         if (model.expectedSampleRate > 0)
         {
-            if (infoLine.isNotEmpty()) infoLine += "  |  ";
+            if (infoLine.isNotEmpty())
+                infoLine += "  |  ";
             infoLine += String(static_cast<int>(model.expectedSampleRate)) + " Hz";
         }
 
@@ -221,8 +217,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         {
             g.setColour(colours["Text Colour"].withAlpha(0.5f));
             g.setFont(11.0f);
-            g.drawText(infoLine, textX, height / 2, textEndX - textX, height / 2 - 4,
-                       Justification::centredLeft, true);
+            g.drawText(infoLine, textX, height / 2, textEndX - textX, height / 2 - 4, Justification::centredLeft, true);
         }
     }
 }
@@ -285,9 +280,8 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     auto& colours = ColourScheme::getInstance().colours;
     const int margin = 6;
     const float cornerRadius = 6.0f;
-    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f,
-                                 static_cast<float>(width - margin * 2),
-                                 static_cast<float>(height - 4));
+    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
+                                static_cast<float>(height - 4));
 
     // Background with rounded corners
     if (rowIsSelected)
@@ -323,11 +317,9 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
 
         if (durationText.isNotEmpty())
         {
-            Rectangle<float> badgeBounds(static_cast<float>(badgeX),
-                                          (height - badgeHeight) / 2.0f,
-                                          static_cast<float>(badgeWidth),
-                                          static_cast<float>(badgeHeight));
-            Colour badgeColour = Colour(0xff3498db);  // Blue for duration
+            Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                         static_cast<float>(badgeWidth), static_cast<float>(badgeHeight));
+            Colour badgeColour = Colour(0xff3498db); // Blue for duration
             g.setColour(badgeColour.withAlpha(0.2f));
             g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
             g.setColour(badgeColour);
@@ -341,8 +333,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         // IR name
         g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
         g.setFont(Font(13.0f, Font::bold));
-        g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2,
-                   Justification::centredLeft, true);
+        g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2, Justification::centredLeft, true);
 
         // Sample rate and channels on bottom line
         String details;
@@ -350,7 +341,8 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
             details = String(static_cast<int>(ir.sampleRate / 1000)) + "kHz";
         if (ir.numChannels > 0)
         {
-            if (details.isNotEmpty()) details += "  |  ";
+            if (details.isNotEmpty())
+                details += "  |  ";
             details += ir.numChannels == 1 ? "Mono" : (ir.numChannels == 2 ? "Stereo" : String(ir.numChannels) + "ch");
         }
 
@@ -358,8 +350,8 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         {
             g.setColour(colours["Text Colour"].withAlpha(0.5f));
             g.setFont(11.0f);
-            g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4,
-                       Justification::centredLeft, true);
+            g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4, Justification::centredLeft,
+                       true);
         }
     }
 }
@@ -402,8 +394,8 @@ void IRListModel::rebuildFilteredList()
 class PillTabLookAndFeel : public LookAndFeel_V4
 {
   public:
-    void drawButtonBackground(Graphics& g, Button& button, const Colour& /*backgroundColour*/,
-                               bool isMouseOverButton, bool isButtonDown) override
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& /*backgroundColour*/, bool isMouseOverButton,
+                              bool isButtonDown) override
     {
         auto& colours = ::ColourScheme::getInstance().colours;
         auto bounds = button.getLocalBounds().toFloat().reduced(2);
@@ -503,7 +495,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(searchBox.get());
 
     // Buttons with styled colors
-    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false) {
+    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
+    {
         if (isPrimary)
         {
             // Primary action button (accent color)
@@ -534,7 +527,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     loadButton = std::make_unique<TextButton>("Load Model");
     loadButton->addListener(this);
-    styleButton(loadButton.get(), true);  // Primary action
+    styleButton(loadButton.get(), true); // Primary action
     addAndMakeVisible(loadButton.get());
 
     closeButton = std::make_unique<TextButton>("Close");
@@ -559,7 +552,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(detailsTitle.get());
 
     auto createLabelPair = [&colours, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
-                                             const String& labelText, const String& valueText) {
+                                            const String& labelText, const String& valueText)
+    {
         labelPtr = std::make_unique<Label>("", labelText);
         labelPtr->setFont(Font(12.0f, Font::bold));
         labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
@@ -599,7 +593,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Delete button
     deleteButton = std::make_unique<TextButton>("Delete Model");
     deleteButton->addListener(this);
-    deleteButton->setColour(TextButton::buttonColourId, Colour(0xffe74c3c));  // Red
+    deleteButton->setColour(TextButton::buttonColourId, Colour(0xffe74c3c)); // Red
     deleteButton->setColour(TextButton::buttonOnColourId, Colour(0xffc0392b));
     deleteButton->setColour(TextButton::textColourOffId, Colours::white);
     deleteButton->setColour(TextButton::textColourOnId, Colours::white);
@@ -612,7 +606,9 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(statusLabel.get());
 
     // Empty state message
-    emptyStateLabel = std::make_unique<Label>("emptyState", "No NAM models found.\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
+    emptyStateLabel = std::make_unique<Label>(
+        "emptyState",
+        "No NAM models found.\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
     emptyStateLabel->setFont(Font(13.0f));
     emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
     emptyStateLabel->setJustificationType(Justification::centred);
@@ -656,7 +652,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(irDetailsTitle.get());
 
     auto createIRLabelPair = [&colours, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
-                                               const String& labelText, const String& valueText) {
+                                              const String& labelText, const String& valueText)
+    {
         labelPtr = std::make_unique<Label>("", labelText);
         labelPtr->setFont(Font(12.0f, Font::bold));
         labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
@@ -679,18 +676,15 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     irFilePathValue->setMinimumHorizontalScale(0.5f);
 
     // Start with NAM download directory (same as Tone3000DownloadManager uses)
-    currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory)
-        .getChildFile("Pedalboard3")
-        .getChildFile("NAM Models");
+    currentDirectory =
+        File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3").getChildFile("NAM Models");
 
     // Create NAM Models directory if it doesn't exist
     if (!currentDirectory.isDirectory())
         currentDirectory.createDirectory();
 
     // IR directory (separate from NAM models)
-    irDirectory = File::getSpecialLocation(File::userDocumentsDirectory)
-        .getChildFile("Pedalboard3")
-        .getChildFile("IR");
+    irDirectory = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3").getChildFile("IR");
 
     // Create IR directory if it doesn't exist
     if (!irDirectory.isDirectory())
@@ -710,14 +704,91 @@ NAMModelBrowserComponent::~NAMModelBrowserComponent()
     irTabButton->setLookAndFeel(nullptr);
 }
 
+void NAMModelBrowserComponent::refreshColours()
+{
+    auto& colours = ColourScheme::getInstance().colours;
+
+    // Title
+    titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
+
+    // Search box
+    searchBox->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
+    searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
+    searchBox->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+
+    // Style helper (mirrors constructor logic)
+    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
+    {
+        if (isPrimary)
+        {
+            btn->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
+            btn->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+            btn->setColour(TextButton::textColourOffId, Colours::white);
+            btn->setColour(TextButton::textColourOnId, Colours::white);
+        }
+        else
+        {
+            btn->setColour(TextButton::buttonColourId, colours["Button Colour"]);
+            btn->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
+            btn->setColour(TextButton::textColourOffId, colours["Text Colour"]);
+            btn->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+        }
+    };
+
+    styleButton(refreshButton.get());
+    styleButton(browseFolderButton.get());
+    styleButton(loadButton.get(), true);
+    styleButton(closeButton.get());
+
+    // Details panel labels
+    detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    auto refreshLabelPair = [&colours](Label* label, Label* value)
+    {
+        label->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+        value->setColour(Label::textColourId, colours["Text Colour"]);
+    };
+    refreshLabelPair(nameLabel.get(), nameValue.get());
+    refreshLabelPair(authorLabel.get(), authorValue.get());
+    refreshLabelPair(modelTypeLabel.get(), modelTypeValue.get());
+    refreshLabelPair(architectureLabel.get(), architectureValue.get());
+    refreshLabelPair(sampleRateLabel.get(), sampleRateValue.get());
+    refreshLabelPair(loudnessLabel.get(), loudnessValue.get());
+    refreshLabelPair(filePathLabel.get(), filePathValue.get());
+
+    metadataLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+    metadataDisplay->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
+    metadataDisplay->setColour(TextEditor::textColourId, colours["Text Colour"]);
+    metadataDisplay->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+
+    // Status and empty state
+    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
+    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+
+    // IR browser buttons
+    styleButton(irBrowseFolderButton.get());
+    irLoadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
+    irLoadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+
+    // IR details labels
+    irDetailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    refreshLabelPair(irNameLabel.get(), irNameValue.get());
+    refreshLabelPair(irDurationLabel.get(), irDurationValue.get());
+    refreshLabelPair(irSampleRateLabel.get(), irSampleRateValue.get());
+    refreshLabelPair(irChannelsLabel.get(), irChannelsValue.get());
+    refreshLabelPair(irFileSizeLabel.get(), irFileSizeValue.get());
+    refreshLabelPair(irFilePathLabel.get(), irFilePathValue.get());
+
+    repaint();
+}
+
 void NAMModelBrowserComponent::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto bgColour = colours["Window Background"];
 
     // Gradient background
-    ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0,
-                               bgColour.darker(0.06f), 0, static_cast<float>(getHeight()), false);
+    ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0, bgColour.darker(0.06f), 0,
+                              static_cast<float>(getHeight()), false);
     g.setGradientFill(bgGradient);
     g.fillAll();
 
@@ -725,7 +796,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     if (currentTab == 0 || currentTab == 2)
     {
         auto bounds = getLocalBounds().reduced(16);
-        bounds.removeFromTop(30 + 8 + 28 + 8); // Title + tabs + search row spacing
+        bounds.removeFromTop(30 + 8 + 28 + 8);    // Title + tabs + search row spacing
         bounds.removeFromBottom(20 + 4 + 36 + 8); // Status + button row
 
         int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
@@ -749,10 +820,9 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         shadow.render(g, detailsPath);
 
         // Card fill with subtle gradient
-        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f),
-                                 detailsBounds.getX(), detailsBounds.getY(),
-                                 colours["Dialog Inner Background"].darker(0.03f),
-                                 detailsBounds.getX(), detailsBounds.getBottom(), false);
+        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f), detailsBounds.getX(),
+                                detailsBounds.getY(), colours["Dialog Inner Background"].darker(0.03f),
+                                detailsBounds.getX(), detailsBounds.getBottom(), false);
         g.setGradientFill(cardGrad);
         g.fillPath(detailsPath);
 
@@ -783,7 +853,8 @@ void NAMModelBrowserComponent::resized()
     bounds.removeFromTop(8);
 
     // Hide all IR components by default
-    auto hideIRComponents = [this]() {
+    auto hideIRComponents = [this]()
+    {
         irList->setVisible(false);
         irBrowseFolderButton->setVisible(false);
         irLoadButton->setVisible(false);
@@ -803,7 +874,8 @@ void NAMModelBrowserComponent::resized()
     };
 
     // Hide all local NAM components by default
-    auto hideLocalComponents = [this]() {
+    auto hideLocalComponents = [this]()
+    {
         searchBox->setVisible(false);
         refreshButton->setVisible(false);
         browseFolderButton->setVisible(false);
@@ -895,7 +967,8 @@ void NAMModelBrowserComponent::resized()
         irDetailsTitle->setVisible(true);
         detailsArea.removeFromTop(8);
 
-        auto layoutIRLabelValue = [&detailsArea](Label* label, Label* value) {
+        auto layoutIRLabelValue = [&detailsArea](Label* label, Label* value)
+        {
             auto row = detailsArea.removeFromTop(20);
             label->setBounds(row.removeFromLeft(90));
             label->setVisible(true);
@@ -993,7 +1066,8 @@ void NAMModelBrowserComponent::resized()
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
     detailsArea.removeFromTop(8);
 
-    auto layoutLabelValue = [&detailsArea](Label* label, Label* value) {
+    auto layoutLabelValue = [&detailsArea](Label* label, Label* value)
+    {
         auto row = detailsArea.removeFromTop(20);
         label->setBounds(row.removeFromLeft(90));
         value->setBounds(row);
@@ -1048,35 +1122,37 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
     }
     else if (button == browseFolderButton.get())
     {
-        folderChooser =
-            std::make_unique<FileChooser>("Select NAM Models Folder", currentDirectory, "", true);
+        folderChooser = std::make_unique<FileChooser>("Select NAM Models Folder", currentDirectory, "", true);
 
         auto chooserFlags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
 
-        folderChooser->launchAsync(chooserFlags, [this](const FileChooser& fc) {
-            auto result = fc.getResult();
-            if (result.isDirectory())
-            {
-                currentDirectory = result;
-                scanDirectory(currentDirectory);
-            }
-        });
+        folderChooser->launchAsync(chooserFlags,
+                                   [this](const FileChooser& fc)
+                                   {
+                                       auto result = fc.getResult();
+                                       if (result.isDirectory())
+                                       {
+                                           currentDirectory = result;
+                                           scanDirectory(currentDirectory);
+                                       }
+                                   });
     }
     else if (button == irBrowseFolderButton.get())
     {
-        irFolderChooser =
-            std::make_unique<FileChooser>("Select IR Folder", irDirectory, "", true);
+        irFolderChooser = std::make_unique<FileChooser>("Select IR Folder", irDirectory, "", true);
 
         auto chooserFlags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
 
-        irFolderChooser->launchAsync(chooserFlags, [this](const FileChooser& fc) {
-            auto result = fc.getResult();
-            if (result.isDirectory())
-            {
-                irDirectory = result;
-                scanIRDirectory(irDirectory);
-            }
-        });
+        irFolderChooser->launchAsync(chooserFlags,
+                                     [this](const FileChooser& fc)
+                                     {
+                                         auto result = fc.getResult();
+                                         if (result.isDirectory())
+                                         {
+                                             irDirectory = result;
+                                             scanIRDirectory(irDirectory);
+                                         }
+                                     });
     }
     else if (button == loadButton.get())
     {
@@ -1110,40 +1186,44 @@ void NAMModelBrowserComponent::deleteSelectedModel()
         return;
 
     // Confirm deletion
-    auto options = MessageBoxOptions::makeOptionsOk(
-        MessageBoxIconType::QuestionIcon,
-        "Delete Model?",
-        "Are you sure you want to delete \"" + String(model->name) + "\"?\n\nThis cannot be undone.");
+    auto options = MessageBoxOptions::makeOptionsOk(MessageBoxIconType::QuestionIcon, "Delete Model?",
+                                                    "Are you sure you want to delete \"" + String(model->name) +
+                                                        "\"?\n\nThis cannot be undone.");
 
-    AlertWindow::showAsync(options, [this, modelFile](int result) {
-        if (result == 1)
-        {
-            // Delete the file
-            if (modelFile.deleteFile())
-            {
-                spdlog::info("[NAMModelBrowser] Deleted model: {}", modelFile.getFullPathName().toStdString());
+    AlertWindow::showAsync(options,
+                           [this, modelFile](int result)
+                           {
+                               if (result == 1)
+                               {
+                                   // Delete the file
+                                   if (modelFile.deleteFile())
+                                   {
+                                       spdlog::info("[NAMModelBrowser] Deleted model: {}",
+                                                    modelFile.getFullPathName().toStdString());
 
-                // Also delete parent folder if it's empty (TONE3000 creates a folder per model)
-                File parentDir = modelFile.getParentDirectory();
-                if (parentDir != currentDirectory)
-                {
-                    auto remainingFiles = parentDir.findChildFiles(File::findFiles, false);
-                    if (remainingFiles.isEmpty())
-                    {
-                        parentDir.deleteRecursively();
-                        spdlog::info("[NAMModelBrowser] Deleted empty folder: {}", parentDir.getFullPathName().toStdString());
-                    }
-                }
+                                       // Also delete parent folder if it's empty (TONE3000 creates a folder per model)
+                                       File parentDir = modelFile.getParentDirectory();
+                                       if (parentDir != currentDirectory)
+                                       {
+                                           auto remainingFiles = parentDir.findChildFiles(File::findFiles, false);
+                                           if (remainingFiles.isEmpty())
+                                           {
+                                               parentDir.deleteRecursively();
+                                               spdlog::info("[NAMModelBrowser] Deleted empty folder: {}",
+                                                            parentDir.getFullPathName().toStdString());
+                                           }
+                                       }
 
-                // Refresh the list
-                scanDirectory(currentDirectory);
-            }
-            else
-            {
-                spdlog::error("[NAMModelBrowser] Failed to delete model: {}", modelFile.getFullPathName().toStdString());
-            }
-        }
-    });
+                                       // Refresh the list
+                                       scanDirectory(currentDirectory);
+                                   }
+                                   else
+                                   {
+                                       spdlog::error("[NAMModelBrowser] Failed to delete model: {}",
+                                                     modelFile.getFullPathName().toStdString());
+                                   }
+                               }
+                           });
 }
 
 void NAMModelBrowserComponent::switchToTab(int tabIndex)
@@ -1414,16 +1494,12 @@ void NAMModelBrowserComponent::mouseUp(const MouseEvent& event)
     // Handle clicks on the model list to update selection
     if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
     {
-        juce::MessageManager::callAsync([this]() {
-            onListSelectionChanged();
-        });
+        juce::MessageManager::callAsync([this]() { onListSelectionChanged(); });
     }
     // Handle clicks on the IR list
     if (irList != nullptr && irList->isParentOf(event.eventComponent))
     {
-        juce::MessageManager::callAsync([this]() {
-            onIRListSelectionChanged();
-        });
+        juce::MessageManager::callAsync([this]() { onIRListSelectionChanged(); });
     }
 }
 
@@ -1432,16 +1508,12 @@ void NAMModelBrowserComponent::mouseDoubleClick(const MouseEvent& event)
     // Double-click on list item loads the model
     if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
     {
-        juce::MessageManager::callAsync([this]() {
-            loadSelectedModel();
-        });
+        juce::MessageManager::callAsync([this]() { loadSelectedModel(); });
     }
     // Double-click on IR list item loads the IR
     if (irList != nullptr && irList->isParentOf(event.eventComponent))
     {
-        juce::MessageManager::callAsync([this]() {
-            loadSelectedIR();
-        });
+        juce::MessageManager::callAsync([this]() { loadSelectedIR(); });
     }
 }
 
@@ -1450,8 +1522,7 @@ void NAMModelBrowserComponent::mouseMove(const MouseEvent& event)
     if (modelList != nullptr && modelList->isParentOf(event.eventComponent))
     {
         auto localPoint = modelList->getLocalPoint(event.eventComponent, event.position);
-        int row = modelList->getRowContainingPosition(static_cast<int>(localPoint.x),
-                                                       static_cast<int>(localPoint.y));
+        int row = modelList->getRowContainingPosition(static_cast<int>(localPoint.x), static_cast<int>(localPoint.y));
         if (row != listModel.getHoveredRow())
         {
             listModel.setHoveredRow(row);
@@ -1461,8 +1532,7 @@ void NAMModelBrowserComponent::mouseMove(const MouseEvent& event)
     if (irList != nullptr && irList->isParentOf(event.eventComponent))
     {
         auto localPoint = irList->getLocalPoint(event.eventComponent, event.position);
-        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x),
-                                                    static_cast<int>(localPoint.y));
+        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x), static_cast<int>(localPoint.y));
         if (row != irListModel.getHoveredRow())
         {
             irListModel.setHoveredRow(row);
@@ -1552,8 +1622,7 @@ void NAMModelBrowserComponent::scanIRDirectory(const File& directory)
     spdlog::info("[NAMModelBrowser] Found {} IR files total", irFiles.size());
 
     // Sort by name
-    std::sort(irFiles.begin(), irFiles.end(),
-              [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
+    std::sort(irFiles.begin(), irFiles.end(), [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
 
     irListModel.setFiles(irFiles);
     irList->updateContent();
@@ -1610,7 +1679,8 @@ void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
             if (irInfo->durationSeconds >= 1.0)
                 irDurationValue->setText(String(irInfo->durationSeconds, 3) + " s", dontSendNotification);
             else
-                irDurationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms", dontSendNotification);
+                irDurationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms",
+                                         dontSendNotification);
         }
         else
         {
@@ -1626,7 +1696,9 @@ void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
         // Channels
         if (irInfo->numChannels > 0)
         {
-            String chText = irInfo->numChannels == 1 ? "Mono" : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " channels");
+            String chText = irInfo->numChannels == 1
+                                ? "Mono"
+                                : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " channels");
             irChannelsValue->setText(chText, dontSendNotification);
         }
         else
@@ -1770,7 +1842,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Load button with accent color (prominent action button)
     loadButton = std::make_unique<TextButton>("Load IR");
     loadButton->setTooltip("Load selected IR");
-    loadButton->setColour(TextButton::buttonColourId, Colour(0xff4a90d9));  // Blue accent
+    loadButton->setColour(TextButton::buttonColourId, Colour(0xff4a90d9)); // Blue accent
     loadButton->setColour(TextButton::buttonOnColourId, Colour(0xff3a80c9));
     loadButton->setColour(TextButton::textColourOffId, Colours::white);
     loadButton->setColour(TextButton::textColourOnId, Colours::white);
@@ -1783,11 +1855,11 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     // IR List with improved styling
     irList = std::make_unique<ListBox>("irList", &listModel);
-    irList->setRowHeight(36);  // Taller rows for better readability
+    irList->setRowHeight(36); // Taller rows for better readability
     irList->setColour(ListBox::backgroundColourId, colours["Background"]);
     irList->setColour(ListBox::outlineColourId, colours["Border Colour"]);
     irList->setOutlineThickness(1);
-    irList->addMouseListener(this, true);  // Receive mouse events from children
+    irList->addMouseListener(this, true); // Receive mouse events from children
     addAndMakeVisible(irList.get());
 
     // Details panel labels with improved styling
@@ -1825,8 +1897,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     addAndMakeVisible(statusLabel.get());
 
     // Set default directories
-    auto pedalboard3Dir = File::getSpecialLocation(File::userDocumentsDirectory)
-                              .getChildFile("Pedalboard3");
+    auto pedalboard3Dir = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3");
 
     currentDirectory = pedalboard3Dir.getChildFile("IR");
     namModelsDirectory = pedalboard3Dir.getChildFile("NAM Models");
@@ -1847,8 +1918,8 @@ void IRBrowserComponent::paint(Graphics& g)
 
     // Header area with gradient
     Rectangle<float> headerArea(0, 0, bounds.getWidth(), 45);
-    ColourGradient headerGradient(colours["Background Light"].brighter(0.05f), 0, 0,
-                                   colours["Window Background"], 0, 45, false);
+    ColourGradient headerGradient(colours["Background Light"].brighter(0.05f), 0, 0, colours["Window Background"], 0,
+                                  45, false);
     g.setGradientFill(headerGradient);
     g.fillRect(headerArea);
 
@@ -1858,8 +1929,8 @@ void IRBrowserComponent::paint(Graphics& g)
 
     // Details panel background with subtle border
     auto contentBounds = getLocalBounds();
-    contentBounds.removeFromTop(73);  // Title + search row
-    contentBounds.removeFromBottom(35);  // Status bar
+    contentBounds.removeFromTop(73);    // Title + search row
+    contentBounds.removeFromBottom(35); // Status bar
     auto detailsArea = contentBounds.removeFromRight(200).reduced(5);
 
     // Panel shadow
@@ -1867,10 +1938,9 @@ void IRBrowserComponent::paint(Graphics& g)
     g.fillRoundedRectangle(detailsArea.toFloat().translated(2, 2), 8.0f);
 
     // Panel background
-    ColourGradient panelGradient(colours["Background Light"].brighter(0.02f),
-                                  detailsArea.getX(), detailsArea.getY(),
-                                  colours["Background Light"].darker(0.02f),
-                                  detailsArea.getX(), detailsArea.getBottom(), false);
+    ColourGradient panelGradient(colours["Background Light"].brighter(0.02f), detailsArea.getX(), detailsArea.getY(),
+                                 colours["Background Light"].darker(0.02f), detailsArea.getX(), detailsArea.getBottom(),
+                                 false);
     g.setGradientFill(panelGradient);
     g.fillRoundedRectangle(detailsArea.toFloat(), 8.0f);
 
@@ -1928,7 +1998,7 @@ void IRBrowserComponent::resized()
         label->setBounds(row.removeFromLeft(75));
         row.removeFromLeft(5);
         value->setBounds(row);
-        detailsArea.removeFromTop(2);  // Small gap between rows
+        detailsArea.removeFromTop(2); // Small gap between rows
     };
 
     addDetailLayout(nameLabel.get(), nameValue.get());
@@ -1952,15 +2022,16 @@ void IRBrowserComponent::buttonClicked(Button* button)
         folderChooser = std::make_unique<FileChooser>("Select IR Folder", currentDirectory);
         auto flags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
 
-        folderChooser->launchAsync(flags, [this](const FileChooser& fc)
-        {
-            auto result = fc.getResult();
-            if (result.isDirectory())
-            {
-                currentDirectory = result;
-                scanDirectory(currentDirectory);
-            }
-        });
+        folderChooser->launchAsync(flags,
+                                   [this](const FileChooser& fc)
+                                   {
+                                       auto result = fc.getResult();
+                                       if (result.isDirectory())
+                                       {
+                                           currentDirectory = result;
+                                           scanDirectory(currentDirectory);
+                                       }
+                                   });
     }
     else if (button == loadButton.get())
     {
@@ -1988,9 +2059,7 @@ void IRBrowserComponent::mouseUp(const MouseEvent& event)
     if (irList->isParentOf(event.eventComponent))
     {
         // Use callAsync to ensure ListBox has updated selection before we query it
-        juce::MessageManager::callAsync([this]() {
-            onListSelectionChanged();
-        });
+        juce::MessageManager::callAsync([this]() { onListSelectionChanged(); });
     }
 }
 
@@ -2007,8 +2076,7 @@ void IRBrowserComponent::mouseMove(const MouseEvent& event)
     if (irList->isParentOf(event.eventComponent))
     {
         auto localPoint = irList->getLocalPoint(event.eventComponent, event.position);
-        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x),
-                                                    static_cast<int>(localPoint.y));
+        int row = irList->getRowContainingPosition(static_cast<int>(localPoint.x), static_cast<int>(localPoint.y));
         if (row != listModel.getHoveredRow())
         {
             listModel.setHoveredRow(row);
@@ -2055,8 +2123,8 @@ void IRBrowserComponent::scanDirectory(const File& directory)
             if (reader->sampleRate > 0)
                 info.durationSeconds = static_cast<double>(reader->lengthInSamples) / reader->sampleRate;
 
-            spdlog::debug("[IRBrowser] Loaded IR: {} - {}Hz, {}ch, {:.3f}s",
-                          info.name, info.sampleRate, info.numChannels, info.durationSeconds);
+            spdlog::debug("[IRBrowser] Loaded IR: {} - {}Hz, {}ch, {:.3f}s", info.name, info.sampleRate,
+                          info.numChannels, info.durationSeconds);
         }
         else
         {
@@ -2077,9 +2145,12 @@ void IRBrowserComponent::scanDirectory(const File& directory)
         auto aiffFiles = dir.findChildFiles(File::findFiles, true, "*.aiff");
         auto aifFiles = dir.findChildFiles(File::findFiles, true, "*.aif");
 
-        for (const auto& f : wavFiles) addFile(f);
-        for (const auto& f : aiffFiles) addFile(f);
-        for (const auto& f : aifFiles) addFile(f);
+        for (const auto& f : wavFiles)
+            addFile(f);
+        for (const auto& f : aiffFiles)
+            addFile(f);
+        for (const auto& f : aifFiles)
+            addFile(f);
     };
 
     // Scan primary IR directory
@@ -2093,8 +2164,7 @@ void IRBrowserComponent::scanDirectory(const File& directory)
 
     spdlog::info("[IRBrowser] Found {} IR files total", irFiles.size());
 
-    std::sort(irFiles.begin(), irFiles.end(),
-              [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
+    std::sort(irFiles.begin(), irFiles.end(), [](const IRFileInfo& a, const IRFileInfo& b) { return a.name < b.name; });
 
     listModel.setFiles(irFiles);
     irList->updateContent();
@@ -2126,7 +2196,8 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
             if (irInfo->durationSeconds >= 1.0)
                 durationValue->setText(String(irInfo->durationSeconds, 3) + " s", dontSendNotification);
             else
-                durationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms", dontSendNotification);
+                durationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms",
+                                       dontSendNotification);
         }
         else
         {
@@ -2140,7 +2211,9 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
 
         if (irInfo->numChannels > 0)
         {
-            String chText = irInfo->numChannels == 1 ? "Mono" : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " ch");
+            String chText = irInfo->numChannels == 1
+                                ? "Mono"
+                                : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " ch");
             channelsValue->setText(chText, dontSendNotification);
         }
         else

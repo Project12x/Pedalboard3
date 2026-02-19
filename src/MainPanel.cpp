@@ -43,6 +43,8 @@
 #include "MasterGainState.h"
 #include "MidiFilePlayer.h"
 #include "MidiUtilityProcessors.h"
+#include "NAMControl.h"
+#include "NAMModelBrowser.h"
 #include "NAMProcessor.h"
 #include "NotesProcessor.h"
 #include "OscilloscopeProcessor.h"
@@ -1746,6 +1748,25 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
         // Refresh LookAndFeel colors
         if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
             laf->refreshColours();
+
+        // Refresh NAM-specific colours (LookAndFeel + any visible controls)
+        {
+            // Walk desktop components to find NAMControl and NAMModelBrowserComponent
+            std::function<void(Component*)> refreshNAMTree;
+            refreshNAMTree = [&refreshNAMTree](Component* comp)
+            {
+                if (!comp)
+                    return;
+                if (auto* namCtrl = dynamic_cast<NAMControl*>(comp))
+                    namCtrl->refreshColours();
+                if (auto* namBrowser = dynamic_cast<NAMModelBrowserComponent*>(comp))
+                    namBrowser->refreshColours();
+                for (int i = 0; i < comp->getNumChildComponents(); ++i)
+                    refreshNAMTree(comp->getChildComponent(i));
+            };
+            for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
+                refreshNAMTree(Desktop::getInstance().getComponent(i));
+        }
 
         // Repaint the entire component tree
         if (auto* topLevel = getTopLevelComponent())
