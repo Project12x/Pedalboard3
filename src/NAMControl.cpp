@@ -12,6 +12,7 @@
 
 #include "NAMModelBrowser.h"
 #include "NAMProcessor.h"
+#include "PluginComponent.h"
 #include "SubGraphProcessor.h"
 
 //==============================================================================
@@ -590,17 +591,9 @@ void NAMControl::setCollapsed(bool shouldCollapse)
     for (auto* child : getChildren())
         child->setVisible(!collapsed);
 
-    // Resize self to match processor's reported size
-    auto newSize = namProcessor->getSize();
-    setSize(newSize.getX(), newSize.getY());
-
-    // Notify parent PluginComponent to relayout
-    if (auto* parent = getParentComponent())
-    {
-        parent->resized();
-        if (auto* grandparent = parent->getParentComponent())
-            grandparent->resized();
-    }
+    // Tell the parent PluginComponent to re-query getSize() and resize the node
+    if (auto* pc = dynamic_cast<PluginComponent*>(getParentComponent()))
+        pc->updateNodeSize();
 
     resized();
     repaint();

@@ -1235,6 +1235,45 @@ bool PluginComponent::isAudioIONode() const
 }
 
 //------------------------------------------------------------------------------
+void PluginComponent::updateNodeSize()
+{
+    determineSize();
+
+    // Reposition bottom buttons after size change
+    if (editButton)
+        editButton->setBounds(10, getHeight() - 30, 20, 20);
+    if (mappingsButton)
+        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+    if (bypassButton)
+        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+
+    // Reposition PedalboardProcessor control component
+    auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
+    auto* proc = bypassable ? dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()) : nullptr;
+    if (proc)
+    {
+        Point<int> compSize = proc->getSize();
+        for (int ci = 0; ci < getNumChildComponents(); ++ci)
+        {
+            auto* child = getChildComponent(ci);
+            if (dynamic_cast<PluginPinComponent*>(child) != nullptr)
+                continue;
+            if (child == titleLabel || child == editButton || child == mappingsButton || child == bypassButton ||
+                child == deleteButton)
+                continue;
+            if (dynamic_cast<Slider*>(child) != nullptr)
+                continue;
+            int cx = (getWidth() / 2) - (compSize.getX() / 2);
+            child->setTopLeftPosition(cx, 24);
+            child->setSize(compSize.getX(), compSize.getY());
+            break;
+        }
+    }
+
+    repaint();
+}
+
+//------------------------------------------------------------------------------
 void PluginComponent::refreshPins()
 {
     // Before deleting old pins, remove any PluginConnection cables that reference

@@ -27,7 +27,6 @@
 #include <map>
 #include <melatonin_blur/melatonin_blur.h>
 
-
 class PresetBar;
 class PluginEditorWindow;
 class PluginPinComponent;
@@ -126,6 +125,10 @@ class PluginComponent : public Component,
 
     /// Returns true if this is an Audio Input or Audio Output node
     bool isAudioIONode() const;
+
+    /// Re-queries proc->getSize() and resizes the node + repositions internal control.
+    /// Used by PedalboardProcessor controls that dynamically change size (e.g. collapse).
+    void updateNodeSize();
 
   private:
     ///	Helper method to determine what size the component should be.
