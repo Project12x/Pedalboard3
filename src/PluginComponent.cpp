@@ -1206,7 +1206,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         else
             w = (int)(compSize.getX() + 24.0f);
 
-        h = compSize.getY() + 52;
+        h = compSize.getY() + 62;
     }
 
     // Enforce matching size for MIDI input node pair
