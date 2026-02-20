@@ -8,7 +8,7 @@ A focused roadmap for current development. For historical completed phases, see 
 
 **Phase 6 (Stability & Polish)** — IN PROGRESS
 
-Active work: semantic colour token adoption, mixer/splitter stability, UI polish roadmap execution.
+Active work: UI polish (6A), testing expansion, remaining bug fixes. Semantic tokens, mixer/splitter, NAM loader, master bus, and typography all complete.
 
 **Phase 4 (Launch)** — COMPLETE
 | # | Feature | Status |
@@ -42,6 +42,7 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 ### 5B: Glitch-Free Switching
 | # | Feature | Status |
 |---|---------|--------|
+| 5B.1 | CrossfadeMixer infrastructure node | Done |
 | 5B.4 | Tail Spillover | Planned |
 
 ### 5C: MIDI Processors
@@ -73,14 +74,16 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 ### 5J: NAM Loader
 | # | Feature | Status |
 |---|---------|--------|
-| 5J.1 | NAM Model Loader | Planned |
-| 5J.2 | Model browser | Planned |
-| 5J.3 | ToneHunt integration | Planned |
+| 5J.1 | NAM Model Loader | Done |
+| 5J.2 | Model browser (local + online) | Done |
+| 5J.3 | ToneHunt integration (online browser) | Done |
 | 5J.4 | Curated model packs | Planned |
 
 ### 5J-B: IR Loader (Remaining)
 | # | Feature | Status |
 |---|---------|--------|
+| 5J-B.1 | IR Loader processor | Done |
+| 5J-B.2 | IR Browser (file browser + details) | Done |
 | 5J-B.3 | Bundled IR pack | Planned |
 | 5J-B.5 | Low/high cut | Planned |
 
@@ -92,14 +95,15 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 | 5K.3 | Curated instrument packs | Planned |
 | 5K.4 | Instrument browser | Planned |
 
-### 5L: Virtual QWERTY Keyboard
+### 5L: Virtual MIDI Keyboard
 | # | Feature | Status |
 |---|---------|--------|
-| 5L.1 | QWERTY to MIDI | Planned |
-| 5L.2 | Octave shift | Planned |
-| 5L.3 | Velocity control | Planned |
-| 5L.4 | Visual keyboard | Planned |
-| 5L.5 | Sustain toggle | Planned |
+| 5L.1 | Virtual MIDI Input processor | Done |
+| 5L.2 | MidiKeyboardComponent (on-screen piano) | Done |
+| 5L.3 | QWERTY to MIDI | Planned |
+| 5L.4 | Octave shift | Planned |
+| 5L.5 | Velocity control | Planned |
+| 5L.6 | Sustain toggle | Planned |
 
 ### 5M: First-Run Onboarding
 | # | Feature | Status |
@@ -161,12 +165,12 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 | 6A.14 | Plugin search with fuzzy match | Planned |
 | 6A.15 | Recent files quick access | Planned |
 | 6A.17 | CPU meter redesign | Planned |
-| 6A.18 | Plugin bypass visual feedback | Planned |
+| 6A.18 | Plugin bypass visual feedback | Done |
 | 6A.19 | Master gain controls (Audio I/O) | Done |
 | 6A.20 | Professional VU meters (gradient, peak hold, glow) | Done |
 | 6A.21 | Premium typography (Inter font family) | Done |
 | 6A.22 | Infrastructure node polish (MIDI/OSC pins, buttons, sizing) | Done |
-| 6A.23 | Canvas fit-to-screen and smooth viewport scrolling | Done |
+| 6A.23 | Canvas fit-to-screen, zoom-to-cursor, and smooth viewport scrolling | Done |
 | 6A.24 | DAW Mixer plugin (N-strip, gain/pan/mute/solo/phase, stereo toggle) | Done |
 | 6A.25 | DAW Splitter plugin (1-to-N, per-strip gain/mute/solo/phase) | Done |
 | 6A.26 | Pin-to-strip alignment, MIDI pin placement, button clipping fix | Done |
@@ -174,12 +178,23 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 | 6A.28 | Stereo toggle cable crash fix (refreshPins connection cleanup) | Done |
 | 6A.29 | Semantic colour tokens (Danger/Warning/Success across all themes) | Done |
 | 6A.30 | Hardcoded colour purge (Token Audit Pass 1 + 2, 11 files) | Done |
+| 6A.31 | Semantic Typography System (9 font methods, 20+ file migration) | Done |
+| 6A.32 | NAM interface premium polish (16-colour palette, knob arcs, LED) | Done |
+| 6A.33 | NAM collapsible editor + multi-font typography | Done |
+| 6A.34 | Master bus insert rack (FX button, SubGraphProcessor) | Done |
+| 6A.35 | Gain smoothing (SmoothedValue, 50ms ramp) | Done |
+| 6A.36 | VU meter ballistics (IEC 60268-17, 300ms integration) | Done |
+| 6A.37 | BranchesLAF modernization (rounded scrollbar/combobox/popup) | Done |
+| 6A.38 | Browser gradient restoration (single-pass opaque gradients) | Done |
 
 ### 6B: Testing & Protection
 | # | Task | Status |
 |---|------|--------|
+| 6B.1 | Plugin blacklist + crash protection (SEH) | Done |
 | 6B.2 | MIDI mapping tests | Done |
+| 6B.3 | Out-of-process scanner | Done |
 | 6B.4 | Tracy profiler | Planned |
+| 6B.5 | FontManager test suite (37 assertions) | Done |
 
 ### 6C: Bug Fixes (Legacy)
 | # | Issue | Status |
@@ -192,22 +207,31 @@ Active work: semantic colour token adoption, mixer/splitter stability, UI polish
 | 6C.7 | Infrastructure nodes leaking into patch XML | Done |
 | 6C.8 | FIFO param dispatch safety during patch transitions | Done |
 | 6C.9 | Duplicate getXml() memory leak in savePatch | Done |
+| 6C.10 | Bypass not saved in patches | Done |
+| 6C.11 | JUCE 8 MIDI Input name mismatch | Done |
+| 6C.12 | Node positions overwritten on device change | Done |
+| 6C.13 | OSC Input showing audio/MIDI pins | Done |
+| 6C.14 | Audio I/O node refresh on device change | Done |
+| 6C.15 | Audio Output VU not responding (MeteringProcessorPlayer) | Done |
+| 6C.16 | Thread/lifetime safety hardening (5 subsystems) | Done |
+| 6C.17 | Eigen MSVC build error (pinned to 5.0.0) | Done |
 
 ### 6D: Code Refactoring
 | # | Task | Status |
 |---|------|--------|
-| 6D.1 | Split PedalboardProcessors | Done |
+| 6D.1 | Split PedalboardProcessors (7 files) | Done |
 | 6D.2 | Global loadSVGFromMemory() | Planned |
 | 6D.3 | Atomic cross-thread vars | Done |
 | 6D.4 | RT-safe MIDI/OSC parameter dispatch (FIFO) | Done |
 | 6D.5 | Remove non-RT logging from audio path | Done |
 | 6D.6 | Oscilloscope/VuMeter thread-safe display | Done |
+| 6D.7 | Split PedalboardProcessorEditors (6 files) | Done |
 
 ### 6E: Legacy UX (Niall's ToDo.txt)
 | # | Task | Status |
 |---|------|--------|
 | 6E.1 | Snap to grid | Deferred |
-| 6E.2 | Zoom out mode | Planned |
+| 6E.2 | Mouse wheel zoom + Ctrl+wheel scroll | Done |
 | 6E.3 | Plugin pins enlarge on hover | Planned |
 | 6E.4 | Hotkey to bypass all | Planned |
 | 6E.5 | Tempo display improvements | Planned |
@@ -366,5 +390,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-18 (afternoon)*
+*Last updated: 2026-02-20 (afternoon)*
 
