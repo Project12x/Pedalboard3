@@ -52,15 +52,22 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     // Background with rounded corners
     if (rowIsSelected)
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.3f));
+        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
+
+        // Left-edge accent stripe (DAW-style selection indicator)
+        Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
         g.setColour(colours["Accent Colour"]);
-        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.5f);
+        g.fillRoundedRectangle(stripe, 1.5f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
@@ -120,15 +127,14 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         Colour archColour;
         String archShort(model.architecture);
-        Colour accentBase = colours["Accent Colour"];
         if (archShort.containsIgnoreCase("LSTM"))
-            archColour = accentBase.withRotatedHue(0.0f); // Accent hue
+            archColour = Colour(0xFFE8A838); // warm orange-gold
         else if (archShort.containsIgnoreCase("WaveNet"))
-            archColour = accentBase.withRotatedHue(0.25f); // +90 degrees
+            archColour = Colour(0xFF38C8E8); // bright cyan
         else if (archShort.containsIgnoreCase("ConvNet"))
-            archColour = accentBase.withRotatedHue(0.42f); // +150 degrees
+            archColour = Colour(0xFF58D868); // bright green
         else if (archShort.containsIgnoreCase("Linear"))
-            archColour = accentBase.withRotatedHue(0.58f); // +210 degrees
+            archColour = Colour(0xFFB088E8); // lavender
         else
             archColour = colours["Text Colour"].withAlpha(0.4f);
 
@@ -151,26 +157,25 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             // Normalize model type display text
             String typeDisplay = modelType.toLowerCase();
             Colour typeColour;
-            Colour typeBase = colours["Accent Colour"];
             if (typeDisplay.contains("preamp") || typeDisplay.contains("pre-amp"))
             {
                 typeDisplay = "Preamp";
-                typeColour = typeBase.withRotatedHue(0.12f); // Warm shift
+                typeColour = Colour(0xFFE8A838); // warm orange-gold
             }
             else if (typeDisplay.contains("full") || typeDisplay.contains("chain") || typeDisplay.contains("rig"))
             {
                 typeDisplay = "Full Rig";
-                typeColour = typeBase.withRotatedHue(0.35f); // Cool shift
+                typeColour = Colour(0xFF58D868); // bright green
             }
             else if (typeDisplay.contains("pedal"))
             {
                 typeDisplay = "Pedal";
-                typeColour = typeBase.withRotatedHue(0.5f); // Complementary
+                typeColour = Colour(0xFF38C8E8); // bright cyan
             }
             else if (typeDisplay.contains("amp"))
             {
                 typeDisplay = "Amp";
-                typeColour = typeBase.withRotatedHue(0.7f); // Triadic
+                typeColour = Colour(0xFFE8A838); // warm orange-gold
             }
             else
             {
@@ -179,8 +184,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             }
 
             int typeBadgeWidth =
-                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) +
-                12;
+                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) + 12;
             badgeX -= typeBadgeWidth;
 
             Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
@@ -298,15 +302,22 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     // Background with rounded corners
     if (rowIsSelected)
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.3f));
+        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
+
+        // Left-edge accent stripe (DAW-style selection indicator)
+        Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
         g.setColour(colours["Accent Colour"]);
-        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.5f);
+        g.fillRoundedRectangle(stripe, 1.5f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
@@ -331,7 +342,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         {
             Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(badgeWidth), static_cast<float>(badgeHeight));
-            Colour badgeColour = colours["Accent Colour"].withRotatedHue(0.7f); // Triadic offset for IR duration
+            Colour badgeColour = Colour(0xFF38C8E8); // bright cyan for IR duration
             g.setColour(badgeColour.withAlpha(0.2f));
             g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
             g.setColour(badgeColour);
@@ -844,6 +855,15 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                               static_cast<float>(getHeight()), false);
     g.setGradientFill(bgGradient);
     g.fillAll();
+
+    // Subtle dot-grid pattern on background for visual character
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        const int gridStep = 16;
+        for (int gy = 0; gy < getHeight(); gy += gridStep)
+            for (int gx = 0; gx < getWidth(); gx += gridStep)
+                g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
+    }
 
     // Draw panels for Local and IR tabs
     if (currentTab == 0 || currentTab == 2)
@@ -2043,8 +2063,17 @@ void IRBrowserComponent::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
 
-    // Main background
+    // Gradient background
     g.fillAll(colours["Window Background"]);
+
+    // Subtle dot-grid pattern on background
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        const int gridStep = 16;
+        for (int gy = 0; gy < getHeight(); gy += gridStep)
+            for (int gx = 0; gx < getWidth(); gx += gridStep)
+                g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
+    }
 
     // Header area with gradient
     Rectangle<float> headerArea(0, 0, bounds.getWidth(), 45);
@@ -2057,7 +2086,7 @@ void IRBrowserComponent::paint(Graphics& g)
     g.setColour(colours["Border Colour"]);
     g.drawHorizontalLine(44, 0, bounds.getWidth());
 
-    // Details panel background with subtle border
+    // Details panel
     auto contentBounds = getLocalBounds();
     contentBounds.removeFromTop(73);    // Title + search row
     contentBounds.removeFromBottom(35); // Status bar
@@ -2067,7 +2096,7 @@ void IRBrowserComponent::paint(Graphics& g)
     g.setColour(Colours::black.withAlpha(0.15f));
     g.fillRoundedRectangle(detailsArea.toFloat().translated(2, 2), 8.0f);
 
-    // Panel background
+    // Panel background with gradient
     ColourGradient panelGradient(colours["Background Light"].brighter(0.02f), detailsArea.getX(), detailsArea.getY(),
                                  colours["Background Light"].darker(0.02f), detailsArea.getX(), detailsArea.getBottom(),
                                  false);

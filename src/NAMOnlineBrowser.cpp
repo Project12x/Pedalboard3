@@ -60,91 +60,143 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     auto& colours = ColourScheme::getInstance().colours;
     const auto& tone = tones[rowNumber];
 
-    // Background: selection > hover > alternating
+    const int margin = 6;
+    const float cornerRadius = 6.0f;
+    juce::Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
+                                      static_cast<float>(height - 4));
+
+    // Background: selection > hover > none
     if (rowIsSelected)
-        g.fillAll(colours["Accent Colour"].withAlpha(0.3f));
+    {
+        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
+
+        // Left-edge accent stripe (DAW-style selection indicator)
+        juce::Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
+        g.setColour(colours["Accent Colour"]);
+        g.fillRoundedRectangle(stripe, 1.5f);
+    }
     else if (rowNumber == hoveredRow)
-        g.fillAll(colours["Accent Colour"].withAlpha(0.12f));
-    else if (rowNumber % 2 == 1)
-        g.fillAll(colours["Dialog Inner Background"].withAlpha(0.5f));
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
+    }
 
-    // Text color
-    g.setColour(colours["Text Colour"]);
-    g.setFont(FontManager::getInstance().getBodyBoldFont());
+    const int textX = margin + 10;
 
-    // Draw name
-    juce::String displayName = juce::String(tone.name);
-    g.drawText(displayName, 8, 2, width - 80, height / 2, juce::Justification::centredLeft, true);
+    // Badge layout - rightmost side
+    const int badgeHeight = 16;
+    int badgeX = width - margin - 6;
 
-    // Draw author in smaller font
-    g.setFont(FontManager::getInstance().getCaptionFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.7f));
-    juce::String authorText = "by " + juce::String(tone.authorName);
-    g.drawText(authorText, 8, height / 2, width - 80, height / 2 - 2, juce::Justification::centredLeft, true);
+    // Gear type badge with bright fixed colors visible on dark backgrounds
+    juce::String gearText;
+    juce::Colour badgeCol;
+    if (tone.gearType == "amp")
+    {
+        gearText = "Amp";
+        badgeCol = juce::Colour(0xFFE8A838); // warm orange-gold
+    }
+    else if (tone.gearType == "pedal")
+    {
+        gearText = "Pedal";
+        badgeCol = juce::Colour(0xFF38C8E8); // bright cyan
+    }
+    else if (tone.gearType == "full_rig")
+    {
+        gearText = "Full Rig";
+        badgeCol = juce::Colour(0xFF58D868); // bright green
+    }
+    else
+    {
+        gearText = juce::String(tone.gearType);
+        badgeCol = juce::Colour(0xFFB088E8); // lavender
+    }
 
-    // Draw status indicator on right side
-    juce::Rectangle<int> statusArea(width - 70, 4, 62, height - 8);
+    if (gearText.isNotEmpty())
+    {
+        auto& fm = FontManager::getInstance();
+        g.setFont(fm.getBadgeFont());
+        int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(gearText)) + 12;
+        badgeX -= badgeW;
+
+        juce::Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                           static_cast<float>(badgeW), static_cast<float>(badgeHeight));
+        g.setColour(badgeCol.withAlpha(0.15f));
+        g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
+        g.setColour(badgeCol.withAlpha(0.6f));
+        g.drawRoundedRectangle(badgeBounds, badgeHeight / 2.0f, 1.0f);
+        g.setColour(badgeCol.withAlpha(0.8f));
+        g.drawText(gearText, badgeBounds, juce::Justification::centred, true);
+
+        badgeX -= 4; // spacing
+    }
+
+    // Status indicator on right side
+    juce::Rectangle<int> statusArea(badgeX - 55, 4, 50, height - 8);
 
     auto progressIt = downloadProgress.find(tone.id);
     float progress = progressIt != downloadProgress.end() ? progressIt->second : -1.0f;
 
     if (tone.isCached())
     {
-        // Cached - show checkmark
         g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
         g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Cached", statusArea, juce::Justification::centred);
+        g.drawText("Cached", statusArea, juce::Justification::centredRight);
     }
     else if (progress >= 0.0f && progress <= 1.0f)
     {
-        // Downloading - show progress bar
+        auto barBounds = statusArea.toFloat();
         g.setColour(colours["Dialog Inner Background"]);
-        g.fillRoundedRectangle(statusArea.toFloat(), 3.0f);
-
+        g.fillRoundedRectangle(barBounds, 3.0f);
         g.setColour(colours["Accent Colour"]);
-        auto progressWidth = statusArea.getWidth() * progress;
-        g.fillRoundedRectangle(statusArea.getX(), statusArea.getY(), progressWidth, statusArea.getHeight(), 3.0f);
-
+        g.fillRoundedRectangle(barBounds.getX(), barBounds.getY(), barBounds.getWidth() * progress,
+                               barBounds.getHeight(), 3.0f);
         g.setColour(colours["Text Colour"]);
-        g.setFont(FontManager::getInstance().getMonoFont(10.0f));
-        juce::String percentText = juce::String(static_cast<int>(progress * 100)) + "%";
-        g.drawText(percentText, statusArea, juce::Justification::centred);
+        g.setFont(FontManager::getInstance().getMonoFont(9.0f));
+        g.drawText(juce::String(static_cast<int>(progress * 100)) + "%", statusArea, juce::Justification::centred);
     }
     else if (progress > 1.5f)
     {
-        // Complete
         g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
         g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Done", statusArea, juce::Justification::centred);
+        g.drawText("Done", statusArea, juce::Justification::centredRight);
     }
     else if (progress < -1.5f)
     {
-        // Failed
         g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
         g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Failed", statusArea, juce::Justification::centred);
+        g.drawText("Failed", statusArea, juce::Justification::centredRight);
     }
-    else
+    else if (tone.fileSize > 0)
     {
-        // Not downloaded - show size
-        g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(FontManager::getInstance().getMonoFont(10.0f));
-        if (tone.fileSize > 0)
-        {
-            juce::String sizeText;
-            if (tone.fileSize > 1024 * 1024)
-                sizeText = juce::String(tone.fileSize / (1024 * 1024)) + " MB";
-            else if (tone.fileSize > 1024)
-                sizeText = juce::String(tone.fileSize / 1024) + " KB";
-            else
-                sizeText = juce::String(tone.fileSize) + " B";
-            g.drawText(sizeText, statusArea, juce::Justification::centred);
-        }
+        g.setColour(colours["Text Colour"].withAlpha(0.4f));
+        g.setFont(FontManager::getInstance().getMonoFont(9.0f));
+        juce::String sizeText;
+        if (tone.fileSize > 1024 * 1024)
+            sizeText = juce::String(tone.fileSize / (1024 * 1024)) + " MB";
+        else if (tone.fileSize > 1024)
+            sizeText = juce::String(tone.fileSize / 1024) + " KB";
+        else
+            sizeText = juce::String(tone.fileSize) + " B";
+        g.drawText(sizeText, statusArea, juce::Justification::centredRight);
     }
 
-    // Bottom separator
-    g.setColour(colours["Text Colour"].withAlpha(0.1f));
-    g.drawHorizontalLine(height - 1, 0, width);
+    // Name (primary text)
+    int textRight = statusArea.getX() - 4;
+    g.setColour(colours["Text Colour"]);
+    g.setFont(FontManager::getInstance().getBodyBoldFont());
+    g.drawText(juce::String(tone.name), textX, 2, textRight - textX, height / 2, juce::Justification::centredLeft,
+               true);
+
+    // Author (secondary text)
+    g.setFont(FontManager::getInstance().getCaptionFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.5f));
+    g.drawText("by " + juce::String(tone.authorName), textX, height / 2, textRight - textX, height / 2 - 2,
+               juce::Justification::centredLeft, true);
 }
 
 const Tone3000::ToneInfo* Tone3000ResultsListModel::getToneAt(int index) const
@@ -209,9 +261,10 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     searchButton = std::make_unique<juce::TextButton>("Search");
     searchButton->addListener(this);
-    searchButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
-    searchButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
-    searchButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
+    searchButton->setColour(juce::TextButton::buttonColourId, colours["Accent Colour"]);
+    searchButton->setColour(juce::TextButton::buttonOnColourId, colours["Accent Colour"].brighter(0.15f));
+    searchButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    searchButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     addAndMakeVisible(searchButton.get());
 
     // Filter controls
@@ -395,6 +448,15 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.setGradientFill(bgGradient);
     g.fillAll();
 
+    // Subtle dot-grid pattern on background for visual character
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        const int gridStep = 16;
+        for (int gy = 0; gy < getHeight(); gy += gridStep)
+            for (int gx = 0; gx < getWidth(); gx += gridStep)
+                g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
+    }
+
     // Calculate panel areas
     auto bounds = getLocalBounds().reduced(8);
     bounds.removeFromTop(70);    // Search + filters
@@ -430,6 +492,43 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     // Card border
     g.setColour(colours["Text Colour"].withAlpha(0.15f));
     g.strokePath(detailsPath, juce::PathStrokeType(1.0f));
+
+    // Detail panel section separators
+    if (nameLabel && nameValue)
+    {
+        int sepLeft = nameLabel->getX();
+        int sepRight = nameValue->getRight();
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+
+        // Separator after author row
+        if (authorValue)
+        {
+            float sepY = static_cast<float>(authorValue->getBottom()) + 2.0f;
+            g.drawLine(static_cast<float>(sepLeft), sepY, static_cast<float>(sepRight), sepY, 1.0f);
+        }
+        // Separator after size row (before buttons)
+        if (sizeValue)
+        {
+            float sepY = static_cast<float>(sizeValue->getBottom()) + 2.0f;
+            g.drawLine(static_cast<float>(sepLeft), sepY, static_cast<float>(sepRight), sepY, 1.0f);
+        }
+    }
+
+    // Empty state — subtle text only, no oversized icon
+    if (selectedTone == nullptr && listModel.getNumRows() == 0)
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.20f));
+        g.setFont(FontManager::getInstance().getCaptionFont());
+        g.drawText("Search to browse models", detailsBounds, juce::Justification::centred, true);
+    }
+    else if (selectedTone == nullptr)
+    {
+        // Have results but nothing selected
+        g.setColour(colours["Text Colour"].withAlpha(0.25f));
+        g.setFont(FontManager::getInstance().getLabelFont());
+        g.drawText("Select a model", detailsBounds.withHeight(detailsBounds.getHeight()), juce::Justification::centred,
+                   true);
+    }
 
     // Draw search box background with rounded pill shape (matching local tab)
     auto searchBounds = searchBox->getBounds().toFloat();
