@@ -126,10 +126,6 @@ void NAMLookAndFeel::drawRotarySlider(Graphics& g, int x, int y, int width, int 
     g.setGradientFill(innerGradient);
     g.fillEllipse(centreX - innerRadius, centreY - innerRadius, innerRadius * 2.0f, innerRadius * 2.0f);
 
-    // Inner recess rim
-    g.setColour(Colours::black.withAlpha(0.15f));
-    g.drawEllipse(centreX - innerRadius, centreY - innerRadius, innerRadius * 2.0f, innerRadius * 2.0f, 0.5f);
-
     // Pointer indicator
     Path p;
     const float pointerLength = radius * 0.5f;
@@ -263,13 +259,19 @@ void NAMLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool sh
     // LED glow when on
     Colour ledColour = button.getToggleState() ? ampLedOn : ampLedOff;
 
+    // Cast shadow beneath LED (always visible)
+    g.setColour(Colours::black.withAlpha(0.2f));
+    g.fillEllipse(ledX + 1.0f, ledY + 2.0f, ledSize, ledSize);
+
     if (button.getToggleState())
     {
         // Outer glow
-        g.setColour(ledColour.withAlpha(0.2f));
-        g.fillEllipse(ledX - 4, ledY - 4, ledSize + 8, ledSize + 8);
-        g.setColour(ledColour.withAlpha(0.35f));
-        g.fillEllipse(ledX - 2, ledY - 2, ledSize + 4, ledSize + 4);
+        g.setColour(ledColour.withAlpha(0.15f));
+        g.fillEllipse(ledX - 6, ledY - 6, ledSize + 12, ledSize + 12);
+        g.setColour(ledColour.withAlpha(0.25f));
+        g.fillEllipse(ledX - 3, ledY - 3, ledSize + 6, ledSize + 6);
+        g.setColour(ledColour.withAlpha(0.4f));
+        g.fillEllipse(ledX - 1, ledY - 1, ledSize + 2, ledSize + 2);
     }
 
     // LED body
@@ -292,7 +294,7 @@ void NAMLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool sh
     // Text
     auto& fm = FontManager::getInstance();
     g.setColour(button.getToggleState() ? ampTextBright : ampTextDim);
-    g.setFont(fm.getUIFont(12.0f, true));
+    g.setFont(fm.getLabelFont());
     g.drawText(button.getButtonText(),
                Rectangle<int>((int)(ledX + ledSize + 5), 0, width - (int)(ledX + ledSize + 5), height),
                Justification::centredLeft);
@@ -303,23 +305,36 @@ void NAMLookAndFeel::drawButtonBackground(Graphics& g, Button& button, const Col
 {
     auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
-    Colour baseColour = shouldDrawButtonAsDown          ? ampButtonBg.darker(0.3f)
-                        : shouldDrawButtonAsHighlighted ? ampButtonHover
-                                                        : ampButtonBg;
+    // Use per-button colour if explicitly set, otherwise fall back to amp default
+    Colour btnCol = (backgroundColour != ampButtonBg && backgroundColour != Colour()) ? backgroundColour : ampButtonBg;
 
-    // Drop shadow
-    g.setColour(Colours::black.withAlpha(0.25f));
+    Colour baseColour = shouldDrawButtonAsDown          ? btnCol.darker(0.3f)
+                        : shouldDrawButtonAsHighlighted ? btnCol.brighter(0.15f)
+                                                        : btnCol;
+
+    // Drop shadow (deeper)
+    g.setColour(Colours::black.withAlpha(0.15f));
+    g.fillRoundedRectangle(bounds.translated(0, 2.5f), 5.0f);
+    g.setColour(Colours::black.withAlpha(0.3f));
     g.fillRoundedRectangle(bounds.translated(0, 1.5f), 4.0f);
 
     // Body gradient (more pronounced)
-    ColourGradient buttonGradient(baseColour.brighter(0.15f), bounds.getX(), bounds.getY(), baseColour.darker(0.15f),
+    ColourGradient buttonGradient(baseColour.brighter(0.18f), bounds.getX(), bounds.getY(), baseColour.darker(0.18f),
                                   bounds.getX(), bounds.getBottom(), false);
     g.setGradientFill(buttonGradient);
     g.fillRoundedRectangle(bounds, 4.0f);
 
-    // Top highlight bevel
-    g.setColour(Colours::white.withAlpha(0.06f));
-    g.fillRoundedRectangle(bounds.removeFromTop(bounds.getHeight() * 0.45f), 4.0f);
+    // Top highlight bevel (stronger)
+    g.setColour(Colours::white.withAlpha(0.09f));
+    g.fillRoundedRectangle(bounds.removeFromTop(bounds.getHeight() * 0.42f), 4.0f);
+
+    // Inner shadow at bottom (embossed inset effect)
+    auto innerShadowBounds = button.getLocalBounds().toFloat().reduced(1.0f);
+    ColourGradient innerShadow(Colours::transparentBlack, innerShadowBounds.getX(), innerShadowBounds.getY(),
+                               Colours::black.withAlpha(0.08f), innerShadowBounds.getX(), innerShadowBounds.getBottom(),
+                               false);
+    g.setGradientFill(innerShadow);
+    g.fillRoundedRectangle(innerShadowBounds, 4.0f);
 
     // Border -- accent on hover, otherwise subtle
     if (shouldDrawButtonAsHighlighted)
@@ -334,11 +349,53 @@ void NAMLookAndFeel::drawButtonBackground(Graphics& g, Button& button, const Col
     }
 }
 
+void NAMLookAndFeel::drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY,
+                                  int buttonW, int buttonH, ComboBox& box)
+{
+    auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
+    float cornerRadius = 4.0f;
+
+    // Body fill — match button style
+    Colour baseCol = isButtonDown ? ampButtonBg.darker(0.2f) : ampButtonBg;
+    ColourGradient bodyGrad(baseCol.brighter(0.12f), 0, 0, baseCol.darker(0.1f), 0, (float)height, false);
+    g.setGradientFill(bodyGrad);
+    g.fillRoundedRectangle(bounds, cornerRadius);
+
+    // Border
+    bool focused = box.hasKeyboardFocus(false);
+    g.setColour(focused ? ampAccent.withAlpha(0.6f) : ampBorder.brighter(0.15f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
+
+    // Dropdown arrow — small chevron on the right
+    float arrowX = (float)(buttonX + buttonW / 2);
+    float arrowY = (float)(height / 2);
+    float arrowSize = 5.0f;
+    float offset = isButtonDown ? 1.0f : 0.0f;
+
+    Path arrow;
+    arrow.startNewSubPath(arrowX - arrowSize + offset, arrowY - arrowSize * 0.4f + offset);
+    arrow.lineTo(arrowX + offset, arrowY + arrowSize * 0.4f + offset);
+    arrow.lineTo(arrowX + arrowSize + offset, arrowY - arrowSize * 0.4f + offset);
+
+    g.setColour(ampTextDim);
+    g.strokePath(arrow, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
 Label* NAMLookAndFeel::createSliderTextBox(Slider& slider)
 {
     auto* label = LookAndFeel_V4::createSliderTextBox(slider);
     auto& fm = FontManager::getInstance();
     label->setFont(fm.getMonoFont(12.0f));
+
+    // LCD-style colours: dark recessed background, bright accent text
+    label->setColour(Label::backgroundColourId, ampInsetBg);
+    label->setColour(Label::textColourId, ampAccent);
+    label->setColour(Label::outlineColourId, Colours::transparentBlack);
+    label->setColour(Label::textWhenEditingColourId, ampTextBright);
+    label->setColour(Label::backgroundWhenEditingColourId, ampInsetBg.darker(0.15f));
+    label->setColour(Label::outlineWhenEditingColourId, ampAccent.withAlpha(0.4f));
+    label->setJustificationType(Justification::centred);
+
     return label;
 }
 
@@ -346,6 +403,49 @@ Font NAMLookAndFeel::getTextButtonFont(TextButton& /*button*/, int buttonHeight)
 {
     auto& fm = FontManager::getInstance();
     return fm.getUIFont(jmin(13.0f, (float)buttonHeight * 0.55f));
+}
+
+void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
+{
+    // Check if this label belongs to a slider (value display)
+    bool isSliderTextBox = (dynamic_cast<Slider*>(label.getParentComponent()) != nullptr);
+
+    if (isSliderTextBox)
+    {
+        auto bounds = label.getLocalBounds().toFloat();
+
+        // Recessed inset background
+        g.setColour(ampInsetBg);
+        g.fillRoundedRectangle(bounds, 3.0f);
+
+        // Top inner shadow (recessed depth)
+        ColourGradient insetShadow(Colours::black.withAlpha(0.18f), bounds.getX(), bounds.getY(),
+                                   Colours::transparentBlack, bounds.getX(), bounds.getY() + 4.0f, false);
+        g.setGradientFill(insetShadow);
+        g.fillRoundedRectangle(bounds, 3.0f);
+
+        // Bottom edge accent glow (subtle LCD backlight feel)
+        g.setColour(ampAccent.withAlpha(0.06f));
+        g.fillRoundedRectangle(bounds.getX(), bounds.getBottom() - 2.0f, bounds.getWidth(), 2.0f, 1.0f);
+
+        // Inset border
+        g.setColour(Colours::black.withAlpha(0.3f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 3.0f, 1.0f);
+
+        // Draw text
+        if (!label.isBeingEdited())
+        {
+            auto textColour = label.findColour(Label::textColourId);
+            g.setColour(textColour);
+            g.setFont(label.getFont());
+            g.drawText(label.getText(), bounds.reduced(2, 0), label.getJustificationType(), false);
+        }
+    }
+    else
+    {
+        // Default label rendering for non-slider labels
+        LookAndFeel_V4::drawLabel(g, label);
+    }
 }
 
 //==============================================================================
@@ -374,13 +474,13 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     modelNameLabel = std::make_unique<Label>("modelName", "No Model Loaded");
     modelNameLabel->setJustificationType(Justification::centredLeft);
-    modelNameLabel->setFont(fm.getUIFont(13.0f));
+    modelNameLabel->setFont(fm.getBodyFont());
     addAndMakeVisible(modelNameLabel.get());
 
     // Architecture badge
     modelArchLabel = std::make_unique<Label>("modelArch", "");
     modelArchLabel->setJustificationType(Justification::centred);
-    modelArchLabel->setFont(fm.getUIFont(9.0f, true));
+    modelArchLabel->setFont(fm.getBadgeFont());
     addAndMakeVisible(modelArchLabel.get());
 
     // IR loading section
@@ -395,7 +495,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irNameLabel = std::make_unique<Label>("irName", "No IR Loaded");
     irNameLabel->setJustificationType(Justification::centredLeft);
-    irNameLabel->setFont(fm.getUIFont(13.0f));
+    irNameLabel->setFont(fm.getBodyFont());
     addAndMakeVisible(irNameLabel.get());
 
     irEnabledButton = std::make_unique<ToggleButton>("IR");
@@ -415,7 +515,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irLowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
     irLowCutLabel->setJustificationType(Justification::centredRight);
-    irLowCutLabel->setFont(fm.getUIFont(10.0f, true));
+    irLowCutLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(irLowCutLabel.get());
 
     irHighCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
@@ -429,7 +529,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irHighCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
     irHighCutLabel->setJustificationType(Justification::centredRight);
-    irHighCutLabel->setFont(fm.getUIFont(10.0f, true));
+    irHighCutLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(irHighCutLabel.get());
 
     // Effects loop controls
@@ -454,7 +554,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     inputGainLabel = std::make_unique<Label>("inputLabel", "INPUT");
     inputGainLabel->setJustificationType(Justification::centredRight);
-    inputGainLabel->setFont(fm.getUIFont(11.0f, true));
+    inputGainLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(inputGainLabel.get());
 
     // Output gain slider
@@ -468,7 +568,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     outputGainLabel = std::make_unique<Label>("outputLabel", "OUTPUT");
     outputGainLabel->setJustificationType(Justification::centredRight);
-    outputGainLabel->setFont(fm.getUIFont(11.0f, true));
+    outputGainLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(outputGainLabel.get());
 
     // Noise gate slider
@@ -482,7 +582,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     noiseGateLabel = std::make_unique<Label>("gateLabel", "GATE");
     noiseGateLabel->setJustificationType(Justification::centredRight);
-    noiseGateLabel->setFont(fm.getUIFont(11.0f, true));
+    noiseGateLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(noiseGateLabel.get());
 
     // Tone stack
@@ -490,6 +590,11 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     toneStackEnabledButton->setToggleState(namProcessor->isToneStackEnabled(), dontSendNotification);
     toneStackEnabledButton->addListener(this);
     addAndMakeVisible(toneStackEnabledButton.get());
+
+    toneStackPreButton = std::make_unique<TextButton>(namProcessor->isToneStackPre() ? "PRE" : "POST");
+    toneStackPreButton->setTooltip("EQ position: PRE (before amp model) / POST (after amp model)");
+    toneStackPreButton->addListener(this);
+    addAndMakeVisible(toneStackPreButton.get());
 
     // Bass knob
     bassSlider = std::make_unique<Slider>(Slider::RotaryHorizontalVerticalDrag, Slider::NoTextBox);
@@ -501,7 +606,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     bassLabel = std::make_unique<Label>("bassLabel", "BASS");
     bassLabel->setJustificationType(Justification::centred);
-    bassLabel->setFont(fm.getUIFont(10.0f, true));
+    bassLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(bassLabel.get());
 
     // Mid knob
@@ -514,7 +619,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     midLabel = std::make_unique<Label>("midLabel", "MID");
     midLabel->setJustificationType(Justification::centred);
-    midLabel->setFont(fm.getUIFont(10.0f, true));
+    midLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(midLabel.get());
 
     // Treble knob
@@ -527,7 +632,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     trebleLabel = std::make_unique<Label>("trebleLabel", "TREBLE");
     trebleLabel->setJustificationType(Justification::centred);
-    trebleLabel->setFont(fm.getUIFont(10.0f, true));
+    trebleLabel->setFont(fm.getCaptionFont());
     addAndMakeVisible(trebleLabel.get());
 
     // Normalize button
@@ -638,6 +743,21 @@ void NAMControl::paint(Graphics& g)
     g.setGradientFill(bgGradient);
     g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
 
+    // Procedural noise texture (subtle grain for premium feel)
+    {
+        Random rng(42); // deterministic seed for consistency
+        g.setColour(Colours::white.withAlpha(0.012f));
+        const int step = 4;
+        for (int ny = 0; ny < getHeight(); ny += step)
+        {
+            for (int nx = 0; nx < getWidth(); nx += step)
+            {
+                if (rng.nextFloat() > 0.5f)
+                    g.fillRect(nx, ny, step, step);
+            }
+        }
+    }
+
     // Outer border (double-line bevel)
     g.setColour(laf.ampBorder.darker(0.3f));
     g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 4.0f, 1.5f);
@@ -660,7 +780,7 @@ void NAMControl::paint(Graphics& g)
     // Model name in header
     String headerText = namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No Model";
     g.setColour(namProcessor->isModelLoaded() ? laf.ampTextBright : laf.ampTextDim);
-    g.setFont(fm.getUIFont(14.0f, true));
+    g.setFont(fm.getSubheadingFont());
     g.drawText(headerText, headerBounds.reduced(12, 0).withTrimmedRight(30), Justification::centredLeft, true);
 
     // Status LED in header (right side)
@@ -849,6 +969,8 @@ void NAMControl::resized()
 
     auto eqHeaderRow = eqArea.removeFromTop(24);
     toneStackEnabledButton->setBounds(eqHeaderRow.removeFromLeft(55));
+    eqHeaderRow.removeFromLeft(spacing);
+    toneStackPreButton->setBounds(eqHeaderRow.removeFromLeft(50));
     eqHeaderRow.removeFromLeft(spacing * 4);
     normalizeButton->setBounds(eqHeaderRow.removeFromLeft(100));
 
@@ -978,6 +1100,12 @@ void NAMControl::buttonClicked(Button* button)
     {
         namProcessor->setToneStackEnabled(toneStackEnabledButton->getToggleState());
     }
+    else if (button == toneStackPreButton.get())
+    {
+        bool newPre = !namProcessor->isToneStackPre();
+        namProcessor->setToneStackPre(newPre);
+        toneStackPreButton->setButtonText(newPre ? "PRE" : "POST");
+    }
     else if (button == normalizeButton.get())
     {
         namProcessor->setNormalizeOutput(normalizeButton->getToggleState());
@@ -1069,26 +1197,56 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
     g.setColour(laf.ampBackground.brighter(0.06f));
     g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
 
+    // Brushed-metal texture (subtle horizontal lines)
+    {
+        g.saveState();
+        g.reduceClipRegion(bounds);
+        for (int ly = bounds.getY(); ly < bounds.getBottom(); ly += 2)
+        {
+            float alpha = ((ly % 4) == 0) ? 0.025f : 0.012f;
+            g.setColour(Colours::white.withAlpha(alpha));
+            g.drawHorizontalLine(ly, static_cast<float>(bounds.getX()), static_cast<float>(bounds.getRight()));
+        }
+        g.restoreState();
+    }
+
     // Inner shadow effect (top edge darker for depth)
     ColourGradient shadowGrad(Colours::black.withAlpha(0.12f), (float)bounds.getX(), (float)bounds.getY(),
                               Colours::transparentBlack, (float)bounds.getX(), bounds.getY() + 10.0f, false);
     g.setGradientFill(shadowGrad);
     g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
 
+    // Bottom highlight (convex bevel)
+    ColourGradient bottomHighlight(Colours::transparentBlack, (float)bounds.getX(), bounds.getBottom() - 10.0f,
+                                   Colours::white.withAlpha(0.03f), (float)bounds.getX(), (float)bounds.getBottom(),
+                                   false);
+    g.setGradientFill(bottomHighlight);
+    g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
+
     // Panel border (stronger, more visible)
     g.setColour(laf.ampBorder.brighter(0.2f));
     g.drawRoundedRectangle(bounds.toFloat(), 5.0f, 1.25f);
 
-    // Section title
+    // Section title with accent dot glow
     if (title.isNotEmpty())
     {
+        float dotX = bounds.getX() + 6.0f;
+        float dotY = bounds.getY() + 6.5f;
+        float dotSize = 4.0f;
+
+        // Accent dot glow aura
+        g.setColour(laf.ampAccent.withAlpha(0.15f));
+        g.fillEllipse(dotX - 3.0f, dotY - 3.0f, dotSize + 6.0f, dotSize + 6.0f);
+        g.setColour(laf.ampAccent.withAlpha(0.3f));
+        g.fillEllipse(dotX - 1.0f, dotY - 1.0f, dotSize + 2.0f, dotSize + 2.0f);
+
         // Accent dot
         g.setColour(laf.ampAccent);
-        g.fillEllipse(bounds.getX() + 6.0f, bounds.getY() + 6.5f, 4.0f, 4.0f);
+        g.fillEllipse(dotX, dotY, dotSize, dotSize);
 
         // Title text
         g.setColour(laf.ampTextDim.brighter(0.15f));
-        g.setFont(fm.getUIFont(10.0f, true));
+        g.setFont(fm.getCaptionFont());
         g.drawText(title, bounds.getX() + 14, bounds.getY() + 2, 100, 16, Justification::centredLeft);
     }
 }

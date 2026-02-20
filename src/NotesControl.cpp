@@ -1,4 +1,5 @@
 #include "NotesControl.h"
+#include "FontManager.h"
 
 #include "ColourScheme.h"
 #include "NotesProcessor.h"
@@ -162,7 +163,7 @@ struct RenderContext
 
     RenderContext(AttributedString& s) : attributedString(s)
     {
-        baseFont = Font("Arial", 14.0f, Font::plain);
+        baseFont = FontManager::getInstance().getBodyFont();
         baseColour = Colours::white;
         stateStack.push_back({baseFont, baseColour});
     }
@@ -232,7 +233,7 @@ static int enter_span(MD_SPANTYPE type, void* detail, void* userdata)
     }
     else if (type == MD_SPAN_CODE)
     {
-        ctx->current().font = Font("Courier New", 13.0f, Font::plain);
+        ctx->current().font = FontManager::getInstance().getMonoFont(13.0f);
         ctx->current().colour = Colours::pink;
     }
 
@@ -272,7 +273,7 @@ NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(fal
     editor->setColour(CodeEditorComponent::highlightColourId, Colours::white.withAlpha(0.2f));
     editor->setColour(CodeEditorComponent::defaultTextColourId, Colours::white);
     editor->setColour(CaretComponent::caretColourId, Colours::white);
-    editor->setFont(Font("Courier New", 14.0f, Font::plain));
+    editor->setFont(FontManager::getInstance().getMonoFont(14.0f));
     editor->setLineNumbersShown(false);
 
     // Wire up Escape key to exit edit mode

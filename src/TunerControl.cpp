@@ -125,7 +125,7 @@ void TunerControl::drawNoteDisplay(Graphics& g, Rectangle<float> bounds)
     if (!tunerProcessor->isPitchDetected())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.25f));
-        g.setFont(fonts.getUIFont(44.0f, true));
+        g.setFont(fonts.getDisplayFont(44.0f));
         g.drawText("---", bounds, Justification::centred);
         return;
     }
@@ -149,7 +149,7 @@ void TunerControl::drawNoteDisplay(Graphics& g, Rectangle<float> bounds)
 
     // Note name with shadow
     Colour noteCol = getTuningColour(displayedCents);
-    g.setFont(fonts.getUIFont(50.0f, true));
+    g.setFont(fonts.getDisplayFont(50.0f));
 
     // Shadow
     g.setColour(Colours::black.withAlpha(0.4f));
@@ -282,7 +282,7 @@ void TunerControl::drawStrobeDisc(Graphics& g, Rectangle<float> bounds)
         g.fillEllipse(centreX - radius, centreY - radius, radius * 2, radius * 2);
 
         g.setColour(colours["Text Colour"].withAlpha(0.4f));
-        g.setFont(fonts.getUIFont(13.0f));
+        g.setFont(fonts.getBodyFont());
         g.drawText("No Signal", bounds, Justification::centred);
         return;
     }

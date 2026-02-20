@@ -100,6 +100,32 @@ void BranchesLAF::refreshColours()
     setColour(ToggleButton::textColourId, colours["Text Colour"]);
     setColour(ToggleButton::tickColourId, colours["Vector Colour"]);
     setColour(ToggleButton::tickDisabledColourId, colours["Tick Box Colour"]);
+
+    // Slider colour IDs
+    setColour(Slider::thumbColourId, colours["Slider Colour"]);
+    setColour(Slider::trackColourId, colours["Slider Colour"].withAlpha(0.4f));
+    setColour(Slider::rotarySliderFillColourId, colours["Slider Colour"]);
+    setColour(Slider::rotarySliderOutlineColourId, colours["Plugin Border"]);
+    setColour(Slider::textBoxTextColourId, colours["Text Colour"]);
+    setColour(Slider::textBoxBackgroundColourId, colours["Text Editor Colour"]);
+    setColour(Slider::textBoxOutlineColourId, colours["Plugin Border"]);
+
+    // ScrollBar colour IDs
+    setColour(ScrollBar::thumbColourId, colours["Button Highlight"]);
+    setColour(ScrollBar::trackColourId, colours["Field Background"]);
+
+    // ComboBox extended
+    setColour(ComboBox::backgroundColourId, colours["Text Editor Colour"]);
+    setColour(ComboBox::outlineColourId, colours["Plugin Border"]);
+
+    // TextEditor
+    setColour(TextEditor::backgroundColourId, colours["Text Editor Colour"]);
+    setColour(TextEditor::textColourId, colours["Text Colour"]);
+    setColour(TextEditor::outlineColourId, colours["Plugin Border"]);
+
+    // ListBox
+    setColour(ListBox::backgroundColourId, colours["Field Background"]);
+    setColour(ListBox::textColourId, colours["Text Colour"]);
 }
 
 //------------------------------------------------------------------------------
@@ -107,7 +133,10 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
                                        bool isMouseOverButton, bool isButtonDown)
 {
     auto& colours = ::ColourScheme::getInstance().colours;
-    Colour buttonCol = colours["Button Colour"];
+    // Use the per-button colour if explicitly set, otherwise fall back to theme default
+    Colour defaultButtonCol = colours["Button Colour"];
+    Colour buttonCol =
+        (backgroundColour != defaultButtonCol && backgroundColour != Colour()) ? backgroundColour : defaultButtonCol;
     Colour accentCol = colours["Audio Connection"];
 
     float w = (float)button.getWidth();
@@ -173,14 +202,14 @@ void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOv
 {
     int inc;
 
-    g.setFont(FontManager::getInstance().getUIFont(15.0f));
+    g.setFont(FontManager::getInstance().getBodyFont());
     g.setColour(
         ::ColourScheme::getInstance().colours["Text Colour"].withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 
     const int yIndent = jmin(4, button.proportionOfHeight(0.3f));
     const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    const int fontHeight = roundFloatToInt(FontManager::getInstance().getUIFont(15.0f).getHeight() * 0.6f);
+    const int fontHeight = roundFloatToInt(FontManager::getInstance().getBodyFont().getHeight() * 0.6f);
     const int leftIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
     const int rightIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
 
@@ -471,7 +500,7 @@ void BranchesLAF::drawMenuBarBackground(Graphics& g, int width, int height, bool
 //------------------------------------------------------------------------------
 Font BranchesLAF::getMenuBarFont(MenuBarComponent& menuBar, int itemIndex, const String& itemText)
 {
-    return FontManager::getInstance().getUIFont(15.0f);
+    return FontManager::getInstance().getBodyFont();
 }
 
 //------------------------------------------------------------------------------

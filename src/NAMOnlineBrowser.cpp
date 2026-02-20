@@ -10,13 +10,13 @@
 #include "NAMOnlineBrowser.h"
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "NAMProcessor.h"
 #include "Tone3000Auth.h"
 #include "Tone3000Client.h"
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
-
 
 //==============================================================================
 // Tone3000ResultsListModel
@@ -70,14 +70,14 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
 
     // Text color
     g.setColour(colours["Text Colour"]);
-    g.setFont(juce::Font(13.0f));
+    g.setFont(FontManager::getInstance().getBodyBoldFont());
 
     // Draw name
     juce::String displayName = juce::String(tone.name);
     g.drawText(displayName, 8, 2, width - 80, height / 2, juce::Justification::centredLeft, true);
 
     // Draw author in smaller font
-    g.setFont(juce::Font(11.0f));
+    g.setFont(FontManager::getInstance().getCaptionFont());
     g.setColour(colours["Text Colour"].withAlpha(0.7f));
     juce::String authorText = "by " + juce::String(tone.authorName);
     g.drawText(authorText, 8, height / 2, width - 80, height / 2 - 2, juce::Justification::centredLeft, true);
@@ -92,7 +92,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     {
         // Cached - show checkmark
         g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
-        g.setFont(juce::Font(11.0f));
+        g.setFont(FontManager::getInstance().getCaptionFont());
         g.drawText("Cached", statusArea, juce::Justification::centred);
     }
     else if (progress >= 0.0f && progress <= 1.0f)
@@ -106,7 +106,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
         g.fillRoundedRectangle(statusArea.getX(), statusArea.getY(), progressWidth, statusArea.getHeight(), 3.0f);
 
         g.setColour(colours["Text Colour"]);
-        g.setFont(juce::Font(10.0f));
+        g.setFont(FontManager::getInstance().getMonoFont(10.0f));
         juce::String percentText = juce::String(static_cast<int>(progress * 100)) + "%";
         g.drawText(percentText, statusArea, juce::Justification::centred);
     }
@@ -114,21 +114,21 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     {
         // Complete
         g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
-        g.setFont(juce::Font(11.0f));
+        g.setFont(FontManager::getInstance().getCaptionFont());
         g.drawText("Done", statusArea, juce::Justification::centred);
     }
     else if (progress < -1.5f)
     {
         // Failed
         g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
-        g.setFont(juce::Font(11.0f));
+        g.setFont(FontManager::getInstance().getCaptionFont());
         g.drawText("Failed", statusArea, juce::Justification::centred);
     }
     else
     {
         // Not downloaded - show size
         g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(juce::Font(10.0f));
+        g.setFont(FontManager::getInstance().getMonoFont(10.0f));
         if (tone.fileSize > 0)
         {
             juce::String sizeText;
@@ -197,15 +197,21 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     addAndMakeVisible(searchLabel.get());
 
     searchBox = std::make_unique<juce::TextEditor>("searchBox");
-    searchBox->setColour(juce::TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
+    searchBox->setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
     searchBox->setColour(juce::TextEditor::textColourId, colours["Text Colour"]);
-    searchBox->setColour(juce::TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+    searchBox->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    searchBox->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
     searchBox->setTextToShowWhenEmpty("Search TONE3000...", colours["Text Colour"].withAlpha(0.5f));
+    searchBox->setFont(FontManager::getInstance().getBodyFont());
+    searchBox->setIndents(24, 0); // Left indent for magnifying glass icon
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
     searchButton = std::make_unique<juce::TextButton>("Search");
     searchButton->addListener(this);
+    searchButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
+    searchButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
+    searchButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(searchButton.get());
 
     // Filter controls
@@ -219,6 +225,10 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     gearTypeCombo->addItem("Pedal", 3);
     gearTypeCombo->addItem("Full Rig", 4);
     gearTypeCombo->setSelectedId(1);
+    gearTypeCombo->setColour(juce::ComboBox::backgroundColourId, colours["Dialog Inner Background"]);
+    gearTypeCombo->setColour(juce::ComboBox::textColourId, colours["Text Colour"]);
+    gearTypeCombo->setColour(juce::ComboBox::outlineColourId, colours["Text Colour"].withAlpha(0.2f));
+    gearTypeCombo->setColour(juce::ComboBox::arrowColourId, colours["Text Colour"].withAlpha(0.6f));
     gearTypeCombo->addListener(this);
     addAndMakeVisible(gearTypeCombo.get());
 
@@ -232,6 +242,10 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     sortCombo->addItem("Most Downloaded", 3);
     sortCombo->addItem("Name A-Z", 4);
     sortCombo->setSelectedId(1);
+    sortCombo->setColour(juce::ComboBox::backgroundColourId, colours["Dialog Inner Background"]);
+    sortCombo->setColour(juce::ComboBox::textColourId, colours["Text Colour"]);
+    sortCombo->setColour(juce::ComboBox::outlineColourId, colours["Text Colour"].withAlpha(0.2f));
+    sortCombo->setColour(juce::ComboBox::arrowColourId, colours["Text Colour"].withAlpha(0.6f));
     sortCombo->addListener(this);
     addAndMakeVisible(sortCombo.get());
 
@@ -246,7 +260,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     // Details panel
     detailsTitle = std::make_unique<juce::Label>("detailsTitle", "Details");
-    detailsTitle->setFont(juce::Font(14.0f, juce::Font::bold));
+    detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     detailsTitle->setColour(juce::Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(detailsTitle.get());
 
@@ -254,7 +268,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     {
         auto label = std::make_unique<juce::Label>();
         label->setText(text, juce::dontSendNotification);
-        label->setFont(juce::Font(12.0f));
+        label->setFont(FontManager::getInstance().getLabelFont());
         label->setColour(juce::Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
         return label;
     };
@@ -262,7 +276,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     auto createValueLabel = [&colours]()
     {
         auto label = std::make_unique<juce::Label>();
-        label->setFont(juce::Font(12.0f));
+        label->setFont(FontManager::getInstance().getLabelFont());
         label->setColour(juce::Label::textColourId, colours["Text Colour"]);
         return label;
     };
@@ -301,16 +315,24 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     downloadButton = std::make_unique<juce::TextButton>("Download");
     downloadButton->addListener(this);
     downloadButton->setEnabled(false);
+    downloadButton->setColour(juce::TextButton::buttonColourId, colours["Accent Colour"]);
+    downloadButton->setColour(juce::TextButton::buttonOnColourId, colours["Accent Colour"].brighter(0.15f));
+    downloadButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    downloadButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     addAndMakeVisible(downloadButton.get());
 
     loadButton = std::make_unique<juce::TextButton>("Load");
     loadButton->addListener(this);
     loadButton->setEnabled(false);
+    loadButton->setColour(juce::TextButton::buttonColourId, colours["Slider Colour"]);
+    loadButton->setColour(juce::TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+    loadButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    loadButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
     addAndMakeVisible(loadButton.get());
 
     // Status bar
     statusLabel = std::make_unique<juce::Label>("status", "Not logged in");
-    statusLabel->setFont(juce::Font(11.0f));
+    statusLabel->setFont(FontManager::getInstance().getCaptionFont());
     statusLabel->setColour(juce::Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
     addAndMakeVisible(statusLabel.get());
 
@@ -326,15 +348,19 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     prevPageButton = std::make_unique<juce::TextButton>("<");
     prevPageButton->addListener(this);
     prevPageButton->setEnabled(false);
+    prevPageButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
+    prevPageButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(prevPageButton.get());
 
     nextPageButton = std::make_unique<juce::TextButton>(">");
     nextPageButton->addListener(this);
     nextPageButton->setEnabled(false);
+    nextPageButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
+    nextPageButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(nextPageButton.get());
 
     pageLabel = std::make_unique<juce::Label>("page", "");
-    pageLabel->setFont(juce::Font(11.0f));
+    pageLabel->setFont(FontManager::getInstance().getCaptionFont());
     pageLabel->setColour(juce::Label::textColourId, colours["Text Colour"]);
     pageLabel->setJustificationType(juce::Justification::centred);
     addAndMakeVisible(pageLabel.get());
@@ -404,6 +430,32 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     // Card border
     g.setColour(colours["Text Colour"].withAlpha(0.15f));
     g.strokePath(detailsPath, juce::PathStrokeType(1.0f));
+
+    // Draw search box background with rounded pill shape (matching local tab)
+    auto searchBounds = searchBox->getBounds().toFloat();
+    float cr = searchBounds.getHeight() * 0.4f;
+
+    // Rounded background fill
+    g.setColour(colours["Dialog Inner Background"]);
+    g.fillRoundedRectangle(searchBounds, cr);
+
+    // Border -- brighter when focused
+    bool focused = searchBox->hasKeyboardFocus(false);
+    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
+    g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
+
+    // Magnifying glass icon
+    float iconSize = 12.0f;
+    float iconX = searchBounds.getX() + 8.0f;
+    float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+    float radius = iconSize * 0.35f;
+
+    g.setColour(colours["Text Colour"].withAlpha(0.45f));
+    g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
+    float handleStart = iconX + radius * 1.4f + radius;
+    float handleEnd = handleStart + radius * 0.9f;
+    float handleY = iconY + radius * 1.4f + radius;
+    g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
 }
 
 void NAMOnlineBrowserComponent::resized()

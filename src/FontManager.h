@@ -21,7 +21,38 @@ class FontManager
     /// Returns the singleton instance.
     static FontManager& getInstance();
 
-    /// @brief Get the main UI font (Space Grotesk)
+    // -- Semantic typography API (preferred) --
+
+    /// @brief Panel/window titles, major sections (Inter Bold 18px)
+    Font getHeadingFont() const;
+
+    /// @brief Section headers, dialog group labels (Inter Bold 15px)
+    Font getSubheadingFont() const;
+
+    /// @brief Default text, descriptions, search boxes (Inter Regular 13px)
+    Font getBodyFont() const;
+
+    /// @brief Emphasized body, list primary text (Inter Bold 13px)
+    Font getBodyBoldFont() const;
+
+    /// @brief Form labels, detail keys, knob labels (Inter Regular 12px)
+    Font getLabelFont() const;
+
+    /// @brief Status bars, secondary list text, hints (Inter Regular 11px)
+    Font getCaptionFont() const;
+
+    /// @brief Badges, tags, tiny indicators (Inter Bold 9px)
+    Font getBadgeFont() const;
+
+    /// @brief Large display text, hero numbers (Inter Bold, caller specifies size)
+    Font getDisplayFont(float height) const;
+
+    /// @brief Large mono display (metronome digits etc.), caller specifies size
+    Font getMonoDisplayFont(float height) const;
+
+    // -- Low-level API (use semantic methods above when possible) --
+
+    /// @brief Get the main UI font with explicit size
     /// @param height Font height in pixels
     /// @param bold Whether to use bold weight
     Font getUIFont(float height, bool bold = false) const;

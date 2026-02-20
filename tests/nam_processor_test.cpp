@@ -73,6 +73,7 @@ struct NAMState
     bool toneStackEnabled = true;
     bool normalizeOutput = false;
     bool irEnabled = true;
+    bool toneStackPre = false; // v4: PRE (true) or POST (false)
 };
 
 std::vector<uint8_t> serializeState(const NAMState& state)
@@ -104,7 +105,8 @@ std::vector<uint8_t> serializeState(const NAMState& state)
         data.push_back(static_cast<uint8_t>(c));
 
     // Write floats (4 bytes each)
-    auto writeFloat = [&data](float f) {
+    auto writeFloat = [&data](float f)
+    {
         uint32_t bits;
         std::memcpy(&bits, &f, sizeof(float));
         data.push_back(bits & 0xFF);
@@ -124,6 +126,7 @@ std::vector<uint8_t> serializeState(const NAMState& state)
     data.push_back(state.toneStackEnabled ? 1 : 0);
     data.push_back(state.normalizeOutput ? 1 : 0);
     data.push_back(state.irEnabled ? 1 : 0);
+    data.push_back(state.toneStackPre ? 1 : 0);
 
     return data;
 }
@@ -133,13 +136,15 @@ NAMState deserializeState(const std::vector<uint8_t>& data)
     NAMState state;
     size_t pos = 0;
 
-    auto readInt = [&data, &pos]() -> int32_t {
+    auto readInt = [&data, &pos]() -> int32_t
+    {
         int32_t val = data[pos] | (data[pos + 1] << 8) | (data[pos + 2] << 16) | (data[pos + 3] << 24);
         pos += 4;
         return val;
     };
 
-    auto readString = [&data, &pos]() -> std::string {
+    auto readString = [&data, &pos]() -> std::string
+    {
         uint32_t len = data[pos] | (data[pos + 1] << 8) | (data[pos + 2] << 16) | (data[pos + 3] << 24);
         pos += 4;
         std::string s(data.begin() + pos, data.begin() + pos + len);
@@ -147,7 +152,8 @@ NAMState deserializeState(const std::vector<uint8_t>& data)
         return s;
     };
 
-    auto readFloat = [&data, &pos]() -> float {
+    auto readFloat = [&data, &pos]() -> float
+    {
         uint32_t bits = data[pos] | (data[pos + 1] << 8) | (data[pos + 2] << 16) | (data[pos + 3] << 24);
         pos += 4;
         float f;
@@ -155,9 +161,7 @@ NAMState deserializeState(const std::vector<uint8_t>& data)
         return f;
     };
 
-    auto readBool = [&data, &pos]() -> bool {
-        return data[pos++] != 0;
-    };
+    auto readBool = [&data, &pos]() -> bool { return data[pos++] != 0; };
 
     state.version = readInt();
     state.modelPath = readString();
@@ -171,6 +175,8 @@ NAMState deserializeState(const std::vector<uint8_t>& data)
     state.toneStackEnabled = readBool();
     state.normalizeOutput = readBool();
     state.irEnabled = readBool();
+    if (pos < data.size())
+        state.toneStackPre = readBool();
 
     return state;
 }
@@ -450,7 +456,7 @@ TEST_CASE("NAM State Serialization - File Paths", "[nam][state]")
     SECTION("Unicode paths round-trip correctly")
     {
         NAMState original;
-        original.modelPath = "C:/Models/Amp_Test.nam";  // Keep ASCII for reliability
+        original.modelPath = "C:/Models/Amp_Test.nam"; // Keep ASCII for reliability
 
         auto data = serializeState(original);
         auto restored = deserializeState(data);
@@ -568,16 +574,39 @@ TEST_CASE("NAM Mutation Testing - Parameter Bounds", "[nam][mutation]")
  */
 struct MockProcessingChain
 {
-    float inputGain = 0.0f;     // dB
-    float outputGain = 0.0f;   // dB
+    float inputGain = 0.0f;  // dB
+    float outputGain = 0.0f; // dB
     bool normalizeEnabled = false;
-    double modelLoudness = -12.0;  // dB
+    double modelLoudness = -12.0; // dB
     bool hasLoudness = true;
     bool noiseGateEnabled = false;
     bool toneStackEnabled = false;
+    bool toneStackPre = false;
+    float bass = 5.0f;
+    float mid = 5.0f;
+    float treble = 5.0f;
     bool irEnabled = false;
 
     static constexpr double kNormalizationTarget = -18.0;
+
+    // Simple 3-band tone stack approximation for testing.
+    // Uses basic gain curves that mirror the shape of the real
+    // BasicNamToneStack but are deterministic and pure-math.
+    // bass/mid/treble range [0,10], center at 5 = unity.
+    static float toneStackGain(float sample, float bass, float mid, float treble)
+    {
+        // Simplified model: each band contributes a gain factor
+        // at 5.0 = unity, below 5 = cut, above 5 = boost
+        // Real tone stack is frequency-dependent; we approximate
+        // the overall level change for gain-staging verification.
+        float bassGain = 0.5f + (bass / 10.0f);     // [0.5, 1.5]
+        float midGain = 0.5f + (mid / 10.0f);       // [0.5, 1.5]
+        float trebleGain = 0.5f + (treble / 10.0f); // [0.5, 1.5]
+        return sample * bassGain * midGain * trebleGain;
+    }
+
+    // Simple nonlinear model approximation (soft clip)
+    static float softClip(float x) { return std::tanh(x); }
 
     float processGainOnly(float input) const
     {
@@ -601,6 +630,45 @@ struct MockProcessingChain
         // 6. IR convolution (identity for testing)
 
         // 7. Output gain
+        sample *= dBToLinear(outputGain);
+
+        return sample;
+    }
+
+    // Full chain with tone stack position and optional nonlinear model
+    float processWithToneStack(float input, bool useNonlinearModel = false) const
+    {
+        float sample = input;
+
+        // 1. Input gain
+        sample *= dBToLinear(inputGain);
+
+        // 2. Tone stack PRE (if configured)
+        if (toneStackEnabled && toneStackPre)
+        {
+            sample = toneStackGain(sample, bass, mid, treble);
+        }
+
+        // 3. NAM model (identity or soft clip)
+        if (useNonlinearModel)
+        {
+            sample = softClip(sample);
+        }
+
+        // 4. Normalize if enabled
+        if (normalizeEnabled && hasLoudness)
+        {
+            double gain = std::pow(10.0, (kNormalizationTarget - modelLoudness) / 20.0);
+            sample *= static_cast<float>(gain);
+        }
+
+        // 5. Tone stack POST (if configured, default)
+        if (toneStackEnabled && !toneStackPre)
+        {
+            sample = toneStackGain(sample, bass, mid, treble);
+        }
+
+        // 6. Output gain
         sample *= dBToLinear(outputGain);
 
         return sample;
@@ -731,9 +799,9 @@ TEST_CASE("NAM Integration - Combined Effects", "[nam][integration]")
 
     SECTION("Input gain + normalization combine correctly")
     {
-        chain.inputGain = 6.0f;      // +6dB = 2x
+        chain.inputGain = 6.0f; // +6dB = 2x
         chain.normalizeEnabled = true;
-        chain.modelLoudness = -12.0;  // Needs -6dB = 0.5x
+        chain.modelLoudness = -12.0; // Needs -6dB = 0.5x
         chain.outputGain = 0.0f;
 
         float input = 1.0f;
@@ -744,10 +812,10 @@ TEST_CASE("NAM Integration - Combined Effects", "[nam][integration]")
 
     SECTION("Full chain with all gains")
     {
-        chain.inputGain = 12.0f;      // ~4x
+        chain.inputGain = 12.0f; // ~4x
         chain.normalizeEnabled = true;
-        chain.modelLoudness = -6.0;   // Needs -12dB = ~0.25x
-        chain.outputGain = 6.0f;      // ~2x
+        chain.modelLoudness = -6.0; // Needs -12dB = ~0.25x
+        chain.outputGain = 6.0f;    // ~2x
 
         float input = 1.0f;
         // 1.0 * 4 * 0.25 * 2 = 2.0
@@ -771,14 +839,15 @@ enum NAMParameters
     ToneStackEnabledParam,
     NormalizeParam,
     IRMixParam,
+    ToneStackPreParam,
     NumParameters
 };
 
 TEST_CASE("NAM Integration - Parameter Index Mapping", "[nam][integration]")
 {
-    SECTION("Parameter count is 9")
+    SECTION("Parameter count is 10")
     {
-        REQUIRE(NumParameters == 9);
+        REQUIRE(NumParameters == 10);
     }
 
     SECTION("Parameter indices are contiguous from 0")
@@ -792,6 +861,7 @@ TEST_CASE("NAM Integration - Parameter Index Mapping", "[nam][integration]")
         REQUIRE(ToneStackEnabledParam == 6);
         REQUIRE(NormalizeParam == 7);
         REQUIRE(IRMixParam == 8);
+        REQUIRE(ToneStackPreParam == 9);
     }
 }
 
@@ -845,7 +915,7 @@ TEST_CASE("NAM Mutation - Boolean Parameter Threshold", "[nam][mutation]")
     SECTION("Threshold is 0.5, not 0.0 or 1.0")
     {
         REQUIRE_FALSE(boolFromFloat(0.0f));
-        REQUIRE_FALSE(boolFromFloat(0.5f));  // At threshold = false
+        REQUIRE_FALSE(boolFromFloat(0.5f)); // At threshold = false
         REQUIRE(boolFromFloat(0.51f));
         REQUIRE(boolFromFloat(1.0f));
     }
@@ -865,7 +935,8 @@ TEST_CASE("NAM Mutation - Boolean Parameter Threshold", "[nam][mutation]")
 
 TEST_CASE("NAM Mutation - Noise Gate Display Logic", "[nam][mutation]")
 {
-    auto getGateText = [](float threshold) -> std::string {
+    auto getGateText = [](float threshold) -> std::string
+    {
         if (threshold <= -100.0f)
             return "Off";
         return std::to_string(static_cast<int>(threshold)) + " dB";
@@ -913,7 +984,7 @@ TEST_CASE("NAM Edge Cases - Extreme Values", "[nam][edge]")
     SECTION("Very large gain accumulation")
     {
         // +40dB output + model boost could cause overflow concern
-        float maxOutputGain = dBToLinear(40.0f);  // 100x
+        float maxOutputGain = dBToLinear(40.0f); // 100x
         float input = 1.0f;
         float output = input * maxOutputGain;
         REQUIRE_THAT(output, WithinAbs(100.0f, 0.1f));
@@ -1069,9 +1140,7 @@ TEST_CASE("NAM Mutation - Gain Skip Optimization", "[nam][mutation]")
 {
     SECTION("Skip threshold is 0.001, not 0 or 0.01")
     {
-        auto shouldApplyGain = [](float gainLinear) {
-            return std::abs(gainLinear - 1.0f) > 0.001f;
-        };
+        auto shouldApplyGain = [](float gainLinear) { return std::abs(gainLinear - 1.0f) > 0.001f; };
 
         // At exactly 1.0, skip
         REQUIRE_FALSE(shouldApplyGain(1.0f));
@@ -1204,5 +1273,300 @@ TEST_CASE("NAM Stress - Numerical Stability", "[nam][stress]")
 
         // After 1000 iterations of +0.1dB = +100dB total
         REQUIRE(std::isfinite(total));
+    }
+}
+
+// ============================================================================
+// Tone Stack Pre/Post Signal Flow Tests
+// ============================================================================
+
+TEST_CASE("NAM Tone Stack Pre/Post - Signal Flow Ordering", "[nam][tonestack][prepost]")
+{
+    MockProcessingChain chain;
+    chain.toneStackEnabled = true;
+    chain.inputGain = 0.0f;
+    chain.outputGain = 0.0f;
+    chain.normalizeEnabled = false;
+
+    SECTION("POST mode applies tone stack after model")
+    {
+        chain.toneStackPre = false;
+        chain.bass = 10.0f; // Max boost
+        chain.mid = 10.0f;
+        chain.treble = 10.0f;
+
+        float input = 0.5f;
+        float output = chain.processWithToneStack(input, false);
+
+        // With all bands at max (10.0), each gain = 1.5
+        // Total: 0.5 * 1.5 * 1.5 * 1.5 = 1.6875
+        float expected = 0.5f * 1.5f * 1.5f * 1.5f;
+        REQUIRE_THAT(output, WithinAbs(expected, 0.001f));
+    }
+
+    SECTION("PRE mode applies tone stack before model")
+    {
+        chain.toneStackPre = true;
+        chain.bass = 10.0f;
+        chain.mid = 10.0f;
+        chain.treble = 10.0f;
+
+        float input = 0.5f;
+        // With identity model, result should be same as POST
+        float output = chain.processWithToneStack(input, false);
+
+        float expected = 0.5f * 1.5f * 1.5f * 1.5f;
+        REQUIRE_THAT(output, WithinAbs(expected, 0.001f));
+    }
+
+    SECTION("Tone stack disabled gives passthrough in both modes")
+    {
+        chain.toneStackEnabled = false;
+        chain.bass = 10.0f;
+        chain.mid = 10.0f;
+        chain.treble = 0.0f;
+
+        float input = 0.7f;
+
+        chain.toneStackPre = false;
+        float postOutput = chain.processWithToneStack(input, false);
+        REQUIRE_THAT(postOutput, WithinAbs(input, 0.001f));
+
+        chain.toneStackPre = true;
+        float preOutput = chain.processWithToneStack(input, false);
+        REQUIRE_THAT(preOutput, WithinAbs(input, 0.001f));
+    }
+}
+
+TEST_CASE("NAM Tone Stack Pre/Post - Nonlinear Model Divergence", "[nam][tonestack][prepost]")
+{
+    // Key test: with a nonlinear model, PRE and POST produce different results.
+    // This proves the signal flow ordering actually matters.
+    MockProcessingChain chain;
+    chain.toneStackEnabled = true;
+    chain.inputGain = 6.0f; // Drive signal into saturation
+    chain.outputGain = 0.0f;
+    chain.normalizeEnabled = false;
+
+    SECTION("PRE and POST produce different output with nonlinear model")
+    {
+        // Use extreme EQ to exaggerate the difference
+        chain.bass = 0.0f;   // Heavy cut
+        chain.mid = 10.0f;   // Max boost
+        chain.treble = 0.0f; // Heavy cut
+
+        float input = 0.8f;
+
+        chain.toneStackPre = false;
+        float postResult = chain.processWithToneStack(input, true);
+
+        chain.toneStackPre = true;
+        float preResult = chain.processWithToneStack(input, true);
+
+        // PRE: EQ shapes signal BEFORE saturation (changes clipping character)
+        // POST: saturation happens first, then EQ shapes the clipped signal
+        // These MUST differ because tanh(EQ(x)) != EQ(tanh(x))
+        REQUIRE(std::abs(preResult - postResult) > 0.01f);
+    }
+
+    SECTION("PRE boosts BEFORE saturation, driving harder into clip")
+    {
+        chain.bass = 10.0f; // Max boost
+        chain.mid = 10.0f;
+        chain.treble = 10.0f;
+
+        float input = 0.5f;
+
+        // PRE: boost signal -> saturate boosted signal
+        chain.toneStackPre = true;
+        float preResult = chain.processWithToneStack(input, true);
+
+        // POST: saturate signal -> boost saturated signal
+        chain.toneStackPre = false;
+        float postResult = chain.processWithToneStack(input, true);
+
+        // POST should be larger because the boost is applied AFTER the
+        // compressive saturation. PRE gets compressed by tanh.
+        REQUIRE(postResult > preResult);
+    }
+
+    SECTION("PRE cut reduces saturation compared to POST cut")
+    {
+        chain.bass = 0.0f; // Cut
+        chain.mid = 0.0f;
+        chain.treble = 0.0f;
+        chain.inputGain = 12.0f; // Heavy drive
+
+        float input = 0.8f;
+
+        // PRE: cut signal first -> less saturation
+        chain.toneStackPre = true;
+        float preResult = chain.processWithToneStack(input, true);
+
+        // POST: full saturation -> cut after
+        chain.toneStackPre = false;
+        float postResult = chain.processWithToneStack(input, true);
+
+        // With PRE cut, signal is reduced before tanh, so it stays in the
+        // linear region of tanh (less compression). POST saturates fully,
+        // then cuts the already-compressed signal. PRE preserves more of
+        // the original signal shape, resulting in LARGER magnitude.
+        REQUIRE(std::abs(preResult) > std::abs(postResult));
+    }
+}
+
+TEST_CASE("NAM Tone Stack Pre/Post - Tone Stack Gain Curve", "[nam][tonestack][prepost]")
+{
+    SECTION("Band at 5.0 (center) produces unity for that band")
+    {
+        float gain = MockProcessingChain::toneStackGain(1.0f, 5.0f, 5.0f, 5.0f);
+        REQUIRE_THAT(gain, WithinAbs(1.0f, 0.001f));
+    }
+
+    SECTION("Band at 0.0 produces 0.5x for that band")
+    {
+        float gain = MockProcessingChain::toneStackGain(1.0f, 0.0f, 5.0f, 5.0f);
+        REQUIRE_THAT(gain, WithinAbs(0.5f, 0.001f));
+    }
+
+    SECTION("Band at 10.0 produces 1.5x for that band")
+    {
+        float gain = MockProcessingChain::toneStackGain(1.0f, 10.0f, 5.0f, 5.0f);
+        REQUIRE_THAT(gain, WithinAbs(1.5f, 0.001f));
+    }
+
+    SECTION("All bands at 0 produce 0.125x total")
+    {
+        float gain = MockProcessingChain::toneStackGain(1.0f, 0.0f, 0.0f, 0.0f);
+        REQUIRE_THAT(gain, WithinAbs(0.125f, 0.001f));
+    }
+
+    SECTION("All bands at 10 produce 3.375x total")
+    {
+        float gain = MockProcessingChain::toneStackGain(1.0f, 10.0f, 10.0f, 10.0f);
+        REQUIRE_THAT(gain, WithinAbs(3.375f, 0.001f));
+    }
+}
+
+TEST_CASE("NAM Tone Stack Pre/Post - State Serialization", "[nam][tonestack][state]")
+{
+    SECTION("toneStackPre false round-trips correctly")
+    {
+        NAMState original;
+        original.toneStackPre = false;
+
+        auto data = serializeState(original);
+        auto restored = deserializeState(data);
+
+        REQUIRE(restored.toneStackPre == false);
+    }
+
+    SECTION("toneStackPre true round-trips correctly")
+    {
+        NAMState original;
+        original.toneStackPre = true;
+
+        auto data = serializeState(original);
+        auto restored = deserializeState(data);
+
+        REQUIRE(restored.toneStackPre == true);
+    }
+
+    SECTION("Full state including toneStackPre round-trips")
+    {
+        NAMState original;
+        original.inputGain = 5.0f;
+        original.bass = 3.0f;
+        original.mid = 7.0f;
+        original.treble = 9.0f;
+        original.toneStackEnabled = true;
+        original.toneStackPre = true;
+
+        auto data = serializeState(original);
+        auto restored = deserializeState(data);
+
+        REQUIRE_THAT(restored.inputGain, WithinAbs(5.0f, 0.001f));
+        REQUIRE_THAT(restored.bass, WithinAbs(3.0f, 0.001f));
+        REQUIRE_THAT(restored.mid, WithinAbs(7.0f, 0.001f));
+        REQUIRE_THAT(restored.treble, WithinAbs(9.0f, 0.001f));
+        REQUIRE(restored.toneStackEnabled == true);
+        REQUIRE(restored.toneStackPre == true);
+    }
+}
+
+// ============================================================================
+// Mutation Tests - Tone Stack Pre/Post
+// ============================================================================
+
+TEST_CASE("NAM Mutation - Tone Stack Pre/Post Logic", "[nam][tonestack][mutation]")
+{
+    SECTION("PRE applies tone stack to input, not output")
+    {
+        // Verify the branching logic: if toneStackPre, tone stack
+        // must happen BEFORE the model, not after
+        MockProcessingChain chain;
+        chain.toneStackEnabled = true;
+        chain.toneStackPre = true;
+        chain.bass = 0.0f;
+        chain.mid = 0.0f;
+        chain.treble = 0.0f;
+
+        float input = 1.0f;
+        float output = chain.processWithToneStack(input, true);
+
+        // With PRE: input -> toneStack(0.125x) -> softClip(0.125) -> output
+        float expectedPre = std::tanh(0.125f);
+        REQUIRE_THAT(output, WithinAbs(expectedPre, 0.001f));
+
+        // If it were POST (mutation): input -> softClip(1.0) -> toneStack()
+        float expectedPost = std::tanh(1.0f) * 0.125f;
+        // These must differ
+        REQUIRE(std::abs(expectedPre - expectedPost) > 0.01f);
+    }
+
+    SECTION("POST applies tone stack to output, not input")
+    {
+        MockProcessingChain chain;
+        chain.toneStackEnabled = true;
+        chain.toneStackPre = false;
+        chain.bass = 0.0f;
+        chain.mid = 0.0f;
+        chain.treble = 0.0f;
+
+        float input = 1.0f;
+        float output = chain.processWithToneStack(input, true);
+
+        // With POST: input -> softClip(1.0) -> toneStack(0.125x)
+        float expectedPost = std::tanh(1.0f) * 0.125f;
+        REQUIRE_THAT(output, WithinAbs(expectedPost, 0.001f));
+    }
+
+    SECTION("Swapping pre/post flag changes result (not a no-op)")
+    {
+        MockProcessingChain chain;
+        chain.toneStackEnabled = true;
+        chain.bass = 0.0f;
+        chain.mid = 0.0f;
+        chain.treble = 0.0f;
+        chain.inputGain = 6.0f;
+
+        float input = 0.5f;
+
+        chain.toneStackPre = true;
+        float preResult = chain.processWithToneStack(input, true);
+
+        chain.toneStackPre = false;
+        float postResult = chain.processWithToneStack(input, true);
+
+        REQUIRE(preResult != postResult);
+    }
+
+    SECTION("Boolean threshold for toneStackPre is 0.5")
+    {
+        auto boolFromFloat = [](float value) { return value > 0.5f; };
+        REQUIRE_FALSE(boolFromFloat(0.0f));
+        REQUIRE_FALSE(boolFromFloat(0.5f));
+        REQUIRE(boolFromFloat(0.51f));
+        REQUIRE(boolFromFloat(1.0f));
     }
 }

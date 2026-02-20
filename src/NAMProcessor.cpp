@@ -8,12 +8,14 @@
 */
 
 #include "NAMProcessor.h"
+
 #include "NAMControl.h"
-#include "NAMCore.h"
 #include "NAMConvolver.h"
+#include "NAMCore.h"
 #include "SubGraphProcessor.h"
 
 #include <spdlog/spdlog.h>
+
 
 //==============================================================================
 NAMProcessor::NAMProcessor() : PedalboardProcessor()
@@ -213,6 +215,14 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
         }
     }
 
+    // Apply tone stack PRE-model if configured
+    if (doToneStack && toneStackPre.load())
+    {
+        updateToneStack();
+        // Tone stack operates on mono inputData before NAM model
+        namCore->processToneStack(inputData, numSamples);
+    }
+
     // Process through NAM model
     namCore->process(inputData, outputData, numSamples);
     namCore->finalize(numSamples);
@@ -229,8 +239,8 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
         namCore->processNoiseGateGain(outputData, numSamples);
     }
 
-    // Apply tone stack
-    if (doToneStack)
+    // Apply tone stack POST-model if configured (default)
+    if (doToneStack && !toneStackPre.load())
     {
         updateToneStack();
         namCore->processToneStack(outputData, numSamples);
@@ -290,8 +300,8 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
 //==============================================================================
 void NAMProcessor::updateNoiseGate()
 {
-    namCore->setNoiseGateParams(noiseGateThreshold.load(), kNoiseGateTime, kNoiseGateRatio,
-                                kNoiseGateOpenTime, kNoiseGateHoldTime, kNoiseGateCloseTime);
+    namCore->setNoiseGateParams(noiseGateThreshold.load(), kNoiseGateTime, kNoiseGateRatio, kNoiseGateOpenTime,
+                                kNoiseGateHoldTime, kNoiseGateCloseTime);
 }
 
 void NAMProcessor::updateToneStack()
@@ -361,10 +371,8 @@ void NAMProcessor::updateIRFilters()
 
     if (currentLowCut != lastIRLowCut || currentHighCut != lastIRHighCut)
     {
-        *irLowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(
-            currentSampleRate, currentLowCut);
-        *irHighCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
-            currentSampleRate, currentHighCut);
+        *irLowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, currentLowCut);
+        *irHighCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, currentHighCut);
         lastIRLowCut = currentLowCut;
         lastIRHighCut = currentHighCut;
     }
@@ -393,6 +401,8 @@ const String NAMProcessor::getParameterName(int parameterIndex)
         return "Normalize";
     case IRMixParam:
         return "IR Mix";
+    case ToneStackPreParam:
+        return "EQ Pre";
     default:
         return "";
     }
@@ -420,6 +430,8 @@ float NAMProcessor::getParameter(int parameterIndex)
         return normalizeOutput.load() ? 1.0f : 0.0f;
     case IRMixParam:
         return irEnabled.load() ? 1.0f : 0.0f;
+    case ToneStackPreParam:
+        return toneStackPre.load() ? 1.0f : 0.0f;
     default:
         return 0.0f;
     }
@@ -452,6 +464,8 @@ const String NAMProcessor::getParameterText(int parameterIndex)
         return normalizeOutput.load() ? "On" : "Off";
     case IRMixParam:
         return irEnabled.load() ? "On" : "Off";
+    case ToneStackPreParam:
+        return toneStackPre.load() ? "Pre" : "Post";
     default:
         return "";
     }
@@ -488,6 +502,9 @@ void NAMProcessor::setParameter(int parameterIndex, float newValue)
     case IRMixParam:
         setIREnabled(newValue > 0.5f);
         break;
+    case ToneStackPreParam:
+        setToneStackPre(newValue > 0.5f);
+        break;
     }
 }
 
@@ -496,7 +513,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(3); // Version (3 = added IR filters)
+    stream.writeInt(4); // Version (4 = added tone stack pre/post)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -530,6 +547,9 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
     // IR filters (v3+)
     stream.writeFloat(irLowCut.load());
     stream.writeFloat(irHighCut.load());
+
+    // Tone stack pre/post (v4+)
+    stream.writeBool(toneStackPre.load());
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -591,6 +611,12 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
         irLowCut.store(stream.readFloat());
         irHighCut.store(stream.readFloat());
         updateIRFilters();
+    }
+
+    // Tone stack pre/post (v4+)
+    if (version >= 4 && !stream.isExhausted())
+    {
+        toneStackPre.store(stream.readBool());
     }
 }
 

@@ -138,7 +138,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
       tempoEditor(0), tapTempoButton(0)
 {
     addAndMakeVisible(patchLabel = new Label("patchLabel", "Patch:"));
-    patchLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
+    patchLabel->setFont(FontManager::getInstance().getSubheadingFont());
     patchLabel->setJustificationType(Justification::centredLeft);
     patchLabel->setEditable(false, false, false);
     patchLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
@@ -172,7 +172,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuSlider->addListener(this);
 
     addAndMakeVisible(cpuLabel = new Label("cpuLabel", "CPU Usage:"));
-    cpuLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
+    cpuLabel->setFont(FontManager::getInstance().getSubheadingFont());
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
     cpuLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
@@ -185,7 +185,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     rtzButton->setName("rtzButton");
 
     addAndMakeVisible(tempoLabel = new Label("tempoLabel", "Tempo:"));
-    tempoLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
+    tempoLabel->setFont(FontManager::getInstance().getSubheadingFont());
     tempoLabel->setJustificationType(Justification::centredLeft);
     tempoLabel->setEditable(false, false, false);
     tempoLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
@@ -213,7 +213,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     fitButton->addListener(this);
 
     addAndMakeVisible(inputGainLabel = new Label("inputGainLabel", "IN"));
-    inputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
+    inputGainLabel->setFont(FontManager::getInstance().getLabelFont());
     inputGainLabel->setJustificationType(Justification::centredRight);
 
     addAndMakeVisible(inputGainSlider = new Slider("inputGainSlider"));
@@ -226,7 +226,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     inputGainSlider->addListener(this);
 
     addAndMakeVisible(outputGainLabel = new Label("outputGainLabel", "OUT"));
-    outputGainLabel->setFont(FontManager::getInstance().getUIFont(12.0f, true));
+    outputGainLabel->setFont(FontManager::getInstance().getLabelFont());
     outputGainLabel->setJustificationType(Justification::centredRight);
 
     addAndMakeVisible(outputGainSlider = new Slider("outputGainSlider"));

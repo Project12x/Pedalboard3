@@ -40,9 +40,9 @@ LabelControl::LabelControl(LabelProcessor* proc) : processor(proc), editMode(fal
     // Use Space Grotesk Bold if available
     auto& fontMgr = FontManager::getInstance();
     if (fontMgr.areFontsAvailable())
-        labelFont = fontMgr.getUIFont(16.0f, true);
+        labelFont = fontMgr.getSubheadingFont();
     else
-        labelFont = Font(16.0f, Font::bold);
+        labelFont = FontManager::getInstance().getSubheadingFont();
 
     editor->setFont(labelFont);
     editor->setJustification(Justification::centred);

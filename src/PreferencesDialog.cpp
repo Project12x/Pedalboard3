@@ -23,6 +23,7 @@
 
 #include "App.h"
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "MainPanel.h"
 #include "SettingsManager.h"
 #include "Tone3000DownloadManager.h"
@@ -40,14 +41,12 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
       multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
       otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0), ignorePinNamesButton(0),
       midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0),
-      fixedSizeButton(0), pdlAudioSettingsButton(0),
-      namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
+      fixedSizeButton(0), pdlAudioSettingsButton(0), namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
 {
     addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
-    oscPortLabel->setFont(Font(15.0000f, Font::plain));
+    oscPortLabel->setFont(FontManager::getInstance().getBodyFont());
     oscPortLabel->setJustificationType(Justification::centredLeft);
     oscPortLabel->setEditable(false, false, false);
-    oscPortLabel->setColour(TextEditor::textColourId, Colours::black);
     oscPortLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(oscPortEditor = new TextEditor("oscPortEditor"));
@@ -60,17 +59,15 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     oscPortEditor->setText("5678");
 
     addAndMakeVisible(oscLabel = new Label("oscLabel", "Open Sound Control Options"));
-    oscLabel->setFont(Font(15.0000f, Font::bold));
+    oscLabel->setFont(FontManager::getInstance().getSubheadingFont());
     oscLabel->setJustificationType(Justification::centredLeft);
     oscLabel->setEditable(false, false, false);
-    oscLabel->setColour(TextEditor::textColourId, Colours::black);
     oscLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(oscMulticastLabel = new Label("oscMulticastLabel", "OSC Multicast Address:"));
-    oscMulticastLabel->setFont(Font(15.0000f, Font::plain));
+    oscMulticastLabel->setFont(FontManager::getInstance().getBodyFont());
     oscMulticastLabel->setJustificationType(Justification::centredLeft);
     oscMulticastLabel->setEditable(false, false, false);
-    oscMulticastLabel->setColour(TextEditor::textColourId, Colours::black);
     oscMulticastLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(oscMulticastEditor = new TextEditor("oscMulticastEditor"));
@@ -84,18 +81,17 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     addAndMakeVisible(multicastHintLabel =
                           new Label("multicastHintLabel", "(leave blank for a one-to-one connection)"));
-    multicastHintLabel->setFont(Font(15.0000f, Font::plain));
+    multicastHintLabel->setFont(FontManager::getInstance().getBodyFont());
     multicastHintLabel->setJustificationType(Justification::centredLeft);
     multicastHintLabel->setEditable(false, false, false);
-    multicastHintLabel->setColour(Label::textColourId, Colour(0x80000000));
-    multicastHintLabel->setColour(TextEditor::textColourId, Colours::black);
+    multicastHintLabel->setColour(Label::textColourId,
+                                  ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.5f));
     multicastHintLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(ioOptionsLabel = new Label("ioOptionsLabel", "Visible I/O Nodes"));
-    ioOptionsLabel->setFont(Font(15.0000f, Font::bold));
+    ioOptionsLabel->setFont(FontManager::getInstance().getSubheadingFont());
     ioOptionsLabel->setJustificationType(Justification::centredLeft);
     ioOptionsLabel->setEditable(false, false, false);
-    ioOptionsLabel->setColour(TextEditor::textColourId, Colours::black);
     ioOptionsLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(audioInputButton = new ToggleButton("audioInputButton"));
@@ -114,10 +110,9 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     oscInputButton->setToggleState(true, false);
 
     addAndMakeVisible(otherLabel = new Label("otherLabel", "Other Options"));
-    otherLabel->setFont(Font(15.0000f, Font::bold));
+    otherLabel->setFont(FontManager::getInstance().getSubheadingFont());
     otherLabel->setJustificationType(Justification::centredLeft);
     otherLabel->setEditable(false, false, false);
-    otherLabel->setColour(TextEditor::textColourId, Colours::black);
     otherLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(mappingsWindowButton = new ToggleButton("mappingsWindowButton"));
@@ -139,10 +134,9 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     ignorePinNamesButton->addListener(this);
 
     addAndMakeVisible(midiLabel = new Label("midiLabel", "Midi Options"));
-    midiLabel->setFont(Font(15.0000f, Font::bold));
+    midiLabel->setFont(FontManager::getInstance().getSubheadingFont());
     midiLabel->setJustificationType(Justification::centredLeft);
     midiLabel->setEditable(false, false, false);
-    midiLabel->setColour(TextEditor::textColourId, Colours::black);
     midiLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(midiProgramChangeButton = new ToggleButton("midiProgramChangeButton"));
@@ -172,21 +166,22 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     // NAM Options
     addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
-    namLabel->setFont(Font(15.0000f, Font::bold));
+    namLabel->setFont(FontManager::getInstance().getSubheadingFont());
     namLabel->setJustificationType(Justification::centredLeft);
     namLabel->setEditable(false, false, false);
 
     addAndMakeVisible(namDirLabel = new Label("namDirLabel", "Download Directory:"));
-    namDirLabel->setFont(Font(15.0000f, Font::plain));
+    namDirLabel->setFont(FontManager::getInstance().getBodyFont());
     namDirLabel->setJustificationType(Justification::centredLeft);
     namDirLabel->setEditable(false, false, false);
 
     addAndMakeVisible(namDirValue = new Label("namDirValue", ""));
-    namDirValue->setFont(Font(13.0000f, Font::plain));
+    namDirValue->setFont(FontManager::getInstance().getBodyFont());
     namDirValue->setJustificationType(Justification::centredLeft);
     namDirValue->setEditable(false, false, false);
-    namDirValue->setColour(Label::backgroundColourId, Colours::white);
-    namDirValue->setColour(Label::outlineColourId, Colour(0x40000000));
+    namDirValue->setColour(Label::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
+    namDirValue->setColour(Label::outlineColourId,
+                           ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
 
     addAndMakeVisible(namDirBrowseButton = new TextButton("namDirBrowseButton"));
     namDirBrowseButton->setButtonText("Browse...");
@@ -241,13 +236,6 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     startInTrayButton->setEnabled(false);
 #endif
 
-    oscPortLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    oscLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    oscMulticastLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    multicastHintLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    ioOptionsLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    otherLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-
     //[/UserPreSize]
 
     setSize(560, 590);
@@ -261,32 +249,58 @@ PreferencesDialog::~PreferencesDialog()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    delete oscPortLabel; oscPortLabel = nullptr;
-    delete oscPortEditor; oscPortEditor = nullptr;
-    delete oscLabel; oscLabel = nullptr;
-    delete oscMulticastLabel; oscMulticastLabel = nullptr;
-    delete oscMulticastEditor; oscMulticastEditor = nullptr;
-    delete multicastHintLabel; multicastHintLabel = nullptr;
-    delete ioOptionsLabel; ioOptionsLabel = nullptr;
-    delete audioInputButton; audioInputButton = nullptr;
-    delete midiInputButton; midiInputButton = nullptr;
-    delete oscInputButton; oscInputButton = nullptr;
-    delete otherLabel; otherLabel = nullptr;
-    delete mappingsWindowButton; mappingsWindowButton = nullptr;
-    delete loopPatchesButton; loopPatchesButton = nullptr;
-    delete windowsOnTopButton; windowsOnTopButton = nullptr;
-    delete ignorePinNamesButton; ignorePinNamesButton = nullptr;
-    delete midiLabel; midiLabel = nullptr;
-    delete midiProgramChangeButton; midiProgramChangeButton = nullptr;
-    delete mmcTransportButton; mmcTransportButton = nullptr;
-    delete useTrayIconButton; useTrayIconButton = nullptr;
-    delete startInTrayButton; startInTrayButton = nullptr;
-    delete fixedSizeButton; fixedSizeButton = nullptr;
-    delete pdlAudioSettingsButton; pdlAudioSettingsButton = nullptr;
-    delete namLabel; namLabel = nullptr;
-    delete namDirLabel; namDirLabel = nullptr;
-    delete namDirValue; namDirValue = nullptr;
-    delete namDirBrowseButton; namDirBrowseButton = nullptr;
+    delete oscPortLabel;
+    oscPortLabel = nullptr;
+    delete oscPortEditor;
+    oscPortEditor = nullptr;
+    delete oscLabel;
+    oscLabel = nullptr;
+    delete oscMulticastLabel;
+    oscMulticastLabel = nullptr;
+    delete oscMulticastEditor;
+    oscMulticastEditor = nullptr;
+    delete multicastHintLabel;
+    multicastHintLabel = nullptr;
+    delete ioOptionsLabel;
+    ioOptionsLabel = nullptr;
+    delete audioInputButton;
+    audioInputButton = nullptr;
+    delete midiInputButton;
+    midiInputButton = nullptr;
+    delete oscInputButton;
+    oscInputButton = nullptr;
+    delete otherLabel;
+    otherLabel = nullptr;
+    delete mappingsWindowButton;
+    mappingsWindowButton = nullptr;
+    delete loopPatchesButton;
+    loopPatchesButton = nullptr;
+    delete windowsOnTopButton;
+    windowsOnTopButton = nullptr;
+    delete ignorePinNamesButton;
+    ignorePinNamesButton = nullptr;
+    delete midiLabel;
+    midiLabel = nullptr;
+    delete midiProgramChangeButton;
+    midiProgramChangeButton = nullptr;
+    delete mmcTransportButton;
+    mmcTransportButton = nullptr;
+    delete useTrayIconButton;
+    useTrayIconButton = nullptr;
+    delete startInTrayButton;
+    startInTrayButton = nullptr;
+    delete fixedSizeButton;
+    fixedSizeButton = nullptr;
+    delete pdlAudioSettingsButton;
+    pdlAudioSettingsButton = nullptr;
+    delete namLabel;
+    namLabel = nullptr;
+    delete namDirLabel;
+    namDirLabel = nullptr;
+    delete namDirValue;
+    namDirValue = nullptr;
+    delete namDirBrowseButton;
+    namDirBrowseButton = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
@@ -298,14 +312,6 @@ void PreferencesDialog::paint(Graphics& g)
     //[UserPrePaint] Add your own custom painting code here..
     //[/UserPrePaint]
 
-    g.fillAll(Colour(0xffeeece1));
-
-    g.setColour(Colours::white);
-    g.fillRect(12, 132, getWidth() - 24, 82);
-
-    g.setColour(Colour(0x40000000));
-    g.drawRect(12, 132, getWidth() - 24, 82, 1);
-
     //[UserPaint] Add your own custom painting code here..
 
     g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
@@ -313,7 +319,7 @@ void PreferencesDialog::paint(Graphics& g)
     g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
     g.fillRect(12, 132, getWidth() - 24, 82);
 
-    g.setColour(Colour(0x40000000));
+    g.setColour(ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
     g.drawRect(12, 132, getWidth() - 24, 82, 1);
 
     //[/UserPaint]
@@ -473,8 +479,7 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
     }
     else if (buttonThatWasClicked == namDirBrowseButton)
     {
-        FileChooser chooser("Select NAM Download Directory",
-                            Tone3000DownloadManager::getInstance().getCacheDirectory(),
+        FileChooser chooser("Select NAM Download Directory", Tone3000DownloadManager::getInstance().getCacheDirectory(),
                             "", true);
 
         if (chooser.browseForDirectory())

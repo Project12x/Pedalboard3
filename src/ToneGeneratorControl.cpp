@@ -235,18 +235,18 @@ void ToneGeneratorControl::paint(Graphics& g)
 
     // Title
     g.setColour(colours["Text Colour"]);
-    g.setFont(fonts.getUIFont(12.0f, true));
+    g.setFont(fonts.getLabelFont());
     g.drawText("TONE GENERATOR", bounds.removeFromTop(18).reduced(4, 0), Justification::left);
 
     // Frequency display
     auto displayArea = bounds.removeFromTop(22).reduced(4, 0);
-    g.setFont(fonts.getMonoFont(16.0f));
+    g.setFont(fonts.getMonoDisplayFont(16.0f));
     g.setColour(Colour(0xFF00E676));
     g.drawText(String(displayedFrequency, 1) + " Hz  " + displayedNote, displayArea, Justification::left);
 
     // Labels
     g.setColour(colours["Text Colour"].withAlpha(0.6f));
-    g.setFont(fonts.getUIFont(9.0f));
+    g.setFont(fonts.getBadgeFont());
     g.drawText("Freq:", Rectangle<float>(4, 44, 30, 14), Justification::left);
     g.drawText("Detune:", Rectangle<float>(4, 66, 40, 14), Justification::left);
     g.drawText("Level:", Rectangle<float>(4, 108, 30, 14), Justification::left);

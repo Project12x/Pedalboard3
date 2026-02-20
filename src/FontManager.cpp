@@ -13,7 +13,6 @@
 
 #include "FontData.h"
 
-
 //------------------------------------------------------------------------------
 FontManager& FontManager::getInstance()
 {
@@ -37,20 +36,61 @@ FontManager::FontManager()
         Typeface::createSystemTypefaceFor(FontData::IBMPlexSansBold_ttf, FontData::IBMPlexSansBold_ttfSize);
 
     // Load Inter Regular + Bold
-    interTypeface =
-        Typeface::createSystemTypefaceFor(FontData::InterRegular_ttf, FontData::InterRegular_ttfSize);
-    interBoldTypeface =
-        Typeface::createSystemTypefaceFor(FontData::InterBold_ttf, FontData::InterBold_ttfSize);
+    interTypeface = Typeface::createSystemTypefaceFor(FontData::InterRegular_ttf, FontData::InterRegular_ttfSize);
+    interBoldTypeface = Typeface::createSystemTypefaceFor(FontData::InterBold_ttf, FontData::InterBold_ttfSize);
 
     // Load JetBrains Mono (numbers/code)
     jetBrainsMonoTypeface =
         Typeface::createSystemTypefaceFor(FontData::JetBrainsMonoRegular_ttf, FontData::JetBrainsMonoRegular_ttfSize);
 
-    fontsLoaded = (interTypeface != nullptr && interBoldTypeface != nullptr
-                   && jetBrainsMonoTypeface != nullptr);
+    fontsLoaded = (interTypeface != nullptr && interBoldTypeface != nullptr && jetBrainsMonoTypeface != nullptr);
 }
 
 //------------------------------------------------------------------------------
+// Semantic typography API
+//------------------------------------------------------------------------------
+
+Font FontManager::getHeadingFont() const
+{
+    return getUIFont(18.0f, true);
+}
+Font FontManager::getSubheadingFont() const
+{
+    return getUIFont(15.0f, true);
+}
+Font FontManager::getBodyFont() const
+{
+    return getUIFont(13.0f, false);
+}
+Font FontManager::getBodyBoldFont() const
+{
+    return getUIFont(13.0f, true);
+}
+Font FontManager::getLabelFont() const
+{
+    return getUIFont(12.0f, false);
+}
+Font FontManager::getCaptionFont() const
+{
+    return getUIFont(11.0f, false);
+}
+Font FontManager::getBadgeFont() const
+{
+    return getUIFont(9.0f, true);
+}
+Font FontManager::getDisplayFont(float height) const
+{
+    return getUIFont(height, true);
+}
+Font FontManager::getMonoDisplayFont(float height) const
+{
+    return getMonoFont(height);
+}
+
+//------------------------------------------------------------------------------
+// Low-level API
+//------------------------------------------------------------------------------
+
 Font FontManager::getUIFont(float height, bool bold) const
 {
     // Currently using Inter; swap to ibmPlexSans* or spaceGrotesk* to revert

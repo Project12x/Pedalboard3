@@ -58,7 +58,7 @@ void ToastOverlay::show(const String& message, int durationMs)
     isFadingOut = false;
 
     // Calculate size based on message
-    auto font = FontManager::getInstance().getUIFont(14.0f);
+    auto font = FontManager::getInstance().getBodyFont();
     int textWidth = font.getStringWidth(currentMessage);
     int width = jmax(200, textWidth + 48);
     int height = 40;
@@ -132,7 +132,7 @@ void ToastOverlay::paint(Graphics& g)
 
     // === Text ===
     g.setColour(colours["Text Colour"].withAlpha(alpha));
-    g.setFont(FontManager::getInstance().getUIFont(14.0f));
+    g.setFont(FontManager::getInstance().getBodyFont());
     g.drawText(currentMessage, bounds, Justification::centred, false);
 }
 

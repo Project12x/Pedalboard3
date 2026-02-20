@@ -39,9 +39,13 @@ class NAMLookAndFeel : public LookAndFeel_V4
     void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
                               bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 
+    void drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY, int buttonW,
+                      int buttonH, ComboBox& box) override;
+
     // F2: Typography overrides -- JetBrains Mono for numeric readouts, Inter for buttons
     Label* createSliderTextBox(Slider& slider) override;
     Font getTextButtonFont(TextButton& button, int buttonHeight) override;
+    void drawLabel(Graphics& g, Label& label) override;
 
     // Refresh colours from ColourScheme
     void refreshColours();
@@ -139,6 +143,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
 
     // Tone stack
     std::unique_ptr<ToggleButton> toneStackEnabledButton;
+    std::unique_ptr<TextButton> toneStackPreButton;
     std::unique_ptr<Slider> bassSlider;
     std::unique_ptr<Label> bassLabel;
     std::unique_ptr<Slider> midSlider;

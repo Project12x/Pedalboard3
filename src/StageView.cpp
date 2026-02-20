@@ -264,7 +264,7 @@ void StageView::paint(Graphics& g)
                           const int* peakCounters)
         {
             g.setColour(colours["Text Colour"].withAlpha(0.6f));
-            g.setFont(fonts.getUIFont(14.0f, true));
+            g.setFont(fonts.getSubheadingFont());
             g.drawText(label, x, y, labelW, 32.0f, Justification::centredRight);
 
             for (int ch = 0; ch < 2; ++ch)
@@ -344,13 +344,13 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
 
     // "STAGE MODE" title
     g.setColour(colours["Text Colour"].withAlpha(0.5f));
-    g.setFont(fonts.getUIFont(16.0f, true));
+    g.setFont(fonts.getSubheadingFont());
     g.drawText("STAGE MODE", bounds.reduced(20, 0), Justification::centredLeft);
 
     // Time display (optional)
     Time now = Time::getCurrentTime();
     String timeStr = now.formatted("%H:%M");
-    g.setFont(fonts.getMonoFont(14.0f));
+    g.setFont(fonts.getMonoDisplayFont(14.0f));
     g.drawText(timeStr, bounds.reduced(80, 0), Justification::centredRight);
 }
 
@@ -362,7 +362,7 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
 
     // Large patch name
     g.setColour(colours["Text Colour"]);
-    g.setFont(fonts.getUIFont(72.0f, true));
+    g.setFont(fonts.getDisplayFont(72.0f));
 
     // Truncate long names
     String displayName = currentPatchName;
@@ -375,14 +375,14 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     if (nextPatchName.isNotEmpty())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(fonts.getUIFont(32.0f));
+        g.setFont(fonts.getDisplayFont(32.0f));
         g.drawText("NEXT: " + nextPatchName, bounds.removeFromBottom(140).withTrimmedBottom(60),
                    Justification::centredTop);
     }
     else
     {
         g.setColour(colours["Text Colour"].withAlpha(0.3f));
-        g.setFont(fonts.getUIFont(24.0f));
+        g.setFont(fonts.getDisplayFont(24.0f));
         g.drawText("(End of Set)", bounds.removeFromBottom(140).withTrimmedBottom(60), Justification::centredTop);
     }
 
@@ -390,7 +390,7 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     if (totalPatchCount > 0)
     {
         g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(fonts.getMonoFont(24.0f));
+        g.setFont(fonts.getMonoDisplayFont(24.0f));
         String posStr = String(currentPatchIndex + 1) + " / " + String(totalPatchCount);
         // Positioned slightly lower
         g.drawText(posStr, bounds.translated(0, 100), Justification::centred);
@@ -412,7 +412,7 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     if (tunerProcessor == nullptr || !tunerProcessor->isPitchDetected())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.25f));
-        g.setFont(fonts.getUIFont(32.0f));
+        g.setFont(fonts.getDisplayFont(32.0f));
         g.drawText("Waiting for signal...", bounds, Justification::centred);
         return;
     }
@@ -422,11 +422,11 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     Colour noteCol = getTuningColour(displayedCents);
 
     g.setColour(noteCol);
-    g.setFont(fonts.getUIFont(64.0f, true));
+    g.setFont(fonts.getDisplayFont(64.0f));
     g.drawText(noteName, bounds.withTrimmedBottom(60), Justification::centred);
 
     // Cents display
-    g.setFont(fonts.getMonoFont(28.0f));
+    g.setFont(fonts.getMonoDisplayFont(28.0f));
     String centsStr = (displayedCents >= 0 ? "+" : "") + String(static_cast<int>(displayedCents)) + " cents";
     g.drawText(centsStr, bounds.withTrimmedTop(80), Justification::centred);
 

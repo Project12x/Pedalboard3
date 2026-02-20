@@ -182,7 +182,7 @@ void PluginField::paint(Graphics& g)
         }
 
         // Primary instruction text
-        g.setFont(FontManager::getInstance().getUIFont(18.0f));
+        g.setFont(FontManager::getInstance().getHeadingFont());
         g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.6f));
 
         String hintText = "Double-click to add a plugin";
@@ -191,7 +191,7 @@ void PluginField::paint(Graphics& g)
                    Justification::centred, false);
 
         // Secondary hint
-        g.setFont(FontManager::getInstance().getUIFont(13.0f));
+        g.setFont(FontManager::getInstance().getBodyFont());
         g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.35f));
 
         String subHint = "or drag & drop VST/preset files";

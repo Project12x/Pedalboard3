@@ -22,6 +22,7 @@
 //[Headers] You can add your own extra header files here...
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "JuceHelperStuff.h"
 #include "PluginComponent.h"
 #include "PresetManager.h"
@@ -45,10 +46,9 @@ PresetBar::PresetBar(PluginComponent* comp) : presetsComboBox(0), presetsLabel(0
     presetsComboBox->addListener(this);
 
     addAndMakeVisible(presetsLabel = new Label("presetsLabel", "Presets:"));
-    presetsLabel->setFont(Font(15.0000f, Font::plain));
+    presetsLabel->setFont(FontManager::getInstance().getBodyFont());
     presetsLabel->setJustificationType(Justification::centredLeft);
     presetsLabel->setEditable(false, false, false);
-    presetsLabel->setColour(TextEditor::textColourId, Colours::black);
     presetsLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
     addAndMakeVisible(importButton = new DrawableButton("importButton", DrawableButton::ImageOnButtonBackground));

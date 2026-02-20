@@ -33,6 +33,7 @@
 #include "PluginField.h"
 
 #include <JuceHeader.h>
+#include "FontManager.h"
 
 class PluginListWindow;
 class StageView;
@@ -468,8 +469,8 @@ class MainPanel : public Component,
         void paint(Graphics& g)
         {
             String tempstr;
-            Font smallFont(24.0f);
-            Font bigFont(48.0f, Font::bold);
+            Font smallFont = FontManager::getInstance().getDisplayFont(24.0f);
+            Font bigFont = FontManager::getInstance().getDisplayFont(48.0f);
 
             g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
 

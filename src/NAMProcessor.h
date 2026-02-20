@@ -87,6 +87,9 @@ class NAMProcessor : public PedalboardProcessor
     bool isToneStackEnabled() const { return toneStackEnabled.load(); }
     void setToneStackEnabled(bool enabled) { toneStackEnabled.store(enabled); }
 
+    bool isToneStackPre() const { return toneStackPre.load(); }
+    void setToneStackPre(bool pre) { toneStackPre.store(pre); }
+
     bool isNormalizeOutput() const { return normalizeOutput.load(); }
     void setNormalizeOutput(bool enabled) { normalizeOutput.store(enabled); }
 
@@ -140,6 +143,7 @@ class NAMProcessor : public PedalboardProcessor
         ToneStackEnabledParam,
         NormalizeParam,
         IRMixParam,
+        ToneStackPreParam,
         NumParameters
     };
 
@@ -203,6 +207,7 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<float> mid{5.0f};                  // 0-10
     std::atomic<float> treble{5.0f};               // 0-10
     std::atomic<bool> toneStackEnabled{true};
+    std::atomic<bool> toneStackPre{false};
     std::atomic<bool> normalizeOutput{false};
 
     //==========================================================================

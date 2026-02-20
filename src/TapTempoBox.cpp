@@ -18,6 +18,7 @@
 //	----------------------------------------------------------------------------
 
 #include "TapTempoBox.h"
+#include "FontManager.h"
 
 #include "ColourScheme.h"
 #include "PluginField.h"
@@ -42,8 +43,8 @@ void TapTempoBox::paint(Graphics& g)
 {
     String tempstr;
     std::wstringstream converterString; // Because I can't figure out how to do this with juce' String class.
-    Font smallFont(24.0f);
-    Font bigFont(48.0f, Font::bold);
+    Font smallFont = FontManager::getInstance().getDisplayFont(24.0f);
+    Font bigFont = FontManager::getInstance().getDisplayFont(48.0f);
 
     g.setColour(ColourScheme::getInstance().colours["Text Colour"]);
 

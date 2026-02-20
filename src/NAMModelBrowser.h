@@ -15,7 +15,6 @@
 #include <functional>
 #include <vector>
 
-
 class NAMProcessor;
 class NAMOnlineBrowserComponent;
 
@@ -212,6 +211,9 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
 
     // Scanning state
     bool isScanning = false;
+
+    // Section separator Y positions (computed in resized, drawn in paint)
+    std::vector<int> detailsSeparatorPositions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMModelBrowserComponent)
 };

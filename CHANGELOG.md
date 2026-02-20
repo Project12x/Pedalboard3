@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Semantic Colour Tokens** — Added `Danger Colour`, `Warning Colour`, and `Success Colour` tokens to all 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest). Theme-appropriate palette per scheme (e.g. Synthwave uses neon pink/orange/green).
 - **NAM Collapsible Editor (F1)** — Click the NAM header bar to collapse to a 40px header-only view showing model name, LED, and chevron. Children hidden; PluginComponent relayouts automatically. Pins and E/M/B buttons remain visible.
 - **NAM Multi-Font Typography (F2)** — Slider numeric readouts now use JetBrains Mono. Button text uses Inter. Section headers remain Space Grotesk Bold.
+- **Semantic Typography System** — Added 9 semantic font methods to `FontManager`: `getHeadingFont()` (18px), `getSubheadingFont()` (15px), `getBodyFont()` (13px), `getBodyBoldFont()` (13px bold), `getLabelFont()` (12px), `getCaptionFont()` (11px), `getBadgeFont()` (9px), `getDisplayFont(size)`, `getMonoDisplayFont(size)`. Migrated 20+ source files from ad-hoc `getUIFont(N)` calls to semantic roles for consistent typography across the entire application.
 
 ### Changed
 
@@ -20,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Button Colour Override Ignored** — `BranchesLAF::drawButtonBackground` and `NAMLookAndFeel::drawButtonBackground` both hardcoded the button fill colour, ignoring the `backgroundColour` parameter passed by JUCE. Per-button `setColour(buttonColourId, ...)` calls had no effect. Both now respect the parameter, falling back to theme default only when no custom colour is set. Delete Model button now uses a 55% blend of Danger Colour into Button Colour for a visible red accent.
 - **NAM Header Clipping** — NAM control component was positioned 1px below the 23px header (y=24), causing the opaque background to overlap the header separator. Moved control to y=26 in constructor, `updateNodeSize`, and `refreshPins`; adjusted height offset from +62 to +64.
 - **NAM Theme Colors Not Updating** — Changing themes did not update NAM control or model browser colors at runtime. Added `NAMModelBrowserComponent::refreshColours()` and wired `MainPanel::changeListenerCallback` to recursively walk the desktop component tree and call `refreshColours()` on all `NAMControl` and `NAMModelBrowserComponent` instances.
 - **Eigen MSVC Build Error** — Pinned Eigen dependency from `master` to `5.0.0`. The `master` branch had GCC-specific `__attribute__((always_inline))` on lambdas in `GeneralBlockPanelKernel.h` causing MSVC C3260. Version 3.4.x was too old (lacked `Eigen::placeholders::lastN` required by NAM's `lstm.h`). 5.0.0 is the stable release with both features.

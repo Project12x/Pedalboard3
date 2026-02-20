@@ -149,7 +149,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     titleLabel = new Label("titleLabe", pluginName);
     titleLabel->setBounds(5, 3, getWidth() - 10, 20);
     titleLabel->setInterceptsMouseClicks(false, false);
-    titleLabel->setFont(FontManager::getInstance().getUIFont(15.0f, true));
+    titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
     titleLabel->setJustificationType(Justification::centredLeft);
     titleLabel->addListener(this);
     addAndMakeVisible(titleLabel);
@@ -364,7 +364,7 @@ void PluginComponent::paint(Graphics& g)
             if (deviceName.isNotEmpty())
             {
                 g.setColour(colours["Text Colour"].withAlpha(0.6f));
-                g.setFont(FontManager::getInstance().getUIFont(10.0f));
+                g.setFont(FontManager::getInstance().getCaptionFont());
                 g.drawText(deviceName, 4.0f, 25.0f, w - 8.0f, 14.0f, Justification::centred, true);
             }
         }
@@ -965,7 +965,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     int numInputPins = 0;
     int numOutputPins = 0;
     PedalboardProcessor* proc = nullptr;
-    Font tempFont = FontManager::getInstance().getUIFont(15.0f, true);
+    Font tempFont = FontManager::getInstance().getSubheadingFont();
     AudioProcessor* plugin = node->getProcessor();
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(plugin);
     bool ignorePinNames = SettingsManager::getInstance().getBool("IgnorePinNames", false);
@@ -1213,7 +1213,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     if (pluginName == "MIDI Input" || pluginName == "Virtual MIDI Input")
     {
         // Compute common width from the longer name so both nodes are identical
-        Font midiFont = FontManager::getInstance().getUIFont(15.0f, true);
+        Font midiFont = FontManager::getInstance().getSubheadingFont();
         int refWidth = (int)(midiFont.getStringWidthFloat("Virtual MIDI Input") + 40.0f);
         spdlog::info("[determineSize] '{}': w={} h={} refWidth={} nameWidth={:.1f}", pluginName.toStdString(), w, h,
                      refWidth, nameWidth);

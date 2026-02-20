@@ -10,6 +10,7 @@
 #include "NAMModelBrowser.h"
 
 #include "ColourScheme.h"
+#include "FontManager.h"
 #include "IconManager.h"
 #include "NAMOnlineBrowser.h"
 #include "NAMProcessor.h"
@@ -18,7 +19,6 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <spdlog/spdlog.h>
-
 
 //==============================================================================
 // NAMModelListModel
@@ -120,14 +120,15 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         Colour archColour;
         String archShort(model.architecture);
+        Colour accentBase = colours["Accent Colour"];
         if (archShort.containsIgnoreCase("LSTM"))
-            archColour = Colour(0xff4a9eff); // Blue
+            archColour = accentBase.withRotatedHue(0.0f); // Accent hue
         else if (archShort.containsIgnoreCase("WaveNet"))
-            archColour = Colour(0xff9b59b6); // Purple
+            archColour = accentBase.withRotatedHue(0.25f); // +90 degrees
         else if (archShort.containsIgnoreCase("ConvNet"))
-            archColour = Colour(0xff2ecc71); // Green
+            archColour = accentBase.withRotatedHue(0.42f); // +150 degrees
         else if (archShort.containsIgnoreCase("Linear"))
-            archColour = Colour(0xffe67e22); // Orange
+            archColour = accentBase.withRotatedHue(0.58f); // +210 degrees
         else
             archColour = colours["Text Colour"].withAlpha(0.4f);
 
@@ -138,7 +139,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         g.setColour(archColour.withAlpha(0.6f));
         g.drawRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f, 1.0f);
 
-        g.setFont(Font(9.0f));
+        g.setFont(FontManager::getInstance().getBadgeFont());
         g.setColour(archColour.withAlpha(0.8f));
         g.drawText(archShort, archBadgeBounds, Justification::centred, true);
 
@@ -150,25 +151,26 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             // Normalize model type display text
             String typeDisplay = modelType.toLowerCase();
             Colour typeColour;
+            Colour typeBase = colours["Accent Colour"];
             if (typeDisplay.contains("preamp") || typeDisplay.contains("pre-amp"))
             {
                 typeDisplay = "Preamp";
-                typeColour = Colour(0xfff39c12); // Yellow/gold
+                typeColour = typeBase.withRotatedHue(0.12f); // Warm shift
             }
             else if (typeDisplay.contains("full") || typeDisplay.contains("chain") || typeDisplay.contains("rig"))
             {
                 typeDisplay = "Full Rig";
-                typeColour = Colour(0xff1abc9c); // Teal
+                typeColour = typeBase.withRotatedHue(0.35f); // Cool shift
             }
             else if (typeDisplay.contains("pedal"))
             {
                 typeDisplay = "Pedal";
-                typeColour = Colour(0xffe74c3c); // Red
+                typeColour = typeBase.withRotatedHue(0.5f); // Complementary
             }
             else if (typeDisplay.contains("amp"))
             {
                 typeDisplay = "Amp";
-                typeColour = Colour(0xff3498db); // Blue
+                typeColour = typeBase.withRotatedHue(0.7f); // Triadic
             }
             else
             {
@@ -176,7 +178,9 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
                 typeColour = colours["Text Colour"].withAlpha(0.5f);
             }
 
-            int typeBadgeWidth = static_cast<int>(Font(9.0f).getStringWidthFloat(typeDisplay)) + 12;
+            int typeBadgeWidth =
+                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) +
+                12;
             badgeX -= typeBadgeWidth;
 
             Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
@@ -186,7 +190,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             g.setColour(typeColour.withAlpha(0.6f));
             g.drawRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f, 1.0f);
 
-            g.setFont(Font(9.0f));
+            g.setFont(FontManager::getInstance().getBadgeFont());
             g.setColour(typeColour.withAlpha(0.8f));
             g.drawText(typeDisplay, typeBadgeBounds, Justification::centred, true);
         }
@@ -194,7 +198,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         // Model name (top line) - adjust width to not overlap badges
         const int textEndX = badgeX - 8;
         g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
-        g.setFont(Font(13.0f, Font::bold));
+        g.setFont(FontManager::getInstance().getBodyBoldFont());
         g.drawText(String(model.name), textX, 4, textEndX - textX, height / 2, Justification::centredLeft, true);
 
         // Rig type and sample rate info on bottom line
@@ -216,9 +220,17 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         if (infoLine.isNotEmpty())
         {
             g.setColour(colours["Text Colour"].withAlpha(0.5f));
-            g.setFont(11.0f);
+            g.setFont(FontManager::getInstance().getMonoFont(11.0f));
             g.drawText(infoLine, textX, height / 2, textEndX - textX, height / 2 - 4, Justification::centredLeft, true);
         }
+    }
+
+    // Subtle bottom separator
+    if (!rowIsSelected)
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.drawLine(static_cast<float>(margin + 4), static_cast<float>(height - 1),
+                   static_cast<float>(width - margin - 4), static_cast<float>(height - 1), 1.0f);
     }
 }
 
@@ -319,20 +331,20 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         {
             Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(badgeWidth), static_cast<float>(badgeHeight));
-            Colour badgeColour = Colour(0xff3498db); // Blue for duration
+            Colour badgeColour = colours["Accent Colour"].withRotatedHue(0.7f); // Triadic offset for IR duration
             g.setColour(badgeColour.withAlpha(0.2f));
             g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
             g.setColour(badgeColour);
             g.drawRoundedRectangle(badgeBounds, badgeHeight / 2.0f, 1.0f);
 
-            g.setFont(Font(10.0f, Font::bold));
+            g.setFont(FontManager::getInstance().getCaptionFont());
             g.setColour(badgeColour);
             g.drawText(durationText, badgeBounds, Justification::centred, true);
         }
 
         // IR name
         g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
-        g.setFont(Font(13.0f, Font::bold));
+        g.setFont(FontManager::getInstance().getBodyBoldFont());
         g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2, Justification::centredLeft, true);
 
         // Sample rate and channels on bottom line
@@ -349,10 +361,18 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         if (details.isNotEmpty())
         {
             g.setColour(colours["Text Colour"].withAlpha(0.5f));
-            g.setFont(11.0f);
+            g.setFont(FontManager::getInstance().getMonoFont(11.0f));
             g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4, Justification::centredLeft,
                        true);
         }
+    }
+
+    // Subtle bottom separator
+    if (!rowIsSelected)
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.drawLine(static_cast<float>(margin + 4), static_cast<float>(height - 1),
+                   static_cast<float>(width - margin - 4), static_cast<float>(height - 1), 1.0f);
     }
 }
 
@@ -429,7 +449,7 @@ class PillTabLookAndFeel : public LookAndFeel_V4
         auto& colours = ::ColourScheme::getInstance().colours;
         auto bounds = button.getLocalBounds().toFloat();
 
-        g.setFont(Font(13.0f, Font::bold));
+        g.setFont(FontManager::getInstance().getBodyBoldFont());
 
         if (button.getToggleState())
             g.setColour(Colours::white);
@@ -453,7 +473,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Title
     titleLabel = std::make_unique<Label>("title", "NAM Model Browser");
-    titleLabel->setFont(Font(18.0f, Font::bold));
+    titleLabel->setFont(FontManager::getInstance().getHeadingFont());
     titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(titleLabel.get());
 
@@ -485,13 +505,16 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     onlineBrowser->setVisible(false);
     addAndMakeVisible(onlineBrowser.get());
 
-    // Search box
+    // Search box with rounded styling
     searchBox = std::make_unique<TextEditor>("search");
     searchBox->setTextToShowWhenEmpty("Search models...", colours["Text Colour"].withAlpha(0.5f));
     searchBox->addListener(this);
-    searchBox->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
+    searchBox->setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
-    searchBox->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+    searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
+    searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
+    searchBox->setIndents(24, 0); // Left indent for search icon
+    searchBox->setFont(FontManager::getInstance().getBodyFont());
     addAndMakeVisible(searchBox.get());
 
     // Buttons with styled colors
@@ -537,7 +560,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Model list - transparent background for custom rounded painting
     modelList = std::make_unique<ListBox>("models", &listModel);
-    modelList->setRowHeight(36);
+    modelList->setRowHeight(40);
     modelList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     modelList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     modelList->setOutlineThickness(0);
@@ -547,7 +570,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Details panel
     detailsTitle = std::make_unique<Label>("detailsTitle", "Model Details");
-    detailsTitle->setFont(Font(14.0f, Font::bold));
+    detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(detailsTitle.get());
 
@@ -555,12 +578,12 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
                                             const String& labelText, const String& valueText)
     {
         labelPtr = std::make_unique<Label>("", labelText);
-        labelPtr->setFont(Font(12.0f, Font::bold));
+        labelPtr->setFont(FontManager::getInstance().getLabelFont());
         labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
         addAndMakeVisible(labelPtr.get());
 
         valuePtr = std::make_unique<Label>("", valueText);
-        valuePtr->setFont(Font(12.0f));
+        valuePtr->setFont(FontManager::getInstance().getLabelFont());
         valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
         addAndMakeVisible(valuePtr.get());
     };
@@ -573,7 +596,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     createLabelPair(loudnessLabel, loudnessValue, "Loudness:", "-");
 
     metadataLabel = std::make_unique<Label>("", "Metadata:");
-    metadataLabel->setFont(Font(12.0f, Font::bold));
+    metadataLabel->setFont(FontManager::getInstance().getLabelFont());
     metadataLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
     addAndMakeVisible(metadataLabel.get());
 
@@ -583,7 +606,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     metadataDisplay->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
     metadataDisplay->setColour(TextEditor::textColourId, colours["Text Colour"]);
     metadataDisplay->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
-    metadataDisplay->setFont(Font(11.0f));
+    metadataDisplay->setFont(FontManager::getInstance().getMonoFont(11.0f));
     addAndMakeVisible(metadataDisplay.get());
 
     // File path in details
@@ -593,31 +616,33 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Delete button
     deleteButton = std::make_unique<TextButton>("Delete Model");
     deleteButton->addListener(this);
-    deleteButton->setColour(TextButton::buttonColourId, Colour(0xffe74c3c)); // Red
-    deleteButton->setColour(TextButton::buttonOnColourId, Colour(0xffc0392b));
+    // Red-accented theme button (blend danger into theme, not pure red)
+    Colour dangerBlend = colours["Button Colour"].interpolatedWith(colours["Danger Colour"], 0.55f);
+    deleteButton->setColour(TextButton::buttonColourId, dangerBlend);
+    deleteButton->setColour(TextButton::buttonOnColourId, dangerBlend.darker(0.2f));
     deleteButton->setColour(TextButton::textColourOffId, Colours::white);
     deleteButton->setColour(TextButton::textColourOnId, Colours::white);
     addAndMakeVisible(deleteButton.get());
 
     // Status bar
     statusLabel = std::make_unique<Label>("status", "");
-    statusLabel->setFont(Font(11.0f));
+    statusLabel->setFont(FontManager::getInstance().getCaptionFont());
     statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
     addAndMakeVisible(statusLabel.get());
 
     // Empty state message
     emptyStateLabel = std::make_unique<Label>(
         "emptyState",
-        "No NAM models found.\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
-    emptyStateLabel->setFont(Font(13.0f));
-    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+        "No NAM models found\n\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
+    emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
+    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
     emptyStateLabel->setJustificationType(Justification::centred);
     emptyStateLabel->setVisible(false);
     addAndMakeVisible(emptyStateLabel.get());
 
     // IR browser components
     irList = std::make_unique<ListBox>("irs", &irListModel);
-    irList->setRowHeight(36);
+    irList->setRowHeight(40);
     irList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     irList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     irList->setOutlineThickness(0);
@@ -646,7 +671,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // IR details panel
     irDetailsTitle = std::make_unique<Label>("irDetailsTitle", "IR Details");
-    irDetailsTitle->setFont(Font(14.0f, Font::bold));
+    irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     irDetailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
     irDetailsTitle->setVisible(false);
     addAndMakeVisible(irDetailsTitle.get());
@@ -655,13 +680,13 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
                                               const String& labelText, const String& valueText)
     {
         labelPtr = std::make_unique<Label>("", labelText);
-        labelPtr->setFont(Font(12.0f, Font::bold));
+        labelPtr->setFont(FontManager::getInstance().getLabelFont());
         labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
         labelPtr->setVisible(false);
         addAndMakeVisible(labelPtr.get());
 
         valuePtr = std::make_unique<Label>("", valueText);
-        valuePtr->setFont(Font(12.0f));
+        valuePtr->setFont(FontManager::getInstance().getLabelFont());
         valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
         valuePtr->setVisible(false);
         addAndMakeVisible(valuePtr.get());
@@ -762,7 +787,7 @@ void NAMModelBrowserComponent::refreshColours()
 
     // Status and empty state
     statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
-    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
 
     // IR browser buttons
     styleButton(irBrowseFolderButton.get());
@@ -777,6 +802,34 @@ void NAMModelBrowserComponent::refreshColours()
     refreshLabelPair(irChannelsLabel.get(), irChannelsValue.get());
     refreshLabelPair(irFileSizeLabel.get(), irFileSizeValue.get());
     refreshLabelPair(irFilePathLabel.get(), irFilePathValue.get());
+
+    // Rebuild fonts (FontManager may have changed)
+    auto rebuildFonts = [](Label* label, Label* value)
+    {
+        label->setFont(FontManager::getInstance().getLabelFont());
+        value->setFont(FontManager::getInstance().getLabelFont());
+    };
+    detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
+    rebuildFonts(nameLabel.get(), nameValue.get());
+    rebuildFonts(authorLabel.get(), authorValue.get());
+    rebuildFonts(modelTypeLabel.get(), modelTypeValue.get());
+    rebuildFonts(architectureLabel.get(), architectureValue.get());
+    rebuildFonts(sampleRateLabel.get(), sampleRateValue.get());
+    rebuildFonts(loudnessLabel.get(), loudnessValue.get());
+    rebuildFonts(filePathLabel.get(), filePathValue.get());
+    metadataLabel->setFont(FontManager::getInstance().getLabelFont());
+    metadataDisplay->setFont(FontManager::getInstance().getMonoFont(11.0f));
+    statusLabel->setFont(FontManager::getInstance().getCaptionFont());
+    emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
+    searchBox->setFont(FontManager::getInstance().getBodyFont());
+
+    irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
+    rebuildFonts(irNameLabel.get(), irNameValue.get());
+    rebuildFonts(irDurationLabel.get(), irDurationValue.get());
+    rebuildFonts(irSampleRateLabel.get(), irSampleRateValue.get());
+    rebuildFonts(irChannelsLabel.get(), irChannelsValue.get());
+    rebuildFonts(irFileSizeLabel.get(), irFileSizeValue.get());
+    rebuildFonts(irFilePathLabel.get(), irFilePathValue.get());
 
     repaint();
 }
@@ -831,6 +884,66 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.strokePath(detailsPath, PathStrokeType(2.0f));
         g.setColour(colours["Text Colour"].withAlpha(0.12f));
         g.strokePath(detailsPath, PathStrokeType(1.0f));
+    }
+
+    // Draw search box background with rounded corners and icon
+    if (currentTab == 0 || currentTab == 2)
+    {
+        auto searchBounds = searchBox->getBounds().toFloat();
+        float cr = searchBounds.getHeight() * 0.4f;
+
+        // Rounded background fill
+        g.setColour(colours["Dialog Inner Background"]);
+        g.fillRoundedRectangle(searchBounds, cr);
+
+        // Border — brighter when focused
+        bool focused = searchBox->hasKeyboardFocus(false);
+        g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
+        g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
+
+        // Magnifying glass icon (circle + handle)
+        float iconSize = 12.0f;
+        float iconX = searchBounds.getX() + 8.0f;
+        float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+        float radius = iconSize * 0.35f;
+
+        g.setColour(colours["Text Colour"].withAlpha(0.45f));
+        g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
+        // Handle line
+        float handleStart = iconX + radius * 1.4f + radius;
+        float handleEnd = handleStart + radius * 0.9f;
+        float handleY = iconY + radius * 1.4f + radius;
+        g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
+    }
+
+    // Draw section separators in details panel
+    if ((currentTab == 0 || currentTab == 2) && !detailsSeparatorPositions.empty())
+    {
+        auto detailsX = nameLabel ? nameLabel->getX() : 0;
+        auto detailsRight = nameValue ? nameValue->getRight() : getWidth();
+
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        for (auto y : detailsSeparatorPositions)
+        {
+            float yf = static_cast<float>(y) + 4.0f;
+            g.drawLine(static_cast<float>(detailsX), yf, static_cast<float>(detailsRight), yf, 1.0f);
+        }
+    }
+
+    // Draw empty state icon (magnifying glass) when no models found
+    if (currentTab == 0 && emptyStateLabel && emptyStateLabel->isVisible())
+    {
+        auto emptyBounds = emptyStateLabel->getBounds();
+        float cx = emptyBounds.getCentreX();
+        float iconTop = emptyBounds.getY() - 40.0f;
+
+        // Large magnifying glass
+        float r = 14.0f;
+        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        g.drawEllipse(cx - r, iconTop, r * 2.0f, r * 2.0f, 2.0f);
+        float hx = cx + r * 0.7f;
+        float hy = iconTop + r * 2.0f - r * 0.3f;
+        g.drawLine(hx, hy, hx + r * 0.8f, hy + r * 0.8f, 2.0f);
     }
 }
 
@@ -1060,34 +1173,50 @@ void NAMModelBrowserComponent::resized()
     modelList->setBounds(listArea);
     emptyStateLabel->setBounds(listArea);
 
-    // Details panel
+    // Details panel with section grouping
     auto detailsArea = bounds;
+    const int labelWidth = 90;
+    const int sectionGap = 10;
+    const int rowH = 20;
+    const int rowGap = 4;
 
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(8);
+    detailsArea.removeFromTop(6);
 
-    auto layoutLabelValue = [&detailsArea](Label* label, Label* value)
+    // Store separator positions for paint()
+    detailsSeparatorPositions.clear();
+
+    auto layoutLabelValue = [&detailsArea, labelWidth, rowH, rowGap](Label* label, Label* value)
     {
-        auto row = detailsArea.removeFromTop(20);
-        label->setBounds(row.removeFromLeft(90));
+        auto row = detailsArea.removeFromTop(rowH);
+        label->setBounds(row.removeFromLeft(labelWidth));
         value->setBounds(row);
-        detailsArea.removeFromTop(4);
+        detailsArea.removeFromTop(rowGap);
     };
 
+    // -- Identity section --
     layoutLabelValue(nameLabel.get(), nameValue.get());
     layoutLabelValue(authorLabel.get(), authorValue.get());
+
+    // Separator after Identity
+    detailsSeparatorPositions.push_back(detailsArea.getY());
+    detailsArea.removeFromTop(sectionGap);
+
+    // -- Technical section --
     layoutLabelValue(modelTypeLabel.get(), modelTypeValue.get());
     layoutLabelValue(architectureLabel.get(), architectureValue.get());
     layoutLabelValue(sampleRateLabel.get(), sampleRateValue.get());
     layoutLabelValue(loudnessLabel.get(), loudnessValue.get());
 
-    detailsArea.removeFromTop(8);
+    // Separator after Technical
+    detailsSeparatorPositions.push_back(detailsArea.getY());
+    detailsArea.removeFromTop(sectionGap);
 
-    // File path row (wider layout)
-    auto fileRow = detailsArea.removeFromTop(20);
+    // -- File section --
+    auto fileRow = detailsArea.removeFromTop(rowH);
     filePathLabel->setBounds(fileRow.removeFromLeft(40));
     filePathValue->setBounds(fileRow);
-    detailsArea.removeFromTop(8);
+    detailsArea.removeFromTop(rowGap);
 
     // Delete button at bottom of details
     auto deleteRow = detailsArea.removeFromBottom(28);
@@ -1201,7 +1330,8 @@ void NAMModelBrowserComponent::deleteSelectedModel()
                                        spdlog::info("[NAMModelBrowser] Deleted model: {}",
                                                     modelFile.getFullPathName().toStdString());
 
-                                       // Also delete parent folder if it's empty (TONE3000 creates a folder per model)
+                                       // Also delete parent folder if it's empty (TONE3000 creates a folder per
+                                       // model)
                                        File parentDir = modelFile.getParentDirectory();
                                        if (parentDir != currentDirectory)
                                        {
@@ -1814,7 +1944,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     // Title with icon-like styling
     titleLabel = std::make_unique<Label>("title", "IR Browser");
-    titleLabel->setFont(Font(16.0f, Font::bold));
+    titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
     titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(titleLabel.get());
 
@@ -1842,8 +1972,8 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Load button with accent color (prominent action button)
     loadButton = std::make_unique<TextButton>("Load IR");
     loadButton->setTooltip("Load selected IR");
-    loadButton->setColour(TextButton::buttonColourId, Colour(0xff4a90d9)); // Blue accent
-    loadButton->setColour(TextButton::buttonOnColourId, Colour(0xff3a80c9));
+    loadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
+    loadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
     loadButton->setColour(TextButton::textColourOffId, Colours::white);
     loadButton->setColour(TextButton::textColourOnId, Colours::white);
     loadButton->addListener(this);
@@ -1864,20 +1994,20 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     // Details panel labels with improved styling
     detailsTitle = std::make_unique<Label>("detailsTitle", "IR Details");
-    detailsTitle->setFont(Font(13.0f, Font::bold));
+    detailsTitle->setFont(FontManager::getInstance().getBodyBoldFont());
     detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(detailsTitle.get());
 
     auto addDetailRow = [&](std::unique_ptr<Label>& label, std::unique_ptr<Label>& value, const String& labelText)
     {
         label = std::make_unique<Label>("", labelText);
-        label->setFont(Font(11.0f));
+        label->setFont(FontManager::getInstance().getCaptionFont());
         label->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
         label->setJustificationType(Justification::centredRight);
         addAndMakeVisible(label.get());
 
         value = std::make_unique<Label>("", "-");
-        value->setFont(Font(11.0f, Font::bold));
+        value->setFont(FontManager::getInstance().getCaptionFont());
         value->setColour(Label::textColourId, colours["Text Colour"]);
         value->setJustificationType(Justification::centredLeft);
         addAndMakeVisible(value.get());
@@ -1891,7 +2021,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     // Status bar with path display
     statusLabel = std::make_unique<Label>("status", "");
-    statusLabel->setFont(Font(10.0f));
+    statusLabel->setFont(FontManager::getInstance().getCaptionFont());
     statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
     statusLabel->setJustificationType(Justification::centredLeft);
     addAndMakeVisible(statusLabel.get());

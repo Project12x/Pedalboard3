@@ -88,7 +88,7 @@ void SubGraphCanvas::paint(Graphics& g)
             centerY = bounds.getCentreY();
         }
 
-        g.setFont(FontManager::getInstance().getUIFont(18.0f));
+        g.setFont(FontManager::getInstance().getHeadingFont());
         g.setColour(Colour(0xFF00CCCC).withAlpha(0.6f)); // Cyan text
 
         String hintText = "Double-click to add a plugin";
@@ -96,7 +96,7 @@ void SubGraphCanvas::paint(Graphics& g)
         g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
                    Justification::centred, false);
 
-        g.setFont(FontManager::getInstance().getUIFont(13.0f));
+        g.setFont(FontManager::getInstance().getBodyFont());
         g.setColour(Colour(0xFF00AAAA).withAlpha(0.35f));
 
         String subHint = "This is an Effect Rack sub-graph";
@@ -779,7 +779,7 @@ SubGraphEditorComponent::SubGraphEditorComponent(SubGraphProcessor& processor)
 
     // Title label
     titleLabel = std::make_unique<Label>("title", "Effect Rack: " + processor.getName());
-    titleLabel->setFont(FontManager::getInstance().getUIFont(16.0f));
+    titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
     titleLabel->setColour(Label::textColourId, Colour(0xFF00DDDD)); // Cyan title
     addAndMakeVisible(titleLabel.get());
 

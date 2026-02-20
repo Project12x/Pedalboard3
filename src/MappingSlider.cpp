@@ -18,12 +18,13 @@
 //	----------------------------------------------------------------------------
 
 #include "MappingSlider.h"
+#include "FontManager.h"
 
 class MappingSlider::PopupDisplayComponent : public BubbleComponent, public Timer
 {
   public:
     //==============================================================================
-    PopupDisplayComponent(MappingSlider& owner_) : owner(owner_), font(15.0f, Font::bold) { setAlwaysOnTop(true); }
+    PopupDisplayComponent(MappingSlider& owner_) : owner(owner_), font(FontManager::getInstance().getSubheadingFont()) { setAlwaysOnTop(true); }
 
     void paintContent(Graphics& g, int w, int h)
     {
