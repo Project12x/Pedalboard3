@@ -520,23 +520,47 @@ void PluginField::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& w
     }
     else
     {
+        float oldZoom = zoomLevel;
         float zoomDelta = wheel.deltaY * 0.1f;
         float newZoom = jlimit(minZoom, maxZoom, zoomLevel + zoomDelta);
 
         if (newZoom != zoomLevel)
         {
-            auto mousePos = e.getPosition();
-            float scaleRatio = newZoom / zoomLevel;
-
-            zoomLevel = newZoom;
-            setTransform(AffineTransform::scale(zoomLevel));
-
             if (auto* viewport = findParentComponentOfClass<Viewport>())
             {
-                auto currentPos = viewport->getViewPosition();
-                int newX = static_cast<int>((currentPos.x + mousePos.x) * scaleRatio - mousePos.x);
-                int newY = static_cast<int>((currentPos.y + mousePos.y) * scaleRatio - mousePos.y);
+                // Capture positions BEFORE changing the transform.
+                // getViewPosition() returns transformed (virtual) coords, so it
+                // changes as soon as setTransform() fires.
+                auto oldPos = viewport->getViewPosition();
+                auto screenMouse = e.getScreenPosition();
+                auto viewportScreen = viewport->getScreenPosition();
+                auto vpMousePos = screenMouse - viewportScreen;
+
+                float scaleRatio = newZoom / oldZoom;
+
+                // Now apply the new zoom
+                zoomLevel = newZoom;
+                setTransform(AffineTransform::scale(zoomLevel));
+
+                // Compute where the viewport should scroll to keep the point
+                // under the cursor fixed.
+                int newX = static_cast<int>((oldPos.x + vpMousePos.x) * scaleRatio - vpMousePos.x);
+                int newY = static_cast<int>((oldPos.y + vpMousePos.y) * scaleRatio - vpMousePos.y);
+
+                // Ensure canvas is large enough for the new scroll position
+                int viewW = viewport->getViewWidth();
+                int viewH = viewport->getViewHeight();
+                int neededW = static_cast<int>((jmax(0, newX) + viewW) / zoomLevel) + 500;
+                int neededH = static_cast<int>((jmax(0, newY) + viewH) / zoomLevel) + 500;
+                if (neededW > getWidth() || neededH > getHeight())
+                    setSize(jmax(getWidth(), neededW), jmax(getHeight(), neededH));
+
                 viewport->setViewPosition(jmax(0, newX), jmax(0, newY));
+            }
+            else
+            {
+                zoomLevel = newZoom;
+                setTransform(AffineTransform::scale(zoomLevel));
             }
 
             repaint();
@@ -588,10 +612,10 @@ void PluginField::fitToScreen()
             int centeredY = jmax(0, static_cast<int>(bounds.getCentreY() * zoomLevel - viewHeight / 2));
 
             // Ensure the field is large enough that the viewport can scroll to
-            // the centered position. Without this, the viewport clamps setViewPosition
-            // because the field's visual size (field * zoom) is too small.
-            int requiredW = static_cast<int>((centeredX + viewWidth) / zoomLevel) + 1;
-            int requiredH = static_cast<int>((centeredY + viewHeight) / zoomLevel) + 1;
+            // the centered position, plus extra room for scrolling/panning.
+            const int scrollPadding = 1000;
+            int requiredW = static_cast<int>((centeredX + viewWidth) / zoomLevel) + scrollPadding;
+            int requiredH = static_cast<int>((centeredY + viewHeight) / zoomLevel) + scrollPadding;
             if (requiredW > getWidth() || requiredH > getHeight())
                 setSize(jmax(getWidth(), requiredW), jmax(getHeight(), requiredH));
 
@@ -599,9 +623,8 @@ void PluginField::fitToScreen()
             viewport->setViewPosition(centeredX, centeredY);
 
             spdlog::debug("[fitToScreen] bounds=({},{} {}x{}) view={}x{} zoom={:.2f} field={}x{} scroll=({},{})",
-                          bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
-                          (int)viewWidth, (int)viewHeight, zoomLevel,
-                          getWidth(), getHeight(), centeredX, centeredY);
+                          bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), (int)viewWidth,
+                          (int)viewHeight, zoomLevel, getWidth(), getHeight(), centeredX, centeredY);
 
             repaint();
         }
@@ -1401,8 +1424,7 @@ void PluginField::releaseConnection(int x, int y)
                         // Only open mappings window for CC mapping connections
                         // (OSC Input), not for direct MIDI note routing
                         // (MIDI Input, Virtual MIDI Input → synth)
-                        auto sourceNode =
-                            signalPath->getNodeForId(AudioProcessorGraph::NodeID(outputPin->getUid()));
+                        auto sourceNode = signalPath->getNodeForId(AudioProcessorGraph::NodeID(outputPin->getUid()));
                         bool isDirectMidiSource =
                             sourceNode != nullptr &&
                             (dynamic_cast<VirtualMidiInputProcessor*>(sourceNode->getProcessor()) != nullptr ||

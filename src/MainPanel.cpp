@@ -680,12 +680,15 @@ void MainPanel::resized()
     int x, y;
     Component* field = viewport->getViewedComponent();
 
+    // Canvas must always be larger than viewport to enable scrolling/panning.
+    // Add generous padding so scrollbars appear and drag-pan works in all directions.
+    const int canvasPadding = 1000;
     x = field->getWidth();
     y = field->getHeight();
-    if (field->getWidth() < getWidth())
-        x = getWidth();
-    if (field->getHeight() < viewportHeight)
-        y = viewportHeight;
+    if (x < getWidth() + canvasPadding)
+        x = getWidth() + canvasPadding;
+    if (y < viewportHeight + canvasPadding)
+        y = viewportHeight + canvasPadding;
     field->setSize(x, y);
 
     // Keep StageView covering the entire panel
