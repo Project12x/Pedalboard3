@@ -18,10 +18,12 @@ add_executable(Pedalboard3_Tests
     midi_mapping_test.cpp
     mixer_splitter_test.cpp
     master_bus_test.cpp
+    font_manager_test.cpp
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
+    ../src/FontManager.cpp
 )
 
 
@@ -34,6 +36,8 @@ target_link_libraries(Pedalboard3_Tests PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_formats
     juce::juce_audio_utils
+    juce::juce_gui_basics
+    Pedalboard3_fonts
 )
 
 # Add JUCE include directories for test target
