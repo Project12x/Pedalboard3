@@ -24,7 +24,6 @@
 
 #include <JuceHeader.h>
 
-
 ///	LookAndFeel class implementing some different buttons.
 class BranchesLAF : public LookAndFeel_V4
 {
@@ -50,6 +49,9 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Draws the scrollbar.
     void drawScrollbar(Graphics& g, ScrollBar& scrollbar, int x, int y, int width, int height, bool isScrollbarVertical,
                        int thumbStartPosition, int thumbSize, bool isMouseOver, bool isMouseDown) override;
+
+    /// Modern thin scrollbar width.
+    int getDefaultScrollbarWidth() override { return 8; }
 
     ///	Draws the menubar.
     void drawMenuBarBackground(Graphics& g, int width, int height, bool isMouseOverBar,

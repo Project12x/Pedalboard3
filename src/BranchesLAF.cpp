@@ -160,11 +160,11 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
     g.setGradientFill(mainGrad);
     g.fillRoundedRectangle(bounds, cornerRadius);
 
-    // === Glossy top highlight (very visible) ===
+    // === Subtle top highlight (matte DAW-grade) ===
     if (!isButtonDown)
     {
         Rectangle<float> glossArea(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight() * 0.45f);
-        ColourGradient glossGrad(Colours::white.withAlpha(0.35f), 0.0f, glossArea.getY(),
+        ColourGradient glossGrad(Colours::white.withAlpha(0.12f), 0.0f, glossArea.getY(),
                                  Colours::white.withAlpha(0.0f), 0.0f, glossArea.getBottom(), false);
         g.setGradientFill(glossGrad);
         g.fillRoundedRectangle(glossArea.reduced(2.0f, 0.0f), cornerRadius - 1.0f);
@@ -224,255 +224,51 @@ void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOv
 }
 
 //------------------------------------------------------------------------------
-void BranchesLAF::drawScrollbarButton(Graphics& g, ScrollBar& scrollbar, int width, int height, int buttonDirection,
-                                      bool isScrollbarVertical, bool isMouseOverButton, bool isButtonDown)
+void BranchesLAF::drawScrollbarButton(Graphics& g, ScrollBar& /*scrollbar*/, int /*width*/, int /*height*/,
+                                      int /*buttonDirection*/, bool /*isScrollbarVertical*/, bool /*isMouseOverButton*/,
+                                      bool /*isButtonDown*/)
 {
-    float inc;
-    Path highlight, shadow, tri;
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
-
-    if (!isScrollbarVertical)
-    {
-        // Background behind the button.
-        // GradientBrush grad(Colour(0xFFDADCC6), 0.0f, 0.0f, Colour(0xFFEEECE1), 0.0f, (float)height, false);
-        ColourGradient grad(colours["Window Background"].darker(0.25f), 0.0f, 0.0f, colours["Window Background"], 0.0f,
-                            (float)height, false);
-
-        if (buttonDirection == 3)
-        {
-            // g.setBrush(&grad);
-            g.setGradientFill(grad);
-            g.fillRect((float)3, (float)0, (float)width, (float)height);
-
-            g.setColour(Colour(0x30000000));
-            g.fillRect((float)width - 3.0f, (float)0, 3.0f, 1.0f);
-            g.fillRect((float)width - 3.0f, (float)height - 1.0f, 3.0f, 1.0f);
-        }
-        else if (buttonDirection == 1)
-        {
-            // g.setBrush(&grad);
-            g.setGradientFill(grad);
-            g.fillRect((float)0, (float)0, (float)width - 3.0f, (float)height);
-
-            g.setColour(Colour(0x30000000));
-            g.fillRect((float)0, (float)0, 3.0f, 1.0f);
-            g.fillRect((float)0, (float)height - 1.0f, 3.0f, 1.0f);
-        }
-
-        g.setColour(Colour(0x80000000));
-        g.drawRoundedRectangle(1.0f, 1.0f, (float)(width - 2), (float)(height - 2), 2.0f, 1.0f);
-        g.setColour(colours["Button Colour"]);
-        g.fillRoundedRectangle(1.0f, 1.0f, (float)(width - 2), (float)(height - 2), 2.0f);
-
-        g.setColour(Colour(0x08000000));
-        g.fillRoundedRectangle(1.0f, (float)(height / 2), (float)(width - 2), (float)(height - 2), 2.0f);
-
-        if (isMouseOverButton)
-        {
-            // Draw highlight.
-            highlight.startNewSubPath(2.0f, (float)(height - 3));
-            highlight.lineTo(2.0f, 4.0f);
-            highlight.quadraticTo(2.0f, 2.0f, 4.0f, 2.0f);
-            highlight.lineTo((float)(width - 3), 2.0f);
-            if (!isButtonDown)
-            {
-                g.setColour(Colour(0xB0FFFFFF));
-                g.strokePath(highlight, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-            else
-            {
-                g.setColour(Colour(0x20000000));
-                g.strokePath(highlight, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-
-            // Draw shadow.
-            shadow.startNewSubPath(3.0f, (float)(height - 2));
-            shadow.lineTo((float)(width - 4), (float)(height - 2));
-            shadow.quadraticTo((float)(width - 2), (float)(height - 2), (float)(width - 2), (float)(height - 4));
-            shadow.lineTo((float)(width - 2), 3.0f);
-            if (!isButtonDown)
-            {
-                g.setColour(Colour(0x20000000));
-                g.strokePath(shadow, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-            else
-            {
-                g.setColour(Colour(0xB0FFFFFF));
-                g.strokePath(shadow, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-        }
-    }
-    else
-    {
-        // Background behind the button.
-        // GradientBrush grad(Colour(0xFFDADCC6), 0.0f, 0.0f, Colour(0xFFEEECE1), (float)width, 0.0f, false);
-        ColourGradient grad(colours["Window Background"].darker(0.25f), 0.0f, 0.0f, colours["Window Background"],
-                            (float)width, 0.0f, false);
-
-        if (buttonDirection == 2)
-        {
-            // g.setBrush(&grad);
-            g.setGradientFill(grad);
-            g.fillRect((float)0, (float)0, (float)width, (float)height - 3.0f);
-
-            g.setColour(Colour(0x30000000));
-            g.fillRect((float)0, (float)0, 1.0f, 3.0f);
-            g.fillRect((float)width - 1.0f, 0.0f, 1.0f, 3.0f);
-        }
-        else if (buttonDirection == 0)
-        {
-            // g.setBrush(&grad);
-            g.setGradientFill(grad);
-            g.fillRect((float)0, (float)3, (float)width, (float)height);
-
-            g.setColour(Colour(0x30000000));
-            g.fillRect((float)0, (float)height - 3.0f, 1.0f, 3.0f);
-            g.fillRect((float)width - 1.0f, (float)height - 3.0f, 1.0f, 3.0f);
-        }
-
-        g.setColour(Colour(0x80000000));
-        g.drawRoundedRectangle(1.0f, 1.0f, (float)(width - 2), (float)(height - 2), 2.0f, 1.0f);
-        g.setColour(colours["Button Colour"]);
-        g.fillRoundedRectangle(1.0f, 1.0f, (float)(width - 2), (float)(height - 2), 2.0f);
-
-        g.setColour(Colour(0x08000000));
-        g.fillRoundedRectangle((float)(width / 2), 1.0f, (float)(width - 2), (float)(height - 2), 2.0f);
-
-        if (isMouseOverButton)
-        {
-            // Draw highlight.
-            highlight.startNewSubPath(2.0f, (float)(height - 3));
-            highlight.lineTo(2.0f, 4.0f);
-            highlight.quadraticTo(2.0f, 2.0f, 4.0f, 2.0f);
-            highlight.lineTo((float)(width - 3), 2.0f);
-            if (!isButtonDown)
-            {
-                g.setColour(Colour(0xB0FFFFFF));
-                g.strokePath(highlight, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-            else
-            {
-                g.setColour(Colour(0x20000000));
-                g.strokePath(highlight, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-
-            // Draw shadow.
-            shadow.startNewSubPath(3.0f, (float)(height - 2));
-            shadow.lineTo((float)(width - 4), (float)(height - 2));
-            shadow.quadraticTo((float)(width - 2), (float)(height - 2), (float)(width - 2), (float)(height - 4));
-            shadow.lineTo((float)(width - 2), 3.0f);
-            if (!isButtonDown)
-            {
-                g.setColour(Colour(0x20000000));
-                g.strokePath(shadow, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-            else
-            {
-                g.setColour(Colour(0xB0FFFFFF));
-                g.strokePath(shadow, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-        }
-    }
-
-    // Draw triangle.
-    if (isButtonDown)
-        inc = 1.0f;
-    else
-        inc = 0.0f;
-    switch (buttonDirection)
-    {
-    case 0:
-        tri.startNewSubPath((float)(width / 2) - (float)(width / 4) + inc,
-                            (float)(height / 2) + (float)(height / 8) + inc);
-        tri.lineTo((float)(width / 2) + inc, (float)(height / 2) - (float)(height / 8) + inc);
-        tri.lineTo((float)(width / 2) + (float)(width / 4) + inc, (float)(height / 2) + (float)(height / 8) + inc);
-        break;
-    case 1:
-        tri.startNewSubPath((float)(width / 2) - (float)(width / 8) + inc,
-                            (float)(height / 2) - (float)(height / 4) + inc);
-        tri.lineTo((float)(width / 2) + (float)(width / 8) + inc, (float)(height / 2) + inc);
-        tri.lineTo((float)(width / 2) - (float)(width / 8) + inc, (float)(height / 2) + (float)(height / 4) + inc);
-        break;
-    case 2:
-        tri.startNewSubPath((float)(width / 2) - (float)(width / 4) + inc,
-                            (float)(height / 2) - (float)(height / 8) + inc);
-        tri.lineTo((float)(width / 2) + inc, (float)(height / 2) + (float)(height / 8) + inc);
-        tri.lineTo((float)(width / 2) + (float)(width / 4) + inc, (float)(height / 2) - (float)(height / 8) + inc);
-        break;
-    case 3:
-        /*tri.addTriangle((float)(width/2)+(float)(width/6),
-                        (float)(height/2)+(float)(height/4),
-                        (float)(width/2)-(float)(width/6),
-                        (float)(height/2),
-                        (float)(width/2)+(float)(width/6),
-                        (float)(height/2)-(float)(height/4));*/
-
-        tri.startNewSubPath((float)(width / 2) + (float)(width / 8) + inc,
-                            (float)(height / 2) + (float)(height / 4) + inc);
-        tri.lineTo((float)(width / 2) - (float)(width / 8) + inc, (float)(height / 2) + inc);
-        tri.lineTo((float)(width / 2) + (float)(width / 8) + inc, (float)(height / 2) - (float)(height / 4) + inc);
-        break;
-    }
-    g.setColour(colours["Vector Colour"]);
-    g.strokePath(tri, PathStrokeType(2.0f));
+    // Modern scrollbars have no arrow buttons — intentionally empty
 }
 
 //------------------------------------------------------------------------------
-void BranchesLAF::drawScrollbar(Graphics& g, ScrollBar& scrollbar, int x, int y, int width, int height,
+void BranchesLAF::drawScrollbar(Graphics& g, ScrollBar& /*scrollbar*/, int x, int y, int width, int height,
                                 bool isScrollbarVertical, int thumbStartPosition, int thumbSize, bool isMouseOver,
                                 bool isMouseDown)
 {
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
+    auto& colours = ::ColourScheme::getInstance().colours;
 
-    if (!isScrollbarVertical)
-    {
-        // GradientBrush grad(Colour(0xFFDADCC6), 0.0f, (float)y, Colour(0xFFEEECE1), 0.0f, (float)height, false);
-        ColourGradient grad(colours["Window Background"].darker(0.25f), 0.0f, (float)y, colours["Window Background"],
-                            0.0f, (float)height, false);
+    // Transparent track — no background fill, just the thumb
+    const float thumbInset = 1.0f;
+    const float cornerRadius = 3.0f;
 
-        // g.setBrush(&grad);
-        g.setGradientFill(grad);
-        g.fillRect((float)x, (float)y, (float)width, (float)height);
-
-        g.setColour(Colour(0x30000000));
-        g.fillRect((float)x, (float)y, (float)width, 1.0f);
-        g.fillRect((float)x, (float)height - 1.0f, (float)width, 1.0f);
-
-        g.setColour(Colour(0x80000000));
-        g.drawRoundedRectangle((float)(thumbStartPosition + 1), (float)(y + 1), (float)(thumbSize - 2),
-                               (float)(height - 2), 2.0f, 1.0f);
-        g.setColour(colours["Button Colour"]);
-        g.fillRoundedRectangle((float)(thumbStartPosition + 1), (float)(y + 1), (float)(thumbSize - 2),
-                               (float)(height - 2), 2.0f);
-
-        g.setColour(Colour(0x08000000));
-        g.fillRoundedRectangle((float)(thumbStartPosition + 1), (float)(height / 2), (float)(thumbSize - 2),
-                               (float)(height - 2), 2.0f);
-    }
+    // Thumb color: subtle when idle, accent-tinted on hover/drag
+    Colour thumbCol;
+    if (isMouseDown)
+        thumbCol = colours["Accent Colour"].withAlpha(0.7f);
+    else if (isMouseOver)
+        thumbCol = colours["Text Colour"].withAlpha(0.35f);
     else
+        thumbCol = colours["Text Colour"].withAlpha(0.18f);
+
+    if (thumbSize > 0)
     {
-        // GradientBrush grad(Colour(0xFFDADCC6), (float)x, (float)0.0f, Colour(0xFFEEECE1), (float)width, 0.0f, false);
-        ColourGradient grad(colours["Window Background"].darker(0.25f), (float)x, (float)0.0f,
-                            colours["Window Background"], (float)width, 0.0f, false);
+        Rectangle<float> thumbBounds;
+        if (isScrollbarVertical)
+        {
+            thumbBounds =
+                Rectangle<float>(static_cast<float>(x) + thumbInset, static_cast<float>(thumbStartPosition),
+                                 static_cast<float>(width) - thumbInset * 2.0f, static_cast<float>(thumbSize));
+        }
+        else
+        {
+            thumbBounds =
+                Rectangle<float>(static_cast<float>(thumbStartPosition), static_cast<float>(y) + thumbInset,
+                                 static_cast<float>(thumbSize), static_cast<float>(height) - thumbInset * 2.0f);
+        }
 
-        // g.setBrush(&grad);
-        g.setGradientFill(grad);
-        g.fillRect((float)x, (float)y, (float)width, (float)height);
-
-        g.setColour(Colour(0x30000000));
-        g.fillRect((float)x, (float)y, 1.0f, (float)height);
-        g.fillRect((float)width - 1.0f, (float)y, 1.0f, (float)height);
-
-        g.setColour(Colour(0x80000000));
-        g.drawRoundedRectangle((float)(x + 1), (float)(thumbStartPosition + 1), (float)(width - 2),
-                               (float)(thumbSize - 2), 2.0f, 1.0f);
-        g.setColour(colours["Button Colour"]);
-        g.fillRoundedRectangle((float)(x + 1), (float)(thumbStartPosition + 1), (float)(width - 2),
-                               (float)(thumbSize - 2), 2.0f);
-
-        g.setColour(Colour(0x08000000));
-        g.fillRoundedRectangle((float)(width / 2), (float)(thumbStartPosition + 1), (float)(width - 2),
-                               (float)(thumbSize - 2), 2.0f);
+        g.setColour(thumbCol);
+        g.fillRoundedRectangle(thumbBounds, cornerRadius);
     }
 }
 
@@ -539,18 +335,21 @@ void BranchesLAF::drawPopupMenuBackground(Graphics& g, int width, int height)
     auto& colours = ::ColourScheme::getInstance().colours;
     Colour bgCol = colours["Window Background"];
 
-    // Solid background with subtle gradient for depth
+    // Rounded background with subtle gradient
+    Rectangle<float> bounds(0.0f, 0.0f, (float)width, (float)height);
+    float cornerRadius = 6.0f;
+
     ColourGradient grad(bgCol, 0.0f, 0.0f, bgCol.darker(0.05f), 0.0f, (float)height, false);
     g.setGradientFill(grad);
-    g.fillRect(0, 0, width, height);
+    g.fillRoundedRectangle(bounds, cornerRadius);
 
-    // Inner glow at top (light source from above)
-    g.setColour(Colours::white.withAlpha(0.08f));
-    g.drawHorizontalLine(1, 1.0f, (float)width - 1.0f);
+    // Inner glow at top
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawHorizontalLine(2, 4.0f, (float)width - 4.0f);
 
-    // Crisp border
+    // Crisp rounded border
     g.setColour(Colour(0x50000000));
-    g.drawRect(0, 0, width, height, 1);
+    g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
 }
 
 //------------------------------------------------------------------------------
@@ -566,52 +365,54 @@ const Drawable* BranchesLAF::getDefaultFolderImage()
 }
 
 //------------------------------------------------------------------------------
-void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY,
-                               int buttonW, int buttonH, ComboBox& box)
+void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int /*buttonX*/, int /*buttonY*/,
+                               int /*buttonW*/, int /*buttonH*/, ComboBox& box)
 {
-    float inc;
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
+    auto& colours = ::ColourScheme::getInstance().colours;
+    Rectangle<float> bounds(0.0f, 0.0f, (float)width, (float)height);
+    float cornerRadius = (float)height * 0.3f;
 
-    g.setColour(colours["Text Editor Colour"]);
-    g.fillRect(0, 0, width - buttonW + 3, height);
+    // Background fill with subtle gradient
+    Colour bgCol = box.findColour(ComboBox::backgroundColourId);
+    ColourGradient bgGrad(bgCol.brighter(0.04f), 0.0f, 0.0f, bgCol.darker(0.04f), 0.0f, (float)height, false);
+    g.setGradientFill(bgGrad);
+    g.fillRoundedRectangle(bounds, cornerRadius);
 
+    // Press darkening
+    if (isButtonDown)
+    {
+        g.setColour(Colours::black.withAlpha(0.1f));
+        g.fillRoundedRectangle(bounds, cornerRadius);
+    }
+
+    // Border — accent when focused, subtle otherwise
     if (box.isEnabled() && box.hasKeyboardFocus(false))
     {
-        g.setColour(colours["Button Colour"]);
-        g.drawRect(0, 0, width, height, 2);
+        g.setColour(colours["Accent Colour"].withAlpha(0.6f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.5f);
     }
     else
     {
         g.setColour(box.findColour(ComboBox::outlineColourId));
-        g.drawRect(0, 0, width - buttonW + 3, height);
+        g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
     }
 
-    g.setColour(Colour(0x80000000));
-    g.drawRoundedRectangle(buttonX + 1.0f, buttonY + 1.0f, (float)(buttonW - 2), (float)(buttonH - 2), 2.0f, 1.0f);
-    g.setColour(colours["Button Colour"]);
-    g.fillRoundedRectangle(buttonX + 1.0f, buttonY + 1.0f, (float)(buttonW - 2), (float)(buttonH - 2), 2.0f);
-
-    g.setColour(Colour(0x08000000));
-    g.fillRoundedRectangle(buttonX + 1.0f, buttonY + (float)(buttonH / 2), (float)(buttonW - 2), (float)(buttonH - 2),
-                           2.0f);
-
-    if (isButtonDown)
-        inc = 1.0f;
-    else
-        inc = 0.0f;
-
+    // Chevron arrow on right side
     if (box.isEnabled())
     {
-        Path tri;
+        float arrowZone = 20.0f;
+        float arrowX = (float)width - arrowZone;
+        float arrowCentreY = (float)height * 0.5f;
+        float arrowW = 7.0f;
+        float arrowH = 4.0f;
 
-        tri.startNewSubPath(buttonX + (float)(buttonW / 2) - (float)(buttonW / 4) + inc,
-                            buttonY + (float)(buttonH / 2) - (float)(buttonH / 8) + inc);
-        tri.lineTo(buttonX + (float)(buttonW / 2) + inc, buttonY + (float)(buttonH / 2) + (float)(buttonH / 8) + inc);
-        tri.lineTo(buttonX + (float)(buttonW / 2) + (float)(buttonW / 4) + inc,
-                   buttonY + (float)(buttonH / 2) - (float)(buttonH / 8) + inc);
+        Path chevron;
+        chevron.startNewSubPath(arrowX, arrowCentreY - arrowH * 0.5f);
+        chevron.lineTo(arrowX + arrowW * 0.5f, arrowCentreY + arrowH * 0.5f);
+        chevron.lineTo(arrowX + arrowW, arrowCentreY - arrowH * 0.5f);
 
-        g.setColour(colours["Vector Colour"]);
-        g.strokePath(tri, PathStrokeType(2.0f));
+        g.setColour(colours["Text Colour"].withAlpha(0.5f));
+        g.strokePath(chevron, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
     }
 }
 
