@@ -518,6 +518,11 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     ir2NameLabel->setFont(fm.getBodyFont());
     addAndMakeVisible(ir2NameLabel.get());
 
+    ir2EnabledButton = std::make_unique<ToggleButton>("IR2");
+    ir2EnabledButton->setToggleState(namProcessor->isIR2Enabled(), dontSendNotification);
+    ir2EnabledButton->addListener(this);
+    addAndMakeVisible(ir2EnabledButton.get());
+
     // IR blend slider
     irBlendSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
     irBlendSlider->setRange(0.0, 1.0, 0.01);
@@ -766,8 +771,8 @@ void NAMControl::paint(Graphics& g)
     const int headerH = 34;
     const int panelMargin = 8;
     const int sectionGap = 6;
-    const int signalH = 219;
-    const int gainH = 115;
+    const int signalH = 205;
+    const int gainH = 100;
 
     // Main background gradient
     ColourGradient bgGradient(laf.ampSurface, 0, 0, laf.ampBackground, 0, (float)getHeight(), false);
@@ -891,8 +896,8 @@ void NAMControl::resized()
     const int headerH = 34;
     const int panelMargin = 8;
     const int sectionGap = 6;
-    const int signalH = 219;
-    const int gainH = 115;
+    const int signalH = 205;
+    const int gainH = 100;
 
     bounds.removeFromTop(headerH + 7); // header + accent + gap
     bounds = bounds.reduced(panelMargin, 0);
@@ -901,7 +906,7 @@ void NAMControl::resized()
     const int labelWidth = 60;
     const int buttonWidth = 80;
     const int clearButtonWidth = 26;
-    const int spacing = 6;
+    const int spacing = 4;
     const int sectionHeaderH = 20;
     const int sectionPad = 8;
 
@@ -949,6 +954,8 @@ void NAMControl::resized()
     ir2Row.removeFromLeft(spacing);
     clearIR2Button->setBounds(ir2Row.removeFromLeft(clearButtonWidth));
     ir2Row.removeFromLeft(spacing);
+    ir2EnabledButton->setBounds(ir2Row.removeFromRight(50));
+    ir2Row.removeFromRight(spacing);
     ir2NameLabel->setBounds(ir2Row);
 
     signalArea.removeFromTop(spacing);
@@ -1028,18 +1035,18 @@ void NAMControl::resized()
     // Knobs row -- use remaining space
     auto knobRow = eqArea;
     const int knobWidth = knobRow.getWidth() / 3;
-    const int knobSize = 68;
+    const int knobSize = 52;
 
     auto bassArea = knobRow.removeFromLeft(knobWidth);
-    bassLabel->setBounds(bassArea.removeFromBottom(18));
+    bassLabel->setBounds(bassArea.removeFromBottom(14));
     bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize));
 
     auto midArea = knobRow.removeFromLeft(knobWidth);
-    midLabel->setBounds(midArea.removeFromBottom(18));
+    midLabel->setBounds(midArea.removeFromBottom(14));
     midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize));
 
     auto trebleArea = knobRow;
-    trebleLabel->setBounds(trebleArea.removeFromBottom(18));
+    trebleLabel->setBounds(trebleArea.removeFromBottom(14));
     trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize));
 }
 
@@ -1141,6 +1148,10 @@ void NAMControl::buttonClicked(Button* button)
     else if (button == irEnabledButton.get())
     {
         namProcessor->setIREnabled(irEnabledButton->getToggleState());
+    }
+    else if (button == ir2EnabledButton.get())
+    {
+        namProcessor->setIR2Enabled(ir2EnabledButton->getToggleState());
     }
     else if (button == fxLoopEnabledButton.get())
     {

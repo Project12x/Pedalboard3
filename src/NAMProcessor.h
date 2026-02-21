@@ -40,7 +40,7 @@ class NAMProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 614); }
+    Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 480); }
 
     // F1: Collapsible editor
     bool isEditorCollapsed() const { return editorCollapsed.load(); }
@@ -102,6 +102,9 @@ class NAMProcessor : public PedalboardProcessor
 
     bool isIREnabled() const { return irEnabled.load(); }
     void setIREnabled(bool enabled) { irEnabled.store(enabled); }
+
+    bool isIR2Enabled() const { return ir2Enabled.load(); }
+    void setIR2Enabled(bool enabled) { ir2Enabled.store(enabled); }
 
     // IR filters (high-pass before IR, low-pass after IR)
     float getIRLowCut() const { return irLowCut.load(); }
@@ -196,6 +199,7 @@ class NAMProcessor : public PedalboardProcessor
     // IR2 (second cabinet slot)
     std::unique_ptr<NAMConvolver> convolver2;
     std::atomic<bool> ir2Loaded{false};
+    std::atomic<bool> ir2Enabled{true};
     juce::File currentIRFile2;
 
     // IR blend (0 = IR1 only, 1 = IR2 only)

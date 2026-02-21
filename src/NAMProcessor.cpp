@@ -237,7 +237,7 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
     const bool doToneStack = toneStackEnabled.load();
     const bool doNormalize = normalizeOutput.load();
     const bool doIR = irEnabled.load() && irLoaded.load();
-    const bool doIR2 = ir2Loaded.load();
+    const bool doIR2 = ir2Loaded.load() && ir2Enabled.load();
 
     // Get mono input (use left channel)
     float* inputData = buffer.getWritePointer(0);
@@ -596,7 +596,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(5); // Version (5 = added dual IR + blend)
+    stream.writeInt(6); // Version (6 = added IR2 enable toggle)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -637,6 +637,9 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
     // Dual IR + blend (v5+)
     stream.writeString(currentIRFile2.getFullPathName());
     stream.writeFloat(irBlend.load());
+
+    // IR2 enable toggle (v6+)
+    stream.writeBool(ir2Enabled.load());
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -719,6 +722,12 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
             }
         }
         irBlend.store(stream.readFloat());
+    }
+
+    // IR2 enable toggle (v6+)
+    if (version >= 6 && !stream.isExhausted())
+    {
+        ir2Enabled.store(stream.readBool());
     }
 }
 

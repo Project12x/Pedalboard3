@@ -45,11 +45,11 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 {
     auto& colours = ColourScheme::getInstance().colours;
     const int margin = 6;
-    const float cornerRadius = 6.0f;
-    Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
-                                static_cast<float>(height - 4));
+    const float cornerRadius = 8.0f;
+    Rectangle<float> itemBounds(static_cast<float>(margin), 3.0f, static_cast<float>(width - margin * 2),
+                                static_cast<float>(height - 6));
 
-    // Background with rounded corners
+    // Card background for every item
     if (rowIsSelected)
     {
         g.setColour(colours["Accent Colour"].withAlpha(0.18f));
@@ -58,16 +58,24 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
 
         // Left-edge accent stripe (DAW-style selection indicator)
-        Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
+        Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 4.0f, 3.0f, itemBounds.getHeight() - 8.0f);
         g.setColour(colours["Accent Colour"]);
         g.fillRoundedRectangle(stripe, 1.5f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(colours["Text Colour"].withAlpha(0.07f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
+        g.setColour(colours["Accent Colour"].withAlpha(0.25f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
+    }
+    else
+    {
+        // Subtle card background for non-selected items
+        g.setColour(colours["Text Colour"].withAlpha(0.03f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Text Colour"].withAlpha(0.06f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 0.5f);
     }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
@@ -117,9 +125,9 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         }
 
         // Badge layout - rightmost is architecture, then model type
-        const int badgeHeight = 16;
-        const int badgeSpacing = 4;
-        int badgeX = width - margin - 6;
+        const int badgeHeight = 18;
+        const int badgeSpacing = 5;
+        int badgeX = width - margin - 10;
 
         // Architecture badge (rightmost)
         const int archBadgeWidth = 50;
@@ -201,17 +209,20 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         // Model name (top line) - adjust width to not overlap badges
         const int textEndX = badgeX - 8;
+        const int topPad = 10;
+        const int nameH = 20;
         g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
-        g.setFont(FontManager::getInstance().getBodyBoldFont());
-        g.drawText(String(model.name), textX, 4, textEndX - textX, height / 2, Justification::centredLeft, true);
+        g.setFont(FontManager::getInstance().getSubheadingFont());
+        g.drawText(String(model.name).replace("_", " "), textX, topPad, textEndX - textX, nameH,
+                   Justification::centredLeft, true);
 
-        // Rig type and sample rate info on bottom line
+        // Rig type and sample rate info on second line
         String infoLine;
         if (rigType.isNotEmpty())
         {
             // Truncate long rig names
-            if (rigType.length() > 40)
-                rigType = rigType.substring(0, 37) + "...";
+            if (rigType.length() > 50)
+                rigType = rigType.substring(0, 47) + "...";
             infoLine = rigType;
         }
         if (model.expectedSampleRate > 0)
@@ -223,9 +234,9 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         if (infoLine.isNotEmpty())
         {
-            g.setColour(colours["Text Colour"].withAlpha(0.5f));
-            g.setFont(FontManager::getInstance().getMonoFont(11.0f));
-            g.drawText(infoLine, textX, height / 2, textEndX - textX, height / 2 - 4, Justification::centredLeft, true);
+            g.setColour(colours["Text Colour"].withAlpha(0.45f));
+            g.setFont(FontManager::getInstance().getLabelFont());
+            g.drawText(infoLine, textX, topPad + nameH + 2, textEndX - textX, 16, Justification::centredLeft, true);
         }
     }
 
@@ -571,7 +582,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Model list - transparent background for custom rounded painting
     modelList = std::make_unique<ListBox>("models", &listModel);
-    modelList->setRowHeight(40);
+    modelList->setRowHeight(72);
     modelList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     modelList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     modelList->setOutlineThickness(0);
@@ -594,7 +605,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
         addAndMakeVisible(labelPtr.get());
 
         valuePtr = std::make_unique<Label>("", valueText);
-        valuePtr->setFont(FontManager::getInstance().getLabelFont());
+        valuePtr->setFont(FontManager::getInstance().getBodyBoldFont());
         valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
         addAndMakeVisible(valuePtr.get());
     };
@@ -627,12 +638,11 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Delete button
     deleteButton = std::make_unique<TextButton>("Delete Model");
     deleteButton->addListener(this);
-    // Red-accented theme button (blend danger into theme, not pure red)
-    Colour dangerBlend = colours["Button Colour"].interpolatedWith(colours["Danger Colour"], 0.55f);
-    deleteButton->setColour(TextButton::buttonColourId, dangerBlend);
-    deleteButton->setColour(TextButton::buttonOnColourId, dangerBlend.darker(0.2f));
-    deleteButton->setColour(TextButton::textColourOffId, Colours::white);
-    deleteButton->setColour(TextButton::textColourOnId, Colours::white);
+    // Delete button — secondary style (outline, not filled)
+    deleteButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
+    deleteButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
+    deleteButton->setColour(TextButton::textColourOffId, colours["Danger Colour"]);
+    deleteButton->setColour(TextButton::textColourOnId, colours["Danger Colour"]);
     addAndMakeVisible(deleteButton.get());
 
     // Status bar
@@ -865,11 +875,25 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
     }
 
+    // Draw pill-container capsule behind tab buttons
+    {
+        auto tabBg = localTabButton->getBounds()
+                         .getUnion(onlineTabButton->getBounds())
+                         .getUnion(irTabButton->getBounds())
+                         .toFloat()
+                         .expanded(4.0f, 2.0f);
+        float cr = tabBg.getHeight() / 2.0f;
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.fillRoundedRectangle(tabBg, cr);
+        g.setColour(colours["Text Colour"].withAlpha(0.1f));
+        g.drawRoundedRectangle(tabBg, cr, 1.0f);
+    }
+
     // Draw panels for Local and IR tabs
     if (currentTab == 0 || currentTab == 2)
     {
         auto bounds = getLocalBounds().reduced(16);
-        bounds.removeFromTop(30 + 8 + 28 + 8);    // Title + tabs + search row spacing
+        bounds.removeFromTop(34 + 8 + 28 + 8);    // Title + tabs + search row spacing
         bounds.removeFromBottom(20 + 4 + 36 + 8); // Status + button row
 
         int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
@@ -972,16 +996,16 @@ void NAMModelBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(16);
 
     // Title row with tab buttons
-    auto titleRow = bounds.removeFromTop(30);
-    titleLabel->setBounds(titleRow.removeFromLeft(180));
+    auto titleRow = bounds.removeFromTop(34);
+    titleLabel->setBounds(titleRow.removeFromLeft(200));
 
-    // Tab buttons on the right side of title
+    // Tab buttons on the right side of title — wider for pill capsule style
     titleRow.removeFromLeft(16);
-    localTabButton->setBounds(titleRow.removeFromLeft(60));
-    titleRow.removeFromLeft(4);
-    onlineTabButton->setBounds(titleRow.removeFromLeft(60));
-    titleRow.removeFromLeft(4);
-    irTabButton->setBounds(titleRow.removeFromLeft(50));
+    localTabButton->setBounds(titleRow.removeFromLeft(70));
+    titleRow.removeFromLeft(2);
+    onlineTabButton->setBounds(titleRow.removeFromLeft(70));
+    titleRow.removeFromLeft(2);
+    irTabButton->setBounds(titleRow.removeFromLeft(55));
 
     bounds.removeFromTop(8);
 
@@ -1176,13 +1200,11 @@ void NAMModelBrowserComponent::resized()
     statusLabel->setBounds(statusRow);
     bounds.removeFromBottom(4);
 
-    // Button row at bottom
+    // Button row at bottom — only Close
     auto buttonRow = bounds.removeFromBottom(36);
     bounds.removeFromBottom(8);
 
     closeButton->setBounds(buttonRow.removeFromRight(70));
-    buttonRow.removeFromRight(8);
-    loadButton->setBounds(buttonRow.removeFromRight(100));
 
     // Split remaining area: list (55%) and details (45%)
     int listWidth = bounds.getWidth() * 0.55f;
@@ -1238,9 +1260,11 @@ void NAMModelBrowserComponent::resized()
     filePathValue->setBounds(fileRow);
     detailsArea.removeFromTop(rowGap);
 
-    // Delete button at bottom of details
-    auto deleteRow = detailsArea.removeFromBottom(28);
-    deleteButton->setBounds(deleteRow.removeFromLeft(100));
+    // Action buttons at bottom of details panel
+    auto actionRow = detailsArea.removeFromBottom(32);
+    loadButton->setBounds(actionRow.removeFromLeft(100));
+    actionRow.removeFromLeft(8);
+    deleteButton->setBounds(actionRow.removeFromLeft(100));
     detailsArea.removeFromBottom(8);
 
     metadataLabel->setBounds(detailsArea.removeFromTop(20));

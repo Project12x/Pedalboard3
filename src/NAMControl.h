@@ -125,6 +125,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     std::unique_ptr<TextButton> loadIR2Button;
     std::unique_ptr<TextButton> clearIR2Button;
     std::unique_ptr<Label> ir2NameLabel;
+    std::unique_ptr<ToggleButton> ir2EnabledButton;
 
     // IR blend
     std::unique_ptr<Slider> irBlendSlider;
