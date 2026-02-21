@@ -451,8 +451,43 @@ void NAMProcessor::updateIRFilters()
 
     if (currentLowCut != lastIRLowCut || currentHighCut != lastIRHighCut)
     {
-        *irLowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, currentLowCut);
-        *irHighCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, currentHighCut);
+        // RT-safe: compute 2nd-order Butterworth biquad coefficients inline
+        // (avoids heap allocation from JUCE's makeHighPass/makeLowPass factory methods)
+        const double sr = currentSampleRate;
+        constexpr double sqrt2 = 1.4142135623730951; // std::sqrt(2.0)
+
+        // High-pass (low-cut) coefficients via bilinear transform
+        {
+            const double wc = juce::MathConstants<double>::twoPi * currentLowCut / sr;
+            const double K = std::tan(wc * 0.5);
+            const double K2 = K * K;
+            const double norm = 1.0 / (1.0 + sqrt2 * K + K2);
+
+            float* c = irLowCutFilter.state->coefficients.getRawDataPointer();
+            c[0] = (float)(norm);                          // b0
+            c[1] = (float)(-2.0 * norm);                   // b1
+            c[2] = (float)(norm);                          // b2
+            c[3] = 1.0f;                                   // a0
+            c[4] = (float)(2.0 * (K2 - 1.0) * norm);       // a1
+            c[5] = (float)((1.0 - sqrt2 * K + K2) * norm); // a2
+        }
+
+        // Low-pass (high-cut) coefficients via bilinear transform
+        {
+            const double wc = juce::MathConstants<double>::twoPi * currentHighCut / sr;
+            const double K = std::tan(wc * 0.5);
+            const double K2 = K * K;
+            const double norm = 1.0 / (1.0 + sqrt2 * K + K2);
+
+            float* c = irHighCutFilter.state->coefficients.getRawDataPointer();
+            c[0] = (float)(K2 * norm);                     // b0
+            c[1] = (float)(2.0 * K2 * norm);               // b1
+            c[2] = (float)(K2 * norm);                     // b2
+            c[3] = 1.0f;                                   // a0
+            c[4] = (float)(2.0 * (K2 - 1.0) * norm);       // a1
+            c[5] = (float)((1.0 - sqrt2 * K + K2) * norm); // a2
+        }
+
         lastIRLowCut = currentLowCut;
         lastIRHighCut = currentHighCut;
     }
