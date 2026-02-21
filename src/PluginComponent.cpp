@@ -276,6 +276,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 //------------------------------------------------------------------------------
 PluginComponent::~PluginComponent()
 {
+    stopTimer();                     // Stop drag lerp timer
     channelGainSliders.clear(false); // Release without deleting - deleteAllChildren() handles it
     deleteAllChildren();
     if (pluginWindow)
@@ -609,11 +610,21 @@ void PluginComponent::mouseDown(const MouseEvent& e)
             titleLabel->showEditor();
         else
         {
-            beginDragAutoRepeat(30);
             beingDragged = true;
             dragX = e.getPosition().getX();
             dragY = e.getPosition().getY();
+            currentDragX = (float)getX();
+            currentDragY = (float)getY();
+            targetDragX = currentDragX;
+            targetDragY = currentDragY;
             toFront(true);
+
+            // Subtle transparency during drag
+            setAlpha(0.88f);
+
+            // Start lerp timer at ~60fps
+            startTimerHz(60);
+            repaint();
         }
     }
 }
@@ -632,50 +643,95 @@ void PluginComponent::mouseDrag(const MouseEvent& e)
         if (viewport)
         {
             MouseEvent tempEv = e.getEventRelativeTo(viewport);
-
             viewport->autoScroll(tempEv.x, tempEv.y, 20, 4);
         }
 
-        int newX = eField.x - dragX;
-        int newY = eField.y - dragY;
+        float newX = (float)(eField.x - dragX);
+        float newY = (float)(eField.y - dragY);
 
         // Snap to grid if enabled
         if (SettingsManager::getInstance().getBool("SnapToGrid", false))
         {
             constexpr int gridSize = 20;
-            newX = (newX / gridSize) * gridSize;
-            newY = (newY / gridSize) * gridSize;
+            newX = (float)(((int)newX / gridSize) * gridSize);
+            newY = (float)(((int)newY / gridSize) * gridSize);
         }
 
-        setTopLeftPosition(newX, newY);
-        if (getX() < 0)
-            setTopLeftPosition(0, getY());
-        if (getY() < 0)
-            setTopLeftPosition(getX(), 0);
-        node->properties.set("x", getX());
-        node->properties.set("y", getY());
-        sendChangeMessage();
+        // Clamp to non-negative
+        if (newX < 0.0f)
+            newX = 0.0f;
+        if (newY < 0.0f)
+            newY = 0.0f;
+
+        // Update target for lerp (timer will move the component)
+        targetDragX = newX;
+        targetDragY = newY;
     }
 }
 
 //------------------------------------------------------------------------------
 void PluginComponent::mouseUp(const MouseEvent& e)
 {
-    beingDragged = false;
-
-    // Final snap on mouse up (in case drag didn't snap perfectly)
-    if (SettingsManager::getInstance().getBool("SnapToGrid", false))
+    if (beingDragged)
     {
-        constexpr int gridSize = 20;
-        int snappedX = (getX() / gridSize) * gridSize;
-        int snappedY = (getY() / gridSize) * gridSize;
-        setTopLeftPosition(snappedX, snappedY);
-        node->properties.set("x", snappedX);
-        node->properties.set("y", snappedY);
+        beingDragged = false;
+        stopTimer();
+
+        // Snap to final target position immediately
+        int finalX = (int)targetDragX;
+        int finalY = (int)targetDragY;
+
+        // Final snap on mouse up (in case drag didn't snap perfectly)
+        if (SettingsManager::getInstance().getBool("SnapToGrid", false))
+        {
+            constexpr int gridSize = 20;
+            finalX = (finalX / gridSize) * gridSize;
+            finalY = (finalY / gridSize) * gridSize;
+        }
+
+        setTopLeftPosition(finalX, finalY);
+        node->properties.set("x", finalX);
+        node->properties.set("y", finalY);
+
+        // Remove visual effects
+        setAlpha(1.0f);
+        repaint();
+        sendChangeMessage();
     }
 
     if (pluginWindow)
         node->properties.set("windowOpen", false);
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::timerCallback()
+{
+    if (!beingDragged)
+    {
+        stopTimer();
+        return;
+    }
+
+    // Lerp current position toward target
+    currentDragX += (targetDragX - currentDragX) * dragLerpFactor;
+    currentDragY += (targetDragY - currentDragY) * dragLerpFactor;
+
+    // Snap to pixel when close enough to avoid perpetual micro-animation
+    if (std::abs(targetDragX - currentDragX) < 0.5f)
+        currentDragX = targetDragX;
+    if (std::abs(targetDragY - currentDragY) < 0.5f)
+        currentDragY = targetDragY;
+
+    int newX = (int)currentDragX;
+    int newY = (int)currentDragY;
+
+    if (newX != getX() || newY != getY())
+    {
+        setTopLeftPosition(newX, newY);
+        node->properties.set("x", newX);
+        node->properties.set("y", newY);
+        sendChangeMessage();
+    }
 }
 
 //------------------------------------------------------------------------------

@@ -37,7 +37,8 @@ class PluginComponent : public Component,
                         public ChangeBroadcaster,
                         public Button::Listener,
                         public Label::Listener,
-                        public Slider::Listener
+                        public Slider::Listener,
+                        private Timer
 {
   public:
     ///	Constructor.
@@ -60,6 +61,9 @@ class PluginComponent : public Component,
     void mouseDrag(const MouseEvent& e);
     ///	Used to move the component about the PluginField.
     void mouseUp(const MouseEvent& e);
+
+    /// Timer callback for smooth drag interpolation
+    void timerCallback() override;
 
     ///	Used to open the plugin's editor/delete the plugin.
     void buttonClicked(Button* button);
@@ -203,6 +207,13 @@ class PluginComponent : public Component,
 
     /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
     melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};
+
+    // Drag animation state
+    float targetDragX = 0.0f;
+    float targetDragY = 0.0f;
+    float currentDragX = 0.0f;
+    float currentDragY = 0.0f;
+    static constexpr float dragLerpFactor = 0.35f; // 0-1, higher = snappier
 };
 
 //------------------------------------------------------------------------------
