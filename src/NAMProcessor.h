@@ -221,6 +221,7 @@ class NAMProcessor : public PedalboardProcessor
 
     // Processing buffers
     juce::AudioBuffer<float> outputBuffer;
+    juce::AudioBuffer<float> ir2Buffer; // Pre-allocated for dual-IR blend (RT-safe)
 
     //==========================================================================
     // Parameters (atomic for thread safety)

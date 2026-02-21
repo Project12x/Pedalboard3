@@ -50,6 +50,10 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
     outputBuffer.setSize(1, estimatedSamplesPerBlock, false, false, false);
     outputBuffer.clear();
 
+    // Pre-allocate IR2 blend buffer (RT-safe: avoids per-block allocation)
+    ir2Buffer.setSize(2, estimatedSamplesPerBlock, false, false, false);
+    ir2Buffer.clear();
+
     // Prepare NAM core
     namCore->prepare(sampleRate, estimatedSamplesPerBlock);
 
@@ -326,8 +330,10 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
         if (doIR2)
         {
             // Dual IR mode: process both convolvers and blend
-            juce::AudioBuffer<float> ir2Buffer;
-            ir2Buffer.makeCopyOf(buffer);
+            const int numChannels = buffer.getNumChannels();
+            ir2Buffer.setSize(numChannels, numSamples, false, false, true); // no-alloc if already big enough
+            for (int ch = 0; ch < numChannels; ++ch)
+                ir2Buffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
             // Convolve IR1 into buffer, IR2 into ir2Buffer
             convolver->process(buffer);
