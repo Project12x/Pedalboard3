@@ -14,6 +14,7 @@
 #include "PedalboardProcessors.h"
 
 #include <JuceHeader.h>
+#include <atomic>
 
 //==============================================================================
 /**
@@ -64,11 +65,33 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
 
     void fillInPluginDescription(PluginDescription& description) const override;
 
-    int getNumParameters() override { return 0; }
-    float getParameter(int parameterIndex) override { return 0.0f; }
-    void setParameter(int parameterIndex, float newValue) override {}
-    const String getParameterName(int parameterIndex) override { return {}; }
-    const String getParameterText(int parameterIndex) override { return {}; }
+    //==========================================================================
+    // Parameters
+    enum Parameters
+    {
+        OctaveShiftParam = 0,
+        VelocityParam,
+        SustainParam,
+        NumParameters
+    };
+
+    int getNumParameters() override { return NumParameters; }
+    float getParameter(int parameterIndex) override;
+    void setParameter(int parameterIndex, float newValue) override;
+    const String getParameterName(int parameterIndex) override;
+    const String getParameterText(int parameterIndex) override;
+
+    // Octave shift (-3..+3, shifts displayed keyboard range)
+    int getOctaveShift() const { return octaveShift.load(); }
+    void setOctaveShift(int shift) { octaveShift.store(jlimit(-3, 3, shift)); }
+
+    // Fixed velocity for mouse/QWERTY input (1-127)
+    int getFixedVelocity() const { return fixedVelocity.load(); }
+    void setFixedVelocity(int vel) { fixedVelocity.store(jlimit(1, 127, vel)); }
+
+    // Sustain pedal toggle
+    bool isSustainHeld() const { return sustainHeld.load(); }
+    void setSustainHeld(bool held);
 
     // Called from UI thread to inject MIDI messages from the virtual keyboard
     void addMidiMessage(const MidiMessage& msg);
@@ -81,6 +104,11 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
     // Thread-safe MIDI message collection
     MidiMessageCollector midiCollector;
     double currentSampleRate = 44100.0;
+
+    // Parameters
+    std::atomic<int> octaveShift{0};     // -3..+3 octaves
+    std::atomic<int> fixedVelocity{100}; // 1-127
+    std::atomic<bool> sustainHeld{false};
 
     // DEBUG: processBlock call counter for periodic logging
     int processBlockCallCount = 0;

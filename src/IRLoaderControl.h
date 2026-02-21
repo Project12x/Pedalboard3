@@ -23,14 +23,11 @@ class IRLoaderLookAndFeel : public LookAndFeel_V4
   public:
     IRLoaderLookAndFeel();
 
-    void drawLinearSlider(Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, float minSliderPos, float maxSliderPos,
-                          const Slider::SliderStyle style, Slider& slider) override;
+    void drawLinearSlider(Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos,
+                          float maxSliderPos, const Slider::SliderStyle style, Slider& slider) override;
 
-    void drawButtonBackground(Graphics& g, Button& button,
-                              const Colour& backgroundColour,
-                              bool shouldDrawButtonAsHighlighted,
-                              bool shouldDrawButtonAsDown) override;
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 };
 
 //==============================================================================
@@ -56,13 +53,22 @@ class IRLoaderControl : public Component, public Button::Listener, public Slider
     IRLoaderProcessor* irProcessor;
     IRLoaderLookAndFeel irLookAndFeel;
 
-    // File loading
+    // File loading - IR1
     std::unique_ptr<TextButton> loadButton;
     std::unique_ptr<TextButton> browseButton;
     std::unique_ptr<TextButton> clearButton;
     std::unique_ptr<Label> irNameLabel;
 
+    // File loading - IR2
+    std::unique_ptr<TextButton> loadButton2;
+    std::unique_ptr<TextButton> browseButton2;
+    std::unique_ptr<TextButton> clearButton2;
+    std::unique_ptr<Label> irName2Label;
+
     // Parameter controls
+    std::unique_ptr<Slider> blendSlider;
+    std::unique_ptr<Label> blendLabel;
+
     std::unique_ptr<Slider> mixSlider;
     std::unique_ptr<Label> mixLabel;
 

@@ -53,8 +53,7 @@ void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
     if (processBlockCallCount == 1 || processBlockCallCount % 5000 == 0)
     {
         spdlog::info("[VirtualMidiInput] processBlock alive (call #{}, bufSamples={}, instance={})",
-                     processBlockCallCount, buffer.getNumSamples(),
-                     (instance == this) ? "CURRENT" : "STALE");
+                     processBlockCallCount, buffer.getNumSamples(), (instance == this) ? "CURRENT" : "STALE");
     }
 
     // DEBUG: Log when MIDI messages are produced
@@ -66,21 +65,28 @@ void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
             ignoreUnused(metadata);
             ++count;
         }
-        spdlog::info("[VirtualMidiInput] processBlock output {} MIDI messages, bufSamples={}",
-                     count, buffer.getNumSamples());
+        spdlog::info("[VirtualMidiInput] processBlock output {} MIDI messages, bufSamples={}", count,
+                     buffer.getNumSamples());
     }
 }
 
 //==============================================================================
 void VirtualMidiInputProcessor::addMidiMessage(const MidiMessage& msg)
 {
-    // DEBUG: Log incoming MIDI from virtual keyboard
+    // Apply fixed velocity to note-on messages
+    MidiMessage adjusted = msg;
     if (msg.isNoteOn())
-        spdlog::info("[VirtualMidiInput] addMidiMessage: noteOn ch={} note={} vel={}",
-                     msg.getChannel(), msg.getNoteNumber(), msg.getVelocity());
+    {
+        const int vel = fixedVelocity.load();
+        adjusted = MidiMessage::noteOn(msg.getChannel(), msg.getNoteNumber(), static_cast<uint8>(vel));
+        adjusted.setTimeStamp(msg.getTimeStamp());
+
+        spdlog::info("[VirtualMidiInput] addMidiMessage: noteOn ch={} note={} vel={}", msg.getChannel(),
+                     msg.getNoteNumber(), vel);
+    }
 
     // Called from UI thread - MidiMessageCollector handles thread safety
-    midiCollector.addMessageToQueue(msg);
+    midiCollector.addMessageToQueue(adjusted);
 }
 
 //==============================================================================
@@ -101,15 +107,104 @@ AudioProcessorEditor* VirtualMidiInputProcessor::createEditor()
 //==============================================================================
 void VirtualMidiInputProcessor::getStateInformation(MemoryBlock& destData)
 {
-    // No state to save
     auto xml = std::make_unique<XmlElement>("VirtualMidiInput");
+    xml->setAttribute("version", 1);
+    xml->setAttribute("octaveShift", octaveShift.load());
+    xml->setAttribute("velocity", fixedVelocity.load());
+    xml->setAttribute("sustain", sustainHeld.load());
     copyXmlToBinary(*xml, destData);
 }
 
 void VirtualMidiInputProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // No state to restore
-    ignoreUnused(data, sizeInBytes);
+    auto xml = getXmlFromBinary(data, sizeInBytes);
+    if (xml && xml->hasTagName("VirtualMidiInput"))
+    {
+        int version = xml->getIntAttribute("version", 0);
+        if (version >= 1)
+        {
+            octaveShift.store(jlimit(-3, 3, xml->getIntAttribute("octaveShift", 0)));
+            fixedVelocity.store(jlimit(1, 127, xml->getIntAttribute("velocity", 100)));
+            sustainHeld.store(xml->getBoolAttribute("sustain", false));
+        }
+    }
+}
+
+//==============================================================================
+void VirtualMidiInputProcessor::setSustainHeld(bool held)
+{
+    sustainHeld.store(held);
+
+    // Send CC64 (sustain pedal) message
+    auto cc = MidiMessage::controllerEvent(1, 64, held ? 127 : 0);
+    midiCollector.addMessageToQueue(cc);
+}
+
+//==============================================================================
+float VirtualMidiInputProcessor::getParameter(int parameterIndex)
+{
+    switch (parameterIndex)
+    {
+    case OctaveShiftParam:
+        return static_cast<float>(octaveShift.load());
+    case VelocityParam:
+        return static_cast<float>(fixedVelocity.load()) / 127.0f;
+    case SustainParam:
+        return sustainHeld.load() ? 1.0f : 0.0f;
+    default:
+        return 0.0f;
+    }
+}
+
+void VirtualMidiInputProcessor::setParameter(int parameterIndex, float newValue)
+{
+    switch (parameterIndex)
+    {
+    case OctaveShiftParam:
+        setOctaveShift(static_cast<int>(newValue));
+        break;
+    case VelocityParam:
+        setFixedVelocity(static_cast<int>(newValue * 127.0f));
+        break;
+    case SustainParam:
+        setSustainHeld(newValue > 0.5f);
+        break;
+    }
+}
+
+const String VirtualMidiInputProcessor::getParameterName(int parameterIndex)
+{
+    switch (parameterIndex)
+    {
+    case OctaveShiftParam:
+        return "Octave";
+    case VelocityParam:
+        return "Velocity";
+    case SustainParam:
+        return "Sustain";
+    default:
+        return {};
+    }
+}
+
+const String VirtualMidiInputProcessor::getParameterText(int parameterIndex)
+{
+    switch (parameterIndex)
+    {
+    case OctaveShiftParam:
+    {
+        int shift = octaveShift.load();
+        if (shift > 0)
+            return "+" + String(shift);
+        return String(shift);
+    }
+    case VelocityParam:
+        return String(fixedVelocity.load());
+    case SustainParam:
+        return sustainHeld.load() ? "On" : "Off";
+    default:
+        return {};
+    }
 }
 
 void VirtualMidiInputProcessor::fillInPluginDescription(PluginDescription& description) const

@@ -16,7 +16,6 @@
 
 #include <spdlog/spdlog.h>
 
-
 //==============================================================================
 NAMProcessor::NAMProcessor() : PedalboardProcessor()
 {
@@ -25,8 +24,9 @@ NAMProcessor::NAMProcessor() : PedalboardProcessor()
     // Initialize NAM core (isolated from JUCE to avoid namespace conflicts)
     namCore = std::make_unique<NAMCore>();
 
-    // Initialize convolver for IR loading
+    // Initialize convolvers for IR loading
     convolver = std::make_unique<NAMConvolver>();
+    convolver2 = std::make_unique<NAMConvolver>();
 
     // Initialize effects loop (SubGraph for hosting plugins between tone stack and IR)
     effectsLoop = std::make_unique<SubGraphProcessor>();
@@ -53,8 +53,9 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
     // Prepare NAM core
     namCore->prepare(sampleRate, estimatedSamplesPerBlock);
 
-    // Prepare convolver for IR
+    // Prepare convolvers for IR
     convolver->prepare(sampleRate, estimatedSamplesPerBlock);
+    convolver2->prepare(sampleRate, estimatedSamplesPerBlock);
 
     // Prepare IR filters
     juce::dsp::ProcessSpec spec;
@@ -169,6 +170,49 @@ juce::String NAMProcessor::getIRName() const
     return "No IR";
 }
 
+//==============================================================================
+bool NAMProcessor::loadIR2(const juce::File& irFile)
+{
+    if (!irFile.existsAsFile())
+    {
+        spdlog::error("NAMProcessor: IR2 file does not exist: {}", irFile.getFullPathName().toStdString());
+        return false;
+    }
+
+    spdlog::info("NAMProcessor: Loading IR2: {}", irFile.getFullPathName().toStdString());
+
+    try
+    {
+        convolver2->loadIR(irFile);
+        currentIRFile2 = irFile;
+        ir2Loaded.store(true);
+        spdlog::info("NAMProcessor: IR2 loaded successfully");
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("NAMProcessor: Exception loading IR2: {}", e.what());
+        ir2Loaded.store(false);
+        return false;
+    }
+}
+
+void NAMProcessor::clearIR2()
+{
+    convolver2->reset();
+    ir2Loaded.store(false);
+    currentIRFile2 = juce::File();
+}
+
+juce::String NAMProcessor::getIR2Name() const
+{
+    if (currentIRFile2.existsAsFile())
+    {
+        return currentIRFile2.getFileNameWithoutExtension();
+    }
+    return "No IR 2";
+}
+
 bool NAMProcessor::hasEffectsLoopContent() const
 {
     if (!effectsLoop)
@@ -193,6 +237,7 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
     const bool doToneStack = toneStackEnabled.load();
     const bool doNormalize = normalizeOutput.load();
     const bool doIR = irEnabled.load() && irLoaded.load();
+    const bool doIR2 = ir2Loaded.load();
 
     // Get mono input (use left channel)
     float* inputData = buffer.getWritePointer(0);
@@ -278,8 +323,37 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
             irLowCutFilter.process(context);
         }
 
-        // Apply IR convolution
-        convolver->process(buffer);
+        if (doIR2)
+        {
+            // Dual IR mode: process both convolvers and blend
+            juce::AudioBuffer<float> ir2Buffer;
+            ir2Buffer.makeCopyOf(buffer);
+
+            // Convolve IR1 into buffer, IR2 into ir2Buffer
+            convolver->process(buffer);
+            convolver2->process(ir2Buffer);
+
+            // Equal-power crossfade blend
+            const float blendVal = irBlend.load();
+            const float angle = blendVal * juce::MathConstants<float>::halfPi;
+            const float gain1 = std::cos(angle);
+            const float gain2 = std::sin(angle);
+
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            {
+                float* dst = buffer.getWritePointer(ch);
+                const float* src2 = ir2Buffer.getReadPointer(ch);
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    dst[i] = dst[i] * gain1 + src2[i] * gain2;
+                }
+            }
+        }
+        else
+        {
+            // Single IR mode
+            convolver->process(buffer);
+        }
 
         // High cut (low-pass) filter AFTER convolution - tames harshness
         {
@@ -403,6 +477,8 @@ const String NAMProcessor::getParameterName(int parameterIndex)
         return "IR Mix";
     case ToneStackPreParam:
         return "EQ Pre";
+    case IRBlendParam:
+        return "IR Blend";
     default:
         return "";
     }
@@ -432,6 +508,8 @@ float NAMProcessor::getParameter(int parameterIndex)
         return irEnabled.load() ? 1.0f : 0.0f;
     case ToneStackPreParam:
         return toneStackPre.load() ? 1.0f : 0.0f;
+    case IRBlendParam:
+        return irBlend.load();
     default:
         return 0.0f;
     }
@@ -466,6 +544,8 @@ const String NAMProcessor::getParameterText(int parameterIndex)
         return irEnabled.load() ? "On" : "Off";
     case ToneStackPreParam:
         return toneStackPre.load() ? "Pre" : "Post";
+    case IRBlendParam:
+        return String(static_cast<int>(irBlend.load() * 100.0f)) + "%";
     default:
         return "";
     }
@@ -505,6 +585,9 @@ void NAMProcessor::setParameter(int parameterIndex, float newValue)
     case ToneStackPreParam:
         setToneStackPre(newValue > 0.5f);
         break;
+    case IRBlendParam:
+        setIRBlend(newValue);
+        break;
     }
 }
 
@@ -513,7 +596,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(4); // Version (4 = added tone stack pre/post)
+    stream.writeInt(5); // Version (5 = added dual IR + blend)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -550,6 +633,10 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 
     // Tone stack pre/post (v4+)
     stream.writeBool(toneStackPre.load());
+
+    // Dual IR + blend (v5+)
+    stream.writeString(currentIRFile2.getFullPathName());
+    stream.writeFloat(irBlend.load());
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -617,6 +704,21 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
     if (version >= 4 && !stream.isExhausted())
     {
         toneStackPre.store(stream.readBool());
+    }
+
+    // Dual IR + blend (v5+)
+    if (version >= 5 && !stream.isExhausted())
+    {
+        String ir2Path = stream.readString();
+        if (ir2Path.isNotEmpty())
+        {
+            File ir2File(ir2Path);
+            if (ir2File.existsAsFile())
+            {
+                loadIR2(ir2File);
+            }
+        }
+        irBlend.store(stream.readFloat());
     }
 }
 

@@ -26,6 +26,7 @@
 #include "ColourScheme.h"
 #include "DeviceMeterTap.h"
 #include "FilterGraph.h"
+#include "FontManager.h"
 #include "MasterBusProcessor.h"
 #include "MasterGainState.h"
 #include "MidiAppFifo.h"
@@ -33,7 +34,7 @@
 #include "PluginField.h"
 
 #include <JuceHeader.h>
-#include "FontManager.h"
+
 
 class PluginListWindow;
 class StageView;
@@ -504,7 +505,16 @@ class MainPanel : public Component,
     /// Virtual MIDI keyboard state and component
     MidiKeyboardState keyboardState;
     std::unique_ptr<MidiKeyboardComponent> virtualKeyboard;
-    static constexpr int keyboardHeight = 60;
+    static constexpr int keyboardHeight = 80; // 20px control strip + 60px keys
+
+    // Keyboard control strip
+    std::unique_ptr<TextButton> octaveDownButton;
+    std::unique_ptr<TextButton> octaveUpButton;
+    std::unique_ptr<Label> octaveLabel;
+    std::unique_ptr<Slider> velocitySlider;
+    std::unique_ptr<Label> velocityLabel;
+    std::unique_ptr<TextButton> sustainButton;
+    void updateOctaveDisplay();
 
     /// MidiKeyboardState::Listener callbacks
     void handleNoteOn(MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity) override;

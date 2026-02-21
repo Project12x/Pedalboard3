@@ -503,6 +503,34 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     irEnabledButton->addListener(this);
     addAndMakeVisible(irEnabledButton.get());
 
+    // IR2 loading section (second cabinet slot)
+    loadIR2Button = std::make_unique<TextButton>("Load IR2");
+    loadIR2Button->addListener(this);
+    addAndMakeVisible(loadIR2Button.get());
+
+    clearIR2Button = std::make_unique<TextButton>("X");
+    clearIR2Button->setTooltip("Clear IR2");
+    clearIR2Button->addListener(this);
+    addAndMakeVisible(clearIR2Button.get());
+
+    ir2NameLabel = std::make_unique<Label>("ir2Name", "No IR2 Loaded");
+    ir2NameLabel->setJustificationType(Justification::centredLeft);
+    ir2NameLabel->setFont(fm.getBodyFont());
+    addAndMakeVisible(ir2NameLabel.get());
+
+    // IR blend slider
+    irBlendSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+    irBlendSlider->setRange(0.0, 1.0, 0.01);
+    irBlendSlider->setValue(namProcessor->getIRBlend());
+    irBlendSlider->addListener(this);
+    irBlendSlider->setTextBoxStyle(Slider::TextBoxRight, false, 45, 20);
+    addAndMakeVisible(irBlendSlider.get());
+
+    irBlendLabel = std::make_unique<Label>("blendLabel", "BLEND");
+    irBlendLabel->setJustificationType(Justification::centredRight);
+    irBlendLabel->setFont(fm.getCaptionFont());
+    addAndMakeVisible(irBlendLabel.get());
+
     // IR filters
     irLowCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
     irLowCutSlider->setRange(20.0, 500.0, 1.0);
@@ -666,6 +694,8 @@ void NAMControl::refreshColours()
     modelNameLabel->setColour(Label::outlineColourId, laf.ampBorder);
     irNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
     irNameLabel->setColour(Label::outlineColourId, laf.ampBorder);
+    ir2NameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
+    ir2NameLabel->setColour(Label::outlineColourId, laf.ampBorder);
 
     // Architecture badge
     modelArchLabel->setColour(Label::backgroundColourId, laf.ampAccent.withAlpha(0.15f));
@@ -674,6 +704,7 @@ void NAMControl::refreshColours()
     // Dim labels
     irLowCutLabel->setColour(Label::textColourId, laf.ampTextDim);
     irHighCutLabel->setColour(Label::textColourId, laf.ampTextDim);
+    irBlendLabel->setColour(Label::textColourId, laf.ampTextDim);
     inputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
     outputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
     noiseGateLabel->setColour(Label::textColourId, laf.ampTextDim);
@@ -735,7 +766,7 @@ void NAMControl::paint(Graphics& g)
     const int headerH = 34;
     const int panelMargin = 8;
     const int sectionGap = 6;
-    const int signalH = 155;
+    const int signalH = 219;
     const int gainH = 115;
 
     // Main background gradient
@@ -860,7 +891,7 @@ void NAMControl::resized()
     const int headerH = 34;
     const int panelMargin = 8;
     const int sectionGap = 6;
-    const int signalH = 155;
+    const int signalH = 219;
     const int gainH = 115;
 
     bounds.removeFromTop(headerH + 7); // header + accent + gap
@@ -909,6 +940,24 @@ void NAMControl::resized()
     irEnabledButton->setBounds(irRow.removeFromRight(50));
     irRow.removeFromRight(spacing);
     irNameLabel->setBounds(irRow);
+
+    signalArea.removeFromTop(spacing);
+
+    // IR2 row
+    auto ir2Row = signalArea.removeFromTop(rowHeight);
+    loadIR2Button->setBounds(ir2Row.removeFromLeft(buttonWidth));
+    ir2Row.removeFromLeft(spacing);
+    clearIR2Button->setBounds(ir2Row.removeFromLeft(clearButtonWidth));
+    ir2Row.removeFromLeft(spacing);
+    ir2NameLabel->setBounds(ir2Row);
+
+    signalArea.removeFromTop(spacing);
+
+    // IR Blend row
+    auto blendRow = signalArea.removeFromTop(rowHeight);
+    irBlendLabel->setBounds(blendRow.removeFromLeft(45));
+    blendRow.removeFromLeft(2);
+    irBlendSlider->setBounds(blendRow);
 
     signalArea.removeFromTop(spacing);
 
@@ -1061,6 +1110,34 @@ void NAMControl::buttonClicked(Button* button)
         updateIRDisplay();
         repaint();
     }
+    else if (button == loadIR2Button.get())
+    {
+        ir2FileChooser = std::make_unique<FileChooser>("Select Impulse Response 2",
+                                                       File::getSpecialLocation(File::userDocumentsDirectory),
+                                                       "*.wav;*.aiff;*.aif", true);
+
+        auto chooserFlags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles;
+
+        ir2FileChooser->launchAsync(chooserFlags,
+                                    [this](const FileChooser& fc)
+                                    {
+                                        auto result = fc.getResult();
+                                        if (result.existsAsFile())
+                                        {
+                                            if (namProcessor->loadIR2(result))
+                                            {
+                                                updateIRDisplay();
+                                                repaint();
+                                            }
+                                        }
+                                    });
+    }
+    else if (button == clearIR2Button.get())
+    {
+        namProcessor->clearIR2();
+        updateIRDisplay();
+        repaint();
+    }
     else if (button == irEnabledButton.get())
     {
         namProcessor->setIREnabled(irEnabledButton->getToggleState());
@@ -1146,6 +1223,10 @@ void NAMControl::sliderValueChanged(Slider* slider)
     {
         namProcessor->setIRHighCut(static_cast<float>(slider->getValue()));
     }
+    else if (slider == irBlendSlider.get())
+    {
+        namProcessor->setIRBlend(static_cast<float>(slider->getValue()));
+    }
 }
 
 //==============================================================================
@@ -1185,6 +1266,17 @@ void NAMControl::updateIRDisplay()
     {
         irNameLabel->setText("No IR Loaded", dontSendNotification);
         irNameLabel->setColour(Label::textColourId, laf.ampTextDim);
+    }
+
+    if (namProcessor->isIR2Loaded())
+    {
+        ir2NameLabel->setText(namProcessor->getIR2Name(), dontSendNotification);
+        ir2NameLabel->setColour(Label::textColourId, laf.ampTextBright);
+    }
+    else
+    {
+        ir2NameLabel->setText("No IR2 Loaded", dontSendNotification);
+        ir2NameLabel->setColour(Label::textColourId, laf.ampTextDim);
     }
 }
 

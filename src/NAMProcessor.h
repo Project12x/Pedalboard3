@@ -40,7 +40,7 @@ class NAMProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 490); }
+    Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 614); }
 
     // F1: Collapsible editor
     bool isEditorCollapsed() const { return editorCollapsed.load(); }
@@ -63,6 +63,13 @@ class NAMProcessor : public PedalboardProcessor
     bool isIRLoaded() const { return irLoaded.load(); }
     juce::String getIRName() const;
     const juce::File& getIRFile() const { return currentIRFile; }
+
+    // IR2 (second cabinet slot)
+    bool loadIR2(const juce::File& irFile);
+    void clearIR2();
+    bool isIR2Loaded() const { return ir2Loaded.load(); }
+    juce::String getIR2Name() const;
+    const juce::File& getIR2File() const { return currentIRFile2; }
 
     //==========================================================================
     // Parameters
@@ -102,6 +109,10 @@ class NAMProcessor : public PedalboardProcessor
 
     float getIRHighCut() const { return irHighCut.load(); }
     void setIRHighCut(float freqHz);
+
+    // IR blend (0 = IR1 only, 1 = IR2 only)
+    float getIRBlend() const { return irBlend.load(); }
+    void setIRBlend(float b) { irBlend.store(juce::jlimit(0.0f, 1.0f, b)); }
 
     //==========================================================================
     // Effects Loop (SubGraph between tone stack and IR)
@@ -144,6 +155,7 @@ class NAMProcessor : public PedalboardProcessor
         NormalizeParam,
         IRMixParam,
         ToneStackPreParam,
+        IRBlendParam,
         NumParameters
     };
 
@@ -180,6 +192,14 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<bool> irLoaded{false};
     std::atomic<bool> irEnabled{true};
     juce::File currentIRFile;
+
+    // IR2 (second cabinet slot)
+    std::unique_ptr<NAMConvolver> convolver2;
+    std::atomic<bool> ir2Loaded{false};
+    juce::File currentIRFile2;
+
+    // IR blend (0 = IR1 only, 1 = IR2 only)
+    std::atomic<float> irBlend{0.0f};
 
     // IR filters (high-pass before convolution, low-pass after)
     std::atomic<float> irLowCut{80.0f};     // Hz (high-pass cutoff)

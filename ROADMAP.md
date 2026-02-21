@@ -8,7 +8,7 @@ A focused roadmap for current development. For historical completed phases, see 
 
 **Phase 6 (Stability & Polish)** — IN PROGRESS
 
-Active work: UI polish (6A), testing expansion, remaining bug fixes. Semantic tokens, mixer/splitter, NAM loader, master bus, and typography all complete.
+Active work: UI polish (6A), testing expansion, remaining bug fixes. Virtual MIDI keyboard enhancements (octave/velocity/sustain), dual IR loading with blend (IR Loader + NAM), semantic tokens, mixer/splitter, NAM loader, master bus, and typography all complete.
 
 **Phase 4 (Launch)** — COMPLETE
 | # | Feature | Status |
@@ -85,7 +85,14 @@ Active work: UI polish (6A), testing expansion, remaining bug fixes. Semantic to
 | 5J-B.1 | IR Loader processor | Done |
 | 5J-B.2 | IR Browser (file browser + details) | Done |
 | 5J-B.3 | Bundled IR pack | Planned |
-| 5J-B.5 | Low/high cut | Planned |
+| 5J-B.4 | Dual IR loading + blend | Done |
+| 5J-B.5 | Low/high cut filters | Done |
+
+### 5J-C: NAM IR Enhancements
+| # | Feature | Status |
+|---|---------|--------|
+| 5J-C.1 | Dual IR loading + blend | Done |
+| 5J-C.2 | IR2 UI controls | Done |
 
 ### 5K: SFZ Sampler
 | # | Feature | Status |
@@ -100,10 +107,10 @@ Active work: UI polish (6A), testing expansion, remaining bug fixes. Semantic to
 |---|---------|--------|
 | 5L.1 | Virtual MIDI Input processor | Done |
 | 5L.2 | MidiKeyboardComponent (on-screen piano) | Done |
-| 5L.3 | QWERTY to MIDI | Planned |
-| 5L.4 | Octave shift | Planned |
-| 5L.5 | Velocity control | Planned |
-| 5L.6 | Sustain toggle | Planned |
+| 5L.3 | QWERTY to MIDI | Done |
+| 5L.4 | Octave shift | Done |
+| 5L.5 | Velocity control | Done |
+| 5L.6 | Sustain toggle | Done |
 
 ### 5M: First-Run Onboarding
 | # | Feature | Status |
@@ -154,13 +161,13 @@ Active work: UI polish (6A), testing expansion, remaining bug fixes. Semantic to
 | # | Task | Status |
 |---|------|--------|
 | 6A.4 | SVG icon system (JUCE Drawable, BinaryData) | Planned |
-| 6A.5 | Smooth animations | Planned |
-| 6A.7 | Hover tooltips | Planned |
+| 6A.5 | Smooth animations | Deferred (not suited to node-graph aesthetic) |
+| 6A.7 | Hover tooltips | N/A (nodes already labelled) |
 | 6A.8 | Connection highlighting | Planned |
 | 6A.9 | Plugin thumbnails | Planned |
 | 6A.10 | Drag & drop polish | Planned |
 | 6A.11 | Keyboard shortcuts overlay | Planned |
-| 6A.12 | Dark/light mode auto-switch | Planned |
+| 6A.12 | Dark/light mode auto-switch | N/A (Midnight/Daylight themes exist) |
 | 6A.13 | Welcome screen | Planned |
 | 6A.14 | Plugin search with fuzzy match | Planned |
 | 6A.15 | Recent files quick access | Planned |
@@ -390,5 +397,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-20 (afternoon)*
+*Last updated: 2026-02-20 (evening)*
 

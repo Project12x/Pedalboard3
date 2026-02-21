@@ -453,6 +453,39 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     addAndMakeVisible(virtualKeyboard.get());
     keyboardState.addListener(this);
 
+    // Keyboard control strip
+    octaveDownButton = std::make_unique<TextButton>("-");
+    octaveDownButton->addListener(this);
+    addAndMakeVisible(octaveDownButton.get());
+
+    octaveUpButton = std::make_unique<TextButton>("+");
+    octaveUpButton->addListener(this);
+    addAndMakeVisible(octaveUpButton.get());
+
+    octaveLabel = std::make_unique<Label>("octave", "Oct: 0");
+    octaveLabel->setJustificationType(Justification::centred);
+    octaveLabel->setFont(Font(FontOptions().withHeight(12.0f)));
+    octaveLabel->setColour(Label::textColourId, Colours::white.withAlpha(0.8f));
+    addAndMakeVisible(octaveLabel.get());
+
+    velocitySlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+    velocitySlider->setRange(1.0, 127.0, 1.0);
+    velocitySlider->setValue(100.0);
+    velocitySlider->addListener(this);
+    velocitySlider->setTextBoxStyle(Slider::TextBoxRight, false, 32, 18);
+    addAndMakeVisible(velocitySlider.get());
+
+    velocityLabel = std::make_unique<Label>("vel", "Vel:");
+    velocityLabel->setJustificationType(Justification::centredRight);
+    velocityLabel->setFont(Font(FontOptions().withHeight(12.0f)));
+    velocityLabel->setColour(Label::textColourId, Colours::white.withAlpha(0.8f));
+    addAndMakeVisible(velocityLabel.get());
+
+    sustainButton = std::make_unique<TextButton>("Sus");
+    sustainButton->setClickingTogglesState(true);
+    sustainButton->addListener(this);
+    addAndMakeVisible(sustainButton.get());
+
     // Setup the PluginField.
     PluginField* field = new PluginField(&signalPath, &pluginList, commandManager);
     field->addChangeListener(this);
@@ -671,9 +704,29 @@ void MainPanel::resized()
     tempoEditor->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -87, getHeight() - 33, 52, 24);
     tapTempoButton->setBounds((proportionOfWidth(0.5000f) - ((36) / 2)) + -31, getHeight() - 27, 10, 16);
 
-    // Virtual MIDI keyboard between viewport and toolbar
+    // Virtual MIDI keyboard control strip + keys
     if (virtualKeyboard != nullptr)
-        virtualKeyboard->setBounds(0, viewportHeight, getWidth(), keyboardHeight);
+    {
+        const int controlStripHeight = 20;
+        const int keysHeight = keyboardHeight - controlStripHeight;
+        const int stripY = viewportHeight;
+
+        // Control strip: [Oct- Oct:0 Oct+] [Vel: ====slider====] [Sus]
+        int cx = 4;
+        octaveDownButton->setBounds(cx, stripY, 24, controlStripHeight);
+        cx += 26;
+        octaveLabel->setBounds(cx, stripY, 44, controlStripHeight);
+        cx += 46;
+        octaveUpButton->setBounds(cx, stripY, 24, controlStripHeight);
+        cx += 32;
+        velocityLabel->setBounds(cx, stripY, 28, controlStripHeight);
+        cx += 30;
+        velocitySlider->setBounds(cx, stripY, 140, controlStripHeight);
+        cx = getWidth() - 44;
+        sustainButton->setBounds(cx, stripY, 40, controlStripHeight);
+
+        virtualKeyboard->setBounds(0, stripY + controlStripHeight, getWidth(), keysHeight);
+    }
 
     //[UserResized] Add your own custom resize handling here..
 
@@ -834,6 +887,43 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
         opts.resizable = true;
         opts.launchAsync();
     }
+    else if (buttonThatWasClicked == octaveDownButton.get())
+    {
+        if (auto* proc = VirtualMidiInputProcessor::getInstance())
+        {
+            proc->setOctaveShift(proc->getOctaveShift() - 1);
+            int shift = proc->getOctaveShift();
+            int baseC2 = 36; // C2 = MIDI 36
+            int low = baseC2 + shift * 12;
+            int high = low + 60; // 5 octaves
+            virtualKeyboard->setAvailableRange(jlimit(0, 127, low), jlimit(0, 127, high));
+            updateOctaveDisplay();
+        }
+    }
+    else if (buttonThatWasClicked == octaveUpButton.get())
+    {
+        if (auto* proc = VirtualMidiInputProcessor::getInstance())
+        {
+            proc->setOctaveShift(proc->getOctaveShift() + 1);
+            int shift = proc->getOctaveShift();
+            int baseC2 = 36;
+            int low = baseC2 + shift * 12;
+            int high = low + 60;
+            virtualKeyboard->setAvailableRange(jlimit(0, 127, low), jlimit(0, 127, high));
+            updateOctaveDisplay();
+        }
+    }
+    else if (buttonThatWasClicked == sustainButton.get())
+    {
+        if (auto* proc = VirtualMidiInputProcessor::getInstance())
+        {
+            bool held = sustainButton->getToggleState();
+            proc->setSustainHeld(held);
+            sustainButton->setColour(TextButton::buttonColourId,
+                                     held ? Colour(0xff4a90d9)
+                                          : getLookAndFeel().findColour(TextButton::buttonColourId));
+        }
+    }
 
     //[/UserbuttonClicked_Post]
 }
@@ -917,6 +1007,11 @@ void MainPanel::sliderValueChanged(Slider* sliderThatWasMoved)
         state.masterOutputGainDb.store((float)outputGainSlider->getValue(), std::memory_order_relaxed);
         state.saveToSettings();
     }
+    else if (sliderThatWasMoved == velocitySlider.get())
+    {
+        if (auto* proc = VirtualMidiInputProcessor::getInstance())
+            proc->setFixedVelocity(static_cast<int>(velocitySlider->getValue()));
+    }
     //[/UsersliderValueChanged_Post]
 }
 
@@ -944,6 +1039,20 @@ void MainPanel::handleNoteOff(MidiKeyboardState* source, int midiChannel, int mi
         auto msg = MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity);
         msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
         processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::updateOctaveDisplay()
+{
+    if (auto* proc = VirtualMidiInputProcessor::getInstance())
+    {
+        int shift = proc->getOctaveShift();
+        String text = "Oct: ";
+        if (shift > 0)
+            text += "+";
+        text += String(shift);
+        octaveLabel->setText(text, dontSendNotification);
     }
 }
 

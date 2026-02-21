@@ -15,7 +15,6 @@
 
 #include <atomic>
 
-
 //==============================================================================
 /**
     IR Loader processor for cabinet simulation.
@@ -31,7 +30,7 @@ class IRLoaderProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(280, 150); }
+    Point<int> getSize() override { return Point<int>(280, 210); }
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 
@@ -41,6 +40,13 @@ class IRLoaderProcessor : public PedalboardProcessor
     const File& getIRFile() const { return currentIRFile; }
     bool isIRLoaded() const { return irLoaded.load(); }
     String getIRName() const { return currentIRFile.getFileNameWithoutExtension(); }
+
+    // IR2 file management
+    void loadIRFile2(const File& irFile);
+    void clearIR2();
+    const File& getIRFile2() const { return currentIRFile2; }
+    bool isIR2Loaded() const { return ir2Loaded.load(); }
+    String getIR2Name() const { return currentIRFile2.getFileNameWithoutExtension(); }
 
     //==========================================================================
     // Parameters
@@ -52,6 +58,9 @@ class IRLoaderProcessor : public PedalboardProcessor
 
     float getHighCut() const { return highCut.load(); }
     void setHighCut(float freqHz) { highCut.store(juce::jlimit(2000.0f, 20000.0f, freqHz)); }
+
+    float getBlend() const { return irBlend.load(); }
+    void setBlend(float b) { irBlend.store(juce::jlimit(0.0f, 1.0f, b)); }
 
     //==========================================================================
     // AudioProcessor overrides
@@ -80,6 +89,7 @@ class IRLoaderProcessor : public PedalboardProcessor
         MixParam = 0,
         LowCutParam,
         HighCutParam,
+        BlendParam,
         NumParameters
     };
 
@@ -102,8 +112,9 @@ class IRLoaderProcessor : public PedalboardProcessor
     void updateFilters();
 
     //==========================================================================
-    // Convolution engine
+    // Convolution engines
     juce::dsp::Convolution convolver;
+    juce::dsp::Convolution convolver2;
     juce::dsp::ProcessSpec spec;
 
     // Pre/post filters for tone shaping (coefficients updated on audio thread only)
@@ -116,14 +127,19 @@ class IRLoaderProcessor : public PedalboardProcessor
 
     // Dry buffer for wet/dry mixing
     juce::AudioBuffer<float> dryBuffer;
+    // Buffer for second IR convolution output
+    juce::AudioBuffer<float> ir2Buffer;
 
     //==========================================================================
     // State
     File currentIRFile;
+    File currentIRFile2;
     std::atomic<bool> irLoaded{false};
+    std::atomic<bool> ir2Loaded{false};
     std::atomic<float> mix{1.0f};         // 0 = dry, 1 = wet
     std::atomic<float> lowCut{80.0f};     // Hz
     std::atomic<float> highCut{12000.0f}; // Hz
+    std::atomic<float> irBlend{0.0f};     // 0 = IR1 only, 1 = IR2 only
 
     double currentSampleRate = 44100.0;
     bool isPrepared = false;

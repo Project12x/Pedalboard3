@@ -121,6 +121,15 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     std::unique_ptr<Label> irNameLabel;
     std::unique_ptr<ToggleButton> irEnabledButton;
 
+    // IR2 loading (second cabinet slot)
+    std::unique_ptr<TextButton> loadIR2Button;
+    std::unique_ptr<TextButton> clearIR2Button;
+    std::unique_ptr<Label> ir2NameLabel;
+
+    // IR blend
+    std::unique_ptr<Slider> irBlendSlider;
+    std::unique_ptr<Label> irBlendLabel;
+
     // IR filters
     std::unique_ptr<Slider> irLowCutSlider;
     std::unique_ptr<Label> irLowCutLabel;
@@ -157,6 +166,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     // File choosers (kept alive for async operation)
     std::unique_ptr<FileChooser> modelFileChooser;
     std::unique_ptr<FileChooser> irFileChooser;
+    std::unique_ptr<FileChooser> ir2FileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMControl)
 };
