@@ -17,10 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Virtual MIDI Keyboard Enhancements** — Added octave shift (left/right buttons, C0-C8), velocity slider (1-127), and sustain toggle to the Virtual MIDI Keyboard processor. All controls persist via `getStateInformation`/`setStateInformation`. Keyboard shifts in real-time without re-triggering held notes.
 - **IR Loader Dual IR + Blend** — Standalone IR Loader now supports two IR slots with an equal-power crossfade blend slider (0.0 = IR1 only, 1.0 = IR2 only). Added low-cut (20-2000 Hz) and high-cut (1000-20000 Hz) Butterworth filters applied post-convolution. Second convolver added with independent load/clear. State serialized as v2 format with backward compatibility.
 - **NAM Dual IR + Blend** — NAM processor now supports loading a second impulse response (IR2) with equal-power crossfade blending. Added `loadIR2()`, `clearIR2()`, `setIRBlend()` to `NAMProcessor`. NAMControl UI extended with IR2 load/clear buttons, name label, and blend slider. State serialization upgraded to v5 with backward compatibility. Editor height increased from 550 to 614 to accommodate new controls.
+- **NAM IR2 Enable Toggle** — Added LED-style toggle button for IR2 slot, mirroring the IR1 toggle. When disabled, `convolver2` processing is skipped entirely. State serialized as v6 with backward compatibility (defaults to enabled).
+- **Smooth Node Drag Animation** — Nodes now glide toward the cursor using 60fps Timer-based position interpolation (lerp factor 0.35) instead of snapping. Subtle transparency (0.88 alpha) during drag for visual feedback. Sub-pixel snapping prevents perpetual micro-animation.
 
 ### Changed
 
 - **NAM Interface Premium Polish** — Complete visual rewrite of `NAMControl`. Theme-derived 16-colour palette from `ColourScheme` (replaces all hardcoded hex colours). Value arcs on rotary knobs with glow effect and tick marks. Inner-recessed knob rendering with metallic outer ring. LED pulse animation for model-loaded status. Section panels (Signal Chain / Gain / Tone) with inner shadow and accent dots. `FontManager` integration for all typography. Architecture badge label. Larger 64px knobs. Improved linear slider rendering with gradient-filled tracks and shadowed thumbs. Toggle buttons rendered as LED indicators with glow.
+- **NAM Compact Tone Panel** — Reduced overall editor height from 614 to 480px. Shrunk knobs 68->52px, labels 18->14px, row spacing 6->4px, gain section 115->100px, signal section 219->205px for a tighter, more proportional layout.
 
 ### Fixed
 
