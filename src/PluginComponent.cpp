@@ -787,86 +787,56 @@ void PluginComponent::openPluginEditor(bool forceGeneric)
 //------------------------------------------------------------------------------
 void PluginComponent::buttonClicked(Button* button)
 {
-    std::cerr << "[buttonClicked] Enter for button\n" << std::flush;
 
     // Safety: Verify button pointers are valid before comparing
     if (!button)
     {
-        std::cerr << "[buttonClicked] ERROR: button is null!\n" << std::flush;
         return;
     }
     if (!node || !node->getProcessor())
     {
-        std::cerr << "[buttonClicked] ERROR: node or processor is null!\n" << std::flush;
         return;
     }
 
-    std::cerr << "[buttonClicked] Button addr=" << button << ", edit=" << editButton << ", delete=" << deleteButton
-              << ", bypass=" << bypassButton << ", mappings=" << mappingsButton << ", pluginWindow=" << pluginWindow
-              << "\n"
-              << std::flush;
-
     if ((button == editButton) && !pluginWindow)
     {
-        std::cerr << "[buttonClicked] Edit button - opening custom editor\n" << std::flush;
         openPluginEditor(false); // Default to custom editor on left-click
-        std::cerr << "[buttonClicked] Complete\n" << std::flush;
     }
 
     else if (button == mappingsButton)
     {
-        std::cerr << "[buttonClicked] MAPPINGS button clicked\n" << std::flush;
         openMappingsWindow();
     }
     else if (button == bypassButton)
     {
-        std::cerr << "[buttonClicked] BYPASS button clicked\n" << std::flush;
         BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
-        std::cerr << "[buttonClicked] Bypassable cast=" << bypassable
-                  << ", toggleState=" << bypassButton->getToggleState() << "\n"
-                  << std::flush;
 
         if (bypassable)
         {
             bypassable->setBypass(bypassButton->getToggleState());
-            std::cerr << "[buttonClicked] Bypass set to " << bypassButton->getToggleState() << "\n" << std::flush;
         }
     }
     else if (button == deleteButton)
     {
-        std::cerr << "[buttonClicked] DELETE button clicked\n" << std::flush;
         PluginField* parent = dynamic_cast<PluginField*>(getParentComponent());
-        std::cerr << "[buttonClicked] parent PluginField=" << parent << "\n" << std::flush;
 
         if (pluginWindow)
         {
-            std::cerr << "[buttonClicked] Closing pluginWindow\n" << std::flush;
             pluginWindow->closeButtonPressed();
-            std::cerr << "[buttonClicked] pluginWindow closed\n" << std::flush;
         }
 
         if (parent)
         {
-            std::cerr << "[buttonClicked] Calling parent->deleteFilter()\n" << std::flush;
             parent->deleteFilter(node);
-            std::cerr << "[buttonClicked] parent->deleteFilter() done\n" << std::flush;
             // PluginField doesn't own us via OwnedArray, so we need to delete ourselves
-            std::cerr << "[buttonClicked] About to delete this (PluginComponent)\n" << std::flush;
             delete this;
         }
         else if (auto* canvas = dynamic_cast<SubGraphCanvas*>(getParentComponent()))
         {
-            std::cerr << "[buttonClicked] SubGraphCanvas found, calling deleteFilter()\n" << std::flush;
             canvas->deleteFilter(node);
             // SubGraphCanvas::deleteFilter() already deleted 'this' via OwnedArray.remove()
             // DO NOT call delete this here - it would be a double-delete!
-            std::cerr << "[buttonClicked] SubGraphCanvas::deleteFilter() done, returning (already deleted)\n"
-                      << std::flush;
             return; // 'this' is already deleted, return immediately
-        }
-        else
-        {
-            std::cerr << "[buttonClicked] ERROR: No parent found to delete from!\n" << std::flush;
         }
     }
 }
@@ -1796,29 +1766,22 @@ PluginEditorWindow::PluginEditorWindow(AudioProcessorEditor* editor, PluginCompo
 //------------------------------------------------------------------------------
 PluginEditorWindow::~PluginEditorWindow()
 {
-    std::cerr << "[~PluginEditorWindow] START, component=" << component << "\n" << std::flush;
     if (component && component->getNode())
     {
         component->getNode()->properties.set("uiLastX", getX());
         component->getNode()->properties.set("uiLastY", getY());
         // Clear the pluginWindow reference so the edit button works again
-        std::cerr << "[~PluginEditorWindow] Calling setWindow(0)\n" << std::flush;
         component->setWindow(0);
     }
-    std::cerr << "[~PluginEditorWindow] DONE\n" << std::flush;
 }
 
 //------------------------------------------------------------------------------
 void PluginEditorWindow::closeButtonPressed()
 {
-    std::cerr << "[closeButtonPressed] START, component=" << component << "\n" << std::flush;
     if (component)
     {
-        std::cerr << "[closeButtonPressed] Calling setWindow(0)\n" << std::flush;
         component->setWindow(0);
-        std::cerr << "[closeButtonPressed] setWindow(0) done\n" << std::flush;
     }
-    std::cerr << "[closeButtonPressed] About to delete this\n" << std::flush;
     delete this;
     // Note: No code after delete this - object is destroyed
 }
@@ -1845,22 +1808,17 @@ PluginEditorWindow::EditorWrapper::EditorWrapper(AudioProcessorEditor* ed, Plugi
 //------------------------------------------------------------------------------
 PluginEditorWindow::EditorWrapper::~EditorWrapper()
 {
-    std::cerr << "[~EditorWrapper] START, editor=" << editor << ", presetBar=" << presetBar << "\n" << std::flush;
     // Since we use createEditor() (not createEditorIfNeeded()), the caller owns
     // the editor and must delete it. The old comment was incorrect - we MUST delete
     // the editor here, otherwise the plugin won't be able to create a new one.
     if (editor)
     {
-        std::cerr << "[~EditorWrapper] Removing and deleting editor\n" << std::flush;
         removeChildComponent(editor);
         delete editor;
         editor = nullptr;
-        std::cerr << "[~EditorWrapper] Editor deleted\n" << std::flush;
     }
-    std::cerr << "[~EditorWrapper] Deleting presetBar\n" << std::flush;
     delete presetBar;
     presetBar = nullptr;
-    std::cerr << "[~EditorWrapper] DONE\n" << std::flush;
 }
 
 //------------------------------------------------------------------------------
