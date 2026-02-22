@@ -676,7 +676,7 @@ void BranchesLAF::drawAlertBox(Graphics& g, AlertWindow& alert, const Rectangle<
     {
         // Draw the icon
         Path icon;
-        uint32 colour;
+        uint32 colour = 0x60AAAAAA;
         constexpr int iconSize = 80;
 
         if (iconType == AlertWindow::WarningIcon)
