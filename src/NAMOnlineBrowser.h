@@ -9,12 +9,13 @@
 
 #pragma once
 
-#include <JuceHeader.h>
-#include "Tone3000Types.h"
 #include "Tone3000DownloadManager.h"
+#include "Tone3000Types.h"
 
+#include <JuceHeader.h>
 #include <functional>
 #include <vector>
+
 
 class NAMProcessor;
 
@@ -31,8 +32,7 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
     void clear();
 
     int getNumRows() override;
-    void paintListBoxItem(int rowNumber, juce::Graphics& g,
-                          int width, int height, bool rowIsSelected) override;
+    void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
 
     const Tone3000::ToneInfo* getToneAt(int index) const;
 
@@ -49,7 +49,7 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
     std::vector<Tone3000::ToneInfo> tones;
 
     // Track download states per tone
-    std::map<std::string, float> downloadProgress;  // -1 = not downloading, 0-1 = progress, 2 = complete, -2 = failed
+    std::map<std::string, float> downloadProgress; // -1 = not downloading, 0-1 = progress, 2 = complete, -2 = failed
     int hoveredRow = -1;
 };
 
@@ -59,10 +59,10 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
     Includes search, filters, results list, and details panel.
 */
 class NAMOnlineBrowserComponent : public juce::Component,
-                                   public juce::Button::Listener,
-                                   public juce::TextEditor::Listener,
-                                   public juce::ComboBox::Listener,
-                                   public Tone3000DownloadManager::Listener
+                                  public juce::Button::Listener,
+                                  public juce::TextEditor::Listener,
+                                  public juce::ComboBox::Listener,
+                                  public Tone3000DownloadManager::Listener
 {
   public:
     NAMOnlineBrowserComponent(NAMProcessor* processor, std::function<void()> onModelLoaded);
@@ -89,8 +89,8 @@ class NAMOnlineBrowserComponent : public juce::Component,
     // Tone3000DownloadManager::Listener
     void downloadQueued(const juce::String& toneId) override;
     void downloadStarted(const juce::String& toneId) override;
-    void downloadProgress(const juce::String& toneId, float progress,
-                          int64_t bytesDownloaded, int64_t totalBytes) override;
+    void downloadProgress(const juce::String& toneId, float progress, int64_t bytesDownloaded,
+                          int64_t totalBytes) override;
     void downloadCompleted(const juce::String& toneId, const juce::File& file) override;
     void downloadFailed(const juce::String& toneId, const juce::String& errorMessage) override;
     void downloadCancelled(const juce::String& toneId) override;
@@ -114,7 +114,6 @@ class NAMOnlineBrowserComponent : public juce::Component,
     Tone3000ResultsListModel listModel;
 
     // Search controls
-    std::unique_ptr<juce::Label> searchLabel;
     std::unique_ptr<juce::TextEditor> searchBox;
     std::unique_ptr<juce::TextButton> searchButton;
 
@@ -168,4 +167,3 @@ class NAMOnlineBrowserComponent : public juce::Component,
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMOnlineBrowserComponent)
 };
-

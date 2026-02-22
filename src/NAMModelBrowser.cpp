@@ -535,7 +535,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
     searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
-    searchBox->setIndents(24, 0); // Left indent for search icon
+    searchBox->setIndents(28, 0); // Left indent for search icon
     searchBox->setFont(FontManager::getInstance().getBodyFont());
     addAndMakeVisible(searchBox.get());
 
@@ -934,7 +934,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     if (currentTab == 0 || currentTab == 2)
     {
         auto searchBounds = searchBox->getBounds().toFloat();
-        float cr = searchBounds.getHeight() * 0.4f;
+        float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
 
         // Rounded background fill
         g.setColour(colours["Dialog Inner Background"]);
@@ -946,8 +946,8 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
 
         // Magnifying glass icon (circle + handle)
-        float iconSize = 12.0f;
-        float iconX = searchBounds.getX() + 8.0f;
+        float iconSize = 14.0f;
+        float iconX = searchBounds.getX() + 9.0f;
         float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
         float radius = iconSize * 0.35f;
 
@@ -1083,7 +1083,7 @@ void NAMModelBrowserComponent::resized()
         onlineBrowser->setVisible(false);
 
         // Search row with IR-specific browse button
-        auto searchRow = bounds.removeFromTop(28);
+        auto searchRow = bounds.removeFromTop(32);
         refreshButton->setBounds(searchRow.removeFromRight(70));
         refreshButton->setVisible(true);
         searchRow.removeFromRight(8);
@@ -1187,7 +1187,7 @@ void NAMModelBrowserComponent::resized()
     emptyStateLabel->setVisible(!hasModels);
 
     // Search and refresh row
-    auto searchRow = bounds.removeFromTop(28);
+    auto searchRow = bounds.removeFromTop(32);
     refreshButton->setBounds(searchRow.removeFromRight(70));
     searchRow.removeFromRight(8);
     browseFolderButton->setBounds(searchRow.removeFromRight(110));
@@ -1995,10 +1995,12 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Search box with improved styling
     searchBox = std::make_unique<TextEditor>("search");
     searchBox->setTextToShowWhenEmpty("Search IRs...", colours["Text Colour"].withAlpha(0.4f));
-    searchBox->setColour(TextEditor::backgroundColourId, colours["Background"]);
+    searchBox->setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
-    searchBox->setColour(TextEditor::outlineColourId, colours["Border Colour"]);
-    searchBox->setColour(TextEditor::focusedOutlineColourId, colours["Accent Colour"]);
+    searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
+    searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
+    searchBox->setIndents(28, 0); // Left indent for search icon
+    searchBox->setFont(FontManager::getInstance().getBodyFont());
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
@@ -2137,6 +2139,32 @@ void IRBrowserComponent::paint(Graphics& g)
     g.fillRect(statusArea);
     g.setColour(colours["Border Colour"]);
     g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - 30), 0, bounds.getWidth());
+
+    // Draw search box background with rounded pill shape
+    auto searchBounds = searchBox->getBounds().toFloat();
+    float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
+
+    // Rounded background fill
+    g.setColour(colours["Dialog Inner Background"]);
+    g.fillRoundedRectangle(searchBounds, cr);
+
+    // Border -- brighter when focused
+    bool focused = searchBox->hasKeyboardFocus(false);
+    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
+    g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
+
+    // Magnifying glass icon (circle + handle)
+    float iconSize = 14.0f;
+    float iconX = searchBounds.getX() + 9.0f;
+    float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+    float radius = iconSize * 0.35f;
+
+    g.setColour(colours["Text Colour"].withAlpha(0.45f));
+    g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
+    float handleStart = iconX + radius * 1.4f + radius;
+    float handleEnd = handleStart + radius * 0.9f;
+    float handleY = iconY + radius * 1.4f + radius;
+    g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
 }
 
 void IRBrowserComponent::resized()
@@ -2153,7 +2181,7 @@ void IRBrowserComponent::resized()
     bounds.removeFromTop(8);
 
     // Search/button row
-    auto searchRow = bounds.removeFromTop(28);
+    auto searchRow = bounds.removeFromTop(32);
     searchBox->setBounds(searchRow.removeFromLeft(180));
     searchRow.removeFromLeft(8);
     refreshButton->setBounds(searchRow.removeFromLeft(65));

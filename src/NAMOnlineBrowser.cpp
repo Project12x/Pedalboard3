@@ -244,10 +244,6 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     auto& colours = ColourScheme::getInstance().colours;
 
     // Search controls
-    searchLabel = std::make_unique<juce::Label>("searchLabel", "Search:");
-    searchLabel->setColour(juce::Label::textColourId, colours["Text Colour"]);
-    addAndMakeVisible(searchLabel.get());
-
     searchBox = std::make_unique<juce::TextEditor>("searchBox");
     searchBox->setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
     searchBox->setColour(juce::TextEditor::textColourId, colours["Text Colour"]);
@@ -255,7 +251,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     searchBox->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
     searchBox->setTextToShowWhenEmpty("Search TONE3000...", colours["Text Colour"].withAlpha(0.5f));
     searchBox->setFont(FontManager::getInstance().getBodyFont());
-    searchBox->setIndents(24, 0); // Left indent for magnifying glass icon
+    searchBox->setIndents(28, 0); // Left indent for magnifying glass icon
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
@@ -532,7 +528,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 
     // Draw search box background with rounded pill shape (matching local tab)
     auto searchBounds = searchBox->getBounds().toFloat();
-    float cr = searchBounds.getHeight() * 0.4f;
+    float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
 
     // Rounded background fill
     g.setColour(colours["Dialog Inner Background"]);
@@ -544,8 +540,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
 
     // Magnifying glass icon
-    float iconSize = 12.0f;
-    float iconX = searchBounds.getX() + 8.0f;
+    float iconSize = 14.0f;
+    float iconX = searchBounds.getX() + 9.0f;
     float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
     float radius = iconSize * 0.35f;
 
@@ -562,8 +558,7 @@ void NAMOnlineBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(8);
 
     // Search row
-    auto searchRow = bounds.removeFromTop(28);
-    searchLabel->setBounds(searchRow.removeFromLeft(50));
+    auto searchRow = bounds.removeFromTop(32);
     searchButton->setBounds(searchRow.removeFromRight(70));
     searchRow.removeFromRight(8);
     searchBox->setBounds(searchRow);
