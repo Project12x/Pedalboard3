@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **NAM Interface Premium Polish** — Complete visual rewrite of `NAMControl`. Theme-derived 16-colour palette from `ColourScheme` (replaces all hardcoded hex colours). Value arcs on rotary knobs with glow effect and tick marks. Inner-recessed knob rendering with metallic outer ring. LED pulse animation for model-loaded status. Section panels (Signal Chain / Gain / Tone) with inner shadow and accent dots. `FontManager` integration for all typography. Architecture badge label. Larger 64px knobs. Improved linear slider rendering with gradient-filled tracks and shadowed thumbs. Toggle buttons rendered as LED indicators with glow.
 - **NAM Compact Tone Panel** — Reduced overall editor height from 614 to 480px. Shrunk knobs 68->52px, labels 18->14px, row spacing 6->4px, gain section 115->100px, signal section 219->205px for a tighter, more proportional layout.
+- **Search Bar Redesign** — All 3 browser search bars (Local, Online, IR) now use a full pill capsule shape (corner radius = height/2), larger magnifying glass icon (14px), wider left indent (28px), and taller row (32px). Removed redundant "Search:" label from Online tab. IRBrowserComponent now custom-paints its search bar to match the other tabs.
 
 ### Fixed
 
