@@ -104,6 +104,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     ~NAMModelBrowserComponent() override;
 
     void paint(Graphics& g) override;
+    void paintOverChildren(Graphics& g) override;
     void resized() override;
     void buttonClicked(Button* button) override;
     void textEditorTextChanged(TextEditor& editor) override;
@@ -253,6 +254,7 @@ class IRBrowserComponent : public Component, public Button::Listener, public Tex
     ~IRBrowserComponent() override = default;
 
     void paint(Graphics& g) override;
+    void paintOverChildren(Graphics& g) override;
     void resized() override;
     void buttonClicked(Button* button) override;
     void textEditorTextChanged(TextEditor& editor) override;

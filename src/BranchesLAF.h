@@ -101,6 +101,9 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Fills in the TextEditor background.
     void fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& textEditor) override;
 
+    /// Draws the TextEditor outline with rounded corners.
+    void drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& textEditor) override;
+
     ///	Draws the callout box.
     void drawCallOutBoxBackground(CallOutBox& box, Graphics& g, const Path& path, Image& cachedImage) override;
 

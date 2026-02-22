@@ -614,9 +614,22 @@ void BranchesLAF::drawTickBox(Graphics& g, Component& component, float x, float 
 }
 
 //------------------------------------------------------------------------------
-void BranchesLAF::fillTextEditorBackground(Graphics& g, int /*width*/, int /*height*/, TextEditor& textEditor)
+void BranchesLAF::fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& /*textEditor*/)
 {
-    g.fillAll(::ColourScheme::getInstance().colours["Text Editor Colour"]);
+    auto bg = ::ColourScheme::getInstance().colours["Text Editor Colour"];
+    float cr = std::min(height * 0.5f, 14.0f);
+    g.setColour(bg);
+    g.fillRoundedRectangle(0.0f, 0.0f, (float)width, (float)height, cr);
+}
+
+//------------------------------------------------------------------------------
+void BranchesLAF::drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& textEditor)
+{
+    auto& colours = ::ColourScheme::getInstance().colours;
+    float cr = std::min(height * 0.5f, 14.0f);
+    bool focused = textEditor.hasKeyboardFocus(true);
+    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.15f));
+    g.drawRoundedRectangle(0.5f, 0.5f, (float)width - 1.0f, (float)height - 1.0f, cr, 1.0f);
 }
 
 //------------------------------------------------------------------------------

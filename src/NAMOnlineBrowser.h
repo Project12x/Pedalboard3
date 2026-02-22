@@ -16,7 +16,6 @@
 #include <functional>
 #include <vector>
 
-
 class NAMProcessor;
 
 //==============================================================================
@@ -69,6 +68,7 @@ class NAMOnlineBrowserComponent : public juce::Component,
     ~NAMOnlineBrowserComponent() override;
 
     void paint(juce::Graphics& g) override;
+    void paintOverChildren(juce::Graphics& g) override;
     void resized() override;
 
     // Button::Listener

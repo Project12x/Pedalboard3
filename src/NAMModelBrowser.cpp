@@ -930,36 +930,6 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.strokePath(detailsPath, PathStrokeType(1.0f));
     }
 
-    // Draw search box background with rounded corners and icon
-    if (currentTab == 0 || currentTab == 2)
-    {
-        auto searchBounds = searchBox->getBounds().toFloat();
-        float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
-
-        // Rounded background fill
-        g.setColour(colours["Dialog Inner Background"]);
-        g.fillRoundedRectangle(searchBounds, cr);
-
-        // Border — brighter when focused
-        bool focused = searchBox->hasKeyboardFocus(false);
-        g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
-        g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
-
-        // Magnifying glass icon (circle + handle)
-        float iconSize = 14.0f;
-        float iconX = searchBounds.getX() + 9.0f;
-        float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
-        float radius = iconSize * 0.35f;
-
-        g.setColour(colours["Text Colour"].withAlpha(0.45f));
-        g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
-        // Handle line
-        float handleStart = iconX + radius * 1.4f + radius;
-        float handleEnd = handleStart + radius * 0.9f;
-        float handleY = iconY + radius * 1.4f + radius;
-        g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
-    }
-
     // Draw section separators in details panel
     if ((currentTab == 0 || currentTab == 2) && !detailsSeparatorPositions.empty())
     {
@@ -988,6 +958,28 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         float hx = cx + r * 0.7f;
         float hy = iconTop + r * 2.0f - r * 0.3f;
         g.drawLine(hx, hy, hx + r * 0.8f, hy + r * 0.8f, 2.0f);
+    }
+}
+
+void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
+{
+    // Draw magnifying glass icon over the search TextEditor
+    if (currentTab == 0 || currentTab == 2)
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto searchBounds = searchBox->getBounds().toFloat();
+
+        float iconSize = 14.0f;
+        float iconX = searchBounds.getX() + 9.0f;
+        float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+        float radius = iconSize * 0.35f;
+
+        g.setColour(colours["Text Colour"].withAlpha(0.45f));
+        g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
+        float handleStart = iconX + radius * 1.4f + radius;
+        float handleEnd = handleStart + radius * 0.9f;
+        float handleY = iconY + radius * 1.4f + radius;
+        g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
     }
 }
 
@@ -2139,21 +2131,14 @@ void IRBrowserComponent::paint(Graphics& g)
     g.fillRect(statusArea);
     g.setColour(colours["Border Colour"]);
     g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - 30), 0, bounds.getWidth());
+}
 
-    // Draw search box background with rounded pill shape
+void IRBrowserComponent::paintOverChildren(Graphics& g)
+{
+    // Draw magnifying glass icon over the search TextEditor
+    auto& colours = ColourScheme::getInstance().colours;
     auto searchBounds = searchBox->getBounds().toFloat();
-    float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
 
-    // Rounded background fill
-    g.setColour(colours["Dialog Inner Background"]);
-    g.fillRoundedRectangle(searchBounds, cr);
-
-    // Border -- brighter when focused
-    bool focused = searchBox->hasKeyboardFocus(false);
-    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
-    g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
-
-    // Magnifying glass icon (circle + handle)
     float iconSize = 14.0f;
     float iconX = searchBounds.getX() + 9.0f;
     float iconY = searchBounds.getCentreY() - iconSize * 0.4f;

@@ -1,0 +1,603 @@
+﻿MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  Pedalboard3Scanner_rc_lib.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3Scanner_rc_lib.dir\Release\Pedalboard3Scanner_rc_lib.lib
+  Pedalboard3_rc_lib.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3_rc_lib.dir\Release\Pedalboard3_rc_lib.lib
+  Catch2.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\_deps\catch2-build\src\Release\Catch2.lib
+  Catch2WithMain.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\_deps\catch2-build\src\Release\Catch2Main.lib
+  BinaryData1.cpp
+  BinaryData2.cpp
+  BinaryData3.cpp
+  BinaryData4.cpp
+  BinaryData5.cpp
+  BinaryData6.cpp
+  BinaryData7.cpp
+  Generating Code...
+  Pedalboard3_fonts.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Release\Pedalboard3_fonts.lib
+  fmt.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\_deps\fmt-build\Release\fmt.lib
+  md4c.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\_deps\md4c-build\src\Release\md4c.lib
+  spdlog.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\_deps\spdlog-build\Release\spdlog.lib
+  App.cpp
+  MainPanel.cpp
+  FilterGraph.cpp
+  UndoActions.cpp
+  AudioSingletons.cpp
+  BypassableInstance.cpp
+  InternalFilters.cpp
+  PluginPoolManager.cpp
+  PluginComponent.cpp
+  PluginConnection.cpp
+  PluginField.cpp
+  PluginFieldPersistence.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AudioSingletons.cpp(53,15): warning C4996: 'juce::AudioPluginFormatManager::addFormat': Prefer the signature that accepts a unique_ptr [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ApplicationMappingsEditor.h(457,27): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/MainPanel.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginFieldPersistence.cpp(163,13): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginFieldPersistence.cpp(288,13): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginField.cpp(189,45): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginField.cpp(198,44): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilterGraph.cpp(773,5): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilterGraph.cpp(769,26): warning C4189: 'instance': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilterGraph.cpp(901,5): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilterGraph.cpp(909,5): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\App.cpp(65,37): warning C4101: 'ex': unreferenced local variable [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\App.cpp(164,58): warning C4996: 'juce::AudioPluginFormatManager::addFormat': Prefer the signature that accepts a unique_ptr [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\App.cpp(165,58): warning C4996: 'juce::AudioPluginFormatManager::addFormat': Prefer the signature that accepts a unique_ptr [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\App.cpp(347,13): warning C4996: 'juce::XmlElement::writeToFile': This has been deprecated in favour of the writeTo method. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\UserPresetWindow.h(159,18): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/MainPanel.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.cpp(86,18): warning C4996: 'juce::AudioProcessor::getInputChannelName': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.cpp(93,18): warning C4996: 'juce::AudioProcessor::getOutputChannelName': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(194,17): warning C4996: 'juce::MidiBuffer::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(194,28): warning C4996: 'juce::MidiBuffer::Iterator::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(216,19): warning C4996: 'juce::MidiBuffer::Iterator::getNextEvent': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.cpp(498,23): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.cpp(750,18): warning C4458: declaration of 'pluginName' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.h(165,12):
+      see declaration of 'PluginComponent::pluginName'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(440,19): warning C4996: 'juce::AudioDeviceManager::addMidiInputCallback': Use addMidiInputDeviceCallback instead. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(612,19): warning C4996: 'juce::AudioDeviceManager::removeMidiInputCallback': Use removeMidiInputDeviceCallback instead. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(786,17): warning C4456: declaration of 'x' hides previous local declaration [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(733,9):
+      see declaration of 'x'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(810,17): warning C4456: declaration of 'x' hides previous local declaration [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(733,9):
+      see declaration of 'x'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(957,28): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginComponent.cpp(1243,39): warning C4996: 'juce::Font::getStringWidthFloat': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(1342,28): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(1345,28): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(1630,62): warning C4458: declaration of 'manager' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\menus\juce_MenuBarModel.h(194,32):
+      see declaration of 'juce::MenuBarModel::manager'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(1810,58): warning C4996: 'juce::AudioProcessor::getNumParameters': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(1812,40): warning C4996: 'juce::AudioProcessor::setParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(2153,13): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(2182,28): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MainPanel.cpp(2218,11): warning C4996: 'juce::XmlElement::writeToFile': This has been deprecated in favour of the writeTo method. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  LevelProcessor.cpp
+  FilePlayerProcessor.cpp
+  OutputToggleProcessor.cpp
+  VuMeterProcessor.cpp
+  RecorderProcessor.cpp
+  MetronomeProcessor.cpp
+  LooperProcessor.cpp
+  LevelEditors.cpp
+  FilePlayerEditor.cpp
+  OutputToggleEditors.cpp
+  VuMeterEditors.cpp
+  AudioRecorderEditor.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LevelEditors.cpp(60,47): warning C4458: declaration of 'slider' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PedalboardProcessorEditors.h(60,10):
+      see declaration of 'LevelControl::slider'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LevelEditors.cpp(75,33): warning C4996: 'juce::AudioProcessor::getParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LevelEditors.cpp(134,43): warning C4996: 'juce::AudioProcessor::getParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LevelEditors.cpp(152,46): warning C4458: declaration of 'slider' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PedalboardProcessorEditors.h(89,10):
+      see declaration of 'LevelEditor::slider'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LevelEditors.cpp(154,26): warning C4996: 'juce::AudioProcessor::setParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  MetronomeEditor.cpp
+  SafetyLimiter.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeProcessor.cpp(237,36): warning C4458: declaration of 'playHead' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_audio_processors_headless\processors\juce_AudioProcessor.h(1491,33):
+      see declaration of 'juce::AudioProcessor::playHead'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeProcessor.cpp(241,40): warning C4996: 'juce::AudioPlayHead::getCurrentPosition': Use getPosition instead. Not all hosts are able to provide all time position information; getPosition differentiates clearly between set and unset fields. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  DeviceMeterTap.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperProcessor.cpp(213,28): warning C4996: 'juce::AudioFormat::createWriterFor': Use the function taking an AudioFormatWriterOptions instead. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperProcessor.cpp(292,31): warning C4458: declaration of 'tempBuffer' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PedalboardProcessors.h(969,11):
+      see declaration of 'LooperProcessor::tempBuffer'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperProcessor.cpp(421,36): warning C4458: declaration of 'playHead' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_audio_processors_headless\processors\juce_AudioProcessor.h(1491,33):
+      see declaration of 'juce::AudioProcessor::playHead'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperProcessor.cpp(435,40): warning C4996: 'juce::AudioPlayHead::getCurrentPosition': Use getPosition instead. Not all hosts are able to provide all time position information; getPosition differentiates clearly between set and unset fields. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\OutputToggleEditors.cpp(60,19): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\OutputToggleEditors.cpp(125,19): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\OutputToggleEditors.cpp(145,26): warning C4996: 'juce::AudioProcessor::setParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\RecorderProcessor.cpp(97,28): warning C4996: 'juce::AudioFormat::createWriterFor': Use the function taking an AudioFormatWriterOptions instead. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  CrossfadeMixer.cpp
+  TunerProcessor.cpp
+  TunerControl.cpp
+  OscilloscopeProcessor.cpp
+  OscilloscopeControl.cpp
+  ToneGeneratorProcessor.cpp
+  ToneGeneratorControl.cpp
+  StageView.cpp
+  RoutingProcessors.cpp
+  DawMixerProcessor.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\TunerControl.cpp(358,11): warning C4189: 'fonts': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  DawSplitterProcessor.cpp
+  IRLoaderProcessor.cpp
+  IRLoaderControl.cpp
+  MidiUtilityProcessors.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\StageView.cpp(106,72): warning C4458: declaration of 'nextPatchName' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\StageView.h(60,12):
+      see declaration of 'StageView::nextPatchName'
+  
+  MidiUtilityControls.cpp
+  VirtualMidiInputProcessor.cpp
+  NAMProcessor.cpp
+  NAMControl.cpp
+  NAMConvolver.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawSplitterProcessor.cpp(407,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawSplitterProcessor.cpp(513,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawSplitterProcessor.cpp(552,32): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  NAMCore.cpp
+  NAMModelBrowser.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawMixerProcessor.cpp(445,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawMixerProcessor.cpp(583,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\DawMixerProcessor.cpp(630,32): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\IRLoaderControl.cpp(193,29): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\IRLoaderControl.cpp(209,27): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\IRLoaderControl.cpp(225,30): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\IRLoaderControl.cpp(241,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\IRLoaderControl.cpp(300,19): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  NAMOnlineBrowser.cpp
+  Tone3000Client.cpp
+  Tone3000Auth.cpp
+  Tone3000DownloadManager.cpp
+  activations.cpp
+  convnet.cpp
+  get_dsp.cpp
+  lstm.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(214,39): warning C4505: 'WDL_TICKS_IN_RANGE': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(221,39): warning C4505: 'WDL_TICKS_IN_RANGE_ENDING_AT': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(255,65): warning C4505: 'wdl_log': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(321,35): warning C4505: 'wdl_mem_store_int': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(326,35): warning C4505: 'wdl_mem_store_int_le': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(331,35): warning C4505: 'wdl_mem_store_int_be': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(336,34): warning C4505: 'wdl_mem_load_int': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(343,34): warning C4505: 'wdl_mem_load_int_le': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\AudioDSPTools\dsp\ResamplingContainer\Dependencies\WDL\wdltypes.h(350,34): warning C4505: 'wdl_mem_load_int_be': unreferenced function with internal linkage has been removed [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/NAMCore.cpp')
+  
+  util.cpp
+  wavenet.cpp
+  ImpulseResponse.cpp
+  NoiseGate.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.cpp(50,58): warning C4458: declaration of 'batchnorm' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.h(50,13):
+      see declaration of 'nam::convnet::ConvNetBlock::batchnorm'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.cpp(50,87): warning C4458: declaration of 'activation' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.h(52,28):
+      see declaration of 'nam::convnet::ConvNetBlock::activation'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.cpp(149,71): warning C4389: '!=': signed/unsigned mismatch [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\convnet.cpp(158,40): warning C4389: '==': signed/unsigned mismatch [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  RecursiveLinearFilter.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NAMModelBrowser.cpp(195,76): warning C4996: 'juce::Font::getStringWidthFloat': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NAMModelBrowser.cpp(442,15): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NAMModelBrowser.cpp(471,15): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NAMModelBrowser.cpp(2219,14): warning C4458: declaration of 'flags' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\components\juce_Component.h(2709,24):
+      see declaration of 'juce::Component::flags'
+  
+  wav.cpp
+  ToneStack.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NAMOnlineBrowser.cpp(123,57): warning C4996: 'juce::Font::getStringWidthFloat': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  NotesProcessor.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\Tone3000Auth.cpp(536,42): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  NotesControl.cpp
+  MarkdownTokeniser.cpp
+  LabelProcessor.cpp
+  LabelControl.cpp
+  MidiFilePlayer.cpp
+  MidiFilePlayerControl.cpp
+  SubGraphProcessor.cpp
+  SubGraphFilterGraph.cpp
+  SubGraphEditorComponent.cpp
+  MasterGainState.cpp
+  MasterBusProcessor.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NotesControl.cpp(165,5): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  MidiMappingManager.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LabelControl.cpp(19,1): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LabelControl.cpp(76,35): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MidiFilePlayerControl.cpp(194,73): warning C4458: declaration of 'fileChooser' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MidiFilePlayerControl.h(60,40):
+      see declaration of 'MidiFilePlayerControl::fileChooser'
+  
+  MidiAppFifo.cpp
+  MidiCcAlertWindow.cpp
+  Mapping.cpp
+  MappingSlider.cpp
+  MappingEntryMidi.cpp
+  OscMappingManager.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\SubGraphEditorComponent.cpp(95,45): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\SubGraphEditorComponent.cpp(103,44): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  MappingEntryOsc.cpp
+  OSCBundle.cpp
+  OSCMessage.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MidiMappingManager.cpp(584,17): warning C4996: 'juce::MidiBuffer::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MidiMappingManager.cpp(584,28): warning C4996: 'juce::MidiBuffer::Iterator::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MidiMappingManager.cpp(596,19): warning C4996: 'juce::MidiBuffer::Iterator::getNextEvent': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  OSCTimeTag.cpp
+  UDPSocket.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.cpp(192,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.cpp(215,14): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.cpp(216,15): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.cpp(375,44): warning C4458: declaration of 'index' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.h(80,6):
+      see declaration of 'MappingEntryMidi::index'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryMidi.cpp(377,17): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  MappingsDialog.cpp
+  PreferencesDialog.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.cpp(38,18): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.cpp(1403,23): warning C4127: conditional expression is constant [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.cpp(1403,23):
+      consider using 'if constexpr' statement instead
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.cpp(1533,85): warning C4458: declaration of 'style' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.h(848,24):
+      see declaration of 'MappingSlider::style'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.cpp(1673,90): warning C4458: declaration of 'style' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingSlider.h(848,24):
+      see declaration of 'MappingSlider::style'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\Mapping.cpp(68,13): warning C4996: 'juce::AudioProcessor::setParameter': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.cpp(81,47): warning C4458: declaration of 'address' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.h(90,14):
+      see declaration of 'UDPSocket::address'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.cpp(87,49): warning C4458: declaration of 'address' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.h(90,14):
+      see declaration of 'UDPSocket::address'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.cpp(93,39): warning C4458: declaration of 'port' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.h(94,10):
+      see declaration of 'UDPSocket::port'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.cpp(303,21): warning C4458: declaration of 'instance' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsSocketLib\UDPSocket.h(137,22):
+      see declaration of 'SocketSetup::instance'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsOSCLib\OSCTimeTag.cpp(103,38): warning C4458: declaration of 'seconds' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsOSCLib\OSCTimeTag.h(94,11):
+      see declaration of 'OSC::TimeTag::seconds'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsOSCLib\OSCTimeTag.cpp(103,62): warning C4458: declaration of 'fraction' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\NiallsOSCLib\OSCTimeTag.h(96,11):
+      see declaration of 'OSC::TimeTag::fraction'
+  
+  ApplicationMappingsEditor.cpp
+  ColourScheme.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryOsc.cpp(52,33): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryOsc.cpp(67,34): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryOsc.cpp(285,43): warning C4458: declaration of 'index' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryOsc.h(85,6):
+      see declaration of 'MappingEntryOsc::index'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingEntryOsc.cpp(287,17): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  ColourSchemeEditor.cpp
+  BranchesLAF.cpp
+  PatchOrganiser.cpp
+  PresetBar.cpp
+  PresetManager.cpp
+  UserPresetWindow.cpp
+  FilePlayerControl.cpp
+  AudioRecorderControl.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(75,36): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(94,29): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(103,33): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(152,23): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(368,45): warning C4996: 'juce::AudioProcessor::getNumParameters': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(371,54): warning C4996: 'juce::AudioProcessor::getParameterName': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(384,45): warning C4996: 'juce::AudioProcessor::getNumParameters': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(387,54): warning C4996: 'juce::AudioProcessor::getParameterName': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MappingsDialog.cpp(418,42): warning C4996: 'juce::AudioProcessor::getNumParameters': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ApplicationMappingsEditor.h(457,27): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/ApplicationMappingsEditor.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(100,23): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(105,22): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(110,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(121,27): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(126,24): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(161,22): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(204,23): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(205,22): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(206,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(208,30): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(209,25): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(211,27): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(212,24): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(213,25): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(214,27): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(216,22): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(218,29): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(226,24): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(228,28): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(231,28): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PreferencesDialog.cpp(448,32): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourScheme.cpp(49,16): warning C4458: declaration of 'presetName' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourScheme.h(33,12):
+      see declaration of 'ColourScheme::presetName'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourScheme.cpp(76,17): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourScheme.cpp(123,13): warning C4996: 'juce::XmlElement::writeToFile': This has been deprecated in favour of the writeTo method. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourScheme.cpp(145,17): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(45,26): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(79,26): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(135,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(212,28): warning C4996: 'juce::roundFloatToInt': Use roundToInt instead. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(239,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(279,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(306,26): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(329,57): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(335,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(371,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(423,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(479,26): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(565,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(628,11): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(660,26): warning C4458: declaration of 'colours' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\JUCE\modules\juce_gui_basics\lookandfeel\juce_LookAndFeel.h(292,30):
+      see declaration of 'juce::LookAndFeel::colours'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilePlayerControl.cpp(112,14): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilePlayerControl.cpp(114,14): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilePlayerControl.cpp(262,15): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\FilePlayerControl.cpp(263,15): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PresetBar.cpp(227,30): warning C4996: 'juce::ComboBox::setText': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PresetBar.cpp(246,26): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PresetBar.cpp(261,22): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ColourSchemeEditor.cpp(108,29): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(117,63): warning C4996: 'juce::ListBox::getModel': The name of this function is ambiguous if derived classes supply their own models, use getListBoxModel instead [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(200,20): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(269,24): warning C4996: 'juce::ComboBox::setSelectedId': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(311,40): warning C4996: 'juce::ComboBox::setSelectedItemIndex': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(316,40): warning C4996: 'juce::ComboBox::setSelectedItemIndex': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(327,28): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(368,24): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(414,24): warning C4996: 'juce::ComboBox::clear': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(445,17): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PatchOrganiser.cpp(461,21): warning C4996: 'juce::XmlElement::macroBasedForLoop': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  MetronomeControl.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\UserPresetWindow.h(159,18): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  (compiling source file '../src/UserPresetWindow.cpp')
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\UserPresetWindow.cpp(211,33): warning C4996: 'juce::KnownPluginList::getType': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  LooperControl.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AudioRecorderControl.cpp(83,14): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AudioRecorderControl.cpp(202,15): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BranchesLAF.cpp(710,1): warning C4701: potentially uninitialized local variable 'colour' used [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  LooperEditor.cpp
+  WaveformDisplay.cpp
+  SettingsManager.cpp
+  PluginBlacklist.cpp
+  BlacklistWindow.cpp
+  CrashProtection.cpp
+  PluginScannerClient.cpp
+  SafePluginScanner.cpp
+  JuceHelperStuff.cpp
+  LogDisplay.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(76,33): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(106,33): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(119,34): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(177,17): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(178,25): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(179,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(486,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperEditor.cpp(487,29): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperControl.cpp(116,17): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperControl.cpp(117,25): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperControl.cpp(325,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LooperControl.cpp(326,29): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BlacklistWindow.cpp(70,29): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BlacklistWindow.cpp(77,28): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeControl.cpp(55,30): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeControl.cpp(66,29): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeControl.cpp(214,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\MetronomeControl.cpp(317,21): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LogDisplay.cpp(55,17): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LogDisplay.cpp(60,16): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LogDisplay.cpp(65,23): warning C4996: 'juce::Button::setToggleState': This method's parameters have changed. [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\LogDisplay.cpp(68,30): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginScannerClient.cpp(19,13): warning C4005: 'NOMINMAX': macro redefinition [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\PluginScannerClient.cpp(19,13):
+      'NOMINMAX' previously declared on the command line
+  
+  LogFile.cpp
+  TapTempoBox.cpp
+  TapTempoHelper.cpp
+  TrayIcon.cpp
+  MainTransport.cpp
+  AboutPage.cpp
+  Images.cpp
+  Vectors.cpp
+  LookAndFeelImages.cpp
+  FontManager.cpp
+  ToastOverlay.cpp
+  IconManager.cpp
+  juce_audio_basics.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_audio_devices.cpp
+  juce_events.cpp
+  juce_audio_formats.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(39,29): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(49,35): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(59,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(69,30): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(85,31): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(93,35): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AboutPage.cpp(101,33): warning C4996: 'juce::Font::Font': Use the constructor that takes a FontOptions argument [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\ToastOverlay.cpp(62,26): warning C4996: 'juce::Font::getStringWidth': Use GlyphArrangement or TextLayout to compute text layouts [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_utils.cpp
+  juce_cryptography.cpp
+  juce_dsp.cpp
+  juce_opengl.cpp
+  melatonin_blur.cpp
+  dsp.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.cpp(163,10): warning C4457: declaration of 'input' hides function parameter [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.cpp(155,39):
+      see declaration of 'input'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.cpp(187,39): warning C4458: declaration of '_dilation' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.h(148,7):
+      see declaration of 'nam::Conv1D::_dilation'
+  
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.cpp(201,51): warning C4458: declaration of '_dilation' hides class member [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3.vcxproj]
+      C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\external\NeuralAmpModelerCore\NAM\dsp.h(148,7):
+      see declaration of 'nam::Conv1D::_dilation'
+  
+  dsp.cpp
+  juce_graphics_Sheenbidi.c
+  Pedalboard3.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3_artefacts\Release\Pedalboard3.exe
+  PluginScannerMain.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_graphics_Sheenbidi.c
+  Pedalboard3Scanner.vcxproj -> C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\Pedalboard3Scanner_artefacts\Release\Pedalboard3Scanner.exe
+  smoke_test.cpp
+  tone_generator_test.cpp
+  plugin_pool_manager_test.cpp
+  subgraph_test.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\subgraph_test.cpp(568,13): warning C4189: 'mutatedDst': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  integration_test.cpp
+  audio_component_test.cpp
+  filtergraph_test.cpp
+  protection_test.cpp
+  audio_thread_stress_test.cpp
+  nam_processor_test.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\nam_processor_test.cpp(528,15): warning C4189: 'correctLinear': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\nam_processor_test.cpp(960,15): warning C4189: 'displayBoundary': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  patch_switch_test.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\patch_switch_test.cpp(352,30): warning C4189: 'node': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\patch_switch_test.cpp(486,30): warning C4189: 'node': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  vst3_loading_test.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\vst3_loading_test.cpp(282,15): warning C4189: 'bypassablePtr': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  midi_mapping_test.cpp
+  mixer_splitter_test.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(223,19): warning C4189: 'ns': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(258,19): warning C4189: 'numSamples': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(476,19): warning C4189: 'numSamples': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(477,19): warning C4189: 'ns': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(708,17): warning C4189: 'inL': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\tests\mixer_splitter_test.cpp(719,17): warning C4189: 'inL': local variable is initialized but not referenced [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  master_bus_test.cpp
+  font_manager_test.cpp
+  PluginPoolManager.cpp
+  MidiAppFifo.cpp
+  AudioSingletons.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\AudioSingletons.cpp(53,15): warning C4996: 'juce::AudioPluginFormatManager::addFormat': Prefer the signature that accepts a unique_ptr [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  BypassableInstance.cpp
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(194,17): warning C4996: 'juce::MidiBuffer::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(194,28): warning C4996: 'juce::MidiBuffer::Iterator::Iterator': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\src\BypassableInstance.cpp(216,19): warning C4996: 'juce::MidiBuffer::Iterator::getNextEvent': was declared deprecated [C:\Users\estee\Desktop\My Stuff\Code\Antigravity\Pedalboard2\build\tests\Pedalboard3_Tests.vcxproj]
+  Generating Code...
+  Compiling...
+  FontManager.cpp
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp

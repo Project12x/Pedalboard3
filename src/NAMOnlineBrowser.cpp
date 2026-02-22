@@ -525,21 +525,14 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         g.drawText("Select a model", detailsBounds.withHeight(detailsBounds.getHeight()), juce::Justification::centred,
                    true);
     }
+}
 
-    // Draw search box background with rounded pill shape (matching local tab)
+void NAMOnlineBrowserComponent::paintOverChildren(juce::Graphics& g)
+{
+    // Draw magnifying glass icon over the search TextEditor
+    auto& colours = ColourScheme::getInstance().colours;
     auto searchBounds = searchBox->getBounds().toFloat();
-    float cr = searchBounds.getHeight() * 0.5f; // Full pill capsule
 
-    // Rounded background fill
-    g.setColour(colours["Dialog Inner Background"]);
-    g.fillRoundedRectangle(searchBounds, cr);
-
-    // Border -- brighter when focused
-    bool focused = searchBox->hasKeyboardFocus(false);
-    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.2f));
-    g.drawRoundedRectangle(searchBounds.reduced(0.5f), cr, 1.0f);
-
-    // Magnifying glass icon
     float iconSize = 14.0f;
     float iconX = searchBounds.getX() + 9.0f;
     float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
