@@ -32,6 +32,7 @@
 #include "NiallsOSCLib/OSCMessage.h"
 #include "PedalboardProcessors.h"
 #include "PluginComponent.h"
+#include "PluginSearchOverlay.h"
 #include "SettingsManager.h"
 #include "VirtualMidiInputProcessor.h"
 
@@ -108,6 +109,49 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
     setWantsKeyboardFocus(true);
 
+    // Create the plugin search overlay
+    searchOverlay = std::make_unique<PluginSearchOverlay>(*pluginList);
+    searchOverlay->onPluginSelected = [this](int typeIndex)
+    {
+        // typeIndex is 1-based to match PopupMenu convention
+        auto types = pluginList->getTypes();
+
+        // Add Effect Rack if available
+        InternalPluginFormat internalFormat;
+        if (auto* subGraphDesc = internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter))
+            types.add(*subGraphDesc);
+
+        int idx = typeIndex - 1;
+        if (idx >= 0 && idx < types.size())
+        {
+            int pluginIndex = signalPath->getNumFilters() - 1;
+            PluginDescription pluginType = types.getReference(idx);
+
+            auto pos = searchOverlay->getBounds().getCentre();
+            signalPath->addFilter(&pluginType, (double)pos.x, (double)pos.y);
+
+            if ((signalPath->getNumFilters() - 1) > pluginIndex)
+            {
+                pluginIndex = signalPath->getNumFilters() - 1;
+                addFilter(pluginIndex);
+                sendChangeMessage();
+                clearDoubleClickMessage();
+
+                // Update recent plugins list
+                auto& settings = SettingsManager::getInstance();
+                StringArray recentPlugins = settings.getStringArray("RecentPlugins");
+                String pluginId = pluginType.createIdentifierString();
+                recentPlugins.removeString(pluginId);
+                recentPlugins.insert(0, pluginId);
+                while (recentPlugins.size() > 8)
+                    recentPlugins.remove(recentPlugins.size() - 1);
+                settings.setStringArray("RecentPlugins", recentPlugins);
+            }
+        }
+    };
+    addAndMakeVisible(*searchOverlay);
+    searchOverlay->setVisible(false);
+
     startTimer(50);
 }
 
@@ -133,6 +177,9 @@ PluginField::~PluginField()
     for (it = mappings.begin(); it != mappings.end(); ++it)
         delete it->second;
 
+    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
+    if (searchOverlay)
+        removeChildComponent(searchOverlay.get());
     deleteAllChildren();
 }
 
@@ -322,47 +369,18 @@ void PluginField::mouseDown(const MouseEvent& e)
 
         result = menu.show();
 
-        // Handle search action
+        // Handle search action — show the floating search overlay
+        // Defer with callAsync so the PopupMenu modal loop fully unwinds first
         if (result == SEARCH_ITEM_ID)
         {
-            // Show search dialog
-            AlertWindow searchDialog("Search Plugins", "Type to filter:", AlertWindow::NoIcon);
-            searchDialog.addTextEditor("search", "", "Plugin name:");
-            searchDialog.addButton("Cancel", 0);
-            searchDialog.addButton("OK", 1);
-
-            if (searchDialog.runModalLoop() == 1)
-            {
-                String searchText = searchDialog.getTextEditor("search")->getText().toLowerCase();
-                if (searchText.isNotEmpty())
+            auto clickPos = e.getPosition();
+            MessageManager::callAsync(
+                [this, clickPos]()
                 {
-                    // Build filtered menu
-                    PopupMenu searchResults;
-                    for (int i = 0; i < types.size(); ++i)
-                    {
-                        const auto& type = types.getReference(i);
-                        if (type.name.toLowerCase().contains(searchText))
-                        {
-                            searchResults.addItem(i + 1, type.name);
-                        }
-                    }
-
-                    if (searchResults.getNumItems() > 0)
-                    {
-                        result = searchResults.show();
-                    }
-                    else
-                    {
-                        AlertWindow::showMessageBox(AlertWindow::InfoIcon, "No Results",
-                                                    "No plugins found matching \"" + searchText + "\"");
-                        result = 0;
-                    }
-                }
-            }
-            else
-            {
-                result = 0;
-            }
+                    if (searchOverlay)
+                        searchOverlay->show(clickPos, getLocalBounds());
+                });
+            return;
         }
 
         // Handle "Edit Favorites" toggle

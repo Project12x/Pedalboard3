@@ -22,11 +22,11 @@
 #include "Mapping.h"
 #include "PluginComponent.h"
 #include "PluginField.h"
+#include "PluginSearchOverlay.h"
 
 #include <set>
 #include <spdlog/spdlog.h>
 #include <tuple>
-
 
 using namespace std;
 
@@ -122,7 +122,12 @@ void PluginField::loadFromXml(XmlElement* patch)
             }
         }
     }
+    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
+    if (searchOverlay)
+        removeChildComponent(searchOverlay.get());
     deleteAllChildren();
+    if (searchOverlay)
+        addChildComponent(searchOverlay.get());
     repaint();
 
     // Wipe userNames.
@@ -479,7 +484,12 @@ void PluginField::clear()
             }
         }
     }
+    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
+    if (searchOverlay)
+        removeChildComponent(searchOverlay.get());
     deleteAllChildren();
+    if (searchOverlay)
+        addChildComponent(searchOverlay.get());
     repaint();
 
     // Wipe userNames.

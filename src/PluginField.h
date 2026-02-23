@@ -25,11 +25,13 @@
 
 #include <JuceHeader.h>
 #include <map>
+#include <memory>
 
 class Mapping;
 class FilterGraph;
 class PluginConnection;
 class PluginPinComponent;
+class PluginSearchOverlay;
 
 namespace OSC
 {
@@ -232,6 +234,9 @@ class PluginField : public Component,
     static constexpr float minZoom = 0.25f;
     ///	Maximum zoom level.
     static constexpr float maxZoom = 3.0f;
+
+    ///	Floating search overlay for plugin selection.
+    std::unique_ptr<PluginSearchOverlay> searchOverlay;
 
   public:
     ///	Fits all nodes to the visible viewport.

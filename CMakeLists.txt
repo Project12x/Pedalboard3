@@ -179,6 +179,8 @@ target_sources(Pedalboard3 PRIVATE
     src/PluginField.cpp
     src/PluginFieldPersistence.cpp
     src/PluginField.h
+    src/PluginSearchOverlay.cpp
+    src/PluginSearchOverlay.h
     
     # Internal Processors
     src/LevelProcessor.cpp
