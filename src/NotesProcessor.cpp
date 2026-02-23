@@ -23,7 +23,7 @@ void NotesProcessor::fillInPluginDescription(PluginDescription& description) con
     description.descriptiveName = "Displays text notes on the canvas.";
     description.pluginFormatName = "Internal";
     description.category = "Pedalboard";
-    description.manufacturerName = "Antigravity";
+    description.manufacturerName = "Eric Steenwerth";
     description.version = "1.0.0";
     description.uniqueId = description.name.hashCode();
     description.isInstrument = false;

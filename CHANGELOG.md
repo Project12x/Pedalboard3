@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **NAM Dual IR + Blend** — NAM processor now supports loading a second impulse response (IR2) with equal-power crossfade blending. Added `loadIR2()`, `clearIR2()`, `setIRBlend()` to `NAMProcessor`. NAMControl UI extended with IR2 load/clear buttons, name label, and blend slider. State serialization upgraded to v5 with backward compatibility. Editor height increased from 550 to 614 to accommodate new controls.
 - **NAM IR2 Enable Toggle** — Added LED-style toggle button for IR2 slot, mirroring the IR1 toggle. When disabled, `convolver2` processing is skipped entirely. State serialized as v6 with backward compatibility (defaults to enabled).
 - **Smooth Node Drag Animation** — Nodes now glide toward the cursor using 60fps Timer-based position interpolation (lerp factor 0.35) instead of snapping. Subtle transparency (0.88 alpha) during drag for visual feedback. Sub-pixel snapping prevents perpetual micro-animation.
+- **Plugin Search Overlay** — New `PluginSearchOverlay` component accessible via "Search..." in the double-click context menu. Features fuzzy search with scored ranking, category tabs (All/Effects/Instruments/Internal), keyboard navigation (arrows/Enter/Escape), click-outside-to-dismiss, format badges (VST3/Internal), and dark glassmorphic UI.
 
 ### Changed
 
@@ -28,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **Button Colour Override Ignored** — `BranchesLAF::drawButtonBackground` and `NAMLookAndFeel::drawButtonBackground` both hardcoded the button fill colour, ignoring the `backgroundColour` parameter passed by JUCE. Per-button `setColour(buttonColourId, ...)` calls had no effect. Both now respect the parameter, falling back to theme default only when no custom colour is set. Delete Model button now uses a 55% blend of Danger Colour into Button Colour for a visible red accent.
+- **Search Overlay Crash on Open** — `deleteAllChildren()` in `PluginFieldPersistence::loadFromXml()` and `clear()` destroyed the `searchOverlay` Component owned by a `unique_ptr`, leaving a dangling pointer. Calling `show()` then crashed in `setBounds()` on freed memory. Fixed by detaching `searchOverlay` from the child list before `deleteAllChildren()` in all three call sites.
 - **NAM Header Clipping** — NAM control component was positioned 1px below the 23px header (y=24), causing the opaque background to overlap the header separator. Moved control to y=26 in constructor, `updateNodeSize`, and `refreshPins`; adjusted height offset from +62 to +64.
 - **NAM Theme Colors Not Updating** — Changing themes did not update NAM control or model browser colors at runtime. Added `NAMModelBrowserComponent::refreshColours()` and wired `MainPanel::changeListenerCallback` to recursively walk the desktop component tree and call `refreshColours()` on all `NAMControl` and `NAMModelBrowserComponent` instances.
 - **Eigen MSVC Build Error** — Pinned Eigen dependency from `master` to `5.0.0`. The `master` branch had GCC-specific `__attribute__((always_inline))` on lambdas in `GeneralBlockPanelKernel.h` causing MSVC C3260. Version 3.4.x was too old (lacked `Eigen::placeholders::lastN` required by NAM's `lstm.h`). 5.0.0 is the stable release with both features.

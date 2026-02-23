@@ -240,7 +240,7 @@ void MidiFilePlayerProcessor::fillInPluginDescription(PluginDescription& descrip
     description.descriptiveName = "Plays MIDI files to drive synth plugins";
     description.pluginFormatName = "Internal";
     description.category = "MIDI";
-    description.manufacturerName = "Antigravity";
+    description.manufacturerName = "Eric Steenwerth";
     description.version = "1.0";
     description.fileOrIdentifier = "MidiFilePlayer";
     description.isInstrument = false;
