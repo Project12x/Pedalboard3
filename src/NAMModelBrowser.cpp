@@ -21,6 +21,133 @@
 #include <spdlog/spdlog.h>
 
 //==============================================================================
+// Custom LookAndFeel for browser windows — rounded corners + dark title bar
+//==============================================================================
+class BrowserWindowLookAndFeel : public LookAndFeel_V4
+{
+  public:
+    BrowserWindowLookAndFeel()
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bg = colours["Window Background"];
+        auto text = colours["Text Colour"];
+
+        // DocumentWindow colours
+        setColour(DocumentWindow::backgroundColourId, bg);
+        setColour(DocumentWindow::textColourId, text);
+
+        // ResizableWindow background
+        setColour(ResizableWindow::backgroundColourId, bg);
+    }
+
+    void drawDocumentWindowTitleBar(DocumentWindow& window, Graphics& g, int w, int h, int titleSpaceX, int titleSpaceW,
+                                    const Image* /*icon*/, bool /*drawTitleTextOnLeft*/) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bg = colours["Window Background"].darker(0.15f);
+        auto text = colours["Text Colour"];
+
+        // Title bar background with rounded top corners
+        Path titlePath;
+        titlePath.addRoundedRectangle(0.0f, 0.0f, (float)w, (float)h + cornerRadius, cornerRadius, cornerRadius, true,
+                                      true, false, false);
+        g.setColour(bg);
+        g.fillPath(titlePath);
+
+        // Subtle bottom border
+        g.setColour(text.withAlpha(0.1f));
+        g.drawHorizontalLine(h - 1, 0.0f, (float)w);
+
+        // Title text
+        g.setColour(text.withAlpha(0.9f));
+        g.setFont(FontManager::getInstance().getSubheadingFont());
+        g.drawText(window.getName(), titleSpaceX, 0, titleSpaceW, h, Justification::centredLeft, true);
+    }
+
+    Button* createDocumentWindowButton(int buttonType) override
+    {
+        if (buttonType == DocumentWindow::closeButton)
+        {
+            auto* btn = new CloseButton();
+            return btn;
+        }
+        return LookAndFeel_V4::createDocumentWindowButton(buttonType);
+    }
+
+    void drawResizableWindowBorder(Graphics& /*g*/, int /*w*/, int /*h*/, const BorderSize<int>& /*border*/,
+                                   ResizableWindow& /*window*/) override
+    {
+        // No border — we draw rounded corners in paint() instead
+    }
+
+    void drawCornerResizer(Graphics& g, int w, int h, bool /*isMouseOver*/, bool /*isMouseDragging*/) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        // Small grip dots
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3 - i; ++j)
+                g.fillEllipse((float)(w - 4 - i * 5), (float)(h - 4 - j * 5), 3.0f, 3.0f);
+    }
+
+    void fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& editor) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
+        float cr = height / 2.0f; // Full pill shape
+
+        // Pill background
+        g.setColour(colours["Dialog Inner Background"]);
+        g.fillRoundedRectangle(bounds, cr);
+    }
+
+    void drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& editor) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
+        float cr = height / 2.0f;
+
+        // Subtle pill border — brighter when focused
+        float alpha = editor.hasKeyboardFocus(true) ? 0.5f : 0.2f;
+        g.setColour(colours["Text Colour"].withAlpha(alpha));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), cr, 1.0f);
+    }
+
+    static constexpr float cornerRadius = 10.0f;
+
+  private:
+    // Custom close button with themed X
+    class CloseButton : public Button
+    {
+      public:
+        CloseButton() : Button("Close") {}
+
+        void paintButton(Graphics& g, bool isMouseOverButton, bool isButtonDown) override
+        {
+            auto& colours = ::ColourScheme::getInstance().colours;
+            auto area = getLocalBounds().toFloat().reduced(4.0f);
+
+            if (isButtonDown)
+            {
+                g.setColour(colours["Danger Colour"].withAlpha(0.6f));
+                g.fillEllipse(area);
+            }
+            else if (isMouseOverButton)
+            {
+                g.setColour(colours["Danger Colour"].withAlpha(0.3f));
+                g.fillEllipse(area);
+            }
+
+            // X symbol
+            auto cross = area.reduced(area.getWidth() * 0.25f);
+            g.setColour(isMouseOverButton ? Colours::white : colours["Text Colour"].withAlpha(0.7f));
+            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.5f);
+            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.5f);
+        }
+    };
+};
+
+//==============================================================================
 // NAMModelListModel
 //==============================================================================
 
@@ -535,8 +662,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
     searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
-    searchBox->setIndents(28, 0); // Left indent for search icon
-    searchBox->setFont(FontManager::getInstance().getBodyFont());
+    searchBox->setIndents(28, 6); // Left indent for search icon, top indent to center text
+    searchBox->setFont(FontManager::getInstance().getSubheadingFont()); // 15px fills the pill better
     addAndMakeVisible(searchBox.get());
 
     // Buttons with styled colors
@@ -842,7 +969,7 @@ void NAMModelBrowserComponent::refreshColours()
     metadataDisplay->setFont(FontManager::getInstance().getMonoFont(11.0f));
     statusLabel->setFont(FontManager::getInstance().getCaptionFont());
     emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
-    searchBox->setFont(FontManager::getInstance().getBodyFont());
+    searchBox->setFont(FontManager::getInstance().getSubheadingFont());
 
     irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     rebuildFonts(irNameLabel.get(), irNameValue.get());
@@ -963,23 +1090,24 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
 void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
 {
-    // Draw magnifying glass icon over the search TextEditor
+    // Draw magnifying glass icon centered in the search pill
     if (currentTab == 0 || currentTab == 2)
     {
         auto& colours = ColourScheme::getInstance().colours;
         auto searchBounds = searchBox->getBounds().toFloat();
 
-        float iconSize = 14.0f;
-        float iconX = searchBounds.getX() + 9.0f;
-        float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+        float iconSize = 13.0f;
         float radius = iconSize * 0.35f;
+        float iconX = searchBounds.getX() + 10.0f;
+        float iconCentreY = searchBounds.getCentreY();
 
         g.setColour(colours["Text Colour"].withAlpha(0.45f));
-        g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
-        float handleStart = iconX + radius * 1.4f + radius;
-        float handleEnd = handleStart + radius * 0.9f;
-        float handleY = iconY + radius * 1.4f + radius;
-        g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
+        // Circle part — centered vertically
+        g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
+        // Handle
+        float handleStartX = iconX + radius + radius * 0.7f;
+        float handleStartY = iconCentreY + radius * 0.7f;
+        g.drawLine(handleStartX, handleStartY, handleStartX + radius * 0.8f, handleStartY + radius * 0.8f, 1.5f);
     }
 }
 
@@ -1949,10 +2077,29 @@ NAMModelBrowser::NAMModelBrowser(NAMProcessor* processor, std::function<void()> 
     : DocumentWindow("NAM Model Browser", ColourScheme::getInstance().colours["Window Background"],
                      DocumentWindow::closeButton)
 {
+    browserLAF = std::make_unique<BrowserWindowLookAndFeel>();
+    setLookAndFeel(browserLAF.get());
     setContentOwned(new NAMModelBrowserComponent(processor, std::move(onModelLoaded)), true);
     setResizable(true, false);
-    setUsingNativeTitleBar(true);
+    setUsingNativeTitleBar(false);
+    setDropShadowEnabled(true);
     centreWithSize(700, 500);
+}
+
+NAMModelBrowser::~NAMModelBrowser()
+{
+    setLookAndFeel(nullptr);
+}
+
+void NAMModelBrowser::paint(Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    float cr = BrowserWindowLookAndFeel::cornerRadius;
+    auto& colours = ColourScheme::getInstance().colours;
+
+    // Rounded window background
+    g.setColour(colours["Window Background"]);
+    g.fillRoundedRectangle(bounds, cr);
 }
 
 void NAMModelBrowser::showWindow(NAMProcessor* processor, std::function<void()> onModelLoaded)
@@ -1991,8 +2138,8 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
     searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
-    searchBox->setIndents(28, 0); // Left indent for search icon
-    searchBox->setFont(FontManager::getInstance().getBodyFont());
+    searchBox->setIndents(28, 6); // Left indent for search icon, top indent to center text
+    searchBox->setFont(FontManager::getInstance().getSubheadingFont()); // 15px fills the pill better
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
@@ -2135,21 +2282,22 @@ void IRBrowserComponent::paint(Graphics& g)
 
 void IRBrowserComponent::paintOverChildren(Graphics& g)
 {
-    // Draw magnifying glass icon over the search TextEditor
+    // Draw magnifying glass icon centered in the search pill
     auto& colours = ColourScheme::getInstance().colours;
     auto searchBounds = searchBox->getBounds().toFloat();
 
-    float iconSize = 14.0f;
-    float iconX = searchBounds.getX() + 9.0f;
-    float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+    float iconSize = 13.0f;
     float radius = iconSize * 0.35f;
+    float iconX = searchBounds.getX() + 10.0f;
+    float iconCentreY = searchBounds.getCentreY();
 
     g.setColour(colours["Text Colour"].withAlpha(0.45f));
-    g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
-    float handleStart = iconX + radius * 1.4f + radius;
-    float handleEnd = handleStart + radius * 0.9f;
-    float handleY = iconY + radius * 1.4f + radius;
-    g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
+    // Circle part — centered vertically
+    g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
+    // Handle
+    float handleStartX = iconX + radius + radius * 0.7f;
+    float handleStartY = iconCentreY + radius * 0.7f;
+    g.drawLine(handleStartX, handleStartY, handleStartX + radius * 0.8f, handleStartY + radius * 0.8f, 1.5f);
 }
 
 void IRBrowserComponent::resized()
@@ -2479,11 +2627,30 @@ IRBrowser::IRBrowser(std::function<void(const File&)> onIRSelected)
     : DocumentWindow("IR Browser", ColourScheme::getInstance().colours["Window Background"],
                      DocumentWindow::closeButton)
 {
+    browserLAF = std::make_unique<BrowserWindowLookAndFeel>();
+    setLookAndFeel(browserLAF.get());
     setContentOwned(new IRBrowserComponent(std::move(onIRSelected)), true);
     setResizable(true, true);
     setResizeLimits(500, 350, 1200, 800);
-    setUsingNativeTitleBar(true);
+    setUsingNativeTitleBar(false);
+    setDropShadowEnabled(true);
     centreWithSize(600, 450);
+}
+
+IRBrowser::~IRBrowser()
+{
+    setLookAndFeel(nullptr);
+}
+
+void IRBrowser::paint(Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+    float cr = BrowserWindowLookAndFeel::cornerRadius;
+    auto& colours = ColourScheme::getInstance().colours;
+
+    // Rounded window background
+    g.setColour(colours["Window Background"]);
+    g.fillRoundedRectangle(bounds, cr);
 }
 
 void IRBrowser::showWindow(std::function<void(const File&)> onIRSelected)

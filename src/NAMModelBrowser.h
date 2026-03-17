@@ -15,6 +15,8 @@
 #include <functional>
 #include <vector>
 
+class BrowserWindowLookAndFeel;
+
 class NAMProcessor;
 class NAMOnlineBrowserComponent;
 
@@ -228,13 +230,16 @@ class NAMModelBrowser : public DocumentWindow
 {
   public:
     NAMModelBrowser(NAMProcessor* processor, std::function<void()> onModelLoaded);
-    ~NAMModelBrowser() override = default;
+    ~NAMModelBrowser() override;
 
     void closeButtonPressed() override { setVisible(false); }
+    void paint(Graphics& g) override;
 
     static void showWindow(NAMProcessor* processor, std::function<void()> onModelLoaded);
 
   private:
+    std::unique_ptr<BrowserWindowLookAndFeel> browserLAF;
+
     static std::unique_ptr<NAMModelBrowser> instance;
     static NAMProcessor* currentProcessor;
     static std::function<void()> currentCallback;
@@ -315,13 +320,16 @@ class IRBrowser : public DocumentWindow
 {
   public:
     IRBrowser(std::function<void(const File&)> onIRSelected);
-    ~IRBrowser() override = default;
+    ~IRBrowser() override;
 
     void closeButtonPressed() override { setVisible(false); }
+    void paint(Graphics& g) override;
 
     static void showWindow(std::function<void(const File&)> onIRSelected);
 
   private:
+    std::unique_ptr<BrowserWindowLookAndFeel> browserLAF;
+
     static std::unique_ptr<IRBrowser> instance;
     static std::function<void(const File&)> currentCallback;
 

@@ -65,7 +65,7 @@ class BranchesLAF : public LookAndFeel_V4
     ///	The width of a menubar item.
     int getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText) override;
     ///	Returns the popup meun font.
-    Font getPopupMenuFont() override { return FontManager::getInstance().getBodyFont(); };
+    Font getPopupMenuFont() override { return FontManager::getInstance().getSubheadingFont(); };
     ///	Draws the popup menu background.
     void drawPopupMenuBackground(Graphics& g, int width, int height) override;
     ///	Cancels menus' drop shadow.

@@ -1,4 +1,4 @@
-//  PluginSearchOverlay.h - Floating search overlay for plugin selection
+//  PluginSearchOverlay.h - Floating search window for plugin selection
 //  ----------------------------------------------------------------------------
 //  This file is part of Pedalboard3, an audio plugin host.
 //  Copyright (c) 2026 Pedalboard3 Project.
@@ -16,36 +16,29 @@
 #include <functional>
 #include <vector>
 
-/// @brief A floating overlay for searching and selecting plugins with fuzzy matching.
+/// @brief Content component for the plugin search window.
 ///
-/// Replaces the AlertWindow-based search dialog. Shows a search bar with live
-/// filtering, category tabs, and a scrollable results list with keyboard navigation.
-class PluginSearchOverlay : public Component, private TextEditor::Listener, private ListBoxModel
+/// Contains a search bar with live filtering, category tabs, and a scrollable
+/// results list with keyboard navigation and fuzzy matching.
+class PluginSearchContent : public Component, private TextEditor::Listener, private ListBoxModel
 {
   public:
-    /// @brief Construct the overlay.
-    /// @param pluginList The known plugin list to search.
-    PluginSearchOverlay(KnownPluginList& pluginList);
-    ~PluginSearchOverlay() override = default;
+    PluginSearchContent(KnownPluginList& pluginList);
+    ~PluginSearchContent() override = default;
 
-    /// @brief Show the overlay at the given screen position.
-    /// @param position Position on the parent component to center near.
-    /// @param parentBounds Bounds of the parent to clamp within.
-    void show(Point<int> position, Rectangle<int> parentBounds);
+    /// @brief Reset search state and grab keyboard focus.
+    void activate();
 
-    /// @brief Hide the overlay.
-    void hide();
-
-    /// @brief Callback when a plugin is selected. Passes the type index (1-based, matching PopupMenu convention).
+    /// @brief Callback when a plugin is selected. Passes the type index (1-based).
     std::function<void(int typeIndex)> onPluginSelected;
+
+    /// @brief Callback when the user requests to close (Esc key).
+    std::function<void()> onCloseRequested;
 
     // Component overrides
     void paint(Graphics& g) override;
     void resized() override;
     bool keyPressed(const KeyPress& key) override;
-
-    /// @brief Dismiss when clicking outside the panel.
-    void mouseDown(const MouseEvent& e) override;
 
   private:
     // Category filter enum
@@ -60,13 +53,13 @@ class PluginSearchOverlay : public Component, private TextEditor::Listener, priv
     // A scored search result
     struct SearchResult
     {
-        int typeIndex = -1;      // Index into KnownPluginList types
-        String name;             // Plugin name
-        String manufacturer;     // Manufacturer name
-        String formatName;       // VST3, Internal, etc.
-        String category;         // Plugin category
-        int score = 0;           // Fuzzy match score (higher = better)
-        bool isInternal = false; // Whether it's a built-in plugin
+        int typeIndex = -1;
+        String name;
+        String manufacturer;
+        String formatName;
+        String category;
+        int score = 0;
+        bool isInternal = false;
     };
 
     // TextEditor::Listener
@@ -97,16 +90,41 @@ class PluginSearchOverlay : public Component, private TextEditor::Listener, priv
     OwnedArray<TextButton> categoryButtons;
     Category currentCategory = Category::All;
 
-    // Panel dimensions
-    static constexpr int panelWidth = 480;
-    static constexpr int panelHeight = 420;
+    // Layout constants
     static constexpr int searchBarHeight = 40;
     static constexpr int tabRowHeight = 32;
     static constexpr int resultRowHeight = 48;
-    static constexpr int cornerRadius = 12;
-    static constexpr int panelPadding = 12;
+    static constexpr int contentPadding = 12;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginSearchOverlay)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginSearchContent)
+};
+
+/// @brief A floating DocumentWindow that hosts the PluginSearchContent.
+///
+/// Uses the same custom LookAndFeel as the NAM/IR browser windows for
+/// consistent dark-themed title bar, rounded corners, and close button.
+class PluginSearchWindow : public DocumentWindow
+{
+  public:
+    PluginSearchWindow(KnownPluginList& pluginList);
+    ~PluginSearchWindow() override;
+
+    /// @brief Show the window centered on screen.
+    void showCentred();
+
+    /// @brief Access the content for setting callbacks.
+    PluginSearchContent* getSearchContent() { return content; }
+
+    void closeButtonPressed() override;
+
+  private:
+    PluginSearchContent* content = nullptr; // Owned by setContentOwned
+    LookAndFeel* windowLAF = nullptr;       // Custom LAF, owned
+
+    static constexpr int windowWidth = 480;
+    static constexpr int windowHeight = 460;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginSearchWindow)
 };
 
 #endif

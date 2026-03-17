@@ -35,7 +35,6 @@
 
 #include <JuceHeader.h>
 
-
 class PluginListWindow;
 class StageView;
 class TunerProcessor;
@@ -259,6 +258,8 @@ class MainPanel : public Component,
     void enableMidiInput(bool val);
     ///	Enables/disables the OSC input.
     void enableOscInput(bool val);
+    ///	Enables/disables the Virtual MIDI input.
+    void enableVirtualMidiInput(bool val);
     ///	Sets whether to automatically open the mappings window or not.
     void setAutoMappingsWindow(bool val);
 

@@ -29,8 +29,6 @@ class MainPanel;
 class Tone3000DownloadManager;
 //[/Headers]
 
-
-
 //==============================================================================
 /**
                                                                     //[Comments]
@@ -39,47 +37,42 @@ class Tone3000DownloadManager;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class PreferencesDialog  : public Component,
-                           public TextEditor::Listener,
-                           public Button::Listener
+class PreferencesDialog : public Component, public TextEditor::Listener, public Button::Listener
 {
-public:
+  public:
     //==============================================================================
-    PreferencesDialog (MainPanel *panel, const String& port, const String& multicastAddress);
+    PreferencesDialog(MainPanel* panel, const String& port, const String& multicastAddress);
     ~PreferencesDialog();
 
     //==============================================================================
     //[UserMethods]     -- You can add your own custom methods in this section.
 
-	///	Not used.
-	void textEditorTextChanged(TextEditor &editor) {};
-	///	Used to update the mapping's OSC address.
-	void textEditorReturnKeyPressed(TextEditor &editor);
-	///	Used to revert any changes the user made.
-	void textEditorEscapeKeyPressed(TextEditor &editor);
-	///	Used to update the mapping's OSC address.
-	void textEditorFocusLost(TextEditor &editor);
+    ///	Not used.
+    void textEditorTextChanged(TextEditor& editor) {};
+    ///	Used to update the mapping's OSC address.
+    void textEditorReturnKeyPressed(TextEditor& editor);
+    ///	Used to revert any changes the user made.
+    void textEditorEscapeKeyPressed(TextEditor& editor);
+    ///	Used to update the mapping's OSC address.
+    void textEditorFocusLost(TextEditor& editor);
 
     //[/UserMethods]
 
-    void paint (Graphics& g);
+    void paint(Graphics& g);
     void resized();
-    void buttonClicked (Button* buttonThatWasClicked);
-
-
+    void buttonClicked(Button* buttonThatWasClicked);
 
     //==============================================================================
 
-
-private:
+  private:
     //[UserVariables]   -- You can add your own custom variables in this section.
 
-	///	The app's MainPanel.
-	MainPanel *mainPanel;
-	///	The current port to listen on.
-	String currentPort;
-	///	The current multicast address to listen on.
-	String currentMulticast;
+    ///	The app's MainPanel.
+    MainPanel* mainPanel;
+    ///	The current port to listen on.
+    String currentPort;
+    ///	The current multicast address to listen on.
+    String currentMulticast;
 
     //[/UserVariables]
 
@@ -94,6 +87,7 @@ private:
     ToggleButton* audioInputButton;
     ToggleButton* midiInputButton;
     ToggleButton* oscInputButton;
+    ToggleButton* virtualMidiInputButton;
     Label* otherLabel;
     ToggleButton* mappingsWindowButton;
     ToggleButton* loopPatchesButton;
@@ -113,12 +107,10 @@ private:
     Label* namDirValue;
     TextButton* namDirBrowseButton;
 
-
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)
-    PreferencesDialog (const PreferencesDialog&);
-    const PreferencesDialog& operator= (const PreferencesDialog&);
+    PreferencesDialog(const PreferencesDialog&);
+    const PreferencesDialog& operator=(const PreferencesDialog&);
 };
 
-
-#endif   // __JUCER_HEADER_PREFERENCESDIALOG_PREFERENCESDIALOG_3C07F714__
+#endif // __JUCER_HEADER_PREFERENCESDIALOG_PREFERENCESDIALOG_3C07F714__

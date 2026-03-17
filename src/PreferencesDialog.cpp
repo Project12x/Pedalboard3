@@ -39,9 +39,10 @@
 PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const String& multicastAddress)
     : oscPortLabel(0), oscPortEditor(0), oscLabel(0), oscMulticastLabel(0), oscMulticastEditor(0),
       multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
-      otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0), ignorePinNamesButton(0),
-      midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0),
-      fixedSizeButton(0), pdlAudioSettingsButton(0), namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
+      virtualMidiInputButton(0), otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0),
+      ignorePinNamesButton(0), midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0),
+      startInTrayButton(0), fixedSizeButton(0), pdlAudioSettingsButton(0), namLabel(0), namDirLabel(0), namDirValue(0),
+      namDirBrowseButton(0)
 {
     addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
     oscPortLabel->setFont(FontManager::getInstance().getBodyFont());
@@ -108,6 +109,11 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     oscInputButton->setButtonText("OSC Input");
     oscInputButton->addListener(this);
     oscInputButton->setToggleState(true, false);
+
+    addAndMakeVisible(virtualMidiInputButton = new ToggleButton("virtualMidiInputButton"));
+    virtualMidiInputButton->setButtonText("Virtual MIDI Input");
+    virtualMidiInputButton->addListener(this);
+    virtualMidiInputButton->setToggleState(true, false);
 
     addAndMakeVisible(otherLabel = new Label("otherLabel", "Other Options"));
     otherLabel->setFont(FontManager::getInstance().getSubheadingFont());
@@ -204,6 +210,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     audioInputButton->setToggleState(SettingsManager::getInstance().getBool("AudioInput", true), false);
     midiInputButton->setToggleState(SettingsManager::getInstance().getBool("MidiInput", true), false);
     oscInputButton->setToggleState(SettingsManager::getInstance().getBool("OscInput", true), false);
+    virtualMidiInputButton->setToggleState(SettingsManager::getInstance().getBool("VirtualMidiInput", true), false);
 
     midiProgramChangeButton->setToggleState(SettingsManager::getInstance().getBool("midiProgramChange", false), false);
     mmcTransportButton->setToggleState(SettingsManager::getInstance().getBool("mmcTransport", false), false);
@@ -269,6 +276,8 @@ PreferencesDialog::~PreferencesDialog()
     midiInputButton = nullptr;
     delete oscInputButton;
     oscInputButton = nullptr;
+    delete virtualMidiInputButton;
+    virtualMidiInputButton = nullptr;
     delete otherLabel;
     otherLabel = nullptr;
     delete mappingsWindowButton;
@@ -337,6 +346,7 @@ void PreferencesDialog::resized()
     audioInputButton->setBounds(16, 136, 96, 24);
     midiInputButton->setBounds(16, 160, 88, 24);
     oscInputButton->setBounds(16, 184, 88, 24);
+    virtualMidiInputButton->setBounds(16, 208, 150, 24);
     otherLabel->setBounds(0, 304, 150, 24);
     mappingsWindowButton->setBounds(16, 328, 376, 24);
     loopPatchesButton->setBounds(16, 352, 208, 24);
@@ -387,6 +397,10 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
         mainPanel->enableOscInput(oscInputButton->getToggleState());
 
         //[/UserButtonCode_oscInputButton]
+    }
+    else if (buttonThatWasClicked == virtualMidiInputButton)
+    {
+        mainPanel->enableVirtualMidiInput(virtualMidiInputButton->getToggleState());
     }
     else if (buttonThatWasClicked == mappingsWindowButton)
     {

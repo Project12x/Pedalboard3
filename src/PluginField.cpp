@@ -52,6 +52,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
     audioInputEnabled = SettingsManager::getInstance().getBool("AudioInput", true);
     midiInputEnabled = SettingsManager::getInstance().getBool("MidiInput", true);
     oscInputEnabled = SettingsManager::getInstance().getBool("OscInput", true);
+    virtualMidiInputEnabled = SettingsManager::getInstance().getBool("VirtualMidiInput", true);
 
     autoMappingsWindow = SettingsManager::getInstance().getBool("AutoMappingsWindow", true);
 
@@ -109,9 +110,9 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
     setWantsKeyboardFocus(true);
 
-    // Create the plugin search overlay
-    searchOverlay = std::make_unique<PluginSearchOverlay>(*pluginList);
-    searchOverlay->onPluginSelected = [this](int typeIndex)
+    // Create the plugin search window (floating DocumentWindow)
+    searchWindow = std::make_unique<PluginSearchWindow>(*pluginList);
+    searchWindow->getSearchContent()->onPluginSelected = [this](int typeIndex)
     {
         // typeIndex is 1-based to match PopupMenu convention
         auto types = pluginList->getTypes();
@@ -127,8 +128,14 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
             int pluginIndex = signalPath->getNumFilters() - 1;
             PluginDescription pluginType = types.getReference(idx);
 
-            auto pos = searchOverlay->getBounds().getCentre();
-            signalPath->addFilter(&pluginType, (double)pos.x, (double)pos.y);
+            // Place the new plugin at the center of the visible area
+            auto centre = getLocalBounds().getCentre();
+            if (auto* parent = getParentComponent())
+            {
+                auto visibleArea = getLocalArea(parent, parent->getLocalBounds());
+                centre = visibleArea.getIntersection(getLocalBounds()).getCentre();
+            }
+            signalPath->addFilter(&pluginType, (double)centre.x, (double)centre.y);
 
             if ((signalPath->getNumFilters() - 1) > pluginIndex)
             {
@@ -149,8 +156,6 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
             }
         }
     };
-    addAndMakeVisible(*searchOverlay);
-    searchOverlay->setVisible(false);
 
     startTimer(50);
 }
@@ -177,9 +182,8 @@ PluginField::~PluginField()
     for (it = mappings.begin(); it != mappings.end(); ++it)
         delete it->second;
 
-    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
-    if (searchOverlay)
-        removeChildComponent(searchOverlay.get());
+    // searchWindow is a top-level window, no need to removeChildComponent
+    searchWindow.reset();
     deleteAllChildren();
 }
 
@@ -373,12 +377,11 @@ void PluginField::mouseDown(const MouseEvent& e)
         // Defer with callAsync so the PopupMenu modal loop fully unwinds first
         if (result == SEARCH_ITEM_ID)
         {
-            auto clickPos = e.getPosition();
             MessageManager::callAsync(
-                [this, clickPos]()
+                [this]()
                 {
-                    if (searchOverlay)
-                        searchOverlay->show(clickPos, getLocalBounds());
+                    if (searchWindow)
+                        searchWindow->showCentred();
                 });
             return;
         }
@@ -879,9 +882,9 @@ void PluginField::enableAudioInput(bool val)
         {
             InternalPluginFormat internalFormat;
 
-            // Add the filter to the signal path.
-            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 10.0f,
-                                  10.0f);
+            // Add the filter to the signal path at the standard position.
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::audioInputFilter), 540.0f,
+                                  500.0f);
 
             // Add the associated PluginComponent.
             addFilter(signalPath->getNumFilters() - 1);
@@ -1061,9 +1064,62 @@ void PluginField::enableOscInput(bool val)
 
             p.fillInPluginDescription(desc);
 
-            // Position OSC Input below Virtual MIDI Input based on actual node heights
-            float oscY = signalPath->getNextInputNodeY();
-            signalPath->addFilter(&desc, 50, oscY);
+            // Add at the standard position
+            signalPath->addFilter(&desc, 540.0f, 860.0f);
+
+            addFilter(signalPath->getNumFilters() - 1);
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginField::enableVirtualMidiInput(bool val)
+{
+    int i;
+
+    virtualMidiInputEnabled = val;
+
+    if (!val)
+    {
+        // Delete PluginComponent first
+        for (i = (getNumChildComponents() - 1); i >= 0; --i)
+        {
+            PluginComponent* comp = dynamic_cast<PluginComponent*>(getChildComponent(i));
+            if (comp && comp->getNode() && comp->getNode()->getProcessor()->getName() == "Virtual MIDI Input")
+            {
+                delete removeChildComponent(i);
+            }
+        }
+
+        // Now delete the filter
+        for (i = (signalPath->getNumFilters() - 1); i >= 0; --i)
+        {
+            if (signalPath->getNode(i)->getProcessor()->getName() == "Virtual MIDI Input")
+            {
+                deleteFilter(signalPath->getNode(i).get());
+            }
+        }
+    }
+    else
+    {
+        // Check if Virtual MIDI Input already exists
+        bool exists = false;
+        for (int j = 0; j < signalPath->getNumFilters(); ++j)
+        {
+            if (signalPath->getNode(j)->getProcessor()->getName() == "Virtual MIDI Input")
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+        {
+            InternalPluginFormat internalFormat;
+
+            // Add at the standard position
+            signalPath->addFilter(internalFormat.getDescriptionFor(InternalPluginFormat::virtualMidiInputProcFilter),
+                                  540.0f, 660.0f);
 
             addFilter(signalPath->getNumFilters() - 1);
         }

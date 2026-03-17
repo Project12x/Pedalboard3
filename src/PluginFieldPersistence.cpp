@@ -122,12 +122,7 @@ void PluginField::loadFromXml(XmlElement* patch)
             }
         }
     }
-    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
-    if (searchOverlay)
-        removeChildComponent(searchOverlay.get());
     deleteAllChildren();
-    if (searchOverlay)
-        addChildComponent(searchOverlay.get());
     repaint();
 
     // Wipe userNames.
@@ -456,6 +451,8 @@ void PluginField::loadFromXml(XmlElement* patch)
         enableMidiInput(midiInputEnabled);
     if (!oscInputEnabled)
         enableOscInput(oscInputEnabled);
+    if (!virtualMidiInputEnabled)
+        enableVirtualMidiInput(virtualMidiInputEnabled);
 
     moveConnectionsBehind();
     repaint();
@@ -484,12 +481,7 @@ void PluginField::clear()
             }
         }
     }
-    // Protect searchOverlay from deleteAllChildren — it's owned by a unique_ptr
-    if (searchOverlay)
-        removeChildComponent(searchOverlay.get());
     deleteAllChildren();
-    if (searchOverlay)
-        addChildComponent(searchOverlay.get());
     repaint();
 
     // Wipe userNames.

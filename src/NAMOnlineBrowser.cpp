@@ -250,8 +250,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     searchBox->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchBox->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
     searchBox->setTextToShowWhenEmpty("Search TONE3000...", colours["Text Colour"].withAlpha(0.5f));
-    searchBox->setFont(FontManager::getInstance().getBodyFont());
-    searchBox->setIndents(28, 0); // Left indent for magnifying glass icon
+    searchBox->setFont(FontManager::getInstance().getSubheadingFont()); // 15px fills pill better
+    searchBox->setIndents(28, 6); // Left indent for magnifying glass icon, top indent to center text
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
@@ -529,21 +529,22 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 
 void NAMOnlineBrowserComponent::paintOverChildren(juce::Graphics& g)
 {
-    // Draw magnifying glass icon over the search TextEditor
+    // Draw magnifying glass icon centered in the search pill
     auto& colours = ColourScheme::getInstance().colours;
     auto searchBounds = searchBox->getBounds().toFloat();
 
-    float iconSize = 14.0f;
-    float iconX = searchBounds.getX() + 9.0f;
-    float iconY = searchBounds.getCentreY() - iconSize * 0.4f;
+    float iconSize = 13.0f;
     float radius = iconSize * 0.35f;
+    float iconX = searchBounds.getX() + 10.0f;
+    float iconCentreY = searchBounds.getCentreY();
 
     g.setColour(colours["Text Colour"].withAlpha(0.45f));
-    g.drawEllipse(iconX, iconY, radius * 2.0f, radius * 2.0f, 1.5f);
-    float handleStart = iconX + radius * 1.4f + radius;
-    float handleEnd = handleStart + radius * 0.9f;
-    float handleY = iconY + radius * 1.4f + radius;
-    g.drawLine(handleStart, handleY, handleEnd, handleY + radius * 0.9f, 1.5f);
+    // Circle part - centered vertically
+    g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
+    // Handle
+    float handleStartX = iconX + radius + radius * 0.7f;
+    float handleStartY = iconCentreY + radius * 0.7f;
+    g.drawLine(handleStartX, handleStartY, handleStartX + radius * 0.8f, handleStartY + radius * 0.8f, 1.5f);
 }
 
 void NAMOnlineBrowserComponent::resized()

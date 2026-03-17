@@ -2056,6 +2056,16 @@ void MainPanel::enableOscInput(bool val)
 }
 
 //------------------------------------------------------------------------------
+void MainPanel::enableVirtualMidiInput(bool val)
+{
+    PluginField* field = dynamic_cast<PluginField*>(viewport->getViewedComponent());
+
+    field->enableVirtualMidiInput(val);
+
+    SettingsManager::getInstance().setValue("VirtualMidiInput", val);
+}
+
+//------------------------------------------------------------------------------
 void MainPanel::setAutoMappingsWindow(bool val)
 {
     PluginField* field = dynamic_cast<PluginField*>(viewport->getViewedComponent());

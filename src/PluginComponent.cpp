@@ -292,11 +292,6 @@ void PluginComponent::paint(Graphics& g)
     float h = (float)getHeight();
     const float cornerRadius = 8.0f;
 
-    // === DROP SHADOW (melatonin_blur, cached per path bounds) ===
-    Path nodePath;
-    nodePath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
-    nodeShadow.render(g, nodePath);
-
     // === MAIN FILL (gradient for premium feel) ===
     Colour bgTop = colours["Plugin Background"].brighter(0.08f);
     Colour bgBottom = colours["Plugin Background"].darker(0.08f);
@@ -613,17 +608,10 @@ void PluginComponent::mouseDown(const MouseEvent& e)
             beingDragged = true;
             dragX = e.getPosition().getX();
             dragY = e.getPosition().getY();
-            currentDragX = (float)getX();
-            currentDragY = (float)getY();
-            targetDragX = currentDragX;
-            targetDragY = currentDragY;
             toFront(true);
 
             // Subtle transparency during drag
             setAlpha(0.88f);
-
-            // Start lerp timer at ~60fps
-            startTimerHz(60);
             repaint();
         }
     }
@@ -663,9 +651,13 @@ void PluginComponent::mouseDrag(const MouseEvent& e)
         if (newY < 0.0f)
             newY = 0.0f;
 
-        // Update target for lerp (timer will move the component)
-        targetDragX = newX;
-        targetDragY = newY;
+        // Move directly — no interpolation
+        int posX = (int)newX;
+        int posY = (int)newY;
+        setTopLeftPosition(posX, posY);
+        node->properties.set("x", posX);
+        node->properties.set("y", posY);
+        sendChangeMessage();
     }
 }
 
@@ -675,23 +667,6 @@ void PluginComponent::mouseUp(const MouseEvent& e)
     if (beingDragged)
     {
         beingDragged = false;
-        stopTimer();
-
-        // Snap to final target position immediately
-        int finalX = (int)targetDragX;
-        int finalY = (int)targetDragY;
-
-        // Final snap on mouse up (in case drag didn't snap perfectly)
-        if (SettingsManager::getInstance().getBool("SnapToGrid", false))
-        {
-            constexpr int gridSize = 20;
-            finalX = (finalX / gridSize) * gridSize;
-            finalY = (finalY / gridSize) * gridSize;
-        }
-
-        setTopLeftPosition(finalX, finalY);
-        node->properties.set("x", finalX);
-        node->properties.set("y", finalY);
 
         // Remove visual effects
         setAlpha(1.0f);
@@ -706,32 +681,8 @@ void PluginComponent::mouseUp(const MouseEvent& e)
 //------------------------------------------------------------------------------
 void PluginComponent::timerCallback()
 {
-    if (!beingDragged)
-    {
-        stopTimer();
-        return;
-    }
-
-    // Lerp current position toward target
-    currentDragX += (targetDragX - currentDragX) * dragLerpFactor;
-    currentDragY += (targetDragY - currentDragY) * dragLerpFactor;
-
-    // Snap to pixel when close enough to avoid perpetual micro-animation
-    if (std::abs(targetDragX - currentDragX) < 0.5f)
-        currentDragX = targetDragX;
-    if (std::abs(targetDragY - currentDragY) < 0.5f)
-        currentDragY = targetDragY;
-
-    int newX = (int)currentDragX;
-    int newY = (int)currentDragY;
-
-    if (newX != getX() || newY != getY())
-    {
-        setTopLeftPosition(newX, newY);
-        node->properties.set("x", newX);
-        node->properties.set("y", newY);
-        sendChangeMessage();
-    }
+    // Timer no longer used for drag interpolation
+    stopTimer();
 }
 
 //------------------------------------------------------------------------------

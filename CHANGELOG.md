@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to Pedalboard3 will be documented in this file.
 
@@ -10,7 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Semantic Colour Tokens** — Added `Danger Colour`, `Warning Colour`, and `Success Colour` tokens to all 5 built-in themes (Midnight, Daylight, Synthwave, Deep Ocean, Forest). Theme-appropriate palette per scheme (e.g. Synthwave uses neon pink/orange/green).
+- **Virtual MIDI Input Toggle** — New toggle in Preferences > Visible I/O Nodes for enabling/disabling the Virtual MIDI Input node. Full chain: `PluginField`, `MainPanel`, `PreferencesDialog`, `PluginFieldPersistence` patch-load guard. State persisted via `SettingsManager`.
+- **Plugin Search Floating Window** — Refactored `PluginSearchOverlay` (child component) into `PluginSearchWindow` (top-level `DocumentWindow`). Uses custom `SearchWindowLookAndFeel` with rounded corners and themed title bar. Eliminates `deleteAllChildren` crash hazard entirely.
+- **Browser Window Theming** — NAM Model Browser and IR Browser now use custom `BrowserWindowLookAndFeel` with rounded corners, themed title bar, custom close button, and pill-shaped search fields.
+
+### Changed
+
+- **Popup Menu Font Size** — `BranchesLAF::getPopupMenuFont()` now returns `getSubheadingFont()` (15px) for better readability.
+- **Search Bar Consistency** — All browser search bars now use `getSubheadingFont()` (15px) with centered vertical indent for consistent pill appearance.
+
+### Removed
+
+- **Drag Lerp Animation** — Removed Timer-based 60fps position interpolation during node dragging. Nodes now move directly with mouse.
+- **Node Drop Shadow** — Removed `melatonin_blur` drop shadow from `PluginComponent::paint()`. Reduces GPU overhead per node.
+
+### Fixed
+
+- **Audio Input Toggle Spawn Position** — `enableAudioInput` was re-creating the node at (10, 10) instead of standard (540, 500).
+- **OSC Input Toggle Spawn Position** — `enableOscInput` was re-creating the node at (50, dynamic_Y). Fixed to standard (540, 860).
+
+
 - **NAM Collapsible Editor (F1)** — Click the NAM header bar to collapse to a 40px header-only view showing model name, LED, and chevron. Children hidden; PluginComponent relayouts automatically. Pins and E/M/B buttons remain visible.
 - **NAM Multi-Font Typography (F2)** — Slider numeric readouts now use JetBrains Mono. Button text uses Inter. Section headers remain Space Grotesk Bold.
 - **Semantic Typography System** — Added 9 semantic font methods to `FontManager`: `getHeadingFont()` (18px), `getSubheadingFont()` (15px), `getBodyFont()` (13px), `getBodyBoldFont()` (13px bold), `getLabelFont()` (12px), `getCaptionFont()` (11px), `getBadgeFont()` (9px), `getDisplayFont(size)`, `getMonoDisplayFont(size)`. Migrated 20+ source files from ad-hoc `getUIFont(N)` calls to semantic roles for consistent typography across the entire application.

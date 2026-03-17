@@ -31,7 +31,7 @@ class Mapping;
 class FilterGraph;
 class PluginConnection;
 class PluginPinComponent;
-class PluginSearchOverlay;
+class PluginSearchWindow;
 
 namespace OSC
 {
@@ -93,6 +93,8 @@ class PluginField : public Component,
     void enableMidiInput(bool val);
     ///	Enables/disables the OSC input.
     void enableOscInput(bool val);
+    ///	Enables/disables the Virtual MIDI input.
+    void enableVirtualMidiInput(bool val);
     ///	Returns whether audio input is enabled.
     bool isAudioInputEnabled() const { return audioInputEnabled; }
 
@@ -217,6 +219,8 @@ class PluginField : public Component,
     bool midiInputEnabled;
     ///	Whether the OSC input is enabled or not.
     bool oscInputEnabled;
+    ///	Whether the Virtual MIDI input is enabled or not.
+    bool virtualMidiInputEnabled;
 
     ///	Whether to open the mappings window when a param connection is made.
     bool autoMappingsWindow;
@@ -236,7 +240,7 @@ class PluginField : public Component,
     static constexpr float maxZoom = 3.0f;
 
     ///	Floating search overlay for plugin selection.
-    std::unique_ptr<PluginSearchOverlay> searchOverlay;
+    std::unique_ptr<PluginSearchWindow> searchWindow;
 
   public:
     ///	Fits all nodes to the visible viewport.
