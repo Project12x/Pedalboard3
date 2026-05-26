@@ -318,8 +318,8 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 | B3 | Stage mode premium clarity | P0 | In Progress |
 | C1 | State feedback and motion | P1 | Planned |
 | C2 | Secondary surface alignment | P1 | Planned |
-| D1 | UI regression harness | P0 | Planned |
-| D2 | Visual review discipline | P0 | Planned |
+| D1 | UI regression harness | P0 | Partial |
+| D2 | Visual review discipline | P0 | Partial |
 | E1 | Motion system and interaction feel | P1 | Planned |
 | E2 | Connection and bypass signal cues | P1 | Planned |
 | E3 | Utility discoverability cues | P2 | Planned |
@@ -393,6 +393,18 @@ Completed work:
 - **Performance-oriented visual cleanup** removed drag lerp animation and the node drop shadow from `PluginComponent::paint()`.
 
 **Commits:** `4974f32`, `9b33758`, `9d29f84`
+
+### 2026-05-26 - UI Regression Harness and Visual QA Gate
+
+**Tracks affected:** D1, D2
+
+Completed work:
+
+- **UI regression matrix** added as executable Catch2 coverage in `tests/ui_regression_harness_test.cpp`, covering required Phase 6 workflows for theme switching, Stage Mode toggling, and patch switching.
+- **Visual QA checklist** added at `documentation/ui-polish-qa.htm` with required screenshot evidence for themes, DPI scales, Stage Mode readability, dense graph clarity, focus, contrast, and responsiveness.
+- **Documentation entry points** updated so the QA checklist is reachable from both documentation indexes.
+
+**Commits:** recorded in Git history after this roadmap entry.
 
 ---
 

@@ -44,6 +44,48 @@ li {
 	color: #4A4B56;
 }
 
+code {
+	font-family: "Courier New", courier, monospace;
+	font-size: 14px;
+	color: #2F3035;
+}
+
+table {
+	border-collapse: collapse;
+	margin-bottom: 18px;
+	width: 100%;
+}
+
+th {
+	background: #E7E8F0;
+	color: #4A4B56;
+	font-family: georgia, "times new roman", serif;
+	font-size: 15px;
+	font-weight: normal;
+	padding: 6px;
+	text-align: left;
+}
+
+td {
+	border-bottom: 1px solid #D8D9E3;
+	color: #4A4B56;
+	font-family: georgia, "times new roman", serif;
+	font-size: 15px;
+	padding: 6px;
+	vertical-align: top;
+}
+
+ul.checklist {
+	margin-left: 18px;
+	padding-left: 0px;
+}
+
+p.note {
+	background: #F4F4F8;
+	border-left: 4px solid #989BB8;
+	padding: 8px 10px;
+}
+
 #page {
 	width: 800px;
 }
