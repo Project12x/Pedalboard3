@@ -42,32 +42,7 @@ BranchesLAF::BranchesLAF() : LookAndFeel_V4()
     setColour(ProgressBar::backgroundColourId, Colour(0xFFD7D1B5));
     setColour(ProgressBar::foregroundColourId, Colour(0xB0B0B0FF));*/
 
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
-
-    setColour(TextButton::buttonColourId, colours["Button Colour"]);
-    setColour(TextButton::buttonOnColourId, colours["Button Colour"]);
-    setColour(PopupMenu::highlightedBackgroundColourId, colours["Menu Selection Colour"]);
-    setColour(PopupMenu::backgroundColourId, colours["Window Background"]);
-    setColour(AlertWindow::backgroundColourId, colours["Window Background"]);
-    setColour(ComboBox::buttonColourId, colours["Button Colour"]);
-    setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
-    setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
-    setColour(DirectoryContentsDisplayComponent::highlightColourId, colours["List Selected Colour"]);
-    setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
-    setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
-
-    // Fix for "pale on pale" text (Menu Visibility):
-    setColour(PopupMenu::textColourId, colours["Text Colour"]);
-    setColour(PopupMenu::highlightedTextColourId, colours["Text Colour"]);
-    setColour(TextButton::textColourOnId, colours["Text Colour"]);
-    setColour(TextButton::textColourOffId, colours["Text Colour"]);
-    setColour(ComboBox::textColourId, colours["Text Colour"]);
-    setColour(Label::textColourId, colours["Text Colour"]);
-
-    // ToggleButton colors (needed for JUCE 8 compatibility)
-    setColour(ToggleButton::textColourId, colours["Text Colour"]);
-    setColour(ToggleButton::tickColourId, colours["Vector Colour"]);
-    setColour(ToggleButton::tickDisabledColourId, colours["Tick Box Colour"]);
+    refreshColours();
 }
 
 //------------------------------------------------------------------------------
@@ -84,8 +59,12 @@ void BranchesLAF::refreshColours()
     setColour(PopupMenu::backgroundColourId, colours["Window Background"]);
     setColour(AlertWindow::backgroundColourId, colours["Window Background"]);
     setColour(ComboBox::buttonColourId, colours["Button Colour"]);
+    setColour(ComboBox::arrowColourId, colours["Text Colour"]);
+    setColour(ComboBox::focusedOutlineColourId, colours["Menu Selection Colour"]);
     setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
+    setColour(TextEditor::highlightedTextColourId, colours["Text Colour"]);
     setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
+    setColour(DirectoryContentsDisplayComponent::highlightColourId, colours["List Selected Colour"]);
     setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
     setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
 
@@ -108,6 +87,7 @@ void BranchesLAF::refreshColours()
     setColour(Slider::rotarySliderOutlineColourId, colours["Plugin Border"]);
     setColour(Slider::textBoxTextColourId, colours["Text Colour"]);
     setColour(Slider::textBoxBackgroundColourId, colours["Text Editor Colour"]);
+    setColour(Slider::textBoxHighlightColourId, colours["Button Highlight"]);
     setColour(Slider::textBoxOutlineColourId, colours["Plugin Border"]);
 
     // ScrollBar colour IDs
@@ -245,7 +225,7 @@ void BranchesLAF::drawScrollbar(Graphics& g, ScrollBar& /*scrollbar*/, int x, in
     // Thumb color: subtle when idle, accent-tinted on hover/drag
     Colour thumbCol;
     if (isMouseDown)
-        thumbCol = colours["Accent Colour"].withAlpha(0.7f);
+        thumbCol = colours["Menu Selection Colour"].withAlpha(0.7f);
     else if (isMouseOver)
         thumbCol = colours["Text Colour"].withAlpha(0.35f);
     else
@@ -368,7 +348,6 @@ const Drawable* BranchesLAF::getDefaultFolderImage()
 void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int /*buttonX*/, int /*buttonY*/,
                                int /*buttonW*/, int /*buttonH*/, ComboBox& box)
 {
-    auto& colours = ::ColourScheme::getInstance().colours;
     Rectangle<float> bounds(0.0f, 0.0f, (float)width, (float)height);
     float cornerRadius = (float)height * 0.3f;
 
@@ -388,7 +367,7 @@ void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButton
     // Border — accent when focused, subtle otherwise
     if (box.isEnabled() && box.hasKeyboardFocus(false))
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.6f));
+        g.setColour(box.findColour(ComboBox::focusedOutlineColourId).withAlpha(0.6f));
         g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.5f);
     }
     else
@@ -411,7 +390,7 @@ void BranchesLAF::drawComboBox(Graphics& g, int width, int height, bool isButton
         chevron.lineTo(arrowX + arrowW * 0.5f, arrowCentreY + arrowH * 0.5f);
         chevron.lineTo(arrowX + arrowW, arrowCentreY - arrowH * 0.5f);
 
-        g.setColour(colours["Text Colour"].withAlpha(0.5f));
+        g.setColour(box.findColour(ComboBox::arrowColourId).withAlpha(0.5f));
         g.strokePath(chevron, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
     }
 }
@@ -614,9 +593,9 @@ void BranchesLAF::drawTickBox(Graphics& g, Component& component, float x, float 
 }
 
 //------------------------------------------------------------------------------
-void BranchesLAF::fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& /*textEditor*/)
+void BranchesLAF::fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& textEditor)
 {
-    auto bg = ::ColourScheme::getInstance().colours["Text Editor Colour"];
+    auto bg = textEditor.findColour(TextEditor::backgroundColourId);
     float cr = std::min(height * 0.5f, 14.0f);
     g.setColour(bg);
     g.fillRoundedRectangle(0.0f, 0.0f, (float)width, (float)height, cr);
@@ -625,11 +604,15 @@ void BranchesLAF::fillTextEditorBackground(Graphics& g, int width, int height, T
 //------------------------------------------------------------------------------
 void BranchesLAF::drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& textEditor)
 {
-    auto& colours = ::ColourScheme::getInstance().colours;
     float cr = std::min(height * 0.5f, 14.0f);
     bool focused = textEditor.hasKeyboardFocus(true);
-    g.setColour(focused ? colours["Accent Colour"].withAlpha(0.6f) : colours["Text Colour"].withAlpha(0.15f));
-    g.drawRoundedRectangle(0.5f, 0.5f, (float)width - 1.0f, (float)height - 1.0f, cr, 1.0f);
+    auto outline = textEditor.findColour(focused ? TextEditor::focusedOutlineColourId : TextEditor::outlineColourId);
+
+    if (!outline.isTransparent())
+    {
+        g.setColour(focused ? outline.withAlpha(0.7f) : outline);
+        g.drawRoundedRectangle(0.5f, 0.5f, (float)width - 1.0f, (float)height - 1.0f, cr, 1.0f);
+    }
 }
 
 //------------------------------------------------------------------------------

@@ -30,7 +30,7 @@ Observed notes:
 - Stage Mode displayed the long current patch name, next patch cue, patch index, tuner button, exit button, navigation buttons, input/output meters, and panic button.
 - Patch-switch evidence covered both Stage Mode and main-canvas views after advancing to the second QA patch.
 - The first pass covered all five built-in colour schemes for the main shell/canvas.
-- Follow-up: the Daylight footer fields need contrast review, especially the patch selector text and IN/OUT numeric readouts.
+- Follow-up addressed by `documentation/qa/2026-05-26-d2-daylight-contrast`: the Daylight footer patch selector, tempo field, and IN/OUT numeric readouts now have readable contrast.
 
 Remaining matrix work:
 

@@ -192,6 +192,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Button Highlight"] = Colour(0xFF4A4A70);
         colours["Text Editor Colour"] = Colour(0xFF0F0F23);
         colours["Menu Selection Colour"] = Colour(0xFF00D9FF);
+        colours["Accent Colour"] = Colour(0xFF00D9FF);
         colours["CPU Meter Colour"] = Colour(0xFF00FF88);
         colours["Dialog Inner Background"] = Colour(0xFF252545);
         colours["Slider Colour"] = Colour(0xFF6366F1);
@@ -226,6 +227,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Button Highlight"] = Colour(0xFFBBBBBB);
         colours["Text Editor Colour"] = Colour(0xFFFFFFFF);
         colours["Menu Selection Colour"] = Colour(0xFF0077CC);
+        colours["Accent Colour"] = Colour(0xFF0077CC);
         colours["CPU Meter Colour"] = Colour(0xFF00AA00);
         colours["Dialog Inner Background"] = Colour(0xFFFFFFFF);
         colours["Slider Colour"] = Colour(0xFF0077CC);
@@ -260,6 +262,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Button Highlight"] = Colour(0xFF5A2D82);
         colours["Text Editor Colour"] = Colour(0xFF0A0015);
         colours["Menu Selection Colour"] = Colour(0xFFFF00FF);
+        colours["Accent Colour"] = Colour(0xFFFF00FF);
         colours["CPU Meter Colour"] = Colour(0xFF00FF00);
         colours["Dialog Inner Background"] = Colour(0xFF1A0533);
         colours["Slider Colour"] = Colour(0xFFFF00FF);
@@ -294,6 +297,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Button Highlight"] = Colour(0xFF2A5A8C);
         colours["Text Editor Colour"] = Colour(0xFF081420);
         colours["Menu Selection Colour"] = Colour(0xFF00C8FF);
+        colours["Accent Colour"] = Colour(0xFF00C8FF);
         colours["CPU Meter Colour"] = Colour(0xFF00DDAA);
         colours["Dialog Inner Background"] = Colour(0xFF0D1F3C);
         colours["Slider Colour"] = Colour(0xFF0EA5E9);
@@ -328,6 +332,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Button Highlight"] = Colour(0xFF3A6A3A);
         colours["Text Editor Colour"] = Colour(0xFF0A150A);
         colours["Menu Selection Colour"] = Colour(0xFF66CC66);
+        colours["Accent Colour"] = Colour(0xFF66CC66);
         colours["CPU Meter Colour"] = Colour(0xFF88EE88);
         colours["Dialog Inner Background"] = Colour(0xFF1A2F1A);
         colours["Slider Colour"] = Colour(0xFF4ADE80);

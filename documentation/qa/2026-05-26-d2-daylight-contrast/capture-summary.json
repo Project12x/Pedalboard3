@@ -1,0 +1,45 @@
+﻿{
+    "app":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\build\\Pedalboard3_artefacts\\Release\\Pedalboard3.exe",
+    "patch":  "C:\\Users\\estee\\AppData\\Local\\Temp\\Pedalboard3VisualQa\\visual-qa.pdl",
+    "output":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast",
+    "dpi":  168,
+    "scalePercent":  175,
+    "captures":  [
+                     {
+                         "Name":  "theme-midnight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\theme-midnight-main.png"
+                     },
+                     {
+                         "Name":  "workflow-dense-graph",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\workflow-dense-graph.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-before-switch",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\workflow-stage-mode-before-switch.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\workflow-stage-mode-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "workflow-main-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\workflow-main-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "theme-daylight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\theme-daylight-main.png"
+                     },
+                     {
+                         "Name":  "theme-synthwave-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\theme-synthwave-main.png"
+                     },
+                     {
+                         "Name":  "theme-deep-ocean-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\theme-deep-ocean-main.png"
+                     },
+                     {
+                         "Name":  "theme-forest-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-daylight-contrast\\theme-forest-main.png"
+                     }
+                 ]
+}
