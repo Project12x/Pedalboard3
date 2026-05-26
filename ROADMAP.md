@@ -8,7 +8,7 @@ A focused roadmap for current development. For historical completed phases, see 
 
 **Phase 6 (Stability & Polish)** — IN PROGRESS
 
-Active work: UI polish (6A), testing expansion, remaining bug fixes. Virtual MIDI keyboard enhancements (octave/velocity/sustain), dual IR loading with blend (IR Loader + NAM), semantic tokens, mixer/splitter, NAM loader, master bus, and typography all complete.
+Active work: UI polish (6A), testing expansion, remaining bug fixes. Virtual MIDI keyboard enhancements (octave/velocity/sustain), dual IR loading with blend (IR Loader + NAM), semantic tokens, mixer/splitter, NAM loader, master bus, plugin search, and typography all complete.
 
 **Phase 4 (Launch)** — COMPLETE
 | # | Feature | Status |
@@ -169,7 +169,7 @@ Active work: UI polish (6A), testing expansion, remaining bug fixes. Virtual MID
 | 6A.11 | Keyboard shortcuts overlay | Planned |
 | 6A.12 | Dark/light mode auto-switch | N/A (Midnight/Daylight themes exist) |
 | 6A.13 | Welcome screen | Planned |
-| 6A.14 | Plugin search with fuzzy match | Planned |
+| 6A.14 | Plugin search with fuzzy match | Done |
 | 6A.15 | Recent files quick access | Planned |
 | 6A.17 | CPU meter redesign | Planned |
 | 6A.18 | Plugin bypass visual feedback | Done |
@@ -397,5 +397,5 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
-*Last updated: 2026-02-20 (evening)*
+*Last updated: 2026-03-17*
 

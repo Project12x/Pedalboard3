@@ -19,6 +19,9 @@ cmake-build-*/
 *.user
 *.log
 build_log*.txt
+build_debug*.txt
+build_output*.txt
+build_warnings*.txt
 
 # CMake generated
 CMakeCache.txt
@@ -49,7 +52,6 @@ Release/
 # Temporary/helper scripts (created during migration)
 apply_juce8_fixes.ps1
 fix_brancheslaf.ps1
-build_output.txt
 
 # Working documents (not part of release)
 *_SPRINT.md

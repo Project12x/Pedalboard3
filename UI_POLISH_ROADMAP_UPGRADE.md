@@ -324,11 +324,11 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 | E2 | Connection and bypass signal cues | P1 | Planned |
 | E3 | Utility discoverability cues | P2 | Planned |
 | E4 | High-fidelity visual assets | P2 | Planned |
-| F1 | NAM collapsible editor | P1 | Planned |
-| F2 | Multi-font typography system | P1 | Planned |
-| F3 | NAM commercial-grade visual polish | P1 | Planned |
+| F1 | NAM collapsible editor | P1 | Done |
+| F2 | Multi-font typography system | P1 | Partial (NAM done) |
+| F3 | NAM commercial-grade visual polish | P1 | Partial (NAM visual pass done) |
 | F4 | Internal editor consistency roll-out | P2 | Planned |
-| F5 | Theme processor color palette | P1 | Planned |
+| F5 | Theme processor color palette | P1 | Partial (NAM palette done) |
 
 ---
 
@@ -379,6 +379,20 @@ Completed work:
 - **Layout constants shared** between `paint()` and `resized()` (headerH=34, signalH=155, gainH=115, sectionGap=6)
 - **68px knobs** render fully without clipping in the Tone section
 - All sections fit proportionally with consistent panel margins and section padding
+
+### 2026-03-17 - Search Window, Browser Theming, and NAM Polish Reconciliation
+
+**Tracks affected:** B1, B2, F1, F2, F3, F5
+
+Completed work:
+
+- **Plugin search** implemented with fuzzy ranking, category filtering, keyboard navigation, and format badges, then refactored from a child overlay into a top-level `PluginSearchWindow` to avoid `deleteAllChildren()` lifetime hazards.
+- **Virtual MIDI Input visibility toggle** added to Preferences with patch-load persistence and corrected I/O node spawn positions for Audio Input and OSC Input.
+- **Browser windows** for NAM and IR browsing gained themed rounded title bars, custom close buttons, and consistent pill-shaped search fields.
+- **NAM editor polish** now includes collapsible header behavior, multi-font typography for values/labels/section headers, compact layout, IR2 enable control, and theme-derived processor palette work.
+- **Performance-oriented visual cleanup** removed drag lerp animation and the node drop shadow from `PluginComponent::paint()`.
+
+**Commits:** `4974f32`, `9b33758`, `9d29f84`
 
 ---
 
