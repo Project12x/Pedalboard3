@@ -346,20 +346,10 @@ void PluginSearchContent::updateResults()
     {
         const auto& type = types.getReference(i);
 
-        if (!matchesCategory(type))
+        if (!PluginSearchLogic::matchesCategory(type, currentCategory))
             continue;
 
-        int score = 0;
-        if (query.isEmpty())
-        {
-            score = 100;
-        }
-        else
-        {
-            score = fuzzyScore(query, type.name);
-            int mfgScore = fuzzyScore(query, type.manufacturerName);
-            score = jmax(score, mfgScore);
-        }
+        int score = PluginSearchLogic::scorePlugin(query, type);
 
         if (score > 0)
         {
@@ -388,87 +378,6 @@ void PluginSearchContent::updateResults()
         resultsList.selectRow(0);
 }
 
-// ==============================================================================
-int PluginSearchContent::fuzzyScore(const String& query, const String& target) const
-{
-    if (query.isEmpty() || target.isEmpty())
-        return 0;
-
-    String lowerTarget = target.toLowerCase();
-    String lowerQuery = query;
-
-    if (lowerTarget == lowerQuery)
-        return 1000;
-
-    if (lowerTarget.startsWith(lowerQuery))
-        return 800;
-
-    if (lowerTarget.contains(lowerQuery))
-        return 600;
-
-    {
-        String initials;
-        bool nextIsStart = true;
-        for (auto ch : lowerTarget)
-        {
-            if (ch == ' ' || ch == '-' || ch == '_')
-            {
-                nextIsStart = true;
-            }
-            else if (nextIsStart)
-            {
-                initials += ch;
-                nextIsStart = false;
-            }
-        }
-        if (initials.startsWith(lowerQuery))
-            return 500;
-        if (initials.contains(lowerQuery))
-            return 400;
-    }
-
-    {
-        int qi = 0;
-        int matched = 0;
-        for (int ti = 0; ti < lowerTarget.length() && qi < lowerQuery.length(); ++ti)
-        {
-            if (lowerTarget[ti] == lowerQuery[qi])
-            {
-                ++qi;
-                ++matched;
-            }
-        }
-        if (qi == lowerQuery.length())
-        {
-            int density = (matched * 100) / lowerTarget.length();
-            return 100 + density;
-        }
-    }
-
-    return 0;
-}
-
-// ==============================================================================
-bool PluginSearchContent::matchesCategory(const PluginDescription& type) const
-{
-    switch (currentCategory)
-    {
-    case Category::All:
-        return true;
-
-    case Category::Effects:
-        return type.pluginFormatName != "Internal" && type.category != "Built-in" && !type.isInstrument;
-
-    case Category::Instruments:
-        return type.isInstrument;
-
-    case Category::Internal:
-        return type.pluginFormatName == "Internal" || type.category == "Built-in";
-    }
-    return true;
-}
-
-// ==============================================================================
 // PluginSearchWindow
 // ==============================================================================
 

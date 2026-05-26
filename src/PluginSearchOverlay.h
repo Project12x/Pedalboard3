@@ -12,6 +12,8 @@
 #ifndef PLUGINSEARCHOVERLAY_H_
 #define PLUGINSEARCHOVERLAY_H_
 
+#include "PluginSearchLogic.h"
+
 #include <JuceHeader.h>
 #include <functional>
 #include <vector>
@@ -41,14 +43,7 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
     bool keyPressed(const KeyPress& key) override;
 
   private:
-    // Category filter enum
-    enum class Category
-    {
-        All,
-        Effects,
-        Instruments,
-        Internal
-    };
+    using Category = PluginSearchLogic::Category;
 
     // A scored search result
     struct SearchResult
@@ -73,8 +68,6 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
 
     // Internal methods
     void updateResults();
-    int fuzzyScore(const String& query, const String& target) const;
-    bool matchesCategory(const PluginDescription& type) const;
     void selectPlugin(int resultIndex);
     void paintFormatBadge(Graphics& g, const String& format, Rectangle<int> bounds) const;
 
