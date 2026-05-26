@@ -216,6 +216,25 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
                 mainPanel->setChangedFlag(false);
             }
         }
+
+        // Used by the visual QA script to capture deterministic states without synthetic input.
+        const bool visualQaNextPatch = commandLine.contains("--visual-qa-next-patch");
+        const bool visualQaStage = commandLine.contains("--visual-qa-stage");
+        if (visualQaNextPatch || visualQaStage)
+        {
+            Component::SafePointer<StupidWindow> safeThis(this);
+            MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage]()
+                                      {
+                                          if (safeThis == nullptr || safeThis->mainPanel == nullptr)
+                                              return;
+
+                                          if (visualQaNextPatch)
+                                              safeThis->commandManager.invokeDirectly(MainPanel::PatchNextPatch, true);
+
+                                          if (visualQaStage)
+                                              safeThis->mainPanel->toggleStageMode();
+                                      });
+        }
     }
 }
 
