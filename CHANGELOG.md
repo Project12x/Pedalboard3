@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Virtual MIDI Input Toggle** — New toggle in Preferences > Visible I/O Nodes for enabling/disabling the Virtual MIDI Input node. Full chain: `PluginField`, `MainPanel`, `PreferencesDialog`, `PluginFieldPersistence` patch-load guard. State persisted via `SettingsManager`.
-- **Plugin Search Floating Window** — Refactored `PluginSearchOverlay` (child component) into `PluginSearchWindow` (top-level `DocumentWindow`). Uses custom `SearchWindowLookAndFeel` with rounded corners and themed title bar. Eliminates `deleteAllChildren` crash hazard entirely.
+- **Plugin Search Floating Window** — Added `PluginSearchWindow` as the final plugin search UI, replacing the earlier in-canvas `PluginSearchOverlay`. Uses a top-level `DocumentWindow` with custom `SearchWindowLookAndFeel`, rounded corners, themed title bar, fuzzy ranking, category tabs, keyboard navigation, and format badges.
 - **Browser Window Theming** — NAM Model Browser and IR Browser now use custom `BrowserWindowLookAndFeel` with rounded corners, themed title bar, custom close button, and pill-shaped search fields.
 
 ### Changed
@@ -21,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
-- **Drag Lerp Animation** — Removed Timer-based 60fps position interpolation during node dragging. Nodes now move directly with mouse.
+- **Drag Lerp Animation** — Removed the experimental Timer-based 60fps position interpolation during node dragging. Nodes now move directly with the mouse.
 - **Node Drop Shadow** — Removed `melatonin_blur` drop shadow from `PluginComponent::paint()`. Reduces GPU overhead per node.
 
 ### Fixed
@@ -37,8 +37,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **IR Loader Dual IR + Blend** — Standalone IR Loader now supports two IR slots with an equal-power crossfade blend slider (0.0 = IR1 only, 1.0 = IR2 only). Added low-cut (20-2000 Hz) and high-cut (1000-20000 Hz) Butterworth filters applied post-convolution. Second convolver added with independent load/clear. State serialized as v2 format with backward compatibility.
 - **NAM Dual IR + Blend** — NAM processor now supports loading a second impulse response (IR2) with equal-power crossfade blending. Added `loadIR2()`, `clearIR2()`, `setIRBlend()` to `NAMProcessor`. NAMControl UI extended with IR2 load/clear buttons, name label, and blend slider. State serialization upgraded to v5 with backward compatibility. Editor height increased from 550 to 614 to accommodate new controls.
 - **NAM IR2 Enable Toggle** — Added LED-style toggle button for IR2 slot, mirroring the IR1 toggle. When disabled, `convolver2` processing is skipped entirely. State serialized as v6 with backward compatibility (defaults to enabled).
-- **Smooth Node Drag Animation** — Nodes now glide toward the cursor using 60fps Timer-based position interpolation (lerp factor 0.35) instead of snapping. Subtle transparency (0.88 alpha) during drag for visual feedback. Sub-pixel snapping prevents perpetual micro-animation.
-- **Plugin Search Overlay** — New `PluginSearchOverlay` component accessible via "Search..." in the double-click context menu. Features fuzzy search with scored ranking, category tabs (All/Effects/Instruments/Internal), keyboard navigation (arrows/Enter/Escape), click-outside-to-dismiss, format badges (VST3/Internal), and dark glassmorphic UI.
 
 ### Changed
 
@@ -48,7 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **Search Overlay Crash on Open** — `deleteAllChildren()` in `PluginFieldPersistence::loadFromXml()` and `clear()` destroyed the `searchOverlay` Component owned by a `unique_ptr`, leaving a dangling pointer. Calling `show()` then crashed in `setBounds()` on freed memory. Fixed by detaching `searchOverlay` from the child list before `deleteAllChildren()` in all three call sites.
+- **Search Window Ownership Crash** — The earlier in-canvas search overlay could be destroyed by `deleteAllChildren()` during patch load/clear while still owned by a `unique_ptr`. The final search UI now lives in a top-level `PluginSearchWindow`, avoiding `PluginField` child ownership during graph teardown.
 - **NAM Header Clipping** — NAM control component was positioned 1px below the 23px header (y=24), causing the opaque background to overlap the header separator. Moved control to y=26 in constructor, `updateNodeSize`, and `refreshPins`; adjusted height offset from +62 to +64.
 - **NAM Theme Colors Not Updating** — Changing themes did not update NAM control or model browser colors at runtime. Added `NAMModelBrowserComponent::refreshColours()` and wired `MainPanel::changeListenerCallback` to recursively walk the desktop component tree and call `refreshColours()` on all `NAMControl` and `NAMModelBrowserComponent` instances.
 - **Eigen MSVC Build Error** — Pinned Eigen dependency from `master` to `5.0.0`. The `master` branch had GCC-specific `__attribute__((always_inline))` on lambdas in `GeneralBlockPanelKernel.h` causing MSVC C3260. Version 3.4.x was too old (lacked `Eigen::placeholders::lastN` required by NAM's `lstm.h`). 5.0.0 is the stable release with both features.
