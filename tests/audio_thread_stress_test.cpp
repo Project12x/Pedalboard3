@@ -169,10 +169,12 @@ TEST_CASE("Audio Thread Stress - Concurrent Parameter Changes", "[audio][stress]
     SECTION("Bypass toggling stress test")
     {
         std::atomic<int> bypassToggles{0};
+        std::atomic<bool> toggleThreadStarted{false};
 
         std::thread toggleThread(
             [&]()
             {
+                toggleThreadStarted.store(true, std::memory_order_release);
                 while (running.load(std::memory_order_relaxed))
                 {
                     processor.setBypass(true);
@@ -181,17 +183,26 @@ TEST_CASE("Audio Thread Stress - Concurrent Parameter Changes", "[audio][stress]
                 }
             });
 
-        // Process blocks while bypass is being toggled
-        for (int i = 0; i < 10000; ++i)
+        while (!toggleThreadStarted.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        // Process blocks for long enough that the toggle thread is actually
+        // scheduled on fast Release builds.
+        auto startTime = std::chrono::steady_clock::now();
+        int iterations = 0;
+
+        while (std::chrono::steady_clock::now() - startTime < std::chrono::milliseconds(100))
         {
             processor.processBlock(buffer, midi);
+            ++iterations;
         }
 
         running.store(false, std::memory_order_relaxed);
         toggleThread.join();
 
+        REQUIRE(iterations > 1000);
         REQUIRE(bypassToggles.load() > 1000);
-        REQUIRE(processor.getProcessBlockCount() == 10000);
+        REQUIRE(processor.getProcessBlockCount() == iterations);
     }
 
     processor.releaseResources();
