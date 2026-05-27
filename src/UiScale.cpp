@@ -62,6 +62,16 @@ bool shouldShowFooterControl(int componentWidth, int percent)
     return componentWidth >= footerControlMinimumWidth(percent);
 }
 
+bool shouldUseSingleRowFooter(int componentWidth, int percent)
+{
+    return componentWidth >= footerControlMinimumWidth(percent);
+}
+
+int footerHeight(int componentWidth, int percent)
+{
+    return shouldUseSingleRowFooter(componentWidth, percent) ? singleRowFooterHeight : compactFooterHeight;
+}
+
 std::optional<int> parseVisualQaOverride(const juce::String& commandLine)
 {
     const auto value = extractOverrideValue(commandLine);

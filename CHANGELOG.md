@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
+- **Scaled Footer Layout** — The main footer now switches to a compact two-row layout when scaled controls would crowd a single row, preserving patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls.
 - **Popup Menu Font Size** — `BranchesLAF::getPopupMenuFont()` now returns `getSubheadingFont()` (15px) for better readability.
 - **Search Bar Consistency** — All browser search bars now use `getSubheadingFont()` (15px) with centered vertical indent for consistent pill appearance.
 

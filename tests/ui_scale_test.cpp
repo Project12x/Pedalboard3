@@ -52,6 +52,18 @@ TEST_CASE("Footer UI scale control hides before it crowds scaled toolbar control
     CHECK_FALSE(UiScale::shouldShowFooterControl(1024, 200));
 }
 
+TEST_CASE("Footer switches to compact two-row layout when scaled controls would crowd", "[ui][scale]")
+{
+    CHECK(UiScale::shouldUseSingleRowFooter(1024, 100));
+    CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1024, 125));
+    CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1024, 200));
+    CHECK(UiScale::shouldUseSingleRowFooter(1920, 200));
+
+    CHECK(UiScale::footerHeight(1024, 100) == 40);
+    CHECK(UiScale::footerHeight(1024, 150) == 72);
+    CHECK(UiScale::footerHeight(1024, 200) == 72);
+}
+
 TEST_CASE("Visual QA UI scale override is parsed from command line", "[ui][scale][visual]")
 {
     CHECK(UiScale::parseVisualQaOverride("--visual-qa-ui-scale=75").value_or(0) == 75);
