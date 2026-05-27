@@ -713,7 +713,8 @@ void MainPanel::resized()
     const int toolbarHeight = UiScale::footerHeight(getWidth(), uiScalePercent);
     const int viewportHeight = jmax(0, getHeight() - toolbarHeight - keyboardHeight);
     const int footerTop = getHeight() - toolbarHeight;
-    const int footerW = UiScale::footerLayoutWidth(getWidth(), uiScalePercent);
+    const int footerLayoutW = UiScale::footerLayoutWidth(getWidth(), uiScalePercent);
+    const int footerW = getWidth();
     const bool singleRowFooter = UiScale::shouldUseSingleRowFooter(getWidth(), uiScalePercent);
     const bool stackedFooter = UiScale::shouldUseStackedFooter(getWidth(), uiScalePercent);
 
@@ -940,7 +941,7 @@ void MainPanel::resized()
     {
         const int row1Y = footerTop + 6;
         const int row2Y = footerTop + 40;
-        const bool showScaleLabel = footerW >= 640;
+        const bool showScaleLabel = footerLayoutW >= 640;
         const int patchRight = layoutUtilityControls(footerW - rightMargin, row1Y, showScaleLabel);
         layoutPatchControls(8, row1Y, patchRight);
 
