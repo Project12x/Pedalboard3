@@ -80,6 +80,13 @@
 	</table>
 
 	<h2>DPI Matrix</h2>
+	<p class="note">
+		For exact DPI evidence, set Windows Display scale before each run and use
+		<code>scripts\run_d2_visual_qa.ps1 -ExpectedScalePercent 100</code>,
+		<code>-ExpectedScalePercent 150</code>, or
+		<code>-ExpectedScalePercent 200</code>. The script fails if the reported
+		scale does not match the expected value.
+	</p>
 	<table>
 		<tr><th>Scale</th><th>Main shell</th><th>Canvas</th><th>Stage Mode</th><th>Dialogs</th></tr>
 		<tr><td>100%</td><td></td><td></td><td></td><td></td></tr>

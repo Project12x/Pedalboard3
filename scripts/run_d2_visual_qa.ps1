@@ -1,6 +1,7 @@
 param(
     [string]$Configuration = "Release",
-    [string]$OutputName = "2026-05-26-d2-visual"
+    [string]$OutputName = "2026-05-26-d2-visual",
+    [int]$ExpectedScalePercent = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -268,6 +269,18 @@ function Capture-Window {
     }
 }
 
+function Assert-ExpectedScale {
+    param([int]$ActualScalePercent)
+
+    if ($ExpectedScalePercent -le 0) {
+        return
+    }
+
+    if ($ActualScalePercent -ne $ExpectedScalePercent) {
+        throw "Expected display scale $ExpectedScalePercent%, but Pedalboard3 reported $ActualScalePercent%. Change Windows Display scale before this exact-DPI capture, or omit -ExpectedScalePercent for exploratory captures."
+    }
+}
+
 function Get-ProcessWindows {
     param([int]$ProcessId)
 
@@ -366,6 +379,7 @@ try {
             $session = Start-QaApp -Theme $theme
             if ($null -eq $dpi) {
                 try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                Assert-ExpectedScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
             }
 
             $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
@@ -424,6 +438,7 @@ try {
                 $session = Start-QaApp -Theme $theme -Arguments $dialog.Arguments
                 if ($null -eq $dpi) {
                     try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                    Assert-ExpectedScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
                 }
 
                 $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
@@ -463,6 +478,7 @@ $summary = [pscustomobject]@{
     output = $outputDir
     dpi = $dpi
     scalePercent = $scalePercent
+    expectedScalePercent = if ($ExpectedScalePercent -gt 0) { $ExpectedScalePercent } else { $null }
     captures = $captures
 }
 

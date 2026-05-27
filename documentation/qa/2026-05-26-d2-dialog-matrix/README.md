@@ -46,3 +46,7 @@ Observed notes:
 Remaining matrix work:
 
 - Exact 100%, 150%, and 200% DPI captures are still pending because this workstation was at 175% during the automated run.
+- Use the guarded exact-scale commands after changing Windows Display scale:
+  - `powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputName 2026-05-26-d2-dpi-100 -ExpectedScalePercent 100`
+  - `powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputName 2026-05-26-d2-dpi-150 -ExpectedScalePercent 150`
+  - `powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputName 2026-05-26-d2-dpi-200 -ExpectedScalePercent 200`
