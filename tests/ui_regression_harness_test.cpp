@@ -29,6 +29,7 @@ constexpr std::array requiredWorkflows{
     std::string_view{"theme-switch"},
     std::string_view{"stage-toggle"},
     std::string_view{"patch-switch"},
+    std::string_view{"scaled-footer"},
 };
 
 constexpr std::array requiredThemes{
@@ -39,7 +40,19 @@ constexpr std::array requiredThemes{
     std::string_view{"Forest"},
 };
 
-constexpr std::array requiredUiScales{75, 100, 150, 200};
+constexpr std::array requiredUiScales{75, 100, 125, 150, 175, 200};
+
+constexpr std::array requiredScaledFooterBreakpoints{125, 150, 175, 200};
+
+constexpr std::array requiredScaledFooterControls{
+    std::string_view{"ui-scale"},
+    std::string_view{"patch"},
+    std::string_view{"transport"},
+    std::string_view{"tempo"},
+    std::string_view{"gain-fx"},
+    std::string_view{"fit-manage"},
+    std::string_view{"cpu"},
+};
 
 constexpr std::array requiredVisualCriteria{
     std::string_view{"density"},
@@ -80,6 +93,9 @@ constexpr std::array checks{
     WorkflowCheck{"patch-switch", "visual-state",
                   "Switch patches with Stage Mode and main canvas visible, checking stale node, meter, and patch-label states.",
                   "tests/patch_switch_test.cpp:[patchswitch][stress]", true},
+    WorkflowCheck{"scaled-footer", "main-footer",
+                  "Capture normal and narrow footer screenshots at 125%, 150%, 175%, and 200% Pedalboard UI scale; verify UI Scale, patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls remain reachable.",
+                  "scripts/run_d2_visual_qa.ps1:-CaptureScaledFooterMatrix", true},
 };
 
 template <typename Range, typename Predicate>
@@ -158,7 +174,7 @@ TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression
 
 TEST_CASE("Visual QA gate covers required Pedalboard UI scales and sign-off criteria", "[ui][regression][visual]")
 {
-    REQUIRE(requiredUiScales == std::array{75, 100, 150, 200});
+    REQUIRE(requiredUiScales == std::array{75, 100, 125, 150, 175, 200});
 
     for (auto criterion : requiredVisualCriteria)
     {
@@ -174,5 +190,21 @@ TEST_CASE("Visual QA gate covers required Pedalboard UI scales and sign-off crit
         REQUIRE(containsMatching(checks, [workflow](const auto& check) {
             return check.workflow == workflow && check.requiresVisualEvidence;
         }));
+    }
+}
+
+TEST_CASE("Visual QA gate covers scaled footer breakpoints and controls", "[ui][regression][visual]")
+{
+    REQUIRE(requiredScaledFooterBreakpoints == std::array{125, 150, 175, 200});
+
+    REQUIRE(containsMatching(checks, [](const auto& check) {
+        return check.workflow == "scaled-footer" && check.surface == "main-footer" &&
+               check.requiresVisualEvidence;
+    }));
+
+    for (auto control : requiredScaledFooterControls)
+    {
+        INFO("control: " << control);
+        REQUIRE_FALSE(control.empty());
     }
 }

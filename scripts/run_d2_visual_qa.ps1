@@ -3,6 +3,7 @@ param(
     [string]$OutputName = "2026-05-26-d2-visual",
     [ValidateSet("75", "100", "125", "150", "175", "200")]
     [int]$UiScalePercent = 100,
+    [switch]$CaptureScaledFooterMatrix,
     [Alias("ExpectedScalePercent")]
     [int]$ExpectedOsScalePercent = 0
 )
@@ -19,6 +20,12 @@ $settingsBackup = Join-Path $tmpDir "settings.backup.json"
 $defaultPatchPath = Join-Path $appDataDir "default.pdl"
 $defaultPatchBackup = Join-Path $tmpDir "default.backup.pdl"
 $qaPatch = Join-Path $tmpDir "visual-qa.pdl"
+$scaledFooterScales = @(125, 150, 175, 200)
+$scaledFooterCaptureSizes = @(
+    [pscustomobject]@{ Name = "normal"; Width = 1280; Height = 820 },
+    [pscustomobject]@{ Name = "narrow"; Width = 960; Height = 820 }
+)
+$scaledFooterControls = @("ui-scale", "patch", "transport", "tempo", "gain-fx", "fit-manage", "cpu")
 
 $candidateApps = @(
     (Join-Path $repoRoot "build\Pedalboard3_artefacts\$Configuration\Pedalboard3.exe"),
@@ -198,12 +205,15 @@ function Write-QaPatch {
 }
 
 function Set-QaSettings {
-    param([string]$Theme)
+    param(
+        [string]$Theme,
+        [int]$ScalePercent = $UiScalePercent
+    )
 
     New-Item -ItemType Directory -Force -Path $appDataDir | Out-Null
     $settings = [ordered]@{
         colourScheme = $Theme
-        UiScalePercent = $UiScalePercent
+        UiScalePercent = $ScalePercent
         useTrayIcon = $false
         startInTray = $false
         LoopPatches = $true
@@ -319,12 +329,13 @@ function Find-QaWindow {
 function Start-QaApp {
     param(
         [string]$Theme,
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+        [int]$ScalePercent = $UiScalePercent
     )
 
-    Set-QaSettings -Theme $Theme
+    Set-QaSettings -Theme $Theme -ScalePercent $ScalePercent
 
-    $scaleArguments = @("--visual-qa-ui-scale=$UiScalePercent")
+    $scaleArguments = @("--visual-qa-ui-scale=$ScalePercent")
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $appPath
     $psi.Arguments = (($scaleArguments + $Arguments) -join " ")
@@ -429,6 +440,38 @@ try {
         }
     }
 
+    if ($CaptureScaledFooterMatrix) {
+        foreach ($scale in $scaledFooterScales) {
+            $session = $null
+            try {
+                $session = Start-QaApp -Theme "Midnight" -ScalePercent $scale
+                if ($null -eq $dpi) {
+                    try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                    Assert-ExpectedOsScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
+                }
+
+                foreach ($size in $scaledFooterCaptureSizes) {
+                    $captureName = "workflow-scaled-footer-{0}-{1}" -f $scale, $size.Name
+                    $path = Join-Path $outputDir ("{0}.png" -f $captureName)
+                    Capture-Window -Handle $session.Handle -Path $path -CaptureWidth $size.Width -CaptureHeight $size.Height
+                    $captures.Add([pscustomobject]@{
+                        Name = $captureName
+                        Path = $path
+                        UiScalePercent = $scale
+                        Width = $size.Width
+                        Height = $size.Height
+                        Criteria = $scaledFooterControls
+                    }) | Out-Null
+                }
+            }
+            finally {
+                if ($session) {
+                    Stop-QaApp -Process $session.Process
+                }
+            }
+        }
+    }
+
     $dialogSpecs = @(
         @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
         @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
@@ -482,6 +525,10 @@ $summary = [pscustomobject]@{
     patch = $qaPatch
     output = $outputDir
     uiScalePercent = $UiScalePercent
+    scaledFooterMatrixEnabled = $CaptureScaledFooterMatrix.IsPresent
+    scaledFooterRequiredScales = $scaledFooterScales
+    scaledFooterCaptureSizes = $scaledFooterCaptureSizes
+    scaledFooterControls = $scaledFooterControls
     dpi = $dpi
     osScalePercent = $osScalePercent
     scalePercent = $osScalePercent

@@ -84,15 +84,20 @@
 		For app-scale evidence, leave Windows Display scale unchanged and run
 		<code>scripts\run_d2_visual_qa.ps1 -UiScalePercent 75</code>,
 		<code>-UiScalePercent 100</code>,
-		<code>-UiScalePercent 150</code>, and
+		<code>-UiScalePercent 125</code>,
+		<code>-UiScalePercent 150</code>,
+		<code>-UiScalePercent 175</code>, and
 		<code>-UiScalePercent 200</code>. Use
+		<code>-CaptureScaledFooterMatrix</code> to capture normal and narrow footer evidence at 125%, 150%, 175%, and 200%. Use
 		<code>-ExpectedOsScalePercent</code> only for optional OS-DPI compatibility captures.
 	</p>
 	<table>
 		<tr><th>UI Scale</th><th>Main shell</th><th>Canvas</th><th>Stage Mode</th><th>Dialogs</th></tr>
 		<tr><td>75%</td><td></td><td></td><td></td><td></td></tr>
 		<tr><td>100%</td><td></td><td></td><td></td><td></td></tr>
+		<tr><td>125%</td><td></td><td></td><td></td><td></td></tr>
 		<tr><td>150%</td><td></td><td></td><td></td><td></td></tr>
+		<tr><td>175%</td><td></td><td></td><td></td><td></td></tr>
 		<tr><td>200%</td><td></td><td></td><td></td><td></td></tr>
 	</table>
 
@@ -101,7 +106,8 @@
 		<li>Density: dense patches remain scannable without text or control overlap.</li>
 		<li>Contrast: labels, meters, pins, and critical controls are readable in every built-in theme.</li>
 		<li>Focus: keyboard focus and active controls are visible where applicable.</li>
-		<li>Scaling: layouts hold at 75%, 100%, 150%, and 200% Pedalboard UI scale.</li>
+		<li>Scaling: layouts hold at 75%, 100%, 125%, 150%, 175%, and 200% Pedalboard UI scale.</li>
+		<li>Scaled footer: UI Scale, patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls remain reachable in normal and narrow captures at 125%, 150%, 175%, and 200%.</li>
 		<li>Recovery: Options &gt; UI Scale &gt; Reset to Default remains reachable if footer controls are hidden or crowded.</li>
 		<li>Stage readability: current patch, next patch, meters, and panic affordance are readable from performance distance.</li>
 		<li>Responsiveness: no visible UI lag from polish changes under normal and dense patch scenarios.</li>
