@@ -19,9 +19,25 @@
 
 #include "ColourScheme.h"
 
+#ifndef PEDALBOARD3_TESTS
 #include "JuceHelperStuff.h"
+#endif
 
 using namespace std;
+
+namespace
+{
+File getColourSchemeAppDataFolder()
+{
+#ifdef PEDALBOARD3_TESTS
+    auto folder = File::getSpecialLocation(File::tempDirectory).getChildFile("Pedalboard3_ColourSchemeTests");
+    folder.createDirectory();
+    return folder;
+#else
+    return JuceHelperStuff::getAppDataFolder();
+#endif
+}
+} // namespace
 
 //------------------------------------------------------------------------------
 ColourScheme& ColourScheme::getInstance()
@@ -37,7 +53,7 @@ const StringArray ColourScheme::getPresets() const
     int i;
     Array<File> files;
     StringArray retval;
-    File settingsDir = JuceHelperStuff::getAppDataFolder();
+    File settingsDir = getColourSchemeAppDataFolder();
 
     // Add built-in presets first
     retval.addArray(getBuiltInPresets());
@@ -59,7 +75,7 @@ const StringArray ColourScheme::getPresets() const
 void ColourScheme::loadPreset(const String& name)
 {
     String filename;
-    File settingsDir = JuceHelperStuff::getAppDataFolder();
+    File settingsDir = getColourSchemeAppDataFolder();
 
     filename << name << ".colourscheme";
 
@@ -103,7 +119,7 @@ void ColourScheme::savePreset(const String& name)
     String filename;
     map<String, Colour>::iterator it;
     XmlElement rootXml("Pedalboard3ColourScheme");
-    File settingsDir = JuceHelperStuff::getAppDataFolder();
+    File settingsDir = getColourSchemeAppDataFolder();
 
     filename << name << ".colourscheme";
 
@@ -129,7 +145,7 @@ bool ColourScheme::doesColoursMatchPreset(const String& name)
     String tempstr;
     File presetFile;
     bool retval = true;
-    File settingsDir = JuceHelperStuff::getAppDataFolder();
+    File settingsDir = getColourSchemeAppDataFolder();
 
     tempstr << name << ".colourscheme";
     presetFile = settingsDir.getChildFile(tempstr);
@@ -173,6 +189,77 @@ bool ColourScheme::doesColoursMatchPreset(const String& name)
 const StringArray ColourScheme::getBuiltInPresets()
 {
     return {"Midnight", "Daylight", "Synthwave", "Deep Ocean", "Forest"};
+}
+
+//------------------------------------------------------------------------------
+const std::vector<ColourRoleSpec>& ColourScheme::getSemanticColourRoles()
+{
+    static const std::vector<ColourRoleSpec> roles{
+        {"Window Background", "app-shell", "default", "Root frame and primary empty-space fill."},
+        {"Field Background", "graph-canvas", "default", "Patch canvas and large editable work surfaces."},
+        {"Text Colour", "typography", "default", "Primary readable text."},
+        {"Text Colour", "typography", "disabled", "Disabled text derives from primary text by alpha."},
+        {"Plugin Border", "node-card", "focus", "Node outlines, focused edges, and subtle separators."},
+        {"Plugin Background", "node-card", "default", "Plugin/node body surfaces and internal processor panels."},
+        {"Audio Connection", "routing-cable", "active", "Audio signal paths, active routing affordances, and audio pins."},
+        {"Parameter Connection", "routing-cable", "active", "Parameter/control paths and parameter pins."},
+        {"Button Colour", "control", "default", "Default button and toolbar control fill."},
+        {"Button Highlight", "control", "hover", "Hovered or pressed button fill and raised control emphasis."},
+        {"Text Editor Colour", "input", "default", "Text-entry and editable-value backgrounds."},
+        {"Menu Selection Colour", "menu", "selection", "Selected menu row and menu focus affordance."},
+        {"Accent Colour", "control", "focus", "Primary accent, keyboard focus ring, and selected-control emphasis."},
+        {"CPU Meter Colour", "meter", "active", "CPU load meter and system activity indicator."},
+        {"Dialog Inner Background", "dialog", "default", "Nested dialog panels, lists, and utility surface interiors."},
+        {"Slider Colour", "control", "active", "Slider tracks, fills, and primary continuous-control emphasis."},
+        {"List Selected Colour", "list", "selection", "Selected rows in lists, browsers, and searchable menus."},
+        {"VU Meter Lower Colour", "meter", "active-low", "Nominal low/mid meter range."},
+        {"VU Meter Upper Colour", "meter", "warning", "Elevated meter range before clipping."},
+        {"VU Meter Over Colour", "meter", "danger", "Over/clip meter range."},
+        {"Vector Colour", "iconography", "default", "Drawable icons, strokes, and legacy vector glyphs."},
+        {"Waveform Colour", "meter", "active", "Waveform and scope traces."},
+        {"Level Dial Colour", "control", "active", "Rotary level control fill and emphasis."},
+        {"Tick Box Colour", "control", "active", "Checked checkbox and binary setting emphasis."},
+        {"Stage Background Top", "stage", "default", "Stage Mode gradient start."},
+        {"Stage Background Bottom", "stage", "default", "Stage Mode gradient end."},
+        {"Stage Panel Background", "stage", "default", "Stage Mode panel surface and status block fill."},
+        {"Dialog Background", "dialog", "default", "Top-level utility/dialog window background."},
+        {"Tuner Active Colour", "stage", "active", "In-tune and tuner-active signal state."},
+        {"Danger Colour", "semantic", "danger", "Destructive, panic, error, clip, and invalid states."},
+        {"Warning Colour", "semantic", "warning", "Caution, transitional, and elevated-risk states."},
+        {"Success Colour", "semantic", "success", "Successful, ready, armed, and valid states."},
+    };
+
+    return roles;
+}
+
+//------------------------------------------------------------------------------
+StringArray ColourScheme::getRequiredColourRoles()
+{
+    StringArray requiredRoles;
+    for (const auto& role : getSemanticColourRoles())
+        requiredRoles.addIfNotAlreadyThere(role.name);
+
+    return requiredRoles;
+}
+
+//------------------------------------------------------------------------------
+bool ColourScheme::hasRequiredColourRoles(StringArray* missingRoles) const
+{
+    if (missingRoles != nullptr)
+        missingRoles->clear();
+
+    bool hasAllRoles = true;
+    for (const auto& role : getSemanticColourRoles())
+    {
+        if (colours.find(role.name) == colours.end())
+        {
+            hasAllRoles = false;
+            if (missingRoles != nullptr)
+                missingRoles->addIfNotAlreadyThere(role.name);
+        }
+    }
+
+    return hasAllRoles;
 }
 
 //------------------------------------------------------------------------------
@@ -365,7 +452,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
 //------------------------------------------------------------------------------
 ColourScheme::ColourScheme()
 {
-    File defaultFile = JuceHelperStuff::getAppDataFolder().getChildFile("default.colourscheme");
+    File defaultFile = getColourSchemeAppDataFolder().getChildFile("default.colourscheme");
 
     if (defaultFile.existsAsFile())
         loadPreset("default");

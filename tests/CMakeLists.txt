@@ -25,6 +25,7 @@ add_executable(Pedalboard3_Tests
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
+    ../src/ColourScheme.cpp
     ../src/FontManager.cpp
 )
 

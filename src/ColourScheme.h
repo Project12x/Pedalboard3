@@ -22,6 +22,15 @@
 
 #include <JuceHeader.h>
 #include <map>
+#include <vector>
+
+struct ColourRoleSpec
+{
+    const char* name;
+    const char* surface;
+    const char* state;
+    const char* usage;
+};
 
 ///	Singleton struct handling colour schemes.
 struct ColourScheme
@@ -53,6 +62,15 @@ struct ColourScheme
     /// @param name The preset name (e.g., "Midnight", "Synthwave")
     /// @return true if the preset was found and loaded, false otherwise
     bool loadBuiltInPreset(const String& name);
+
+    /// @brief Returns the semantic colour role matrix required by built-in themes.
+    static const std::vector<ColourRoleSpec>& getSemanticColourRoles();
+
+    /// @brief Returns the unique colour role keys required by built-in themes.
+    static StringArray getRequiredColourRoles();
+
+    /// @brief Returns true if the current colour map contains every required role.
+    bool hasRequiredColourRoles(StringArray* missingRoles = nullptr) const;
 
   private:
     ///	Constructor.

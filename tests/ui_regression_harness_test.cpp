@@ -12,6 +12,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <string_view>
 
+#include "../src/ColourScheme.h"
+
 namespace
 {
 struct WorkflowCheck
@@ -47,6 +49,18 @@ constexpr std::array requiredVisualCriteria{
     std::string_view{"stage-readability"},
 };
 
+constexpr std::array requiredThemeStates{
+    std::string_view{"default"},
+    std::string_view{"hover"},
+    std::string_view{"active"},
+    std::string_view{"focus"},
+    std::string_view{"disabled"},
+    std::string_view{"selection"},
+    std::string_view{"warning"},
+    std::string_view{"danger"},
+    std::string_view{"success"},
+};
+
 constexpr std::array checks{
     WorkflowCheck{"theme-switch", "main-shell",
                   "Switch every built-in theme and verify refreshed labels, buttons, menus, canvas, and dialogs.",
@@ -73,6 +87,11 @@ bool containsMatching(const Range& range, Predicate predicate)
 {
     return std::any_of(range.begin(), range.end(), predicate);
 }
+
+String toJuceString(std::string_view text)
+{
+    return String::fromUTF8(text.data(), static_cast<int>(text.size()));
+}
 } // namespace
 
 TEST_CASE("UI polish regression matrix covers required workflows", "[ui][regression][harness]")
@@ -89,13 +108,52 @@ TEST_CASE("UI polish regression matrix covers required workflows", "[ui][regress
 
 TEST_CASE("Theme polish gate covers every built-in theme", "[ui][regression][theme]")
 {
+    const auto builtInThemes = ColourScheme::getBuiltInPresets();
+    REQUIRE(builtInThemes.size() == static_cast<int>(requiredThemes.size()));
+
     for (auto theme : requiredThemes)
     {
         INFO("theme: " << theme);
         REQUIRE_FALSE(theme.empty());
+        REQUIRE(builtInThemes.contains(toJuceString(theme)));
     }
 
     REQUIRE(requiredThemes.size() == 5);
+}
+
+TEST_CASE("Semantic colour role matrix covers required UI states", "[ui][regression][theme][tokens]")
+{
+    const auto& roles = ColourScheme::getSemanticColourRoles();
+    REQUIRE(roles.size() >= 30);
+    REQUIRE(ColourScheme::getRequiredColourRoles().size() <= static_cast<int>(roles.size()));
+
+    for (auto state : requiredThemeStates)
+    {
+        INFO("state: " << state);
+        REQUIRE(containsMatching(roles, [state](const auto& role) { return std::string_view{role.state} == state; }));
+    }
+}
+
+TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression][theme][tokens]")
+{
+    auto& colourScheme = ColourScheme::getInstance();
+    const auto requiredRoles = ColourScheme::getRequiredColourRoles();
+
+    for (auto theme : requiredThemes)
+    {
+        INFO("theme: " << theme);
+        REQUIRE(colourScheme.loadBuiltInPreset(toJuceString(theme)));
+
+        StringArray missingRoles;
+        CHECK(colourScheme.hasRequiredColourRoles(&missingRoles));
+        INFO("missing roles: " << missingRoles.joinIntoString(", ").toStdString());
+
+        for (const auto& requiredRole : requiredRoles)
+        {
+            INFO("role: " << requiredRole.toStdString());
+            CHECK(colourScheme.colours.find(requiredRole) != colourScheme.colours.end());
+        }
+    }
 }
 
 TEST_CASE("Visual QA gate covers required DPI scales and sign-off criteria", "[ui][regression][visual]")
