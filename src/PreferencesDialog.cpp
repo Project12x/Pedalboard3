@@ -546,8 +546,7 @@ void PreferencesDialog::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
     if (comboBoxThatHasChanged == uiScaleComboBox)
     {
         const auto percent = UiScale::normalisePercent(uiScaleComboBox->getSelectedId());
-        SettingsManager::getInstance().setValue(UiScale::settingsKey, percent);
-        Desktop::getInstance().setGlobalScaleFactor(UiScale::toScaleFactor(percent));
+        mainPanel->setUiScalePercent(percent);
         repaint();
     }
 }

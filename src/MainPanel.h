@@ -306,6 +306,12 @@ class MainPanel : public Component,
     void refreshPluginPoolDefinitions();
     /// Updates a single patch definition in the plugin pool.
     void updatePluginPoolDefinition(int patchIndex, const XmlElement* patch);
+    /// Returns the persisted app-owned Pedalboard UI scale.
+    int getUiScalePercent() const;
+    /// Applies and persists the app-owned Pedalboard UI scale.
+    void setUiScalePercent(int percent);
+    /// Syncs the footer UI scale selector from persisted settings.
+    void syncUiScaleComboBoxFromSettings();
 
     ///	Toggles Stage Mode (fullscreen performance view).
     void toggleStageMode();
@@ -545,6 +551,8 @@ class MainPanel : public Component,
     Label* inputGainLabel;
     Label* outputGainLabel;
     TextButton* masterInsertButton;
+    Label* uiScaleFooterLabel;
+    ComboBox* uiScaleFooterComboBox;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

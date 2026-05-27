@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Plugin Search Floating Window** — Added `PluginSearchWindow` as the final plugin search UI, replacing the earlier in-canvas `PluginSearchOverlay`. Uses a top-level `DocumentWindow` with custom `SearchWindowLookAndFeel`, rounded corners, themed title bar, fuzzy ranking, category tabs, keyboard navigation, and format badges.
 - **Browser Window Theming** — NAM Model Browser and IR Browser now use custom `BrowserWindowLookAndFeel` with rounded corners, themed title bar, custom close button, and pill-shaped search fields.
 - **UI Polish Regression Harness** — Added executable Catch2 coverage for the Phase 6 theme-switch, Stage Mode, and patch-switch QA matrix, plus a documentation checklist for screenshot evidence across themes and Pedalboard UI scale.
-- **Pedalboard UI Scale Preference** — Added a persisted in-app `UiScalePercent` setting, a Preferences > Interface UI Scale control, and visual-QA launch override support for 75%, 100%, 125%, 150%, 175%, and 200% scaling.
+- **Pedalboard UI Scale Preference** — Added a persisted in-app `UiScalePercent` setting, an obvious footer UI Scale dropdown mirrored in Preferences > Interface, and visual-QA launch override support for 75%, 100%, 125%, 150%, 175%, and 200% scaling.
 
 ### Changed
 

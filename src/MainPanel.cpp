@@ -62,6 +62,7 @@
 #include "ToastOverlay.h"
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
+#include "UiScale.h"
 #include "UserPresetWindow.h"
 #include "Vectors.h"
 #include "VirtualMidiInputProcessor.h"
@@ -242,6 +243,20 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     masterInsertButton->setButtonText("FX");
     masterInsertButton->setTooltip("Master Bus Insert Rack");
     masterInsertButton->addListener(this);
+
+    addAndMakeVisible(uiScaleFooterLabel = new Label("uiScaleFooterLabel", "UI Scale"));
+    uiScaleFooterLabel->setFont(FontManager::getInstance().getLabelFont());
+    uiScaleFooterLabel->setJustificationType(Justification::centredRight);
+    uiScaleFooterLabel->setTooltip("Pedalboard UI Scale");
+
+    addAndMakeVisible(uiScaleFooterComboBox = new ComboBox("uiScaleFooterComboBox"));
+    uiScaleFooterComboBox->setJustificationType(Justification::centredLeft);
+    uiScaleFooterComboBox->setTextWhenNothingSelected("100%");
+    uiScaleFooterComboBox->setTextWhenNoChoicesAvailable("(no scale choices)");
+    uiScaleFooterComboBox->setTooltip("Pedalboard UI Scale");
+    for (auto percent : UiScale::supportedPercents())
+        uiScaleFooterComboBox->addItem(String(percent) + "%", percent);
+    uiScaleFooterComboBox->addListener(this);
 
     //[UserPreSize]
 
@@ -547,6 +562,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         inputGainSlider->setValue(gs.masterInputGainDb.load(std::memory_order_relaxed), dontSendNotification);
         outputGainSlider->setValue(gs.masterOutputGainDb.load(std::memory_order_relaxed), dontSendNotification);
     }
+    syncUiScaleComboBoxFromSettings();
 
     // Start timers.
     startTimer(CpuTimer, 100);
@@ -656,6 +672,10 @@ MainPanel::~MainPanel()
     outputGainLabel = nullptr;
     delete masterInsertButton;
     masterInsertButton = nullptr;
+    delete uiScaleFooterLabel;
+    uiScaleFooterLabel = nullptr;
+    delete uiScaleFooterComboBox;
+    uiScaleFooterComboBox = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -749,7 +769,7 @@ void MainPanel::resized()
         stageView->setBounds(getLocalBounds());
 
     // Right group: tightly packed from right edge
-    // [FIT][Manage][CPU:][======cpu======]
+    // [UI Scale][FIT][Manage][CPU:][======cpu======]
     const int rightMargin = 6;
     int rxEnd = getWidth() - rightMargin;
     cpuSlider->setBounds(rxEnd - 144, getHeight() - 33, 144, 24);
@@ -759,12 +779,23 @@ void MainPanel::resized()
     organiseButton->setBounds(rxEnd - 64, getHeight() - 33, 64, 24);
     rxEnd -= 64 + 4;
     fitButton->setBounds(rxEnd - 38, getHeight() - 33, 38, 24);
-    int fitStartX = rxEnd - 38;
+    rxEnd -= 38 + 8;
 
-    // Master gain sliders between transport and FIT button (responsive layout)
+    const bool showFooterUiScale = getWidth() >= 960;
+    uiScaleFooterLabel->setVisible(showFooterUiScale);
+    uiScaleFooterComboBox->setVisible(showFooterUiScale);
+    if (showFooterUiScale)
+    {
+        uiScaleFooterComboBox->setBounds(rxEnd - 78, getHeight() - 33, 78, 24);
+        rxEnd -= 78 + 2;
+        uiScaleFooterLabel->setBounds(rxEnd - 58, getHeight() - 33, 58, 24);
+        rxEnd -= 58 + 8;
+    }
+
+    // Master gain sliders between transport and the right-side utility group.
     {
         int transportEndX = (proportionOfWidth(0.5f) - 18) + 38 + 24 + 10;
-        int gainAreaW = fitStartX - transportEndX;
+        int gainAreaW = rxEnd - transportEndX;
         int gainY = getHeight() - 33;
 
         const int labelW = 34;
@@ -978,6 +1009,10 @@ void MainPanel::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
 
         //[/UserComboBoxCode_patchComboBox]
     }
+    else if (comboBoxThatHasChanged == uiScaleFooterComboBox)
+    {
+        setUiScalePercent(uiScaleFooterComboBox->getSelectedId());
+    }
 
     //[UsercomboBoxChanged_Post]
     //[/UsercomboBoxChanged_Post]
@@ -1061,6 +1096,34 @@ void MainPanel::showToast(const String& message)
 {
     // Use custom ToastOverlay with Melatonin Blur for premium shadows
     ToastOverlay::getInstance().show(message, 1500);
+}
+
+//------------------------------------------------------------------------------
+int MainPanel::getUiScalePercent() const
+{
+    return UiScale::normalisePercent(
+        SettingsManager::getInstance().getInt(UiScale::settingsKey, UiScale::defaultPercent));
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::syncUiScaleComboBoxFromSettings()
+{
+    if (uiScaleFooterComboBox != nullptr)
+        uiScaleFooterComboBox->setSelectedId(getUiScalePercent(), dontSendNotification);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::setUiScalePercent(int percent)
+{
+    const auto normalisedPercent = UiScale::normalisePercent(percent);
+    SettingsManager::getInstance().setValue(UiScale::settingsKey, normalisedPercent);
+    Desktop::getInstance().setGlobalScaleFactor(UiScale::toScaleFactor(normalisedPercent));
+
+    if (uiScaleFooterComboBox != nullptr && uiScaleFooterComboBox->getSelectedId() != normalisedPercent)
+        uiScaleFooterComboBox->setSelectedId(normalisedPercent, dontSendNotification);
+
+    resized();
+    repaint();
 }
 
 //------------------------------------------------------------------------------
