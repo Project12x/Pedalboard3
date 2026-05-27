@@ -34,24 +34,52 @@
 #include "PreferencesDialog.h"
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
+namespace
+{
+constexpr int preferencesContentMinWidth = 560;
+constexpr int preferencesContentMinHeight = 704;
+constexpr int ioOptionsPanelY = 204;
+constexpr int ioOptionsPanelHeight = 112;
+
+class PreferencesContentComponent : public Component
+{
+  public:
+    void paint(Graphics& g) override
+    {
+        g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
+
+        g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
+        g.fillRect(12, ioOptionsPanelY, getWidth() - 24, ioOptionsPanelHeight);
+
+        g.setColour(ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
+        g.drawRect(12, ioOptionsPanelY, getWidth() - 24, ioOptionsPanelHeight, 1);
+    }
+};
+} // namespace
 //[/MiscUserDefs]
 
 //==============================================================================
 PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const String& multicastAddress)
-    : oscPortLabel(0), oscPortEditor(0), oscLabel(0), oscMulticastLabel(0), oscMulticastEditor(0),
-      multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
-      virtualMidiInputButton(0), otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0),
-      ignorePinNamesButton(0), midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0),
-      startInTrayButton(0), fixedSizeButton(0), pdlAudioSettingsButton(0), interfaceLabel(0), uiScaleLabel(0),
-      uiScaleComboBox(0), namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
+    : viewport(0), contentComponent(0), oscPortLabel(0), oscPortEditor(0), oscLabel(0), oscMulticastLabel(0),
+      oscMulticastEditor(0), multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0),
+      oscInputButton(0), virtualMidiInputButton(0), otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0),
+      windowsOnTopButton(0), ignorePinNamesButton(0), midiLabel(0), midiProgramChangeButton(0),
+      mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0), fixedSizeButton(0),
+      pdlAudioSettingsButton(0), interfaceLabel(0), uiScaleLabel(0), uiScaleComboBox(0), namLabel(0), namDirLabel(0),
+      namDirValue(0), namDirBrowseButton(0)
 {
-    addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
+    addAndMakeVisible(viewport = new Viewport("preferencesViewport"));
+    contentComponent = new PreferencesContentComponent();
+    viewport->setViewedComponent(contentComponent, true);
+    viewport->setScrollBarsShown(true, false);
+
+    contentComponent->addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
     oscPortLabel->setFont(FontManager::getInstance().getBodyFont());
     oscPortLabel->setJustificationType(Justification::centredLeft);
     oscPortLabel->setEditable(false, false, false);
     oscPortLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(oscPortEditor = new TextEditor("oscPortEditor"));
+    contentComponent->addAndMakeVisible(oscPortEditor = new TextEditor("oscPortEditor"));
     oscPortEditor->setMultiLine(false);
     oscPortEditor->setReturnKeyStartsNewLine(false);
     oscPortEditor->setReadOnly(false);
@@ -60,19 +88,19 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     oscPortEditor->setPopupMenuEnabled(true);
     oscPortEditor->setText("5678");
 
-    addAndMakeVisible(oscLabel = new Label("oscLabel", "Open Sound Control Options"));
+    contentComponent->addAndMakeVisible(oscLabel = new Label("oscLabel", "Open Sound Control Options"));
     oscLabel->setFont(FontManager::getInstance().getSubheadingFont());
     oscLabel->setJustificationType(Justification::centredLeft);
     oscLabel->setEditable(false, false, false);
     oscLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(oscMulticastLabel = new Label("oscMulticastLabel", "OSC Multicast Address:"));
+    contentComponent->addAndMakeVisible(oscMulticastLabel = new Label("oscMulticastLabel", "OSC Multicast Address:"));
     oscMulticastLabel->setFont(FontManager::getInstance().getBodyFont());
     oscMulticastLabel->setJustificationType(Justification::centredLeft);
     oscMulticastLabel->setEditable(false, false, false);
     oscMulticastLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(oscMulticastEditor = new TextEditor("oscMulticastEditor"));
+    contentComponent->addAndMakeVisible(oscMulticastEditor = new TextEditor("oscMulticastEditor"));
     oscMulticastEditor->setMultiLine(false);
     oscMulticastEditor->setReturnKeyStartsNewLine(false);
     oscMulticastEditor->setReadOnly(false);
@@ -81,8 +109,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     oscMulticastEditor->setPopupMenuEnabled(true);
     oscMulticastEditor->setText(String());
 
-    addAndMakeVisible(multicastHintLabel =
-                          new Label("multicastHintLabel", "(leave blank for a one-to-one connection)"));
+    contentComponent->addAndMakeVisible(multicastHintLabel = new Label("multicastHintLabel", "optional"));
     multicastHintLabel->setFont(FontManager::getInstance().getBodyFont());
     multicastHintLabel->setJustificationType(Justification::centredLeft);
     multicastHintLabel->setEditable(false, false, false);
@@ -90,100 +117,100 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
                                   ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.5f));
     multicastHintLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(ioOptionsLabel = new Label("ioOptionsLabel", "Visible I/O Nodes"));
+    contentComponent->addAndMakeVisible(ioOptionsLabel = new Label("ioOptionsLabel", "Visible I/O Nodes"));
     ioOptionsLabel->setFont(FontManager::getInstance().getSubheadingFont());
     ioOptionsLabel->setJustificationType(Justification::centredLeft);
     ioOptionsLabel->setEditable(false, false, false);
     ioOptionsLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(audioInputButton = new ToggleButton("audioInputButton"));
+    contentComponent->addAndMakeVisible(audioInputButton = new ToggleButton("audioInputButton"));
     audioInputButton->setButtonText("Audio Input");
     audioInputButton->addListener(this);
     audioInputButton->setToggleState(true, false);
 
-    addAndMakeVisible(midiInputButton = new ToggleButton("midiInputButton"));
+    contentComponent->addAndMakeVisible(midiInputButton = new ToggleButton("midiInputButton"));
     midiInputButton->setButtonText("Midi Input");
     midiInputButton->addListener(this);
     midiInputButton->setToggleState(true, false);
 
-    addAndMakeVisible(oscInputButton = new ToggleButton("oscInputButton"));
+    contentComponent->addAndMakeVisible(oscInputButton = new ToggleButton("oscInputButton"));
     oscInputButton->setButtonText("OSC Input");
     oscInputButton->addListener(this);
     oscInputButton->setToggleState(true, false);
 
-    addAndMakeVisible(virtualMidiInputButton = new ToggleButton("virtualMidiInputButton"));
+    contentComponent->addAndMakeVisible(virtualMidiInputButton = new ToggleButton("virtualMidiInputButton"));
     virtualMidiInputButton->setButtonText("Virtual MIDI Input");
     virtualMidiInputButton->addListener(this);
     virtualMidiInputButton->setToggleState(true, false);
 
-    addAndMakeVisible(otherLabel = new Label("otherLabel", "Other Options"));
+    contentComponent->addAndMakeVisible(otherLabel = new Label("otherLabel", "Other Options"));
     otherLabel->setFont(FontManager::getInstance().getSubheadingFont());
     otherLabel->setJustificationType(Justification::centredLeft);
     otherLabel->setEditable(false, false, false);
     otherLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(mappingsWindowButton = new ToggleButton("mappingsWindowButton"));
+    contentComponent->addAndMakeVisible(mappingsWindowButton = new ToggleButton("mappingsWindowButton"));
     mappingsWindowButton->setButtonText("Open mappings window on successful param connection");
     mappingsWindowButton->addListener(this);
     mappingsWindowButton->setToggleState(true, false);
 
-    addAndMakeVisible(loopPatchesButton = new ToggleButton("loopPatchesButton"));
+    contentComponent->addAndMakeVisible(loopPatchesButton = new ToggleButton("loopPatchesButton"));
     loopPatchesButton->setButtonText("Loop next/prev patch action");
     loopPatchesButton->addListener(this);
     loopPatchesButton->setToggleState(true, false);
 
-    addAndMakeVisible(windowsOnTopButton = new ToggleButton("windowsOnTopButton"));
+    contentComponent->addAndMakeVisible(windowsOnTopButton = new ToggleButton("windowsOnTopButton"));
     windowsOnTopButton->setButtonText("Set plugin windows Always On Top");
     windowsOnTopButton->addListener(this);
 
-    addAndMakeVisible(ignorePinNamesButton = new ToggleButton("ignorePinNamesButton"));
+    contentComponent->addAndMakeVisible(ignorePinNamesButton = new ToggleButton("ignorePinNamesButton"));
     ignorePinNamesButton->setButtonText("Ignore plugin pin names");
     ignorePinNamesButton->addListener(this);
 
-    addAndMakeVisible(midiLabel = new Label("midiLabel", "Midi Options"));
+    contentComponent->addAndMakeVisible(midiLabel = new Label("midiLabel", "Midi Options"));
     midiLabel->setFont(FontManager::getInstance().getSubheadingFont());
     midiLabel->setJustificationType(Justification::centredLeft);
     midiLabel->setEditable(false, false, false);
     midiLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(midiProgramChangeButton = new ToggleButton("midiProgramChangeButton"));
+    contentComponent->addAndMakeVisible(midiProgramChangeButton = new ToggleButton("midiProgramChangeButton"));
     midiProgramChangeButton->setButtonText("Program Change messages switch patches");
     midiProgramChangeButton->addListener(this);
 
-    addAndMakeVisible(mmcTransportButton = new ToggleButton("mmcTransportButton"));
+    contentComponent->addAndMakeVisible(mmcTransportButton = new ToggleButton("mmcTransportButton"));
     mmcTransportButton->setButtonText("Main transport responds to MMC");
     mmcTransportButton->addListener(this);
 
-    addAndMakeVisible(useTrayIconButton = new ToggleButton("useTrayIconButton"));
+    contentComponent->addAndMakeVisible(useTrayIconButton = new ToggleButton("useTrayIconButton"));
     useTrayIconButton->setButtonText("Display tray icon (not OSX)");
     useTrayIconButton->addListener(this);
 
-    addAndMakeVisible(startInTrayButton = new ToggleButton("startInTrayButton"));
+    contentComponent->addAndMakeVisible(startInTrayButton = new ToggleButton("startInTrayButton"));
     startInTrayButton->setButtonText("Start in tray (not OSX)");
     startInTrayButton->addListener(this);
 
-    addAndMakeVisible(fixedSizeButton = new ToggleButton("fixedSizeButton"));
+    contentComponent->addAndMakeVisible(fixedSizeButton = new ToggleButton("fixedSizeButton"));
     fixedSizeButton->setButtonText("Force fixed-size plugin windows");
     fixedSizeButton->addListener(this);
     fixedSizeButton->setToggleState(true, false);
 
-    addAndMakeVisible(pdlAudioSettingsButton = new ToggleButton("pdlAudioSettingsButton"));
+    contentComponent->addAndMakeVisible(pdlAudioSettingsButton = new ToggleButton("pdlAudioSettingsButton"));
     pdlAudioSettingsButton->setButtonText("Save audio settings in .pdl files");
     pdlAudioSettingsButton->addListener(this);
 
-    addAndMakeVisible(interfaceLabel = new Label("interfaceLabel", "Interface"));
+    contentComponent->addAndMakeVisible(interfaceLabel = new Label("interfaceLabel", "Interface"));
     interfaceLabel->setFont(FontManager::getInstance().getSubheadingFont());
     interfaceLabel->setJustificationType(Justification::centredLeft);
     interfaceLabel->setEditable(false, false, false);
     interfaceLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(uiScaleLabel = new Label("uiScaleLabel", "UI Scale:"));
+    contentComponent->addAndMakeVisible(uiScaleLabel = new Label("uiScaleLabel", "UI Scale:"));
     uiScaleLabel->setFont(FontManager::getInstance().getBodyFont());
     uiScaleLabel->setJustificationType(Justification::centredLeft);
     uiScaleLabel->setEditable(false, false, false);
     uiScaleLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
 
-    addAndMakeVisible(uiScaleComboBox = new ComboBox("uiScaleComboBox"));
+    contentComponent->addAndMakeVisible(uiScaleComboBox = new ComboBox("uiScaleComboBox"));
     uiScaleComboBox->setJustificationType(Justification::centredLeft);
     uiScaleComboBox->setTextWhenNothingSelected("100%");
     uiScaleComboBox->setTextWhenNoChoicesAvailable("(no scale choices)");
@@ -192,17 +219,17 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     uiScaleComboBox->addListener(this);
 
     // NAM Options
-    addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
+    contentComponent->addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
     namLabel->setFont(FontManager::getInstance().getSubheadingFont());
     namLabel->setJustificationType(Justification::centredLeft);
     namLabel->setEditable(false, false, false);
 
-    addAndMakeVisible(namDirLabel = new Label("namDirLabel", "Download Directory:"));
+    contentComponent->addAndMakeVisible(namDirLabel = new Label("namDirLabel", "Download Directory:"));
     namDirLabel->setFont(FontManager::getInstance().getBodyFont());
     namDirLabel->setJustificationType(Justification::centredLeft);
     namDirLabel->setEditable(false, false, false);
 
-    addAndMakeVisible(namDirValue = new Label("namDirValue", ""));
+    contentComponent->addAndMakeVisible(namDirValue = new Label("namDirValue", ""));
     namDirValue->setFont(FontManager::getInstance().getBodyFont());
     namDirValue->setJustificationType(Justification::centredLeft);
     namDirValue->setEditable(false, false, false);
@@ -210,7 +237,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     namDirValue->setColour(Label::outlineColourId,
                            ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
 
-    addAndMakeVisible(namDirBrowseButton = new TextButton("namDirBrowseButton"));
+    contentComponent->addAndMakeVisible(namDirBrowseButton = new TextButton("namDirBrowseButton"));
     namDirBrowseButton->setButtonText("Browse...");
     namDirBrowseButton->addListener(this);
 
@@ -340,6 +367,9 @@ PreferencesDialog::~PreferencesDialog()
     namDirValue = nullptr;
     delete namDirBrowseButton;
     namDirBrowseButton = nullptr;
+    delete viewport;
+    viewport = nullptr;
+    contentComponent = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
     //[/Destructor]
@@ -355,49 +385,52 @@ void PreferencesDialog::paint(Graphics& g)
 
     g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
-    g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
-    g.fillRect(12, 132, getWidth() - 24, 100);
-
-    g.setColour(ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
-    g.drawRect(12, 132, getWidth() - 24, 100, 1);
-
     //[/UserPaint]
 }
 
 void PreferencesDialog::resized()
 {
+    if (viewport != nullptr && contentComponent != nullptr)
+    {
+        viewport->setBounds(getLocalBounds());
+        const auto contentWidth = jmax(preferencesContentMinWidth, getWidth());
+        contentComponent->setSize(contentWidth, preferencesContentMinHeight);
+    }
+
+    const auto contentWidth = contentComponent != nullptr ? contentComponent->getWidth() : getWidth();
+
     oscPortLabel->setBounds(8, 40, 72, 24);
     oscPortEditor->setBounds(80, 40, 64, 24);
-    oscLabel->setBounds(0, 8, 208, 24);
+    oscLabel->setBounds(0, 8, 260, 24);
     oscMulticastLabel->setBounds(8, 72, 160, 24);
     oscMulticastEditor->setBounds(168, 72, 112, 24);
-    multicastHintLabel->setBounds(280, 72, 272, 24);
-    ioOptionsLabel->setBounds(0, 104, 136, 24);
-    audioInputButton->setBounds(16, 136, 96, 24);
-    midiInputButton->setBounds(16, 160, 88, 24);
-    oscInputButton->setBounds(16, 184, 88, 24);
-    virtualMidiInputButton->setBounds(16, 208, 150, 24);
-    interfaceLabel->setBounds(0, 320, 150, 24);
-    uiScaleLabel->setBounds(16, 344, 88, 24);
-    uiScaleComboBox->setBounds(104, 344, 104, 24);
-    otherLabel->setBounds(0, 384, 150, 24);
-    mappingsWindowButton->setBounds(16, 408, 376, 24);
-    loopPatchesButton->setBounds(16, 432, 208, 24);
-    windowsOnTopButton->setBounds(16, 456, 256, 24);
-    ignorePinNamesButton->setBounds(16, 480, 176, 24);
-    midiLabel->setBounds(0, 240, 104, 24);
-    midiProgramChangeButton->setBounds(16, 264, 288, 24);
-    mmcTransportButton->setBounds(16, 288, 232, 24);
-    useTrayIconButton->setBounds(16, 504, 200, 24);
-    startInTrayButton->setBounds(16, 528, 168, 24);
-    fixedSizeButton->setBounds(16, 552, 224, 24);
-    pdlAudioSettingsButton->setBounds(16, 576, 224, 24);
+    multicastHintLabel->setBounds(288, 72, jmax(120, contentWidth - 304), 24);
+    interfaceLabel->setBounds(0, 112, 150, 24);
+    uiScaleLabel->setBounds(16, 136, 88, 24);
+    uiScaleComboBox->setBounds(104, 136, 104, 24);
+    ioOptionsLabel->setBounds(0, 176, 160, 24);
+    audioInputButton->setBounds(16, 208, 128, 24);
+    midiInputButton->setBounds(16, 232, 120, 24);
+    oscInputButton->setBounds(16, 256, 120, 24);
+    virtualMidiInputButton->setBounds(16, 280, 190, 24);
+    midiLabel->setBounds(0, 332, 104, 24);
+    midiProgramChangeButton->setBounds(16, 356, 360, 24);
+    mmcTransportButton->setBounds(16, 380, 304, 24);
+    otherLabel->setBounds(0, 420, 150, 24);
+    mappingsWindowButton->setBounds(16, 444, 440, 24);
+    loopPatchesButton->setBounds(16, 468, 260, 24);
+    windowsOnTopButton->setBounds(16, 492, 320, 24);
+    ignorePinNamesButton->setBounds(16, 516, 220, 24);
+    useTrayIconButton->setBounds(16, 540, 240, 24);
+    startInTrayButton->setBounds(16, 564, 220, 24);
+    fixedSizeButton->setBounds(16, 588, 280, 24);
+    pdlAudioSettingsButton->setBounds(16, 612, 280, 24);
 
     // NAM Options
-    namLabel->setBounds(0, 608, 150, 24);
-    namDirLabel->setBounds(16, 632, 130, 24);
-    namDirValue->setBounds(146, 632, getWidth() - 230, 24);
-    namDirBrowseButton->setBounds(getWidth() - 80, 632, 70, 24);
+    namLabel->setBounds(0, 644, 150, 24);
+    namDirLabel->setBounds(16, 668, 150, 24);
+    namDirBrowseButton->setBounds(contentWidth - 88, 668, 78, 24);
+    namDirValue->setBounds(166, 668, jmax(80, contentWidth - 264), 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }

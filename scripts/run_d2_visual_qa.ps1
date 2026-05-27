@@ -4,6 +4,7 @@ param(
     [ValidateSet("75", "100", "125", "150", "175", "200")]
     [int]$UiScalePercent = 100,
     [switch]$CaptureScaledFooterMatrix,
+    [switch]$CaptureScaledDialogMatrix,
     [Alias("ExpectedScalePercent")]
     [int]$ExpectedOsScalePercent = 0
 )
@@ -26,6 +27,12 @@ $scaledFooterCaptureSizes = @(
     [pscustomobject]@{ Name = "narrow"; Width = 960; Height = 820 }
 )
 $scaledFooterControls = @("ui-scale", "patch", "transport", "tempo", "gain-fx", "fit-manage", "cpu")
+$scaledDialogScales = @(150, 200)
+$scaledDialogCaptureSizes = @(
+    [pscustomobject]@{ Name = "normal"; Width = 980; Height = 740 },
+    [pscustomobject]@{ Name = "narrow"; Width = 760; Height = 680 }
+)
+$scaledDialogSurfaces = @("plugin-search", "preferences", "nam-browser", "ir-browser")
 
 $candidateApps = @(
     (Join-Path $repoRoot "build\Pedalboard3_artefacts\$Configuration\Pedalboard3.exe"),
@@ -387,6 +394,12 @@ Write-QaPatch
 $captures = New-Object System.Collections.Generic.List[object]
 $dpi = $null
 $themes = @("Midnight", "Daylight", "Synthwave", "Deep Ocean", "Forest")
+$dialogSpecs = @(
+    @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
+    @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
+    @{ Name = "nam-browser"; Title = "NAM Model Browser"; Arguments = @("--visual-qa-nam-browser") },
+    @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") }
+)
 
 try {
     foreach ($theme in $themes) {
@@ -472,13 +485,6 @@ try {
         }
     }
 
-    $dialogSpecs = @(
-        @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
-        @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
-        @{ Name = "nam-browser"; Title = "NAM Model Browser"; Arguments = @("--visual-qa-nam-browser") },
-        @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") }
-    )
-
     foreach ($theme in $themes) {
         foreach ($dialog in $dialogSpecs) {
             $session = $null
@@ -498,6 +504,42 @@ try {
             finally {
                 if ($session) {
                     Stop-QaApp -Process $session.Process
+                }
+            }
+        }
+    }
+
+    if ($CaptureScaledDialogMatrix) {
+        foreach ($scale in $scaledDialogScales) {
+            foreach ($dialog in $dialogSpecs) {
+                foreach ($size in $scaledDialogCaptureSizes) {
+                    $session = $null
+                    try {
+                        $session = Start-QaApp -Theme "Midnight" -Arguments $dialog.Arguments -ScalePercent $scale
+                        if ($null -eq $dpi) {
+                            try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                            Assert-ExpectedOsScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
+                        }
+
+                        $dialogHandle = Find-QaWindow -Process $session.Process -Title $dialog.Title
+                        $captureName = "workflow-scaled-dialog-{0}-{1}-{2}" -f $dialog.Name, $scale, $size.Name
+                        $path = Join-Path $outputDir ("{0}.png" -f $captureName)
+                        Capture-Window -Handle $dialogHandle -Path $path -CaptureWidth $size.Width -CaptureHeight $size.Height
+                        $captures.Add([pscustomobject]@{
+                            Name = $captureName
+                            Path = $path
+                            UiScalePercent = $scale
+                            Width = $size.Width
+                            Height = $size.Height
+                            Surface = $dialog.Name
+                            Criteria = $scaledDialogSurfaces
+                        }) | Out-Null
+                    }
+                    finally {
+                        if ($session) {
+                            Stop-QaApp -Process $session.Process
+                        }
+                    }
                 }
             }
         }
@@ -529,6 +571,10 @@ $summary = [pscustomobject]@{
     scaledFooterRequiredScales = $scaledFooterScales
     scaledFooterCaptureSizes = $scaledFooterCaptureSizes
     scaledFooterControls = $scaledFooterControls
+    scaledDialogMatrixEnabled = $CaptureScaledDialogMatrix.IsPresent
+    scaledDialogRequiredScales = $scaledDialogScales
+    scaledDialogCaptureSizes = $scaledDialogCaptureSizes
+    scaledDialogSurfaces = $scaledDialogSurfaces
     dpi = $dpi
     osScalePercent = $osScalePercent
     scalePercent = $osScalePercent

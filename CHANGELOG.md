@@ -16,10 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **UI Polish Regression Harness** — Added executable Catch2 coverage for the Phase 6 theme-switch, Stage Mode, and patch-switch QA matrix, plus a documentation checklist for screenshot evidence across themes and Pedalboard UI scale.
 - **Pedalboard UI Scale Preference** — Added a persisted in-app `UiScalePercent` setting, a defensive footer UI Scale dropdown, a recoverable Options > UI Scale menu with Reset to Default, a Preferences > Interface mirror, and visual-QA launch override support for 75%, 100%, 125%, 150%, 175%, and 200% scaling.
 - **Scaled Footer Visual QA Matrix** — Added D2 visual-QA coverage for normal and narrow footer captures at 125%, 150%, 175%, and 200% app scale, plus explicit sign-off criteria for UI Scale, patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls.
+- **Scaled Dialog Visual QA Matrix** — Added D2 visual-QA coverage for plugin search, Preferences, NAM browser, and IR browser captures at 150% and 200% app scale in normal and narrow dialog sizes.
 
 ### Changed
 
-- **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. `-CaptureScaledFooterMatrix` captures the high-scale footer breakpoint set, and OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
+- **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. `-CaptureScaledFooterMatrix` captures the high-scale footer breakpoint set, `-CaptureScaledDialogMatrix` captures high-scale secondary surfaces, and OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
 - **Scaled Footer Layout** — The main footer now switches out of single-row mode using scale-aware available width, then falls back to a stacked footer when two rows would still crowd controls. Patch, transport, tempo, gain/FX, UI scale, Fit/Manage, and CPU controls remain reachable at high Pedalboard UI scale.
 - **Popup Menu Font Size** — `BranchesLAF::getPopupMenuFont()` now returns `getSubheadingFont()` (15px) for better readability.
 - **Search Bar Consistency** — All browser search bars now use `getSubheadingFont()` (15px) with centered vertical indent for consistent pill appearance.
@@ -31,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Preferences High-Scale Layout** — Preferences now keeps UI Scale visible near the top, shortens the OSC multicast hint, and uses a vertical viewport so lower settings remain reachable at high Pedalboard UI scale.
 - **Audio Input Toggle Spawn Position** — `enableAudioInput` was re-creating the node at (10, 10) instead of standard (540, 500).
 - **OSC Input Toggle Spawn Position** — `enableOscInput` was re-creating the node at (50, dynamic_Y). Fixed to standard (540, 860).
 

@@ -77,6 +77,10 @@ class PreferencesDialog : public Component,
     String currentPort;
     ///	The current multicast address to listen on.
     String currentMulticast;
+    /// Scrolls the settings content when app UI scale or window size leaves less visible space.
+    Viewport* viewport;
+    /// Owns the fixed settings layout inside the viewport.
+    Component* contentComponent;
 
     //[/UserVariables]
 

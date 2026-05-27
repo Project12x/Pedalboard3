@@ -30,6 +30,7 @@ constexpr std::array requiredWorkflows{
     std::string_view{"stage-toggle"},
     std::string_view{"patch-switch"},
     std::string_view{"scaled-footer"},
+    std::string_view{"scaled-dialogs"},
 };
 
 constexpr std::array requiredThemes{
@@ -44,6 +45,8 @@ constexpr std::array requiredUiScales{75, 100, 125, 150, 175, 200};
 
 constexpr std::array requiredScaledFooterBreakpoints{125, 150, 175, 200};
 
+constexpr std::array requiredScaledDialogBreakpoints{150, 200};
+
 constexpr std::array requiredScaledFooterControls{
     std::string_view{"ui-scale"},
     std::string_view{"patch"},
@@ -52,6 +55,13 @@ constexpr std::array requiredScaledFooterControls{
     std::string_view{"gain-fx"},
     std::string_view{"fit-manage"},
     std::string_view{"cpu"},
+};
+
+constexpr std::array requiredScaledDialogSurfaces{
+    std::string_view{"plugin-search"},
+    std::string_view{"preferences"},
+    std::string_view{"nam-browser"},
+    std::string_view{"ir-browser"},
 };
 
 constexpr std::array requiredVisualCriteria{
@@ -96,6 +106,9 @@ constexpr std::array checks{
     WorkflowCheck{"scaled-footer", "main-footer",
                   "Capture normal and narrow footer screenshots at 125%, 150%, 175%, and 200% Pedalboard UI scale; verify UI Scale, patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls remain reachable.",
                   "scripts/run_d2_visual_qa.ps1:-CaptureScaledFooterMatrix", true},
+    WorkflowCheck{"scaled-dialogs", "secondary-surfaces",
+                  "Capture plugin search, Preferences, NAM browser, and IR browser screenshots at 150% and 200% Pedalboard UI scale in normal and narrow dialog sizes.",
+                  "scripts/run_d2_visual_qa.ps1:-CaptureScaledDialogMatrix", true},
 };
 
 template <typename Range, typename Predicate>
@@ -206,5 +219,21 @@ TEST_CASE("Visual QA gate covers scaled footer breakpoints and controls", "[ui][
     {
         INFO("control: " << control);
         REQUIRE_FALSE(control.empty());
+    }
+}
+
+TEST_CASE("Visual QA gate covers scaled dialog breakpoints and surfaces", "[ui][regression][visual]")
+{
+    REQUIRE(requiredScaledDialogBreakpoints == std::array{150, 200});
+
+    REQUIRE(containsMatching(checks, [](const auto& check) {
+        return check.workflow == "scaled-dialogs" && check.surface == "secondary-surfaces" &&
+               check.requiresVisualEvidence;
+    }));
+
+    for (auto surface : requiredScaledDialogSurfaces)
+    {
+        INFO("surface: " << surface);
+        REQUIRE_FALSE(surface.empty());
     }
 }
