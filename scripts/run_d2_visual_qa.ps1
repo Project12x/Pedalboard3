@@ -33,10 +33,14 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type @"
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 
 public static class VisualQaWin32
 {
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
@@ -44,6 +48,12 @@ public static class VisualQaWin32
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    public struct WindowInfo
+    {
+        public IntPtr Handle;
+        public string Title;
     }
 
     [DllImport("user32.dll")]
@@ -66,6 +76,51 @@ public static class VisualQaWin32
 
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    public static WindowInfo[] GetProcessWindows(uint targetProcessId)
+    {
+        var windows = new List<WindowInfo>();
+
+        EnumWindows((hWnd, lParam) =>
+        {
+            if (!IsWindowVisible(hWnd))
+                return true;
+
+            uint windowProcessId;
+            GetWindowThreadProcessId(hWnd, out windowProcessId);
+            if (windowProcessId != targetProcessId)
+                return true;
+
+            var length = GetWindowTextLength(hWnd);
+            var title = "";
+            if (length > 0)
+            {
+                var builder = new StringBuilder(length + 1);
+                GetWindowText(hWnd, builder, builder.Capacity);
+                title = builder.ToString();
+            }
+
+            windows.Add(new WindowInfo { Handle = hWnd, Title = title });
+            return true;
+        }, IntPtr.Zero);
+
+        return windows.ToArray();
+    }
 
 }
 "@
@@ -182,11 +237,15 @@ function Get-WindowRect {
 function Capture-Window {
     param(
         [IntPtr]$Handle,
-        [string]$Path
+        [string]$Path,
+        [int]$CaptureWidth = 0,
+        [int]$CaptureHeight = 0
     )
 
     [VisualQaWin32]::ShowWindow($Handle, 5) | Out-Null
-    [VisualQaWin32]::SetWindowPos($Handle, [IntPtr](-1), 40, 40, 1280, 820, 0x0040) | Out-Null
+    if ($CaptureWidth -gt 0 -and $CaptureHeight -gt 0) {
+        [VisualQaWin32]::SetWindowPos($Handle, [IntPtr](-1), 40, 40, $CaptureWidth, $CaptureHeight, 0x0040) | Out-Null
+    }
     [VisualQaWin32]::SetForegroundWindow($Handle) | Out-Null
     Start-Sleep -Milliseconds 500
 
@@ -207,6 +266,37 @@ function Capture-Window {
         $graphics.Dispose()
         $bitmap.Dispose()
     }
+}
+
+function Get-ProcessWindows {
+    param([int]$ProcessId)
+
+    [VisualQaWin32]::GetProcessWindows([uint32]$ProcessId) | ForEach-Object {
+        [pscustomobject]@{
+            Handle = $_.Handle
+            Title = $_.Title
+        }
+    }
+}
+
+function Find-QaWindow {
+    param(
+        [System.Diagnostics.Process]$Process,
+        [string]$Title
+    )
+
+    for ($i = 0; $i -lt 80; ++$i) {
+        $windows = Get-ProcessWindows -ProcessId $Process.Id
+        $match = $windows | Where-Object { $_.Title -eq $Title } | Select-Object -First 1
+        if ($match) {
+            return $match.Handle
+        }
+
+        Start-Sleep -Milliseconds 250
+    }
+
+    $known = (Get-ProcessWindows -ProcessId $Process.Id | ForEach-Object { "'$($_.Title)'" }) -join ", "
+    throw "Timed out waiting for visual QA window '$Title'. Known windows: $known"
 }
 
 function Start-QaApp {
@@ -244,7 +334,7 @@ function Stop-QaApp {
     $Process.CloseMainWindow() | Out-Null
     if (-not $Process.WaitForExit(2500)) {
         $Process.Kill()
-        $Process.WaitForExit(5000)
+        $Process.WaitForExit(5000) | Out-Null
     }
 }
 
@@ -280,12 +370,12 @@ try {
 
             $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
             $path = Join-Path $outputDir ("theme-{0}-main.png" -f $safeTheme)
-            Capture-Window -Handle $session.Handle -Path $path
+            Capture-Window -Handle $session.Handle -Path $path -CaptureWidth 1280 -CaptureHeight 820
             $captures.Add([pscustomobject]@{ Name = "theme-$safeTheme-main"; Path = $path }) | Out-Null
 
             if ($theme -eq "Midnight") {
                 $densePath = Join-Path $outputDir "workflow-dense-graph.png"
-                Capture-Window -Handle $session.Handle -Path $densePath
+                Capture-Window -Handle $session.Handle -Path $densePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-dense-graph"; Path = $densePath }) | Out-Null
 
                 Stop-QaApp -Process $session.Process
@@ -293,7 +383,7 @@ try {
 
                 $stagePath = Join-Path $outputDir "workflow-stage-mode-before-switch.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage")
-                Capture-Window -Handle $session.Handle -Path $stagePath
+                Capture-Window -Handle $session.Handle -Path $stagePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-before-switch"; Path = $stagePath }) | Out-Null
 
                 Stop-QaApp -Process $session.Process
@@ -301,7 +391,7 @@ try {
 
                 $stageAfterSwitchPath = Join-Path $outputDir "workflow-stage-mode-after-patch-next.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch", "--visual-qa-stage")
-                Capture-Window -Handle $session.Handle -Path $stageAfterSwitchPath
+                Capture-Window -Handle $session.Handle -Path $stageAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-after-patch-next"; Path = $stageAfterSwitchPath }) | Out-Null
 
                 Stop-QaApp -Process $session.Process
@@ -309,13 +399,43 @@ try {
 
                 $mainAfterSwitchPath = Join-Path $outputDir "workflow-main-after-patch-next.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch")
-                Capture-Window -Handle $session.Handle -Path $mainAfterSwitchPath
+                Capture-Window -Handle $session.Handle -Path $mainAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-main-after-patch-next"; Path = $mainAfterSwitchPath }) | Out-Null
             }
         }
         finally {
             if ($session) {
                 Stop-QaApp -Process $session.Process
+            }
+        }
+    }
+
+    $dialogSpecs = @(
+        @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
+        @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
+        @{ Name = "nam-browser"; Title = "NAM Model Browser"; Arguments = @("--visual-qa-nam-browser") },
+        @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") }
+    )
+
+    foreach ($theme in $themes) {
+        foreach ($dialog in $dialogSpecs) {
+            $session = $null
+            try {
+                $session = Start-QaApp -Theme $theme -Arguments $dialog.Arguments
+                if ($null -eq $dpi) {
+                    try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                }
+
+                $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
+                $dialogHandle = Find-QaWindow -Process $session.Process -Title $dialog.Title
+                $path = Join-Path $outputDir ("dialog-{0}-{1}.png" -f $dialog.Name, $safeTheme)
+                Capture-Window -Handle $dialogHandle -Path $path
+                $captures.Add([pscustomobject]@{ Name = "dialog-$($dialog.Name)-$safeTheme"; Path = $path }) | Out-Null
+            }
+            finally {
+                if ($session) {
+                    Stop-QaApp -Process $session.Process
+                }
             }
         }
     }

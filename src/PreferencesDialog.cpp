@@ -245,7 +245,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     //[/UserPreSize]
 
-    setSize(560, 590);
+    setSize(560, 616);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -326,10 +326,10 @@ void PreferencesDialog::paint(Graphics& g)
     g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
     g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
-    g.fillRect(12, 132, getWidth() - 24, 82);
+    g.fillRect(12, 132, getWidth() - 24, 100);
 
     g.setColour(ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
-    g.drawRect(12, 132, getWidth() - 24, 82, 1);
+    g.drawRect(12, 132, getWidth() - 24, 100, 1);
 
     //[/UserPaint]
 }
@@ -347,24 +347,24 @@ void PreferencesDialog::resized()
     midiInputButton->setBounds(16, 160, 88, 24);
     oscInputButton->setBounds(16, 184, 88, 24);
     virtualMidiInputButton->setBounds(16, 208, 150, 24);
-    otherLabel->setBounds(0, 304, 150, 24);
-    mappingsWindowButton->setBounds(16, 328, 376, 24);
-    loopPatchesButton->setBounds(16, 352, 208, 24);
-    windowsOnTopButton->setBounds(16, 376, 256, 24);
-    ignorePinNamesButton->setBounds(16, 400, 176, 24);
-    midiLabel->setBounds(0, 224, 104, 24);
-    midiProgramChangeButton->setBounds(16, 248, 288, 24);
-    mmcTransportButton->setBounds(16, 272, 232, 24);
-    useTrayIconButton->setBounds(16, 424, 200, 24);
-    startInTrayButton->setBounds(16, 448, 168, 24);
-    fixedSizeButton->setBounds(16, 472, 224, 24);
-    pdlAudioSettingsButton->setBounds(16, 496, 224, 24);
+    otherLabel->setBounds(0, 320, 150, 24);
+    mappingsWindowButton->setBounds(16, 344, 376, 24);
+    loopPatchesButton->setBounds(16, 368, 208, 24);
+    windowsOnTopButton->setBounds(16, 392, 256, 24);
+    ignorePinNamesButton->setBounds(16, 416, 176, 24);
+    midiLabel->setBounds(0, 240, 104, 24);
+    midiProgramChangeButton->setBounds(16, 264, 288, 24);
+    mmcTransportButton->setBounds(16, 288, 232, 24);
+    useTrayIconButton->setBounds(16, 440, 200, 24);
+    startInTrayButton->setBounds(16, 464, 168, 24);
+    fixedSizeButton->setBounds(16, 488, 224, 24);
+    pdlAudioSettingsButton->setBounds(16, 512, 224, 24);
 
     // NAM Options
-    namLabel->setBounds(0, 528, 150, 24);
-    namDirLabel->setBounds(16, 552, 130, 24);
-    namDirValue->setBounds(146, 552, getWidth() - 230, 24);
-    namDirBrowseButton->setBounds(getWidth() - 80, 552, 70, 24);
+    namLabel->setBounds(0, 544, 150, 24);
+    namDirLabel->setBounds(16, 568, 130, 24);
+    namDirValue->setBounds(146, 568, getWidth() - 230, 24);
+    namDirBrowseButton->setBounds(getWidth() - 80, 568, 70, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }

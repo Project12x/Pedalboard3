@@ -31,8 +31,9 @@ Observed notes:
 - Patch-switch evidence covered both Stage Mode and main-canvas views after advancing to the second QA patch.
 - The first pass covered all five built-in colour schemes for the main shell/canvas.
 - Follow-up addressed by `documentation/qa/2026-05-26-d2-daylight-contrast`: the Daylight footer patch selector, tempo field, and IN/OUT numeric readouts now have readable contrast.
+- Dialog-specific theme coverage addressed by `documentation/qa/2026-05-26-d2-dialog-matrix`: Plugin Search, Preferences, NAM Model Browser, and IR Browser were captured across all five built-in themes at the workstation's 175% scale.
 
 Remaining matrix work:
 
 - Exact 100%, 150%, and 200% DPI captures are still pending because this workstation was at 175% during the automated run.
-- Dialog-specific captures for plugin search, Preferences, NAM browser, and IR browser remain pending for the broader D2 matrix.
+- Dialog-specific captures are complete at 175% scale; exact 100%, 150%, and 200% dialog captures remain pending.

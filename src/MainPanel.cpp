@@ -1162,6 +1162,13 @@ ApplicationCommandTarget* MainPanel::getNextCommandTarget()
 }
 
 //------------------------------------------------------------------------------
+void MainPanel::showPluginSearchWindowForVisualQa()
+{
+    if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+        field->showPluginSearchWindowForVisualQa();
+}
+
+//------------------------------------------------------------------------------
 void MainPanel::getAllCommands(Array<CommandID>& commands)
 {
     const CommandID ids[] = {FileNew,

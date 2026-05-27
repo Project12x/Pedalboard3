@@ -1,0 +1,125 @@
+﻿{
+    "app":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\build\\Pedalboard3_artefacts\\Release\\Pedalboard3.exe",
+    "patch":  "C:\\Users\\estee\\AppData\\Local\\Temp\\Pedalboard3VisualQa\\visual-qa.pdl",
+    "output":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix",
+    "dpi":  168,
+    "scalePercent":  175,
+    "captures":  [
+                     {
+                         "Name":  "theme-midnight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\theme-midnight-main.png"
+                     },
+                     {
+                         "Name":  "workflow-dense-graph",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\workflow-dense-graph.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-before-switch",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\workflow-stage-mode-before-switch.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\workflow-stage-mode-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "workflow-main-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\workflow-main-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "theme-daylight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\theme-daylight-main.png"
+                     },
+                     {
+                         "Name":  "theme-synthwave-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\theme-synthwave-main.png"
+                     },
+                     {
+                         "Name":  "theme-deep-ocean-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\theme-deep-ocean-main.png"
+                     },
+                     {
+                         "Name":  "theme-forest-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\theme-forest-main.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-plugin-search-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-preferences-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-nam-browser-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-ir-browser-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-plugin-search-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-preferences-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-nam-browser-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-ir-browser-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-plugin-search-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-preferences-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-nam-browser-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-ir-browser-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-plugin-search-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-preferences-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-nam-browser-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-ir-browser-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-plugin-search-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-preferences-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-nam-browser-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-05-26-d2-dialog-matrix\\dialog-ir-browser-forest.png"
+                     }
+                 ]
+}

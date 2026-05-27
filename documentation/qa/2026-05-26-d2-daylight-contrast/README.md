@@ -40,4 +40,4 @@ Reference notes:
 Remaining matrix work:
 
 - Exact 100%, 150%, and 200% DPI captures are still pending because this workstation was at 175% during the automated run.
-- Dialog-specific captures for plugin search, Preferences, NAM browser, and IR browser remain pending for the broader D2 matrix.
+- Dialog-specific captures for Plugin Search, Preferences, NAM Model Browser, and IR Browser are covered by `documentation/qa/2026-05-26-d2-dialog-matrix` at 175% scale.

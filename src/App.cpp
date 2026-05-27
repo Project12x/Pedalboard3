@@ -30,6 +30,7 @@
 #include "LogFile.h"
 #include "MainTransport.h"
 #include "MidiMappingManager.h"
+#include "NAMModelBrowser.h"
 #include "NiallsAudioPluginFormat.h"
 #include "OscMappingManager.h"
 #include "SettingsManager.h"
@@ -220,10 +221,16 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
         // Used by the visual QA script to capture deterministic states without synthetic input.
         const bool visualQaNextPatch = commandLine.contains("--visual-qa-next-patch");
         const bool visualQaStage = commandLine.contains("--visual-qa-stage");
-        if (visualQaNextPatch || visualQaStage)
+        const bool visualQaPluginSearch = commandLine.contains("--visual-qa-plugin-search");
+        const bool visualQaPreferences = commandLine.contains("--visual-qa-preferences");
+        const bool visualQaNamBrowser = commandLine.contains("--visual-qa-nam-browser");
+        const bool visualQaIrBrowser = commandLine.contains("--visual-qa-ir-browser");
+        if (visualQaNextPatch || visualQaStage || visualQaPluginSearch || visualQaPreferences || visualQaNamBrowser ||
+            visualQaIrBrowser)
         {
             Component::SafePointer<StupidWindow> safeThis(this);
-            MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage]()
+            MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage, visualQaPluginSearch,
+                                       visualQaPreferences, visualQaNamBrowser, visualQaIrBrowser]()
                                       {
                                           if (safeThis == nullptr || safeThis->mainPanel == nullptr)
                                               return;
@@ -233,6 +240,18 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 
                                           if (visualQaStage)
                                               safeThis->mainPanel->toggleStageMode();
+
+                                          if (visualQaPluginSearch)
+                                              safeThis->mainPanel->showPluginSearchWindowForVisualQa();
+
+                                          if (visualQaNamBrowser)
+                                              NAMModelBrowser::showWindow(nullptr, []() {});
+
+                                          if (visualQaIrBrowser)
+                                              IRBrowser::showWindow([](const File&) {});
+
+                                          if (visualQaPreferences)
+                                              safeThis->commandManager.invokeDirectly(MainPanel::OptionsPreferences, true);
                                       });
         }
     }

@@ -245,6 +245,8 @@ class PluginField : public Component,
   public:
     ///	Fits all nodes to the visible viewport.
     void fitToScreen();
+    /// Shows the floating plugin search window for deterministic visual QA.
+    void showPluginSearchWindowForVisualQa();
     ///	Returns current zoom level.
     float getZoomLevel() const { return zoomLevel; }
 };

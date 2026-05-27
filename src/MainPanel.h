@@ -313,6 +313,8 @@ class MainPanel : public Component,
     bool isStageMode() const { return stageView != nullptr; };
     ///	Returns the application command manager for invoking commands.
     ApplicationCommandManager* getApplicationCommandManager() const { return commandManager; };
+    /// Shows the plugin search window for deterministic visual QA captures.
+    void showPluginSearchWindowForVisualQa();
 
     ///	Returns the PluginField's MidiMappingManager.
     MidiMappingManager* getMidiMappingManager()

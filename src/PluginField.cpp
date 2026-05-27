@@ -1405,6 +1405,13 @@ void PluginField::refreshAudioIOPins()
 }
 
 //------------------------------------------------------------------------------
+void PluginField::showPluginSearchWindowForVisualQa()
+{
+    if (searchWindow)
+        searchWindow->showCentred();
+}
+
+//------------------------------------------------------------------------------
 void PluginField::addConnection(PluginPinComponent* source, bool connectAll)
 {
     if (source)
