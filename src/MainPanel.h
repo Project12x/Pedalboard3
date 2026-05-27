@@ -368,7 +368,14 @@ class MainPanel : public Component,
         EditPanic,
         ToggleStageMode,
         OptionsPluginBlacklist,
-        OptionsSnapToGrid
+        OptionsSnapToGrid,
+        OptionsUiScale75,
+        OptionsUiScale100,
+        OptionsUiScale125,
+        OptionsUiScale150,
+        OptionsUiScale175,
+        OptionsUiScale200,
+        OptionsUiScaleResetDefault
     };
 
     //[/UserMethods]

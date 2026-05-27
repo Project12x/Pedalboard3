@@ -781,7 +781,7 @@ void MainPanel::resized()
     fitButton->setBounds(rxEnd - 38, getHeight() - 33, 38, 24);
     rxEnd -= 38 + 8;
 
-    const bool showFooterUiScale = getWidth() >= 960;
+    const bool showFooterUiScale = UiScale::shouldShowFooterControl(getWidth(), getUiScalePercent());
     uiScaleFooterLabel->setVisible(showFooterUiScale);
     uiScaleFooterComboBox->setVisible(showFooterUiScale);
     if (showFooterUiScale)
@@ -1122,6 +1122,7 @@ void MainPanel::setUiScalePercent(int percent)
     if (uiScaleFooterComboBox != nullptr && uiScaleFooterComboBox->getSelectedId() != normalisedPercent)
         uiScaleFooterComboBox->setSelectedId(normalisedPercent, dontSendNotification);
 
+    menuItemsChanged();
     resized();
     repaint();
 }
@@ -1197,6 +1198,18 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsPluginList);
         retval.addCommandItem(commandManager, OptionsPluginBlacklist);
         retval.addCommandItem(commandManager, OptionsPreferences);
+        PopupMenu uiScaleMenu;
+        const auto currentUiScalePercent = getUiScalePercent();
+        uiScaleMenu.addItem(OptionsUiScale75, "75%", true, currentUiScalePercent == 75);
+        uiScaleMenu.addItem(OptionsUiScale100, "100%", true, currentUiScalePercent == 100);
+        uiScaleMenu.addItem(OptionsUiScale125, "125%", true, currentUiScalePercent == 125);
+        uiScaleMenu.addItem(OptionsUiScale150, "150%", true, currentUiScalePercent == 150);
+        uiScaleMenu.addItem(OptionsUiScale175, "175%", true, currentUiScalePercent == 175);
+        uiScaleMenu.addItem(OptionsUiScale200, "200%", true, currentUiScalePercent == 200);
+        uiScaleMenu.addSeparator();
+        uiScaleMenu.addItem(OptionsUiScaleResetDefault, "Reset to Default (100%)",
+                            currentUiScalePercent != UiScale::defaultPercent, false);
+        retval.addSubMenu("UI Scale", uiScaleMenu);
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
         retval.addCommandItem(commandManager, OptionsSnapToGrid);
@@ -1216,7 +1229,44 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
 }
 
 //------------------------------------------------------------------------------
-void MainPanel::menuItemSelected(int menuItemID, int topLevelMenuIndex) {}
+void MainPanel::menuItemSelected(int menuItemID, int topLevelMenuIndex)
+{
+    ignoreUnused(topLevelMenuIndex);
+
+    switch (menuItemID)
+    {
+    case OptionsUiScale75:
+        setUiScalePercent(75);
+        showToast("UI Scale 75%");
+        break;
+    case OptionsUiScale100:
+        setUiScalePercent(100);
+        showToast("UI Scale 100%");
+        break;
+    case OptionsUiScale125:
+        setUiScalePercent(125);
+        showToast("UI Scale 125%");
+        break;
+    case OptionsUiScale150:
+        setUiScalePercent(150);
+        showToast("UI Scale 150%");
+        break;
+    case OptionsUiScale175:
+        setUiScalePercent(175);
+        showToast("UI Scale 175%");
+        break;
+    case OptionsUiScale200:
+        setUiScalePercent(200);
+        showToast("UI Scale 200%");
+        break;
+    case OptionsUiScaleResetDefault:
+        setUiScalePercent(UiScale::defaultPercent);
+        showToast("UI Scale reset");
+        break;
+    default:
+        break;
+    }
+}
 
 //------------------------------------------------------------------------------
 ApplicationCommandTarget* MainPanel::getNextCommandTarget()

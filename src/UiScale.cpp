@@ -52,6 +52,16 @@ float toScaleFactor(int percent)
     return static_cast<float>(normalisePercent(percent)) / 100.0f;
 }
 
+int footerControlMinimumWidth(int percent)
+{
+    return juce::roundToInt(static_cast<float>(footerControlBaseMinimumWidth) * toScaleFactor(percent));
+}
+
+bool shouldShowFooterControl(int componentWidth, int percent)
+{
+    return componentWidth >= footerControlMinimumWidth(percent);
+}
+
 std::optional<int> parseVisualQaOverride(const juce::String& commandLine)
 {
     const auto value = extractOverrideValue(commandLine);

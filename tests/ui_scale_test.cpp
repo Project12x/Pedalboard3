@@ -39,6 +39,19 @@ TEST_CASE("UI scale converts percentages into JUCE scale factors", "[ui][scale]"
     CHECK(UiScale::toScaleFactor(200) == Catch::Approx(2.0f));
 }
 
+TEST_CASE("Footer UI scale control hides before it crowds scaled toolbar controls", "[ui][scale]")
+{
+    CHECK(UiScale::footerControlMinimumWidth(75) == 720);
+    CHECK(UiScale::footerControlMinimumWidth(100) == 960);
+    CHECK(UiScale::footerControlMinimumWidth(150) == 1440);
+    CHECK(UiScale::footerControlMinimumWidth(200) == 1920);
+
+    CHECK(UiScale::shouldShowFooterControl(1024, 75));
+    CHECK(UiScale::shouldShowFooterControl(1024, 100));
+    CHECK_FALSE(UiScale::shouldShowFooterControl(1024, 125));
+    CHECK_FALSE(UiScale::shouldShowFooterControl(1024, 200));
+}
+
 TEST_CASE("Visual QA UI scale override is parsed from command line", "[ui][scale][visual]")
 {
     CHECK(UiScale::parseVisualQaOverride("--visual-qa-ui-scale=75").value_or(0) == 75);
