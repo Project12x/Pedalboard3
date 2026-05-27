@@ -713,7 +713,9 @@ void MainPanel::resized()
     const int toolbarHeight = UiScale::footerHeight(getWidth(), uiScalePercent);
     const int viewportHeight = jmax(0, getHeight() - toolbarHeight - keyboardHeight);
     const int footerTop = getHeight() - toolbarHeight;
+    const int footerW = UiScale::footerLayoutWidth(getWidth(), uiScalePercent);
     const bool singleRowFooter = UiScale::shouldUseSingleRowFooter(getWidth(), uiScalePercent);
+    const bool stackedFooter = UiScale::shouldUseStackedFooter(getWidth(), uiScalePercent);
 
     viewport->setBounds(0, 0, getWidth(), viewportHeight);
 
@@ -779,12 +781,83 @@ void MainPanel::resized()
     cpuLabel->setVisible(true);
     cpuSlider->setVisible(true);
 
-    auto layoutGainControls = [this, gap](int left, int controlY, int areaW, int minSliderW)
+    auto layoutPatchControls = [this, gap, controlH](int left, int controlY, int right)
+    {
+        const int available = jmax(0, right - left);
+        const bool showPatchLabel = available >= 172;
+        int x = left;
+
+        patchLabel->setVisible(showPatchLabel);
+        if (showPatchLabel)
+        {
+            patchLabel->setBounds(x, controlY, 44, controlH);
+            x += 44 + gap;
+        }
+
+        const int navW = 48;
+        const int comboW = jmax(48, jmin(220, right - x - gap - navW));
+        patchComboBox->setBounds(x, controlY, comboW, controlH);
+        x += comboW + gap;
+
+        const int navX = jmin(x, right - navW);
+        prevPatch->setBounds(navX, controlY, 24, controlH);
+        nextPatch->setBounds(navX + 24, controlY, 24, controlH);
+    };
+
+    auto layoutUtilityControls = [this, gap, controlH](int right, int controlY, bool showScaleLabel)
+    {
+        uiScaleFooterComboBox->setVisible(true);
+        uiScaleFooterComboBox->setBounds(right - 78, controlY, 78, controlH);
+        right -= 78 + gap;
+
+        uiScaleFooterLabel->setVisible(showScaleLabel);
+        if (showScaleLabel)
+        {
+            uiScaleFooterLabel->setBounds(right - 58, controlY, 58, controlH);
+            right -= 58 + gap;
+        }
+
+        fitButton->setBounds(right - 38, controlY, 38, controlH);
+        right -= 38 + gap;
+        organiseButton->setBounds(right - 64, controlY, 64, controlH);
+        right -= 64 + gap;
+
+        return right - gap;
+    };
+
+    auto layoutTransportControls = [this, gap, controlH](int left, int controlY)
+    {
+        int x = left;
+        tempoLabel->setBounds(x, controlY, 52, controlH);
+        x += 52 + gap;
+        tempoEditor->setBounds(x, controlY, 50, controlH);
+        x += 50 + gap;
+        tapTempoButton->setBounds(x, controlY + 4, 10, 16);
+        x += 10 + 8;
+        playButton->setBounds(x, controlY - 6, 36, 36);
+        x += 36 + gap;
+        rtzButton->setBounds(x, controlY, 24, controlH);
+        return x + 24;
+    };
+
+    auto layoutCpuControls = [this, rightMargin, controlH](int footerWidth, int controlY)
+    {
+        int cpuRight = footerWidth - rightMargin;
+        const int cpuSliderW = jlimit(72, 120, footerWidth / 5);
+        cpuSlider->setBounds(cpuRight - cpuSliderW, controlY, cpuSliderW, controlH);
+        cpuRight -= cpuSliderW + 2;
+        cpuLabel->setBounds(cpuRight - 36, controlY, 36, controlH);
+        return cpuRight - 36;
+    };
+
+    auto layoutGainControls = [this, gap, controlH](int left, int controlY, int areaW, int minSliderW)
     {
         const int labelW = 34;
         const int fxBtnW = 28;
         const int fullW = labelW * 2 + gap * 3 + minSliderW * 2 + fxBtnW;
         const int compactW = gap * 2 + minSliderW * 2 + fxBtnW;
+        const int smallestSliderW = 28;
+        const int smallestCompactW = gap * 2 + smallestSliderW * 2 + fxBtnW;
 
         if (areaW >= fullW)
         {
@@ -792,35 +865,44 @@ void MainPanel::resized()
             int x = left;
 
             inputGainLabel->setVisible(true);
-            inputGainLabel->setBounds(x, controlY, labelW, 24);
+            inputGainLabel->setBounds(x, controlY, labelW, controlH);
             x += labelW;
             inputGainSlider->setVisible(true);
-            inputGainSlider->setBounds(x, controlY, sliderW, 24);
+            inputGainSlider->setBounds(x, controlY, sliderW, controlH);
             x += sliderW + gap;
             masterInsertButton->setVisible(true);
-            masterInsertButton->setBounds(x, controlY, fxBtnW, 24);
+            masterInsertButton->setBounds(x, controlY, fxBtnW, controlH);
             x += fxBtnW + gap;
             outputGainLabel->setVisible(true);
-            outputGainLabel->setBounds(x, controlY, labelW, 24);
+            outputGainLabel->setBounds(x, controlY, labelW, controlH);
             x += labelW;
             outputGainSlider->setVisible(true);
-            outputGainSlider->setBounds(x, controlY, sliderW, 24);
+            outputGainSlider->setBounds(x, controlY, sliderW, controlH);
         }
-        else if (areaW >= compactW)
+        else if (areaW >= compactW || areaW >= smallestCompactW)
         {
-            const int sliderW = (areaW - gap * 2 - fxBtnW) / 2;
+            const int sliderW = jmax(smallestSliderW, (areaW - gap * 2 - fxBtnW) / 2);
             int x = left;
 
             inputGainLabel->setVisible(false);
             outputGainLabel->setVisible(false);
             inputGainSlider->setVisible(true);
-            inputGainSlider->setBounds(x, controlY, sliderW, 24);
+            inputGainSlider->setBounds(x, controlY, sliderW, controlH);
             x += sliderW + gap;
             masterInsertButton->setVisible(true);
-            masterInsertButton->setBounds(x, controlY, fxBtnW, 24);
+            masterInsertButton->setBounds(x, controlY, fxBtnW, controlH);
             x += fxBtnW + gap;
             outputGainSlider->setVisible(true);
-            outputGainSlider->setBounds(x, controlY, sliderW, 24);
+            outputGainSlider->setBounds(x, controlY, sliderW, controlH);
+        }
+        else if (areaW >= fxBtnW)
+        {
+            inputGainLabel->setVisible(false);
+            outputGainLabel->setVisible(false);
+            inputGainSlider->setVisible(false);
+            outputGainSlider->setVisible(false);
+            masterInsertButton->setVisible(true);
+            masterInsertButton->setBounds(left + (areaW - fxBtnW) / 2, controlY, fxBtnW, controlH);
         }
         else
         {
@@ -835,93 +917,48 @@ void MainPanel::resized()
     if (singleRowFooter)
     {
         const int footerY = footerTop + 7;
+        const int centerX = footerW / 2;
 
-        patchLabel->setBounds(8, footerY, 48, controlH);
-        prevPatch->setBounds(264, footerY, 24, controlH);
-        nextPatch->setBounds(288, footerY, 24, controlH);
-        patchComboBox->setBounds(56, footerY, 200, controlH);
-        playButton->setBounds(proportionOfWidth(0.5000f) - 18, footerTop + 2, 36, 36);
-        rtzButton->setBounds((proportionOfWidth(0.5000f) - 18) + 38, footerY, 24, controlH);
-        tempoLabel->setBounds((proportionOfWidth(0.5000f) - 18) - 151, footerY, 64, controlH);
-        tempoEditor->setBounds((proportionOfWidth(0.5000f) - 18) - 87, footerY, 52, controlH);
-        tapTempoButton->setBounds((proportionOfWidth(0.5000f) - 18) - 31, footerY + 6, 10, 16);
+        layoutPatchControls(8, footerY, 312);
+        playButton->setBounds(centerX - 18, footerTop + 2, 36, 36);
+        rtzButton->setBounds(centerX + 20, footerY, 24, controlH);
+        tempoLabel->setBounds(centerX - 169, footerY, 64, controlH);
+        tempoEditor->setBounds(centerX - 105, footerY, 52, controlH);
+        tapTempoButton->setBounds(centerX - 49, footerY + 6, 10, 16);
 
-        int rxEnd = getWidth() - rightMargin;
+        int rxEnd = footerW - rightMargin;
         cpuSlider->setBounds(rxEnd - 144, footerY, 144, controlH);
         rxEnd -= 144 + 2;
         cpuLabel->setBounds(rxEnd - 42, footerY, 42, controlH);
         rxEnd -= 42 + gap;
-        organiseButton->setBounds(rxEnd - 64, footerY, 64, controlH);
-        rxEnd -= 64 + gap;
-        fitButton->setBounds(rxEnd - 38, footerY, 38, controlH);
-        rxEnd -= 38 + 8;
+        rxEnd = layoutUtilityControls(rxEnd, footerY, true);
 
-        const bool showFooterUiScale = UiScale::shouldShowFooterControl(getWidth(), uiScalePercent);
-        uiScaleFooterLabel->setVisible(showFooterUiScale);
-        uiScaleFooterComboBox->setVisible(showFooterUiScale);
-        if (showFooterUiScale)
-        {
-            uiScaleFooterComboBox->setBounds(rxEnd - 78, footerY, 78, controlH);
-            rxEnd -= 78 + 2;
-            uiScaleFooterLabel->setBounds(rxEnd - 58, footerY, 58, controlH);
-            rxEnd -= 58 + 8;
-        }
-
-        const int transportEndX = (proportionOfWidth(0.5f) - 18) + 38 + 24 + 10;
+        const int transportEndX = centerX + 54;
         layoutGainControls(transportEndX + gap, footerY, rxEnd - transportEndX - gap, 50);
     }
     else
     {
         const int row1Y = footerTop + 6;
         const int row2Y = footerTop + 40;
-        int right = getWidth() - rightMargin;
+        const bool showScaleLabel = footerW >= 640;
+        const int patchRight = layoutUtilityControls(footerW - rightMargin, row1Y, showScaleLabel);
+        layoutPatchControls(8, row1Y, patchRight);
 
-        organiseButton->setBounds(right - 64, row1Y, 64, controlH);
-        right -= 64 + gap;
-        fitButton->setBounds(right - 38, row1Y, 38, controlH);
-        right -= 38 + 8;
-
-        const bool showFooterUiScale = UiScale::shouldShowFooterControl(getWidth(), uiScalePercent);
-        uiScaleFooterLabel->setVisible(showFooterUiScale);
-        uiScaleFooterComboBox->setVisible(showFooterUiScale);
-        if (showFooterUiScale)
+        if (stackedFooter)
         {
-            uiScaleFooterComboBox->setBounds(right - 78, row1Y, 78, controlH);
-            right -= 78 + 2;
-            uiScaleFooterLabel->setBounds(right - 58, row1Y, 58, controlH);
-            right -= 58 + 8;
+            const int row3Y = footerTop + 72;
+            layoutTransportControls(8, row2Y);
+            layoutCpuControls(footerW, row2Y);
+            layoutGainControls(8, row3Y, footerW - 16, 64);
         }
-
-        const int patchComboW = jlimit(72, 220, right - 8 - 44 - gap - gap - 48);
-        int px = 8;
-        patchLabel->setBounds(px, row1Y, 44, controlH);
-        px += 44 + gap;
-        patchComboBox->setBounds(px, row1Y, patchComboW, controlH);
-        px += patchComboW + gap;
-        prevPatch->setBounds(px, row1Y, 24, controlH);
-        px += 24;
-        nextPatch->setBounds(px, row1Y, 24, controlH);
-
-        int tx = 8;
-        tempoLabel->setBounds(tx, row2Y, 52, controlH);
-        tx += 52 + gap;
-        tempoEditor->setBounds(tx, row2Y, 50, controlH);
-        tx += 50 + gap;
-        tapTempoButton->setBounds(tx, row2Y + 4, 10, 16);
-        tx += 10 + 8;
-        playButton->setBounds(tx, row2Y - 6, 36, 36);
-        tx += 36 + gap;
-        rtzButton->setBounds(tx, row2Y, 24, controlH);
-        const int transportEndX = tx + 24;
-
-        int cpuRight = getWidth() - rightMargin;
-        const int cpuSliderW = jlimit(72, 120, getWidth() / 5);
-        cpuSlider->setBounds(cpuRight - cpuSliderW, row2Y, cpuSliderW, controlH);
-        cpuRight -= cpuSliderW + 2;
-        cpuLabel->setBounds(cpuRight - 36, row2Y, 36, controlH);
-        const int gainLeft = transportEndX + 8;
-        const int gainRight = cpuRight - 36 - 8;
-        layoutGainControls(gainLeft, row2Y, gainRight - gainLeft, 44);
+        else
+        {
+            const int transportEndX = layoutTransportControls(8, row2Y);
+            const int cpuLeft = layoutCpuControls(footerW, row2Y);
+            const int gainLeft = transportEndX + 8;
+            const int gainRight = cpuLeft - 8;
+            layoutGainControls(gainLeft, row2Y, gainRight - gainLeft, 44);
+        }
     }
 
     //[/UserResized]

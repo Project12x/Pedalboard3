@@ -52,6 +52,15 @@ float toScaleFactor(int percent)
     return static_cast<float>(normalisePercent(percent)) / 100.0f;
 }
 
+int footerLayoutWidth(int componentWidth, int percent)
+{
+    const auto scale = toScaleFactor(percent);
+    if (scale <= 1.0f)
+        return juce::jmax(1, componentWidth);
+
+    return juce::jmax(1, static_cast<int>(static_cast<float>(componentWidth) / scale));
+}
+
 int footerControlMinimumWidth(int percent)
 {
     return juce::roundToInt(static_cast<float>(footerControlBaseMinimumWidth) * toScaleFactor(percent));
@@ -64,12 +73,21 @@ bool shouldShowFooterControl(int componentWidth, int percent)
 
 bool shouldUseSingleRowFooter(int componentWidth, int percent)
 {
-    return componentWidth >= footerControlMinimumWidth(percent);
+    return footerLayoutWidth(componentWidth, percent) >= singleRowFooterBaseMinimumWidth;
+}
+
+bool shouldUseStackedFooter(int componentWidth, int percent)
+{
+    return !shouldUseSingleRowFooter(componentWidth, percent) &&
+           footerLayoutWidth(componentWidth, percent) < twoRowFooterBaseMinimumWidth;
 }
 
 int footerHeight(int componentWidth, int percent)
 {
-    return shouldUseSingleRowFooter(componentWidth, percent) ? singleRowFooterHeight : compactFooterHeight;
+    if (shouldUseSingleRowFooter(componentWidth, percent))
+        return singleRowFooterHeight;
+
+    return shouldUseStackedFooter(componentWidth, percent) ? stackedFooterHeight : compactFooterHeight;
 }
 
 std::optional<int> parseVisualQaOverride(const juce::String& commandLine)

@@ -52,16 +52,38 @@ TEST_CASE("Footer UI scale control hides before it crowds scaled toolbar control
     CHECK_FALSE(UiScale::shouldShowFooterControl(1024, 200));
 }
 
-TEST_CASE("Footer switches to compact two-row layout when scaled controls would crowd", "[ui][scale]")
+TEST_CASE("Footer layout uses scale-aware usable width", "[ui][scale]")
 {
-    CHECK(UiScale::shouldUseSingleRowFooter(1024, 100));
+    CHECK(UiScale::footerLayoutWidth(1024, 75) == 1024);
+    CHECK(UiScale::footerLayoutWidth(1024, 100) == 1024);
+    CHECK(UiScale::footerLayoutWidth(1024, 125) == 819);
+    CHECK(UiScale::footerLayoutWidth(1024, 150) == 682);
+    CHECK(UiScale::footerLayoutWidth(1024, 200) == 512);
+}
+
+TEST_CASE("Footer switches out of single row before scaled controls crowd", "[ui][scale]")
+{
+    CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1024, 100));
     CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1024, 125));
     CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1024, 200));
-    CHECK(UiScale::shouldUseSingleRowFooter(1920, 200));
+    CHECK_FALSE(UiScale::shouldUseSingleRowFooter(1536, 125));
+    CHECK(UiScale::shouldUseSingleRowFooter(1920, 125));
 
-    CHECK(UiScale::footerHeight(1024, 100) == 40);
+    CHECK(UiScale::footerHeight(1024, 100) == 72);
     CHECK(UiScale::footerHeight(1024, 150) == 72);
-    CHECK(UiScale::footerHeight(1024, 200) == 72);
+    CHECK(UiScale::footerHeight(1024, 200) == 104);
+}
+
+TEST_CASE("Footer uses stacked layout when two rows would still crowd controls", "[ui][scale]")
+{
+    CHECK_FALSE(UiScale::shouldUseStackedFooter(1024, 125));
+    CHECK_FALSE(UiScale::shouldUseStackedFooter(1024, 150));
+    CHECK(UiScale::shouldUseStackedFooter(1024, 175));
+    CHECK(UiScale::shouldUseStackedFooter(1024, 200));
+
+    CHECK(UiScale::footerHeight(1024, 175) == 104);
+    CHECK(UiScale::footerHeight(1280, 200) == 72);
+    CHECK(UiScale::footerHeight(1920, 125) == 40);
 }
 
 TEST_CASE("Visual QA UI scale override is parsed from command line", "[ui][scale][visual]")

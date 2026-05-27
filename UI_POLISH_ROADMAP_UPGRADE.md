@@ -403,7 +403,7 @@ Completed work:
 - **Pedalboard UI scale preference** added with a 75% minimum and 100% default, allowing users to scale down or up without changing Windows Display scale.
 - **Global JUCE scale application** now happens at app startup from persisted `UiScalePercent`, with a deterministic `--visual-qa-ui-scale=` override for capture automation.
 - **Options, footer, and Preferences controls** expose UI Scale choices: 75%, 100%, 125%, 150%, 175%, and 200%, with an Options > UI Scale reset path and all controls routed through the same persisted app-scale setting.
-- **Scaled footer layout** now promotes the main footer into a compact two-row arrangement when app scale reduces available toolbar width, so core controls remain reachable instead of being clipped or hidden.
+- **Scaled footer layout** now promotes the main footer into compact or stacked arrangements using scale-aware available width, so core controls remain reachable instead of being clipped or hidden at high Pedalboard UI scale.
 - **D2 visual QA script** now accepts `-UiScalePercent` and records `uiScalePercent` in capture summaries; the prior exact display-scale guard is retained only as `-ExpectedOsScalePercent` for OS-DPI compatibility checks.
 - **QA docs** updated to require app-scale captures at 75%, 100%, 150%, and 200%, without asking testers to change Windows Display scale.
 
