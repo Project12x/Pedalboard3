@@ -13,10 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Virtual MIDI Input Toggle** — New toggle in Preferences > Visible I/O Nodes for enabling/disabling the Virtual MIDI Input node. Full chain: `PluginField`, `MainPanel`, `PreferencesDialog`, `PluginFieldPersistence` patch-load guard. State persisted via `SettingsManager`.
 - **Plugin Search Floating Window** — Added `PluginSearchWindow` as the final plugin search UI, replacing the earlier in-canvas `PluginSearchOverlay`. Uses a top-level `DocumentWindow` with custom `SearchWindowLookAndFeel`, rounded corners, themed title bar, fuzzy ranking, category tabs, keyboard navigation, and format badges.
 - **Browser Window Theming** — NAM Model Browser and IR Browser now use custom `BrowserWindowLookAndFeel` with rounded corners, themed title bar, custom close button, and pill-shaped search fields.
-- **UI Polish Regression Harness** — Added executable Catch2 coverage for the Phase 6 theme-switch, Stage Mode, and patch-switch QA matrix, plus a documentation checklist for screenshot evidence across themes and 100/150/200% DPI.
+- **UI Polish Regression Harness** — Added executable Catch2 coverage for the Phase 6 theme-switch, Stage Mode, and patch-switch QA matrix, plus a documentation checklist for screenshot evidence across themes and Pedalboard UI scale.
+- **Pedalboard UI Scale Preference** — Added a persisted in-app `UiScalePercent` setting, a Preferences > Interface UI Scale control, and visual-QA launch override support for 75%, 100%, 125%, 150%, 175%, and 200% scaling.
 
 ### Changed
 
+- **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
 - **Popup Menu Font Size** — `BranchesLAF::getPopupMenuFont()` now returns `getSubheadingFont()` (15px) for better readability.
 - **Search Bar Consistency** — All browser search bars now use `getSubheadingFont()` (15px) with centered vertical indent for consistent pill appearance.
 

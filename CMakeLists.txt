@@ -155,6 +155,8 @@ target_sources(Pedalboard3 PRIVATE
     # Application
     src/App.cpp
     src/App.h
+    src/UiScale.cpp
+    src/UiScale.h
     src/MainPanel.cpp
     src/MainPanel.h
     

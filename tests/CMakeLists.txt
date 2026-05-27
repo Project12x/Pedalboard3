@@ -13,6 +13,7 @@ add_executable(Pedalboard3_Tests
     protection_test.cpp
     audio_thread_stress_test.cpp
     plugin_search_logic_test.cpp
+    ui_scale_test.cpp
     ui_regression_harness_test.cpp
     nam_processor_test.cpp
     patch_switch_test.cpp
@@ -27,6 +28,7 @@ add_executable(Pedalboard3_Tests
     ../src/BypassableInstance.cpp
     ../src/ColourScheme.cpp
     ../src/FontManager.cpp
+    ../src/UiScale.cpp
 )
 
 

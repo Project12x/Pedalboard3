@@ -81,7 +81,7 @@ Definition of Done for this roadmap:
 1. Visual consistency across Main view, Canvas, Stage Mode, and secondary surfaces
 2. Stable keyboard/mouse affordance visibility in all interaction states
 3. No regressions in patch switching, transport, graph edit, and stage workflows
-4. Verified at 100%, 150%, and 200% scaling
+4. Verified at Pedalboard UI scales 75%, 100%, 150%, and 200%; OS-DPI captures are a separate compatibility check
 5. Screenshot-reviewed before/after evidence for each milestone
 6. No measurable UI responsiveness regressions from polish work (normal and dense patch scenarios)
 
@@ -122,7 +122,7 @@ Definition of Done for this roadmap:
   - spacing/sizing constants replacing magic-number layout hotspots
   - improved typography hierarchy for patch/transport/system controls
   - control grouping with clear primary vs secondary actions
-- **Acceptance:** stable and visually balanced at multiple window sizes and DPI scales.
+- **Acceptance:** stable and visually balanced at multiple window sizes and Pedalboard UI scales.
 
 ### B2. Graph Canvas Readability Under Density
 - **Priority:** P0
@@ -311,7 +311,7 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 
 | ID | Item | Priority | Status |
 |---|---|---|---|
-| A1 | Token audit and enforcement | P0 | Planned |
+| A1 | Token audit and enforcement | P0 | Partial |
 | A2 | LAF consistency contract | P0 | Planned |
 | B1 | Main shell rhythm and hierarchy | P0 | In Progress |
 | B2 | Graph canvas readability under density | P0 | In Progress |
@@ -394,6 +394,20 @@ Completed work:
 
 **Commits:** `4974f32`, `9b33758`, `9d29f84`
 
+### 2026-05-27 - Pedalboard UI Scale Gate
+
+**Tracks affected:** D2, C2
+
+Completed work:
+
+- **Pedalboard UI scale preference** added with a 75% minimum and 100% default, allowing users to scale down or up without changing Windows Display scale.
+- **Global JUCE scale application** now happens at app startup from persisted `UiScalePercent`, with a deterministic `--visual-qa-ui-scale=` override for capture automation.
+- **Preferences Interface section** exposes UI Scale choices: 75%, 100%, 125%, 150%, 175%, and 200%.
+- **D2 visual QA script** now accepts `-UiScalePercent` and records `uiScalePercent` in capture summaries; the prior exact display-scale guard is retained only as `-ExpectedOsScalePercent` for OS-DPI compatibility checks.
+- **QA docs** updated to require app-scale captures at 75%, 100%, 150%, and 200%, without asking testers to change Windows Display scale.
+
+**Commits:** recorded in Git history after this roadmap entry.
+
 ### 2026-05-26 - UI Regression Harness and Visual QA Gate
 
 **Tracks affected:** D1, D2
@@ -401,7 +415,7 @@ Completed work:
 Completed work:
 
 - **UI regression matrix** added as executable Catch2 coverage in `tests/ui_regression_harness_test.cpp`, covering required Phase 6 workflows for theme switching, Stage Mode toggling, and patch switching.
-- **Visual QA checklist** added at `documentation/ui-polish-qa.htm` with required screenshot evidence for themes, DPI scales, Stage Mode readability, dense graph clarity, focus, contrast, and responsiveness.
+- **Visual QA checklist** added at `documentation/ui-polish-qa.htm` with required screenshot evidence for themes, UI scales, Stage Mode readability, dense graph clarity, focus, contrast, and responsiveness.
 - **Documentation entry points** updated so the QA checklist is reachable from both documentation indexes.
 
 **Commits:** recorded in Git history after this roadmap entry.
@@ -412,7 +426,7 @@ Completed work:
 
 1. Parallel active implementation is allowed (including multiple P0 items) when scope, ownership, and QA evidence are clear per item.
 2. No milestone closes without screenshot evidence and test notes.
-3. No style changes merged without theme-switch and DPI checks.
+3. No style changes merged without theme-switch and Pedalboard UI-scale checks.
 4. Prefer timeless clarity over trend-heavy styling.
 5. Default to low-flair visuals: every animation/effect must justify clarity value and negligible performance impact.
 6. **Exception for internal plugin editors:** tasteful amp/pedal-style textures are permitted when they represent physical gear, provided they are procedural, subtle, and theme-adaptive.

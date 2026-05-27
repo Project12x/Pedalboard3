@@ -37,7 +37,10 @@ class Tone3000DownloadManager;
     Describe your class and how it works here!
                                                                     //[/Comments]
 */
-class PreferencesDialog : public Component, public TextEditor::Listener, public Button::Listener
+class PreferencesDialog : public Component,
+                          public TextEditor::Listener,
+                          public Button::Listener,
+                          public ComboBox::Listener
 {
   public:
     //==============================================================================
@@ -61,6 +64,7 @@ class PreferencesDialog : public Component, public TextEditor::Listener, public 
     void paint(Graphics& g);
     void resized();
     void buttonClicked(Button* buttonThatWasClicked);
+    void comboBoxChanged(ComboBox* comboBoxThatHasChanged);
 
     //==============================================================================
 
@@ -100,6 +104,9 @@ class PreferencesDialog : public Component, public TextEditor::Listener, public 
     ToggleButton* startInTrayButton;
     ToggleButton* fixedSizeButton;
     ToggleButton* pdlAudioSettingsButton;
+    Label* interfaceLabel;
+    Label* uiScaleLabel;
+    ComboBox* uiScaleComboBox;
 
     // NAM Options
     Label* namLabel;

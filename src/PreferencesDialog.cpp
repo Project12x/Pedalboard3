@@ -27,6 +27,7 @@
 #include "MainPanel.h"
 #include "SettingsManager.h"
 #include "Tone3000DownloadManager.h"
+#include "UiScale.h"
 
 //[/Headers]
 
@@ -41,8 +42,8 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
       multicastHintLabel(0), ioOptionsLabel(0), audioInputButton(0), midiInputButton(0), oscInputButton(0),
       virtualMidiInputButton(0), otherLabel(0), mappingsWindowButton(0), loopPatchesButton(0), windowsOnTopButton(0),
       ignorePinNamesButton(0), midiLabel(0), midiProgramChangeButton(0), mmcTransportButton(0), useTrayIconButton(0),
-      startInTrayButton(0), fixedSizeButton(0), pdlAudioSettingsButton(0), namLabel(0), namDirLabel(0), namDirValue(0),
-      namDirBrowseButton(0)
+      startInTrayButton(0), fixedSizeButton(0), pdlAudioSettingsButton(0), interfaceLabel(0), uiScaleLabel(0),
+      uiScaleComboBox(0), namLabel(0), namDirLabel(0), namDirValue(0), namDirBrowseButton(0)
 {
     addAndMakeVisible(oscPortLabel = new Label("oscPortLabel", "OSC Port:"));
     oscPortLabel->setFont(FontManager::getInstance().getBodyFont());
@@ -170,6 +171,26 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     pdlAudioSettingsButton->setButtonText("Save audio settings in .pdl files");
     pdlAudioSettingsButton->addListener(this);
 
+    addAndMakeVisible(interfaceLabel = new Label("interfaceLabel", "Interface"));
+    interfaceLabel->setFont(FontManager::getInstance().getSubheadingFont());
+    interfaceLabel->setJustificationType(Justification::centredLeft);
+    interfaceLabel->setEditable(false, false, false);
+    interfaceLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+
+    addAndMakeVisible(uiScaleLabel = new Label("uiScaleLabel", "UI Scale:"));
+    uiScaleLabel->setFont(FontManager::getInstance().getBodyFont());
+    uiScaleLabel->setJustificationType(Justification::centredLeft);
+    uiScaleLabel->setEditable(false, false, false);
+    uiScaleLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+
+    addAndMakeVisible(uiScaleComboBox = new ComboBox("uiScaleComboBox"));
+    uiScaleComboBox->setJustificationType(Justification::centredLeft);
+    uiScaleComboBox->setTextWhenNothingSelected("100%");
+    uiScaleComboBox->setTextWhenNoChoicesAvailable("(no scale choices)");
+    for (auto percent : UiScale::supportedPercents())
+        uiScaleComboBox->addItem(String(percent) + "%", percent);
+    uiScaleComboBox->addListener(this);
+
     // NAM Options
     addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
     namLabel->setFont(FontManager::getInstance().getSubheadingFont());
@@ -223,6 +244,9 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     fixedSizeButton->setToggleState(SettingsManager::getInstance().getBool("fixedSizeWindows", true), false);
 
     pdlAudioSettingsButton->setToggleState(SettingsManager::getInstance().getBool("pdlAudioSettings", false), false);
+    uiScaleComboBox->setSelectedId(
+        UiScale::normalisePercent(SettingsManager::getInstance().getInt(UiScale::settingsKey, UiScale::defaultPercent)),
+        dontSendNotification);
 
     // Set NAM directory value from download manager
     namDirValue->setText(Tone3000DownloadManager::getInstance().getCacheDirectory().getFullPathName(),
@@ -245,7 +269,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
 
     //[/UserPreSize]
 
-    setSize(560, 616);
+    setSize(560, 680);
 
     //[Constructor] You can add your own custom stuff here..
     //[/Constructor]
@@ -302,6 +326,12 @@ PreferencesDialog::~PreferencesDialog()
     fixedSizeButton = nullptr;
     delete pdlAudioSettingsButton;
     pdlAudioSettingsButton = nullptr;
+    delete interfaceLabel;
+    interfaceLabel = nullptr;
+    delete uiScaleLabel;
+    uiScaleLabel = nullptr;
+    delete uiScaleComboBox;
+    uiScaleComboBox = nullptr;
     delete namLabel;
     namLabel = nullptr;
     delete namDirLabel;
@@ -347,24 +377,27 @@ void PreferencesDialog::resized()
     midiInputButton->setBounds(16, 160, 88, 24);
     oscInputButton->setBounds(16, 184, 88, 24);
     virtualMidiInputButton->setBounds(16, 208, 150, 24);
-    otherLabel->setBounds(0, 320, 150, 24);
-    mappingsWindowButton->setBounds(16, 344, 376, 24);
-    loopPatchesButton->setBounds(16, 368, 208, 24);
-    windowsOnTopButton->setBounds(16, 392, 256, 24);
-    ignorePinNamesButton->setBounds(16, 416, 176, 24);
+    interfaceLabel->setBounds(0, 320, 150, 24);
+    uiScaleLabel->setBounds(16, 344, 88, 24);
+    uiScaleComboBox->setBounds(104, 344, 104, 24);
+    otherLabel->setBounds(0, 384, 150, 24);
+    mappingsWindowButton->setBounds(16, 408, 376, 24);
+    loopPatchesButton->setBounds(16, 432, 208, 24);
+    windowsOnTopButton->setBounds(16, 456, 256, 24);
+    ignorePinNamesButton->setBounds(16, 480, 176, 24);
     midiLabel->setBounds(0, 240, 104, 24);
     midiProgramChangeButton->setBounds(16, 264, 288, 24);
     mmcTransportButton->setBounds(16, 288, 232, 24);
-    useTrayIconButton->setBounds(16, 440, 200, 24);
-    startInTrayButton->setBounds(16, 464, 168, 24);
-    fixedSizeButton->setBounds(16, 488, 224, 24);
-    pdlAudioSettingsButton->setBounds(16, 512, 224, 24);
+    useTrayIconButton->setBounds(16, 504, 200, 24);
+    startInTrayButton->setBounds(16, 528, 168, 24);
+    fixedSizeButton->setBounds(16, 552, 224, 24);
+    pdlAudioSettingsButton->setBounds(16, 576, 224, 24);
 
     // NAM Options
-    namLabel->setBounds(0, 544, 150, 24);
-    namDirLabel->setBounds(16, 568, 130, 24);
-    namDirValue->setBounds(146, 568, getWidth() - 230, 24);
-    namDirBrowseButton->setBounds(getWidth() - 80, 568, 70, 24);
+    namLabel->setBounds(0, 608, 150, 24);
+    namDirLabel->setBounds(16, 632, 130, 24);
+    namDirValue->setBounds(146, 632, getWidth() - 230, 24);
+    namDirBrowseButton->setBounds(getWidth() - 80, 632, 70, 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
@@ -506,6 +539,17 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
 
     //[UserbuttonClicked_Post]
     //[/UserbuttonClicked_Post]
+}
+
+void PreferencesDialog::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
+{
+    if (comboBoxThatHasChanged == uiScaleComboBox)
+    {
+        const auto percent = UiScale::normalisePercent(uiScaleComboBox->getSelectedId());
+        SettingsManager::getInstance().setValue(UiScale::settingsKey, percent);
+        Desktop::getInstance().setGlobalScaleFactor(UiScale::toScaleFactor(percent));
+        repaint();
+    }
 }
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...

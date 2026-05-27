@@ -35,5 +35,5 @@ Observed notes:
 
 Remaining matrix work:
 
-- Exact 100%, 150%, and 200% DPI captures are still pending because this workstation was at 175% during the automated run.
-- Dialog-specific captures are complete at 175% scale; exact 100%, 150%, and 200% dialog captures remain pending.
+- Pedalboard UI-scale captures are still pending for 75%, 100%, 150%, and 200%.
+- Dialog-specific captures are complete at the workstation's historical 175% OS scale; app-scale dialog captures remain pending for 75%, 100%, 150%, and 200%.

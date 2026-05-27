@@ -35,6 +35,7 @@
 #include "OscMappingManager.h"
 #include "SettingsManager.h"
 #include "TrayIcon.h"
+#include "UiScale.h"
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -48,6 +49,13 @@ void App::initialise(const String& commandLine)
 
     // Initialize new SettingsManager
     SettingsManager::getInstance().initialise();
+
+    auto uiScalePercent =
+        UiScale::normalisePercent(SettingsManager::getInstance().getInt(UiScale::settingsKey, UiScale::defaultPercent));
+    if (auto visualQaUiScalePercent = UiScale::parseVisualQaOverride(commandLine))
+        uiScalePercent = *visualQaUiScalePercent;
+
+    Desktop::getInstance().setGlobalScaleFactor(UiScale::toScaleFactor(uiScalePercent));
 
     // Initialize spdlog with file output for debugging
     try

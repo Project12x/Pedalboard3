@@ -1,7 +1,10 @@
 param(
     [string]$Configuration = "Release",
     [string]$OutputName = "2026-05-26-d2-visual",
-    [int]$ExpectedScalePercent = 0
+    [ValidateSet("75", "100", "125", "150", "175", "200")]
+    [int]$UiScalePercent = 100,
+    [Alias("ExpectedScalePercent")]
+    [int]$ExpectedOsScalePercent = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -200,6 +203,7 @@ function Set-QaSettings {
     New-Item -ItemType Directory -Force -Path $appDataDir | Out-Null
     $settings = [ordered]@{
         colourScheme = $Theme
+        UiScalePercent = $UiScalePercent
         useTrayIcon = $false
         startInTray = $false
         LoopPatches = $true
@@ -269,15 +273,15 @@ function Capture-Window {
     }
 }
 
-function Assert-ExpectedScale {
+function Assert-ExpectedOsScale {
     param([int]$ActualScalePercent)
 
-    if ($ExpectedScalePercent -le 0) {
+    if ($ExpectedOsScalePercent -le 0) {
         return
     }
 
-    if ($ActualScalePercent -ne $ExpectedScalePercent) {
-        throw "Expected display scale $ExpectedScalePercent%, but Pedalboard3 reported $ActualScalePercent%. Change Windows Display scale before this exact-DPI capture, or omit -ExpectedScalePercent for exploratory captures."
+    if ($ActualScalePercent -ne $ExpectedOsScalePercent) {
+        throw "Expected OS display scale $ExpectedOsScalePercent%, but Pedalboard3 reported $ActualScalePercent%. Change Windows Display scale before this OS-DPI compatibility capture, or omit -ExpectedOsScalePercent for app UI-scale captures."
     }
 }
 
@@ -320,9 +324,10 @@ function Start-QaApp {
 
     Set-QaSettings -Theme $Theme
 
+    $scaleArguments = @("--visual-qa-ui-scale=$UiScalePercent")
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $appPath
-    $psi.Arguments = ($Arguments -join " ")
+    $psi.Arguments = (($scaleArguments + $Arguments) -join " ")
     $psi.WorkingDirectory = Split-Path -Parent $appPath
     $process = [System.Diagnostics.Process]::Start($psi)
     $handle = Wait-MainWindow -Process $process
@@ -379,7 +384,7 @@ try {
             $session = Start-QaApp -Theme $theme
             if ($null -eq $dpi) {
                 try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
-                Assert-ExpectedScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
+                Assert-ExpectedOsScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
             }
 
             $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
@@ -438,7 +443,7 @@ try {
                 $session = Start-QaApp -Theme $theme -Arguments $dialog.Arguments
                 if ($null -eq $dpi) {
                     try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
-                    Assert-ExpectedScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
+                    Assert-ExpectedOsScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
                 }
 
                 $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
@@ -471,14 +476,17 @@ finally {
     }
 }
 
-$scalePercent = if ($dpi) { [Math]::Round(($dpi / 96.0) * 100) } else { "unknown" }
+$osScalePercent = if ($dpi) { [Math]::Round(($dpi / 96.0) * 100) } else { "unknown" }
 $summary = [pscustomobject]@{
     app = $appPath
     patch = $qaPatch
     output = $outputDir
+    uiScalePercent = $UiScalePercent
     dpi = $dpi
-    scalePercent = $scalePercent
-    expectedScalePercent = if ($ExpectedScalePercent -gt 0) { $ExpectedScalePercent } else { $null }
+    osScalePercent = $osScalePercent
+    scalePercent = $osScalePercent
+    expectedOsScalePercent = if ($ExpectedOsScalePercent -gt 0) { $ExpectedOsScalePercent } else { $null }
+    expectedScalePercent = if ($ExpectedOsScalePercent -gt 0) { $ExpectedOsScalePercent } else { $null }
     captures = $captures
 }
 

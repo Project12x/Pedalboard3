@@ -39,7 +39,7 @@ constexpr std::array requiredThemes{
     std::string_view{"Forest"},
 };
 
-constexpr std::array requiredDpiScales{100, 150, 200};
+constexpr std::array requiredUiScales{75, 100, 150, 200};
 
 constexpr std::array requiredVisualCriteria{
     std::string_view{"density"},
@@ -156,9 +156,9 @@ TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression
     }
 }
 
-TEST_CASE("Visual QA gate covers required DPI scales and sign-off criteria", "[ui][regression][visual]")
+TEST_CASE("Visual QA gate covers required Pedalboard UI scales and sign-off criteria", "[ui][regression][visual]")
 {
-    REQUIRE(requiredDpiScales == std::array{100, 150, 200});
+    REQUIRE(requiredUiScales == std::array{75, 100, 150, 200});
 
     for (auto criterion : requiredVisualCriteria)
     {
