@@ -235,6 +235,40 @@ powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputNam
 - Footer behavior is materially better than before, but dense new footer controls could reopen crowding if added without updating `UiScale` layout thresholds and tests.
 - The Options menu reset is the primary guaranteed recovery path if the footer combo box is hidden by compact layout.
 
+## What Is Next For The Agent
+
+Default next action:
+
+- If the next user message is `proceed`, launch or test the current build before redesigning anything. The most useful next move is to verify the current UI scale behavior in the actual app and only then patch a confirmed remaining failure.
+- If the user asks natural-language `what is next?`, answer from this section. Invoke the separate `/whats-next` skill only if the user explicitly enters that slash command.
+- Keep the mental model clear: this is Pedalboard app UI scale. Do not send the user back to Windows Display scale as the solution.
+
+Immediate queue:
+
+1. Check repo state with `git status --short` and confirm the current branch/commit.
+2. Launch Pedalboard3 and manually exercise `75%`, `100%`, `125%`, `150%`, `175%`, and `200%` from the footer control and `Options > UI Scale`.
+3. Verify the guaranteed recovery path: `Options > UI Scale > Reset to Default (100%)`.
+4. At `150%` and `200%`, inspect the footer, Preferences, plugin search, NAM browser, and IR browser. Confirm controls do not clip out of reach.
+5. If a layout failure appears, capture evidence first, then make the smallest local fix in the relevant component or `UiScale` threshold helper.
+6. After a fix, rerun the targeted UI scale tests and the matching visual QA matrix.
+7. Update `CHANGELOG.md`, `documentation/ui-polish-qa.htm`, and this handoff if the behavior or required QA evidence changes.
+
+Priority rules:
+
+- P0: The app can get stuck at an oversized scale with no visible in-app recovery path.
+- P1: Footer controls clip or disappear above `100%` in a way that loses common transport, patch, CPU, Fit/Manage, or UI Scale functionality.
+- P1: Preferences cannot expose UI Scale or another close/recovery path at `200%` narrow.
+- P2: Secondary dialog content is crowded but still scrollable or otherwise reachable.
+- P3: Cosmetic imbalance that does not affect reachability.
+
+Implementation rules for the next agent:
+
+- Prefer app-local layout fixes over OS-DPI assumptions.
+- Prefer viewport-backed dialog content when a secondary dialog cannot fit at high scale.
+- Prefer scale-aware layout thresholds in `UiScale` over one-off pixel tweaks in call sites.
+- Do not add new UI scale values unless they are reflected in `UiScale`, footer controls, Options menu, Preferences, tests, and visual QA documentation.
+- Do not rely only on screenshots when code-level tests can guard the requirement cheaply.
+
 ## Recommended Next Work
 
 1. Run one manual launch pass and exercise `75%`, `100%`, `125%`, `150%`, `175%`, and `200%` from both the footer and Options menu.
@@ -253,4 +287,3 @@ Reason no permissive reference code was inspected or reused:
 
 - The implementation is specific to Pedalboard3's existing `MainPanel`, `PreferencesDialog`, settings layer, and D2 visual QA harness.
 - The bug was an app-local layout/recovery issue, not a researched algorithm or domain component with a suitable external reference implementation.
-
