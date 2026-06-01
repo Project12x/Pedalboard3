@@ -143,7 +143,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     patchLabel->setJustificationType(Justification::centredLeft);
     patchLabel->setEditable(false, false, false);
     patchLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    patchLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    patchLabel->setColour(TextEditor::backgroundColourId,
+                          ColourScheme::getInstance().colours["Text Editor Colour"].withAlpha(0.0f));
 
     addAndMakeVisible(prevPatch = new TextButton("prevPatch"));
     prevPatch->setButtonText("-");
@@ -177,7 +178,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
     cpuLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    cpuLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    cpuLabel->setColour(TextEditor::backgroundColourId,
+                        ColourScheme::getInstance().colours["Text Editor Colour"].withAlpha(0.0f));
 
     addAndMakeVisible(playButton = new DrawableButton("playButton", DrawableButton::ImageOnButtonBackground));
     playButton->setName("playButton");
@@ -190,7 +192,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     tempoLabel->setJustificationType(Justification::centredLeft);
     tempoLabel->setEditable(false, false, false);
     tempoLabel->setColour(TextEditor::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
-    tempoLabel->setColour(TextEditor::backgroundColourId, Colour(0x0));
+    tempoLabel->setColour(TextEditor::backgroundColourId,
+                          ColourScheme::getInstance().colours["Text Editor Colour"].withAlpha(0.0f));
 
     addAndMakeVisible(tempoEditor = new TextEditor("tempoEditor"));
     tempoEditor->setMultiLine(false);
@@ -201,7 +204,9 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     tempoEditor->setPopupMenuEnabled(true);
     tempoEditor->setText("120.00");
 
-    addAndMakeVisible(tapTempoButton = new ArrowButton("tapTempoButton", 0.0, Colour(0x40000000)));
+    addAndMakeVisible(tapTempoButton =
+                          new ArrowButton("tapTempoButton", 0.0,
+                                          ColourScheme::getInstance().colours["Button Highlight"].withAlpha(0.25f)));
     tapTempoButton->setName("tapTempoButton");
 
     addAndMakeVisible(organiseButton = new TextButton("organiseButton"));
@@ -479,8 +484,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     octaveLabel = std::make_unique<Label>("octave", "Oct: 0");
     octaveLabel->setJustificationType(Justification::centred);
-    octaveLabel->setFont(Font(FontOptions().withHeight(12.0f)));
-    octaveLabel->setColour(Label::textColourId, Colours::white.withAlpha(0.8f));
+    octaveLabel->setFont(FontManager::getInstance().getLabelFont());
+    octaveLabel->setColour(Label::textColourId, ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.8f));
     addAndMakeVisible(octaveLabel.get());
 
     velocitySlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
@@ -492,8 +497,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     velocityLabel = std::make_unique<Label>("vel", "Vel:");
     velocityLabel->setJustificationType(Justification::centredRight);
-    velocityLabel->setFont(Font(FontOptions().withHeight(12.0f)));
-    velocityLabel->setColour(Label::textColourId, Colours::white.withAlpha(0.8f));
+    velocityLabel->setFont(FontManager::getInstance().getLabelFont());
+    velocityLabel->setColour(Label::textColourId, ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.8f));
     addAndMakeVisible(velocityLabel.get());
 
     sustainButton = std::make_unique<TextButton>("Sus");
@@ -1054,7 +1059,7 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
             bool held = sustainButton->getToggleState();
             proc->setSustainHeld(held);
             sustainButton->setColour(TextButton::buttonColourId,
-                                     held ? Colour(0xff4a90d9)
+                                     held ? ColourScheme::getInstance().colours["Accent Colour"]
                                           : getLookAndFeel().findColour(TextButton::buttonColourId));
         }
     }
@@ -2716,7 +2721,7 @@ BEGIN_JUCER_METADATA
               scrollbars="1" caret="1" popupmenu="1"/>
   <GENERICCOMPONENT name="tapTempoButton" id="2fec60b9d3555246" memberName="tapTempoButton"
                     virtualName="" explicitFocusOrder="0" pos="-31 27R 10 16" posRelativeX="382190f9abb24dc2"
-                    class="ArrowButton" params="L&quot;tapTempoButton&quot;, 0.0, Colour(0x40000000)"/>
+                    class="ArrowButton" params="L&quot;tapTempoButton&quot;, 0.0, ColourScheme::getInstance().colours[&quot;Button Highlight&quot;].withAlpha(0.25f)"/>
 </JUCER_COMPONENT>
 
 END_JUCER_METADATA

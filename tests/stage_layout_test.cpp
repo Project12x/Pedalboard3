@@ -1,0 +1,50 @@
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include "../src/StageLayout.h"
+
+TEST_CASE("Stage layout scales typography and controls with viewport", "[ui][regression][stage][layout]")
+{
+    const auto compact = StageLayout::calculateMetrics(760, 540, true);
+    const auto wide = StageLayout::calculateMetrics(1920, 1080, true);
+
+    CHECK(compact.patchNameFontHeight >= 42.0f);
+    CHECK(wide.patchNameFontHeight > compact.patchNameFontHeight);
+    CHECK(wide.patchNameFontHeight <= 86.0f);
+
+    CHECK(compact.nextPatchFontHeight >= 22.0f);
+    CHECK(wide.nextPatchFontHeight > compact.nextPatchFontHeight);
+
+    CHECK(compact.navButtonWidth >= 104);
+    CHECK(wide.navButtonWidth > compact.navButtonWidth);
+    CHECK(wide.footerHeight >= compact.footerHeight);
+}
+
+TEST_CASE("Stage layout reserves non-overlapping live performance regions", "[ui][regression][stage][layout]")
+{
+    const auto withTuner = StageLayout::calculateMetrics(980, 740, true);
+    const auto withoutTuner = StageLayout::calculateMetrics(980, 740, false);
+
+    CHECK(withTuner.headerHeight >= 44);
+    CHECK(withTuner.footerHeight >= 72);
+    CHECK(withTuner.tunerHeight >= 128);
+    CHECK(withTuner.patchAreaMinHeight >= 220);
+    CHECK(withTuner.headerHeight + withTuner.footerHeight + withTuner.tunerHeight + withTuner.patchAreaMinHeight <=
+          740);
+
+    CHECK(withoutTuner.tunerHeight == 0);
+    CHECK(withoutTuner.patchAreaMinHeight > withTuner.patchAreaMinHeight);
+}
+
+TEST_CASE("Stage patch labels preserve short names and elide long names", "[ui][regression][stage][layout]")
+{
+    CHECK(StageLayout::elideLabel("Clean Lead", 18) == "Clean Lead");
+
+    const auto elided = StageLayout::elideLabel("Very Long Worship Lead With Huge Ambient Tail", 18);
+    CHECK(elided.length() <= 18);
+    CHECK(elided.endsWith("..."));
+    CHECK(elided.startsWith("Very Long"));
+
+    CHECK(StageLayout::elideLabel("ABCDE", 3) == "ABC");
+}
+

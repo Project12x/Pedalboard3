@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <fstream>
+#include <optional>
+#include <sstream>
 #include <string_view>
 
 #include "../src/ColourScheme.h"
@@ -125,6 +128,20 @@ constexpr std::array requiredLookAndFeelColourIds{
     static_cast<int>(DirectoryContentsDisplayComponent::highlightColourId),
 };
 
+constexpr std::array tokenAuditSourceFiles{
+    std::string_view{"src/MainPanel.cpp"},
+    std::string_view{"src/PluginField.cpp"},
+    std::string_view{"src/PluginComponent.cpp"},
+    std::string_view{"src/PluginConnection.cpp"},
+    std::string_view{"src/StageView.cpp"},
+};
+
+constexpr std::array forbiddenTokenAuditPatterns{
+    std::string_view{"Colours::"},
+    std::string_view{"Colour(0x"},
+    std::string_view{"Font(FontOptions().withHeight"},
+};
+
 constexpr std::array checks{
     WorkflowCheck{"theme-switch", "main-shell",
                   "Switch every built-in theme and verify refreshed labels, buttons, menus, canvas, and dialogs.",
@@ -161,6 +178,32 @@ bool containsMatching(const Range& range, Predicate predicate)
 String toJuceString(std::string_view text)
 {
     return String::fromUTF8(text.data(), static_cast<int>(text.size()));
+}
+
+std::optional<std::string> loadSourceFile(std::string_view relativePath)
+{
+    constexpr std::array prefixes{
+        std::string_view{""},
+        std::string_view{"../"},
+        std::string_view{"../../"},
+        std::string_view{"../../../"},
+    };
+
+    for (auto prefix : prefixes)
+    {
+        std::string path{prefix};
+        path += relativePath;
+
+        std::ifstream file{path};
+        if (!file.good())
+            continue;
+
+        std::ostringstream contents;
+        contents << file.rdbuf();
+        return contents.str();
+    }
+
+    return std::nullopt;
 }
 } // namespace
 
@@ -222,6 +265,23 @@ TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression
         {
             INFO("role: " << requiredRole.toStdString());
             CHECK(colourScheme.colours.find(requiredRole) != colourScheme.colours.end());
+        }
+    }
+}
+
+TEST_CASE("Token-audited core UI files avoid hardcoded colour and font literals",
+          "[ui][regression][theme][tokens][source]")
+{
+    for (auto sourceFile : tokenAuditSourceFiles)
+    {
+        INFO("source file: " << sourceFile);
+        const auto source = loadSourceFile(sourceFile);
+        REQUIRE(source.has_value());
+
+        for (auto pattern : forbiddenTokenAuditPatterns)
+        {
+            INFO("forbidden pattern: " << pattern);
+            CHECK(source->find(pattern) == std::string::npos);
         }
     }
 }

@@ -328,7 +328,7 @@ void PluginComponent::paint(Graphics& g)
     }
 
     // Subtle top highlight (inner bevel)
-    g.setColour(Colours::white.withAlpha(0.06f));
+    g.setColour(colours["Text Colour"].withAlpha(0.06f));
     g.drawHorizontalLine(3, 4.0f, w - 4.0f);
 
     // Separator line at bottom of header
@@ -367,7 +367,7 @@ void PluginComponent::paint(Graphics& g)
     }
 
     // === INNER BODY HIGHLIGHT (subtle top edge below header) ===
-    g.setColour(Colours::white.withAlpha(0.03f));
+    g.setColour(colours["Text Colour"].withAlpha(0.03f));
     g.fillRect(3.0f, headerHeight + 2.0f, w - 6.0f, 1.0f);
 
     // === FOOTER SEPARATOR (above edit/bypass buttons) ===
@@ -1592,7 +1592,7 @@ void PluginPinComponent::paint(Graphics& g)
     g.fillEllipse(1, 1, w, h);
 
     // === Highlight for gloss effect ===
-    g.setColour(Colours::white.withAlpha(0.25f));
+    g.setColour(baseColour.contrasting(0.25f));
     g.fillEllipse(cx - radius * 0.5f, cy - radius * 0.6f, radius * 0.6f, radius * 0.4f);
 
     // === Border ===
@@ -1602,7 +1602,7 @@ void PluginPinComponent::paint(Graphics& g)
     // === Direction indicator (chevron) ===
     Path chevron;
     const float chevronSize = radius * 0.5f;
-    g.setColour(Colours::white.withAlpha(0.8f));
+    g.setColour(baseColour.contrasting(0.8f));
 
     if (direction) // Output pin - chevron points right (→)
     {

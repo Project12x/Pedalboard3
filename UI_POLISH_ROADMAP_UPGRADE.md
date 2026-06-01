@@ -311,15 +311,15 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 
 | ID | Item | Priority | Status |
 |---|---|---|---|
-| A1 | Token audit and enforcement | P0 | Partial (LAF contract covered) |
+| A1 | Token audit and enforcement | P0 | Done |
 | A2 | LAF consistency contract | P0 | Done |
-| B1 | Main shell rhythm and hierarchy | P0 | In Progress |
-| B2 | Graph canvas readability under density | P0 | In Progress |
-| B3 | Stage mode premium clarity | P0 | In Progress |
+| B1 | Main shell rhythm and hierarchy | P0 | Done |
+| B2 | Graph canvas readability under density | P0 | Done |
+| B3 | Stage mode premium clarity | P0 | Done |
 | C1 | State feedback and motion | P1 | Planned |
 | C2 | Secondary surface alignment | P1 | Planned |
-| D1 | UI regression harness | P0 | Partial (LAF contract covered) |
-| D2 | Visual review discipline | P0 | Partial |
+| D1 | UI regression harness | P0 | Done |
+| D2 | Visual review discipline | P0 | Done |
 | E1 | Motion system and interaction feel | P1 | Planned |
 | E2 | Connection and bypass signal cues | P1 | Planned |
 | E3 | Utility discoverability cues | P2 | Planned |
@@ -333,6 +333,23 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 ---
 
 ## Progress Log
+
+### 2026-06-01 - P0 UI Polish Closure
+
+**Tracks affected:** A1, B1, B2, B3, D1, D2
+
+Completed work:
+
+- **Token audit enforcement** now blocks hardcoded white/hex colour literals and ad-hoc `FontOptions().withHeight()` usage from returning to audited core UI files: `MainPanel`, `PluginField`, `PluginComponent`, `PluginConnection`, and `StageView`.
+- **Remaining audited token drift** was removed from the main shell, graph canvas, connection, and Stage Mode code paths by replacing hardcoded transparent/white/accent uses with semantic roles, derived contrast, and `FontManager` tiers.
+- **Stage Mode responsive layout contract** added via `StageLayout`, covering header/footer/tuner regions, button sizing, meter geometry, responsive display typography, and long patch-name elision.
+- **StageView integration** now consumes viewport-aware metrics instead of fixed 72px/32px/24px display fonts, fixed 80px footer height, fixed 180px tuner height, and fixed 140px meter geometry.
+- **Visual QA evidence** captured at `documentation/qa/2026-06-01-p0-ui-polish` for theme, dense graph, Stage Mode, patch-switch, and dialog workflows after this polish pass.
+- **Scaled visual QA evidence** remains covered by `documentation/qa/2026-05-27-d2-scaled-footer` and `documentation/qa/2026-05-27-d2-scaled-dialogs`.
+
+**Reference-code-first record:** clean-room implementation against this roadmap and existing project code; no external upstream source was copied or ported.
+
+**Verification:** `cmake --build build --config Release --target Pedalboard3 -- /m:1`, `cmake --build build --config Release --target Pedalboard3_Tests -- /m:1`, `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression][stage][layout]"`, `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression][theme][tokens][source]"`, and `scripts\run_d2_visual_qa.ps1 -OutputName 2026-06-01-p0-ui-polish -UiScalePercent 100`.
 
 ### 2026-06-01 - LookAndFeel Colour Contract
 

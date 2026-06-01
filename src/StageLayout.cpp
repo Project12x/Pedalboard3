@@ -1,0 +1,78 @@
+/*
+  ==============================================================================
+
+    StageLayout.cpp
+    Responsive layout metrics for Stage Mode
+
+  ==============================================================================
+*/
+
+#include "StageLayout.h"
+
+namespace StageLayout
+{
+Metrics calculateMetrics(int width, int height, bool showTuner)
+{
+    const auto safeWidth = juce::jmax(1, width);
+    const auto safeHeight = juce::jmax(1, height);
+    const auto shortEdge = juce::jmin(safeWidth, safeHeight);
+
+    Metrics metrics;
+    metrics.margin = juce::roundToInt(juce::jlimit(12.0f, 28.0f, shortEdge * 0.032f));
+
+    metrics.headerHeight = juce::roundToInt(juce::jlimit(44.0f, 64.0f, safeHeight * 0.07f));
+    metrics.footerHeight = juce::roundToInt(juce::jlimit(72.0f, 98.0f, safeHeight * 0.09f));
+    metrics.tunerHeight = showTuner ? juce::roundToInt(juce::jlimit(128.0f, 220.0f, safeHeight * 0.22f)) : 0;
+    metrics.patchAreaMinHeight =
+        juce::jmax(0, safeHeight - metrics.headerHeight - metrics.footerHeight - metrics.tunerHeight);
+
+    metrics.patchNameFontHeight = juce::jlimit(42.0f, 86.0f, juce::jmin(safeWidth * 0.055f, safeHeight * 0.13f));
+    metrics.nextPatchFontHeight = juce::jlimit(22.0f, 38.0f, metrics.patchNameFontHeight * 0.45f);
+    metrics.positionFontHeight = juce::jlimit(16.0f, 28.0f, shortEdge * 0.035f);
+    metrics.statusFontHeight = juce::jlimit(13.0f, 18.0f, shortEdge * 0.024f);
+    metrics.timeFontHeight = juce::jlimit(12.0f, 16.0f, shortEdge * 0.022f);
+    metrics.tunerNoteFontHeight = juce::jlimit(42.0f, 72.0f, shortEdge * 0.095f);
+    metrics.tunerCentsFontHeight = juce::jlimit(20.0f, 32.0f, shortEdge * 0.045f);
+    metrics.tunerWaitingFontHeight = juce::jlimit(24.0f, 36.0f, shortEdge * 0.045f);
+
+    metrics.utilityButtonWidth = juce::roundToInt(juce::jlimit(104.0f, 148.0f, safeWidth * 0.07f));
+    metrics.utilityButtonHeight = juce::roundToInt(juce::jlimit(36.0f, 46.0f, safeHeight * 0.045f));
+    metrics.navButtonWidth = juce::roundToInt(juce::jlimit(104.0f, 168.0f, safeWidth * 0.082f));
+    metrics.navButtonHeight = juce::roundToInt(juce::jlimit(52.0f, 72.0f, safeHeight * 0.07f));
+    metrics.panicButtonWidth = juce::roundToInt(juce::jlimit(136.0f, 192.0f, safeWidth * 0.085f));
+
+    metrics.meterLabelWidth = juce::jlimit(34.0f, 44.0f, safeWidth * 0.025f);
+    metrics.meterWidth = juce::jlimit(112.0f, 180.0f, safeWidth * 0.075f);
+    metrics.meterHeight = juce::jlimit(9.0f, 14.0f, safeHeight * 0.012f);
+    metrics.meterSpacing = juce::jlimit(22.0f, 40.0f, safeWidth * 0.018f);
+    metrics.meterStartX = juce::jlimit(18.0f, 36.0f, safeWidth * 0.018f);
+    metrics.meterChannelGap = juce::jlimit(3.0f, 6.0f, safeHeight * 0.004f);
+    metrics.sliderHeight = juce::jlimit(24.0f, 30.0f, safeHeight * 0.032f);
+
+    metrics.tunerBarWidth = juce::jlimit(240.0f, 460.0f, safeWidth * 0.42f);
+    metrics.tunerBarHeight = juce::jlimit(10.0f, 16.0f, safeHeight * 0.014f);
+
+    metrics.patchNameMaxChars = juce::jlimit(18, 36, safeWidth / 42);
+    metrics.nextPatchMaxChars = juce::jlimit(18, 44, safeWidth / 36);
+
+    return metrics;
+}
+
+juce::String elideLabel(const juce::String& text, int maxChars)
+{
+    if (maxChars <= 0)
+        return {};
+
+    if (text.length() <= maxChars)
+        return text;
+
+    if (maxChars <= 3)
+        return text.substring(0, maxChars);
+
+    auto prefix = text.substring(0, maxChars - 3).trimEnd();
+    while (prefix.length() + 3 > maxChars && prefix.isNotEmpty())
+        prefix = prefix.dropLastCharacters(1);
+
+    return prefix + "...";
+}
+} // namespace StageLayout

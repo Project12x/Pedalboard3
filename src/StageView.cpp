@@ -14,6 +14,7 @@
 #include "MainPanel.h"
 #include "MasterGainState.h"
 #include "SafetyLimiter.h"
+#include "StageLayout.h"
 #include "TunerProcessor.h"
 
 //==============================================================================
@@ -223,6 +224,7 @@ void StageView::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
     // Dark background with subtle gradient
     g.setGradientFill(ColourGradient(colours["Stage Background Top"], 0, 0, colours["Stage Background Bottom"], 0,
@@ -230,13 +232,9 @@ void StageView::paint(Graphics& g)
     g.fillAll();
 
     // Layout areas
-    float headerHeight = 50.0f;
-    float footerHeight = 80.0f;
-    float tunerHeight = showTuner ? 180.0f : 0.0f;
-
-    auto headerArea = bounds.removeFromTop(headerHeight);
-    auto footerArea = bounds.removeFromBottom(footerHeight);
-    auto tunerArea = bounds.removeFromBottom(tunerHeight);
+    auto headerArea = bounds.removeFromTop((float)metrics.headerHeight);
+    auto footerArea = bounds.removeFromBottom((float)metrics.footerHeight);
+    auto tunerArea = bounds.removeFromBottom((float)metrics.tunerHeight);
     auto patchArea = bounds;
 
     // Draw sections
@@ -249,11 +247,11 @@ void StageView::paint(Graphics& g)
     // Draw VU meters in footer area
     {
         auto& fonts = FontManager::getInstance();
-        float footerY = (float)getHeight() - footerHeight;
-        float meterH = 10.0f;
-        float meterW = 140.0f;
-        float labelW = 40.0f;
-        float startX = 30.0f;
+        const float footerY = (float)getHeight() - (float)metrics.footerHeight;
+        const float meterH = metrics.meterHeight;
+        const float meterW = metrics.meterWidth;
+        const float labelW = metrics.meterLabelWidth;
+        const float startX = metrics.meterStartX;
 
         const Colour colGreen = colours["VU Meter Lower Colour"].withAlpha(1.0f);
         const Colour colYellow = colours["VU Meter Upper Colour"].withAlpha(1.0f);
@@ -264,13 +262,13 @@ void StageView::paint(Graphics& g)
                           const int* peakCounters)
         {
             g.setColour(colours["Text Colour"].withAlpha(0.6f));
-            g.setFont(fonts.getSubheadingFont());
-            g.drawText(label, x, y, labelW, 32.0f, Justification::centredRight);
+            g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
+            g.drawText(label, x, y, labelW, metrics.footerHeight * 0.42f, Justification::centredRight);
 
             for (int ch = 0; ch < 2; ++ch)
             {
                 float level = (ch == 0) ? level0 : level1;
-                float my = y + ch * (meterH + 4.0f) + 4.0f;
+                float my = y + ch * (meterH + metrics.meterChannelGap) + metrics.meterChannelGap;
                 float mx = x + labelW + 6.0f;
 
                 float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
@@ -319,7 +317,7 @@ void StageView::paint(Graphics& g)
                 }
 
                 // dB scale tick marks
-                g.setColour(Colours::white.withAlpha(0.12f));
+                g.setColour(colours["Text Colour"].withAlpha(0.12f));
                 const float dbMarks[] = {-48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f};
                 for (float db : dbMarks)
                 {
@@ -330,10 +328,11 @@ void StageView::paint(Graphics& g)
             }
         };
 
-        drawVU(startX, footerY + 4.0f, "IN", cachedInputLevels[0], cachedInputLevels[1], peakHoldInput,
+        drawVU(startX, footerY + metrics.meterChannelGap, "IN", cachedInputLevels[0], cachedInputLevels[1], peakHoldInput,
                peakHoldInputCounters);
-        drawVU(startX + labelW + meterW + 30.0f + 160.0f, footerY + 4.0f, "OUT", cachedOutputLevels[0],
-               cachedOutputLevels[1], peakHoldOutput, peakHoldOutputCounters);
+        drawVU(startX + labelW + meterW + metrics.meterSpacing + metrics.panicButtonWidth,
+               footerY + metrics.meterChannelGap, "OUT", cachedOutputLevels[0], cachedOutputLevels[1], peakHoldOutput,
+               peakHoldOutputCounters);
     }
 }
 
@@ -341,59 +340,62 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
     auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
     // "STAGE MODE" title
     g.setColour(colours["Text Colour"].withAlpha(0.5f));
-    g.setFont(fonts.getSubheadingFont());
-    g.drawText("STAGE MODE", bounds.reduced(20, 0), Justification::centredLeft);
+    g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
+    g.drawText("STAGE MODE", bounds.reduced((float)metrics.margin, 0), Justification::centredLeft);
 
     // Time display (optional)
     Time now = Time::getCurrentTime();
     String timeStr = now.formatted("%H:%M");
-    g.setFont(fonts.getMonoDisplayFont(14.0f));
-    g.drawText(timeStr, bounds.reduced(80, 0), Justification::centredRight);
+    g.setFont(fonts.getMonoDisplayFont(metrics.timeFontHeight));
+    g.drawText(timeStr, bounds.reduced((float)(metrics.utilityButtonWidth * 2 + metrics.margin * 3), 0),
+               Justification::centredRight);
 }
 
 void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
     auto& colours = ColourScheme::getInstance().colours;
-    auto centre = bounds.getCentre();
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
     // Large patch name
     g.setColour(colours["Text Colour"]);
-    g.setFont(fonts.getDisplayFont(72.0f));
+    g.setFont(fonts.getDisplayFont(metrics.patchNameFontHeight));
 
-    // Truncate long names
-    String displayName = currentPatchName;
-    if (displayName.length() > 25)
-        displayName = displayName.substring(0, 22) + "...";
+    const auto displayName = StageLayout::elideLabel(currentPatchName, metrics.patchNameMaxChars);
+    const auto horizontalInset = juce::jmax((float)metrics.margin * 2.0f, (float)metrics.navButtonWidth + metrics.margin * 2.0f);
 
-    g.drawText(displayName, bounds.reduced(100, 0).withTrimmedBottom(40), Justification::centred);
+    g.drawText(displayName, bounds.reduced(horizontalInset, 0).withTrimmedBottom(metrics.positionFontHeight * 1.6f),
+               Justification::centred);
 
     // Next Patch Preview
     if (nextPatchName.isNotEmpty())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(fonts.getDisplayFont(32.0f));
-        g.drawText("NEXT: " + nextPatchName, bounds.removeFromBottom(140).withTrimmedBottom(60),
+        g.setFont(fonts.getDisplayFont(metrics.nextPatchFontHeight));
+        g.drawText("NEXT: " + StageLayout::elideLabel(nextPatchName, metrics.nextPatchMaxChars),
+                   bounds.removeFromBottom(metrics.nextPatchFontHeight * 3.4f).withTrimmedBottom(metrics.nextPatchFontHeight),
                    Justification::centredTop);
     }
     else
     {
         g.setColour(colours["Text Colour"].withAlpha(0.3f));
-        g.setFont(fonts.getDisplayFont(24.0f));
-        g.drawText("(End of Set)", bounds.removeFromBottom(140).withTrimmedBottom(60), Justification::centredTop);
+        g.setFont(fonts.getDisplayFont(metrics.nextPatchFontHeight));
+        g.drawText("(End of Set)", bounds.removeFromBottom(metrics.nextPatchFontHeight * 3.4f)
+                                       .withTrimmedBottom(metrics.nextPatchFontHeight),
+                   Justification::centredTop);
     }
 
     // Patch position indicator
     if (totalPatchCount > 0)
     {
         g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(fonts.getMonoDisplayFont(24.0f));
+        g.setFont(fonts.getMonoDisplayFont(metrics.positionFontHeight));
         String posStr = String(currentPatchIndex + 1) + " / " + String(totalPatchCount);
-        // Positioned slightly lower
-        g.drawText(posStr, bounds.translated(0, 100), Justification::centred);
+        g.drawText(posStr, bounds.withTrimmedTop(bounds.getHeight() * 0.62f), Justification::centred);
     }
 }
 
@@ -401,6 +403,7 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
     auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
     // Separator line
     g.setColour(colours["Plugin Border"].withAlpha(0.3f));
@@ -412,7 +415,7 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     if (tunerProcessor == nullptr || !tunerProcessor->isPitchDetected())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.25f));
-        g.setFont(fonts.getDisplayFont(32.0f));
+        g.setFont(fonts.getDisplayFont(metrics.tunerWaitingFontHeight));
         g.drawText("Waiting for signal...", bounds, Justification::centred);
         return;
     }
@@ -422,19 +425,19 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     Colour noteCol = getTuningColour(displayedCents);
 
     g.setColour(noteCol);
-    g.setFont(fonts.getDisplayFont(64.0f));
-    g.drawText(noteName, bounds.withTrimmedBottom(60), Justification::centred);
+    g.setFont(fonts.getDisplayFont(metrics.tunerNoteFontHeight));
+    g.drawText(noteName, bounds.withTrimmedBottom(metrics.tunerCentsFontHeight * 1.8f), Justification::centred);
 
     // Cents display
-    g.setFont(fonts.getMonoDisplayFont(28.0f));
+    g.setFont(fonts.getMonoDisplayFont(metrics.tunerCentsFontHeight));
     String centsStr = (displayedCents >= 0 ? "+" : "") + String(static_cast<int>(displayedCents)) + " cents";
-    g.drawText(centsStr, bounds.withTrimmedTop(80), Justification::centred);
+    g.drawText(centsStr, bounds.withTrimmedTop(metrics.tunerNoteFontHeight * 1.15f), Justification::centred);
 
     // Simple bar indicator
-    float barWidth = 400.0f;
-    float barHeight = 12.0f;
+    float barWidth = metrics.tunerBarWidth;
+    float barHeight = metrics.tunerBarHeight;
     float barX = centreX - barWidth / 2;
-    float barY = centreY + 50;
+    float barY = centreY + metrics.tunerCentsFontHeight * 1.6f;
 
     // Background bar
     g.setColour(colours["Plugin Border"].darker(0.3f));
@@ -456,37 +459,45 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 void StageView::resized()
 {
     auto bounds = getLocalBounds();
-    int margin = 20;
-    int buttonHeight = 60;
-    int buttonWidth = 120;
+    const auto metrics = StageLayout::calculateMetrics(bounds.getWidth(), bounds.getHeight(), showTuner);
+    const int margin = metrics.margin;
+    const int utilityButtonHeight = metrics.utilityButtonHeight;
+    const int utilityButtonWidth = metrics.utilityButtonWidth;
 
     // Header buttons (top right)
-    exitButton->setBounds(bounds.getWidth() - buttonWidth - margin, margin, buttonWidth, 40);
-    tunerToggleButton->setBounds(bounds.getWidth() - buttonWidth * 2 - margin * 2, margin, buttonWidth, 40);
+    exitButton->setBounds(bounds.getWidth() - utilityButtonWidth - margin, margin, utilityButtonWidth,
+                          utilityButtonHeight);
+    tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, margin, utilityButtonWidth,
+                                 utilityButtonHeight);
 
     // Navigation buttons (sides, vertically centered)
-    int navY = bounds.getCentreY() - buttonHeight / 2;
-    prevButton->setBounds(margin, navY, buttonWidth + 20, buttonHeight);
-    nextButton->setBounds(bounds.getWidth() - buttonWidth - 20 - margin, navY, buttonWidth + 20, buttonHeight);
+    const int navY = bounds.getCentreY() - metrics.navButtonHeight / 2;
+    prevButton->setBounds(margin, navY, metrics.navButtonWidth, metrics.navButtonHeight);
+    nextButton->setBounds(bounds.getWidth() - metrics.navButtonWidth - margin, navY, metrics.navButtonWidth,
+                          metrics.navButtonHeight);
 
     // Panic button (bottom right)
-    panicButton->setBounds(bounds.getWidth() - 160 - margin, bounds.getHeight() - buttonHeight - margin, 160,
-                           buttonHeight);
+    panicButton->setBounds(bounds.getWidth() - metrics.panicButtonWidth - margin,
+                           bounds.getHeight() - metrics.navButtonHeight - margin, metrics.panicButtonWidth,
+                           metrics.navButtonHeight);
 
     // Master gain sliders in footer area (next to VU meters)
     {
-        int footerY = bounds.getHeight() - 80;
-        float labelW = 40.0f;
-        float meterW = 140.0f;
-        float startX = 30.0f;
+        const int footerY = bounds.getHeight() - metrics.footerHeight;
+        const float labelW = metrics.meterLabelWidth;
+        const float meterW = metrics.meterWidth;
+        const float startX = metrics.meterStartX;
 
         // Input slider below input VU
         int inSliderX = (int)(startX + labelW + 6.0f);
-        inputGainSlider->setBounds(inSliderX, footerY + 30, (int)meterW, 28);
+        inputGainSlider->setBounds(inSliderX, footerY + juce::roundToInt(metrics.footerHeight * 0.42f),
+                                   (int)meterW, juce::roundToInt(metrics.sliderHeight));
 
         // Output slider below output VU
-        int outSliderX = (int)(startX + labelW + meterW + 30.0f + 160.0f + labelW + 6.0f);
-        outputGainSlider->setBounds(outSliderX, footerY + 30, (int)meterW, 28);
+        int outSliderX = (int)(startX + labelW + meterW + metrics.meterSpacing + metrics.panicButtonWidth + labelW +
+                               6.0f);
+        outputGainSlider->setBounds(outSliderX, footerY + juce::roundToInt(metrics.footerHeight * 0.42f),
+                                    (int)meterW, juce::roundToInt(metrics.sliderHeight));
     }
 }
 

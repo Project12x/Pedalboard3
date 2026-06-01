@@ -210,6 +210,8 @@ target_sources(Pedalboard3 PRIVATE
     src/TunerProcessor.h
     src/TunerControl.cpp
     src/TunerControl.h
+    src/StageLayout.cpp
+    src/StageLayout.h
     src/OscilloscopeProcessor.cpp
     src/OscilloscopeProcessor.h
     src/OscilloscopeControl.cpp

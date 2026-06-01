@@ -127,7 +127,7 @@ void PluginConnection::paint(Graphics& g)
     g.fillPath(drawnCurve);
 
     // === Thin highlight stroke for depth ===
-    g.setColour(Colours::white.withAlpha(0.12f));
+    g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.12f));
     g.strokePath(glowPath, PathStrokeType(1.0f, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 

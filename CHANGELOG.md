@@ -18,12 +18,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Scaled Footer Visual QA Matrix** — Added D2 visual-QA coverage for normal and narrow footer captures at 125%, 150%, 175%, and 200% app scale, plus explicit sign-off criteria for UI Scale, patch, transport, tempo, gain/FX, Fit/Manage, and CPU controls.
 - **Scaled Dialog Visual QA Matrix** — Added D2 visual-QA coverage for plugin search, Preferences, NAM browser, and IR browser captures at 150% and 200% app scale in normal and narrow dialog sizes.
 - **LookAndFeel Colour Contract** — Added a semantic colour-id binding table for shared JUCE controls, with UI regression coverage ensuring `BranchesLAF` surfaces stay mapped to theme roles instead of duplicated ad-hoc assignments.
+- **Stage Mode Layout Contract** — Added deterministic `StageLayout` metrics and Catch2 coverage for responsive Stage Mode typography, controls, tuner regions, and long patch-name elision.
+- **Core UI Token Audit Gate** — Added source-level UI regression coverage preventing hardcoded white/hex colour literals and ad-hoc `FontOptions().withHeight()` usage from returning to the audited main shell, graph canvas, connection, and Stage Mode files.
+- **P0 Visual QA Evidence** — Added `documentation/qa/2026-06-01-p0-ui-polish` with current theme, dense graph, Stage Mode, patch-switch, and dialog screenshots after the P0 polish closure pass.
 
 ### Changed
 
 - **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. `-CaptureScaledFooterMatrix` captures the high-scale footer breakpoint set, `-CaptureScaledDialogMatrix` captures high-scale secondary surfaces, and OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
 - **Scaled Footer Layout** — The main footer now switches out of single-row mode using scale-aware available width, then falls back to a stacked footer when two rows would still crowd controls. Patch, transport, tempo, gain/FX, UI scale, Fit/Manage, and CPU controls remain reachable at high Pedalboard UI scale.
 - **BranchesLAF Theme Refresh** — Shared button, menu, combo box, text editor, label, toggle, slider, scrollbar, list, progress, and file-browser highlight colours now refresh from `ColourScheme::getLookAndFeelColourSpecs()`.
+- **Stage Mode Responsiveness** — Stage Mode now derives header/footer/tuner areas, live-performance button sizes, meter geometry, tuner bar sizing, and display font heights from viewport-aware metrics instead of fixed constants.
+- **Core UI Token Usage** — Replaced remaining audited hardcoded white/hex colour and one-off font literals in `MainPanel`, `PluginComponent`, `PluginConnection`, and `StageView` with semantic colour roles, derived contrast, and `FontManager` tiers.
 - **Popup Menu Font Size** — `BranchesLAF::getPopupMenuFont()` now returns `getSubheadingFont()` (15px) for better readability.
 - **Search Bar Consistency** — All browser search bars now use `getSubheadingFont()` (15px) with centered vertical indent for consistent pill appearance.
 
