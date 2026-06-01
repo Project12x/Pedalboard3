@@ -84,6 +84,47 @@ constexpr std::array requiredThemeStates{
     std::string_view{"success"},
 };
 
+constexpr std::array requiredLookAndFeelColourIds{
+    static_cast<int>(TextButton::buttonColourId),
+    static_cast<int>(TextButton::buttonOnColourId),
+    static_cast<int>(TextButton::textColourOnId),
+    static_cast<int>(TextButton::textColourOffId),
+    static_cast<int>(PopupMenu::backgroundColourId),
+    static_cast<int>(PopupMenu::textColourId),
+    static_cast<int>(PopupMenu::highlightedBackgroundColourId),
+    static_cast<int>(PopupMenu::highlightedTextColourId),
+    static_cast<int>(ComboBox::backgroundColourId),
+    static_cast<int>(ComboBox::buttonColourId),
+    static_cast<int>(ComboBox::arrowColourId),
+    static_cast<int>(ComboBox::outlineColourId),
+    static_cast<int>(ComboBox::focusedOutlineColourId),
+    static_cast<int>(TextEditor::backgroundColourId),
+    static_cast<int>(TextEditor::textColourId),
+    static_cast<int>(TextEditor::outlineColourId),
+    static_cast<int>(TextEditor::focusedOutlineColourId),
+    static_cast<int>(TextEditor::highlightColourId),
+    static_cast<int>(TextEditor::highlightedTextColourId),
+    static_cast<int>(Label::textColourId),
+    static_cast<int>(ToggleButton::textColourId),
+    static_cast<int>(ToggleButton::tickColourId),
+    static_cast<int>(ToggleButton::tickDisabledColourId),
+    static_cast<int>(Slider::thumbColourId),
+    static_cast<int>(Slider::trackColourId),
+    static_cast<int>(Slider::rotarySliderFillColourId),
+    static_cast<int>(Slider::rotarySliderOutlineColourId),
+    static_cast<int>(Slider::textBoxTextColourId),
+    static_cast<int>(Slider::textBoxBackgroundColourId),
+    static_cast<int>(Slider::textBoxHighlightColourId),
+    static_cast<int>(Slider::textBoxOutlineColourId),
+    static_cast<int>(ScrollBar::thumbColourId),
+    static_cast<int>(ScrollBar::trackColourId),
+    static_cast<int>(ListBox::backgroundColourId),
+    static_cast<int>(ListBox::textColourId),
+    static_cast<int>(ProgressBar::backgroundColourId),
+    static_cast<int>(ProgressBar::foregroundColourId),
+    static_cast<int>(DirectoryContentsDisplayComponent::highlightColourId),
+};
+
 constexpr std::array checks{
     WorkflowCheck{"theme-switch", "main-shell",
                   "Switch every built-in theme and verify refreshed labels, buttons, menus, canvas, and dialogs.",
@@ -182,6 +223,30 @@ TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression
             INFO("role: " << requiredRole.toStdString());
             CHECK(colourScheme.colours.find(requiredRole) != colourScheme.colours.end());
         }
+    }
+}
+
+TEST_CASE("LookAndFeel colour contract maps shared controls to semantic roles", "[ui][regression][theme][laf]")
+{
+    const auto& specs = ColourScheme::getLookAndFeelColourSpecs();
+    const auto requiredRoles = ColourScheme::getRequiredColourRoles();
+
+    REQUIRE(specs.size() >= requiredLookAndFeelColourIds.size());
+
+    for (const auto& spec : specs)
+    {
+        INFO("component: " << spec.component << ", role: " << spec.role);
+        REQUIRE_FALSE(std::string_view{spec.component}.empty());
+        REQUIRE_FALSE(std::string_view{spec.role}.empty());
+        REQUIRE(spec.alpha > 0.0f);
+        REQUIRE(spec.alpha <= 1.0f);
+        REQUIRE(requiredRoles.contains(toJuceString(spec.role)));
+    }
+
+    for (auto colourId : requiredLookAndFeelColourIds)
+    {
+        INFO("colourId: " << colourId);
+        REQUIRE(containsMatching(specs, [colourId](const auto& spec) { return spec.colourId == colourId; }));
     }
 }
 

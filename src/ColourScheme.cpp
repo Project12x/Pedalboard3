@@ -233,6 +233,54 @@ const std::vector<ColourRoleSpec>& ColourScheme::getSemanticColourRoles()
 }
 
 //------------------------------------------------------------------------------
+const std::vector<LookAndFeelColourSpec>& ColourScheme::getLookAndFeelColourSpecs()
+{
+    static const std::vector<LookAndFeelColourSpec> specs{
+        {"TextButton", static_cast<int>(TextButton::buttonColourId), "Button Colour", 1.0f},
+        {"TextButton", static_cast<int>(TextButton::buttonOnColourId), "Button Colour", 1.0f},
+        {"TextButton", static_cast<int>(TextButton::textColourOnId), "Text Colour", 1.0f},
+        {"TextButton", static_cast<int>(TextButton::textColourOffId), "Text Colour", 1.0f},
+        {"PopupMenu", static_cast<int>(PopupMenu::backgroundColourId), "Window Background", 1.0f},
+        {"PopupMenu", static_cast<int>(PopupMenu::textColourId), "Text Colour", 1.0f},
+        {"PopupMenu", static_cast<int>(PopupMenu::highlightedBackgroundColourId), "Menu Selection Colour", 1.0f},
+        {"PopupMenu", static_cast<int>(PopupMenu::highlightedTextColourId), "Text Colour", 1.0f},
+        {"ComboBox", static_cast<int>(ComboBox::backgroundColourId), "Text Editor Colour", 1.0f},
+        {"ComboBox", static_cast<int>(ComboBox::buttonColourId), "Button Colour", 1.0f},
+        {"ComboBox", static_cast<int>(ComboBox::arrowColourId), "Text Colour", 1.0f},
+        {"ComboBox", static_cast<int>(ComboBox::outlineColourId), "Plugin Border", 1.0f},
+        {"ComboBox", static_cast<int>(ComboBox::focusedOutlineColourId), "Menu Selection Colour", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::backgroundColourId), "Text Editor Colour", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::textColourId), "Text Colour", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::outlineColourId), "Plugin Border", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::focusedOutlineColourId), "Menu Selection Colour", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::highlightColourId), "Button Highlight", 1.0f},
+        {"TextEditor", static_cast<int>(TextEditor::highlightedTextColourId), "Text Colour", 1.0f},
+        {"Label", static_cast<int>(Label::textColourId), "Text Colour", 1.0f},
+        {"ToggleButton", static_cast<int>(ToggleButton::textColourId), "Text Colour", 1.0f},
+        {"ToggleButton", static_cast<int>(ToggleButton::tickColourId), "Vector Colour", 1.0f},
+        {"ToggleButton", static_cast<int>(ToggleButton::tickDisabledColourId), "Tick Box Colour", 1.0f},
+        {"Slider", static_cast<int>(Slider::thumbColourId), "Slider Colour", 1.0f},
+        {"Slider", static_cast<int>(Slider::trackColourId), "Slider Colour", 0.4f},
+        {"Slider", static_cast<int>(Slider::rotarySliderFillColourId), "Slider Colour", 1.0f},
+        {"Slider", static_cast<int>(Slider::rotarySliderOutlineColourId), "Plugin Border", 1.0f},
+        {"Slider", static_cast<int>(Slider::textBoxTextColourId), "Text Colour", 1.0f},
+        {"Slider", static_cast<int>(Slider::textBoxBackgroundColourId), "Text Editor Colour", 1.0f},
+        {"Slider", static_cast<int>(Slider::textBoxHighlightColourId), "Button Highlight", 1.0f},
+        {"Slider", static_cast<int>(Slider::textBoxOutlineColourId), "Plugin Border", 1.0f},
+        {"ScrollBar", static_cast<int>(ScrollBar::thumbColourId), "Button Highlight", 1.0f},
+        {"ScrollBar", static_cast<int>(ScrollBar::trackColourId), "Field Background", 1.0f},
+        {"ListBox", static_cast<int>(ListBox::backgroundColourId), "Field Background", 1.0f},
+        {"ListBox", static_cast<int>(ListBox::textColourId), "Text Colour", 1.0f},
+        {"ProgressBar", static_cast<int>(ProgressBar::backgroundColourId), "Window Background", 1.0f},
+        {"ProgressBar", static_cast<int>(ProgressBar::foregroundColourId), "CPU Meter Colour", 1.0f},
+        {"DirectoryContentsDisplayComponent",
+         static_cast<int>(DirectoryContentsDisplayComponent::highlightColourId), "List Selected Colour", 1.0f},
+    };
+
+    return specs;
+}
+
+//------------------------------------------------------------------------------
 StringArray ColourScheme::getRequiredColourRoles()
 {
     StringArray requiredRoles;

@@ -311,14 +311,14 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 
 | ID | Item | Priority | Status |
 |---|---|---|---|
-| A1 | Token audit and enforcement | P0 | Partial |
-| A2 | LAF consistency contract | P0 | Planned |
+| A1 | Token audit and enforcement | P0 | Partial (LAF contract covered) |
+| A2 | LAF consistency contract | P0 | Done |
 | B1 | Main shell rhythm and hierarchy | P0 | In Progress |
 | B2 | Graph canvas readability under density | P0 | In Progress |
 | B3 | Stage mode premium clarity | P0 | In Progress |
 | C1 | State feedback and motion | P1 | Planned |
 | C2 | Secondary surface alignment | P1 | Planned |
-| D1 | UI regression harness | P0 | Partial |
+| D1 | UI regression harness | P0 | Partial (LAF contract covered) |
 | D2 | Visual review discipline | P0 | Partial |
 | E1 | Motion system and interaction feel | P1 | Planned |
 | E2 | Connection and bypass signal cues | P1 | Planned |
@@ -333,6 +333,18 @@ Commercial-grade polish for internal processors (starting with NAM), inspired by
 ---
 
 ## Progress Log
+
+### 2026-06-01 - LookAndFeel Colour Contract
+
+**Tracks affected:** A1, A2, D1
+
+Completed work:
+
+- **Shared LookAndFeel colour contract** added via `ColourScheme::getLookAndFeelColourSpecs()`, mapping common JUCE colour IDs for buttons, menus, combo boxes, text editors, labels, toggles, sliders, scrollbars, lists, progress bars, and file-browser highlights onto existing semantic colour roles.
+- **BranchesLAF refresh path** now consumes the shared contract instead of duplicating per-control assignments, keeping theme refresh behavior aligned with the semantic role matrix.
+- **UI regression coverage** added for the contract so future theme/LAF changes fail if a shared control colour ID drops out of semantic coverage.
+
+**Verification:** `cmake --build build --config Release --target Pedalboard3 -- /m:1`, `cmake --build build --config Release --target Pedalboard3_Tests -- /m:1`, and `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression][theme][laf]"`.
 
 ### 2026-02-13 - Master Gain Controls + VU Meter Upgrade
 

@@ -32,6 +32,14 @@ struct ColourRoleSpec
     const char* usage;
 };
 
+struct LookAndFeelColourSpec
+{
+    const char* component;
+    int colourId;
+    const char* role;
+    float alpha;
+};
+
 ///	Singleton struct handling colour schemes.
 struct ColourScheme
 {
@@ -65,6 +73,9 @@ struct ColourScheme
 
     /// @brief Returns the semantic colour role matrix required by built-in themes.
     static const std::vector<ColourRoleSpec>& getSemanticColourRoles();
+
+    /// @brief Returns the shared LookAndFeel colour-id to semantic-role contract.
+    static const std::vector<LookAndFeelColourSpec>& getLookAndFeelColourSpecs();
 
     /// @brief Returns the unique colour role keys required by built-in themes.
     static StringArray getRequiredColourRoles();

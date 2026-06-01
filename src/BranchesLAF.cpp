@@ -30,18 +30,6 @@ using namespace std;
 //------------------------------------------------------------------------------
 BranchesLAF::BranchesLAF() : LookAndFeel_V4()
 {
-    /*setColour(TextButton::buttonColourId, Colour(0xFFEEECE1));
-    setColour(TextButton::buttonOnColourId, Colour(0xFFEEECE1));
-    setColour(PopupMenu::highlightedBackgroundColourId, Colour(0x40000000));
-    setColour(PopupMenu::backgroundColourId, Colour(0xFFEEECE1));
-    setColour(AlertWindow::backgroundColourId, Colour(0xFFEEECE1));
-    setColour(ComboBox::buttonColourId, Colour(0xFFEEECE1));
-    setColour(TextEditor::highlightColourId, Colour(0xB0B0B0FF));
-    setColour(TextEditor::focusedOutlineColourId, Colour(0x40000000));
-    setColour(DirectoryContentsDisplayComponent::highlightColourId, Colour(0xFFD7D1B5));
-    setColour(ProgressBar::backgroundColourId, Colour(0xFFD7D1B5));
-    setColour(ProgressBar::foregroundColourId, Colour(0xB0B0B0FF));*/
-
     refreshColours();
 }
 
@@ -51,61 +39,17 @@ BranchesLAF::~BranchesLAF() {}
 //------------------------------------------------------------------------------
 void BranchesLAF::refreshColours()
 {
-    map<String, Colour>& colours = ::ColourScheme::getInstance().colours;
+    auto& themeColours = ::ColourScheme::getInstance().colours;
 
-    setColour(TextButton::buttonColourId, colours["Button Colour"]);
-    setColour(TextButton::buttonOnColourId, colours["Button Colour"]);
-    setColour(PopupMenu::highlightedBackgroundColourId, colours["Menu Selection Colour"]);
-    setColour(PopupMenu::backgroundColourId, colours["Window Background"]);
-    setColour(AlertWindow::backgroundColourId, colours["Window Background"]);
-    setColour(ComboBox::buttonColourId, colours["Button Colour"]);
-    setColour(ComboBox::arrowColourId, colours["Text Colour"]);
-    setColour(ComboBox::focusedOutlineColourId, colours["Menu Selection Colour"]);
-    setColour(TextEditor::highlightColourId, colours["Button Highlight"]);
-    setColour(TextEditor::highlightedTextColourId, colours["Text Colour"]);
-    setColour(TextEditor::focusedOutlineColourId, colours["Menu Selection Colour"]);
-    setColour(DirectoryContentsDisplayComponent::highlightColourId, colours["List Selected Colour"]);
-    setColour(ProgressBar::backgroundColourId, colours["Window Background"]);
-    setColour(ProgressBar::foregroundColourId, colours["CPU Meter Colour"]);
+    for (const auto& spec : ::ColourScheme::getLookAndFeelColourSpecs())
+    {
+        const auto role = String(spec.role);
+        const auto colour = themeColours.find(role);
+        if (colour != themeColours.end())
+            setColour(spec.colourId, colour->second.withMultipliedAlpha(spec.alpha));
+    }
 
-    setColour(PopupMenu::textColourId, colours["Text Colour"]);
-    setColour(PopupMenu::highlightedTextColourId, colours["Text Colour"]);
-    setColour(TextButton::textColourOnId, colours["Text Colour"]);
-    setColour(TextButton::textColourOffId, colours["Text Colour"]);
-    setColour(ComboBox::textColourId, colours["Text Colour"]);
-    setColour(Label::textColourId, colours["Text Colour"]);
-
-    // ToggleButton colors (needed for JUCE 8 compatibility)
-    setColour(ToggleButton::textColourId, colours["Text Colour"]);
-    setColour(ToggleButton::tickColourId, colours["Vector Colour"]);
-    setColour(ToggleButton::tickDisabledColourId, colours["Tick Box Colour"]);
-
-    // Slider colour IDs
-    setColour(Slider::thumbColourId, colours["Slider Colour"]);
-    setColour(Slider::trackColourId, colours["Slider Colour"].withAlpha(0.4f));
-    setColour(Slider::rotarySliderFillColourId, colours["Slider Colour"]);
-    setColour(Slider::rotarySliderOutlineColourId, colours["Plugin Border"]);
-    setColour(Slider::textBoxTextColourId, colours["Text Colour"]);
-    setColour(Slider::textBoxBackgroundColourId, colours["Text Editor Colour"]);
-    setColour(Slider::textBoxHighlightColourId, colours["Button Highlight"]);
-    setColour(Slider::textBoxOutlineColourId, colours["Plugin Border"]);
-
-    // ScrollBar colour IDs
-    setColour(ScrollBar::thumbColourId, colours["Button Highlight"]);
-    setColour(ScrollBar::trackColourId, colours["Field Background"]);
-
-    // ComboBox extended
-    setColour(ComboBox::backgroundColourId, colours["Text Editor Colour"]);
-    setColour(ComboBox::outlineColourId, colours["Plugin Border"]);
-
-    // TextEditor
-    setColour(TextEditor::backgroundColourId, colours["Text Editor Colour"]);
-    setColour(TextEditor::textColourId, colours["Text Colour"]);
-    setColour(TextEditor::outlineColourId, colours["Plugin Border"]);
-
-    // ListBox
-    setColour(ListBox::backgroundColourId, colours["Field Background"]);
-    setColour(ListBox::textColourId, colours["Text Colour"]);
+    setColour(AlertWindow::backgroundColourId, themeColours["Window Background"]);
 }
 
 //------------------------------------------------------------------------------
