@@ -327,6 +327,12 @@ class MainPanel : public Component,
     void setUiScalePercent(int percent);
     /// Syncs the footer UI scale selector from persisted settings.
     void syncUiScaleComboBoxFromSettings();
+    ScratchTakeContext createScratchTakeContext() const;
+    void toggleScratchCapture();
+    void openScratchPanel();
+    void revealScratchFolder();
+    void refreshScratchControls();
+    ScratchRecorderStatus getScratchRecorderStatus() const;
 
     ///	Toggles Stage Mode (fullscreen performance view).
     void toggleStageMode();
@@ -390,7 +396,10 @@ class MainPanel : public Component,
         OptionsUiScale150,
         OptionsUiScale175,
         OptionsUiScale200,
-        OptionsUiScaleResetDefault
+        OptionsUiScaleResetDefault,
+        ScratchCaptureToggle,
+        ScratchPanelOpen,
+        ScratchRevealFolder
     };
 
     //[/UserMethods]
@@ -435,6 +444,8 @@ class MainPanel : public Component,
     AudioDeviceManager deviceManager;
     ///	The graph representing the audio signal path.
     FilterGraph signalPath;
+    ThreadedWavSinkFactory scratchSinkFactory;
+    ScratchRecorder scratchRecorder{scratchSinkFactory};
     ///	Object used to 'play' the signalPath object (with output metering).
     MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.
@@ -575,6 +586,9 @@ class MainPanel : public Component,
     TextButton* masterInsertButton;
     Label* uiScaleFooterLabel;
     ComboBox* uiScaleFooterComboBox;
+    TextButton* scratchRecordButton = nullptr;
+    TextButton* scratchPanelButton = nullptr;
+    Label* scratchStatusLabel = nullptr;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)

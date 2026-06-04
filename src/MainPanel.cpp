@@ -56,6 +56,7 @@
 #include "RoutingProcessors.h"
 #include "SafePluginScanner.h"
 #include "SettingsManager.h"
+#include "ScratchPanel.h"
 #include "StageView.h"
 #include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
@@ -263,6 +264,21 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         uiScaleFooterComboBox->addItem(String(percent) + "%", percent);
     uiScaleFooterComboBox->addListener(this);
 
+    addAndMakeVisible(scratchRecordButton = new TextButton("scratchRecordButton"));
+    scratchRecordButton->setButtonText("REC");
+    scratchRecordButton->setTooltip("Record scratch idea");
+    scratchRecordButton->addListener(this);
+
+    addAndMakeVisible(scratchStatusLabel = new Label("scratchStatusLabel", "Ready"));
+    scratchStatusLabel->setFont(FontManager::getInstance().getLabelFont());
+    scratchStatusLabel->setJustificationType(Justification::centredLeft);
+    scratchStatusLabel->setTooltip("Scratch capture status");
+
+    addAndMakeVisible(scratchPanelButton = new TextButton("scratchPanelButton"));
+    scratchPanelButton->setButtonText("Takes");
+    scratchPanelButton->setTooltip("Open scratch takes");
+    scratchPanelButton->addListener(this);
+
     //[UserPreSize]
 
     // Logger::setCurrentLogger(this);
@@ -444,6 +460,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
+    graphPlayer.setScratchRecorder(&scratchRecorder);
     deviceManager.addAudioCallback(&graphPlayer);
 
     // Device meter tap for I/O node VU meters (can be disabled for debugging)
@@ -629,6 +646,8 @@ MainPanel::~MainPanel()
         deviceManager.removeAudioCallback(&deviceMeterTap);
         DeviceMeterTap::setInstance(nullptr);
     }
+    scratchRecorder.requestStop();
+    graphPlayer.setScratchRecorder(nullptr);
     deviceManager.removeAudioCallback(&graphPlayer);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
@@ -681,6 +700,12 @@ MainPanel::~MainPanel()
     uiScaleFooterLabel = nullptr;
     delete uiScaleFooterComboBox;
     uiScaleFooterComboBox = nullptr;
+    delete scratchRecordButton;
+    scratchRecordButton = nullptr;
+    delete scratchPanelButton;
+    scratchPanelButton = nullptr;
+    delete scratchStatusLabel;
+    scratchStatusLabel = nullptr;
 
     //[Destructor]. You can add your own custom destruction code here..
 
@@ -786,6 +811,9 @@ void MainPanel::resized()
     organiseButton->setVisible(true);
     cpuLabel->setVisible(true);
     cpuSlider->setVisible(true);
+    scratchRecordButton->setVisible(true);
+    scratchStatusLabel->setVisible(true);
+    scratchPanelButton->setVisible(true);
 
     auto layoutPatchControls = [this, gap, controlH](int left, int controlY, int right)
     {
@@ -844,6 +872,40 @@ void MainPanel::resized()
         x += 36 + gap;
         rtzButton->setBounds(x, controlY, 24, controlH);
         return x + 24;
+    };
+
+    auto layoutScratchControls = [this, gap, controlH](int left, int controlY, int areaW)
+    {
+        const int recW = 52;
+        const int panelW = 56;
+        const int minStatusW = 64;
+
+        if (areaW >= recW + gap + minStatusW + gap + panelW)
+        {
+            int x = left;
+            scratchRecordButton->setVisible(true);
+            scratchRecordButton->setBounds(x, controlY, recW, controlH);
+            x += recW + gap;
+            scratchStatusLabel->setVisible(true);
+            scratchStatusLabel->setBounds(x, controlY, areaW - recW - panelW - gap * 2, controlH);
+            scratchPanelButton->setVisible(true);
+            scratchPanelButton->setBounds(left + areaW - panelW, controlY, panelW, controlH);
+        }
+        else if (areaW >= recW + gap + panelW)
+        {
+            scratchRecordButton->setVisible(true);
+            scratchRecordButton->setBounds(left, controlY, recW, controlH);
+            scratchStatusLabel->setVisible(false);
+            scratchPanelButton->setVisible(true);
+            scratchPanelButton->setBounds(left + areaW - panelW, controlY, panelW, controlH);
+        }
+        else
+        {
+            scratchRecordButton->setVisible(areaW >= recW);
+            scratchRecordButton->setBounds(left, controlY, recW, controlH);
+            scratchStatusLabel->setVisible(false);
+            scratchPanelButton->setVisible(false);
+        }
     };
 
     auto layoutCpuControls = [this, rightMargin, controlH](int footerWidth, int controlY)
@@ -925,7 +987,8 @@ void MainPanel::resized()
         const int footerY = footerTop + 7;
         const int centerX = footerW / 2;
 
-        layoutPatchControls(8, footerY, 312);
+        layoutScratchControls(8, footerY, 112);
+        layoutPatchControls(128, footerY, 312);
         playButton->setBounds(centerX - 18, footerTop + 2, 36, 36);
         rtzButton->setBounds(centerX + 20, footerY, 24, controlH);
         tempoLabel->setBounds(centerX - 169, footerY, 64, controlH);
@@ -955,11 +1018,14 @@ void MainPanel::resized()
             const int row3Y = footerTop + 72;
             layoutTransportControls(8, row2Y);
             layoutCpuControls(footerW, row2Y);
-            layoutGainControls(8, row3Y, footerW - 16, 64);
+            layoutScratchControls(8, row3Y, 180);
+            layoutGainControls(196, row3Y, footerW - 204, 64);
         }
         else
         {
-            const int transportEndX = layoutTransportControls(8, row2Y);
+            const int scratchW = footerLayoutW >= 780 ? 180 : 112;
+            layoutScratchControls(8, row2Y, scratchW);
+            const int transportEndX = layoutTransportControls(8 + scratchW + 8, row2Y);
             const int cpuLeft = layoutCpuControls(footerW, row2Y);
             const int gainLeft = transportEndX + 8;
             const int gainRight = cpuLeft - 8;
@@ -1026,6 +1092,10 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
         opts.resizable = true;
         opts.launchAsync();
     }
+    else if (buttonThatWasClicked == scratchRecordButton)
+        commandManager->invokeDirectly(ScratchCaptureToggle, true);
+    else if (buttonThatWasClicked == scratchPanelButton)
+        commandManager->invokeDirectly(ScratchPanelOpen, true);
     else if (buttonThatWasClicked == octaveDownButton.get())
     {
         if (auto* proc = VirtualMidiInputProcessor::getInstance())
@@ -1221,6 +1291,84 @@ void MainPanel::syncUiScaleComboBoxFromSettings()
 }
 
 //------------------------------------------------------------------------------
+ScratchTakeContext MainPanel::createScratchTakeContext() const
+{
+    ScratchTakeContext context;
+    context.rootDirectory = scratchRecorder.getScratchRoot();
+    context.patchIndex = currentPatch;
+    context.patchName = getCurrentPatchName();
+    context.documentPath = getFile().getFullPathName();
+
+    if (auto* device = deviceManager.getCurrentAudioDevice())
+    {
+        context.deviceName = device->getName();
+        context.sampleRate = device->getCurrentSampleRate();
+        context.rawChannelCount = device->getActiveInputChannels().countNumberOfSetBits();
+        context.wetChannelCount = device->getActiveOutputChannels().countNumberOfSetBits();
+    }
+
+    auto& gainState = MasterGainState::getInstance();
+    context.masterInputGainDb = gainState.masterInputGainDb.load(std::memory_order_relaxed);
+    context.masterOutputGainDb = gainState.masterOutputGainDb.load(std::memory_order_relaxed);
+    return context;
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::toggleScratchCapture()
+{
+    if (scratchRecorder.isRecording())
+    {
+        scratchRecorder.requestStop();
+        showToast("Saving scratch take");
+    }
+    else if (scratchRecorder.start(createScratchTakeContext()))
+    {
+        showToast("Scratch recording");
+    }
+    else
+    {
+        showToast(scratchRecorder.getStatus().message);
+    }
+
+    refreshScratchControls();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::openScratchPanel()
+{
+    auto* panel = new ScratchPanel(*this);
+    panel->setSize(420, 320);
+    JuceHelperStuff::showNonModalDialog("Scratch Takes", panel, this,
+                                        ColourScheme::getInstance().colours["Window Background"], true, true);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::revealScratchFolder()
+{
+    const auto root = scratchRecorder.getScratchRoot();
+    root.createDirectory();
+    root.revealToUser();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::refreshScratchControls()
+{
+    const auto status = scratchRecorder.getStatus();
+
+    if (scratchRecordButton != nullptr)
+        scratchRecordButton->setButtonText(status.state == ScratchRecorderState::Recording ? "STOP" : "REC");
+
+    if (scratchStatusLabel != nullptr)
+        scratchStatusLabel->setText(status.message, dontSendNotification);
+}
+
+//------------------------------------------------------------------------------
+ScratchRecorderStatus MainPanel::getScratchRecorderStatus() const
+{
+    return scratchRecorder.getStatus();
+}
+
+//------------------------------------------------------------------------------
 void MainPanel::setUiScalePercent(int percent)
 {
     const auto normalisedPercent = UiScale::normalisePercent(percent);
@@ -1282,6 +1430,10 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addSeparator();
         retval.addCommandItem(commandManager, FileSave);
         retval.addCommandItem(commandManager, FileSaveAs);
+        retval.addSeparator();
+        retval.addCommandItem(commandManager, ScratchCaptureToggle);
+        retval.addCommandItem(commandManager, ScratchPanelOpen);
+        retval.addCommandItem(commandManager, ScratchRevealFolder);
         retval.addSeparator();
         retval.addCommandItem(commandManager, FileSaveAsDefault);
         retval.addCommandItem(commandManager, FileResetDefault);
@@ -1398,6 +1550,9 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              FileSaveAs,
                              FileSaveAsDefault,
                              FileResetDefault,
+                             ScratchCaptureToggle,
+                             ScratchPanelOpen,
+                             ScratchRevealFolder,
                              FileExit,
                              EditDeleteConnection,
                              EditOrganisePatches,
@@ -1461,6 +1616,17 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case FileExit:
         result.setInfo("Exit", "Quits the program.", fileCategory, 0);
+        break;
+    case ScratchCaptureToggle:
+        result.setInfo("Start/Stop Scratch Capture", "Records synchronized raw and wet scratch WAV files.",
+                       fileCategory, 0);
+        result.addDefaultKeypress(L'r', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
+        break;
+    case ScratchPanelOpen:
+        result.setInfo("Open Scratch Panel", "Shows recent scratch takes and capture status.", fileCategory, 0);
+        break;
+    case ScratchRevealFolder:
+        result.setInfo("Reveal Scratch Ideas Folder", "Opens the scratch ideas folder.", fileCategory, 0);
         break;
     case EditDeleteConnection:
         result.setInfo("Delete selected connection(s)", "Deletes the selected connection(s).", editCategory, 0);
@@ -1598,6 +1764,15 @@ bool MainPanel::perform(const InvocationInfo& info)
     case FileSaveAs:
         saveAsInteractive(true);
         showToast("Saved");
+        break;
+    case ScratchCaptureToggle:
+        toggleScratchCapture();
+        break;
+    case ScratchPanelOpen:
+        openScratchPanel();
+        break;
+    case ScratchRevealFolder:
+        revealScratchFolder();
         break;
     case FileSaveAsDefault:
     {
@@ -1974,6 +2149,8 @@ void MainPanel::timerCallback(int timerId)
                     outputGainSlider->setValue(outDb, dontSendNotification);
             }
         }
+
+        refreshScratchControls();
         break;
     case MidiAppTimer:
         CrashProtection::getInstance().pingWatchdog();
