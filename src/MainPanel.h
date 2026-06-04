@@ -32,8 +32,10 @@
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
+#include "ScratchRecorder.h"
 
 #include <JuceHeader.h>
+#include <atomic>
 
 class PluginListWindow;
 class StageView;
@@ -49,6 +51,11 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 {
   public:
     static constexpr int MaxChannels = 16;
+
+    void setScratchRecorder(ScratchRecorder* recorderToUse) noexcept
+    {
+        scratchRecorder.store(recorderToUse, std::memory_order_release);
+    }
 
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
@@ -74,6 +81,10 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
                                           const AudioIODeviceCallbackContext& context) override
     {
         auto& gainState = MasterGainState::getInstance();
+        auto* recorder = scratchRecorder.load(std::memory_order_acquire);
+
+        if (recorder != nullptr)
+            recorder->writeRawBlock(inputChannelData, numInputChannels, numSamples);
 
         // Update smoothed gain targets from atomic dB values (once per block)
         gainState.updateSmoothedTargets();
@@ -163,6 +174,9 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             }
         }
 
+        if (recorder != nullptr)
+            recorder->writeWetBlock(outputChannelData, numOutputChannels, numSamples);
+
         // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
         {
@@ -175,6 +189,7 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
     AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
     AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
     const float* gainedInputPtrs[MaxChannels] = {};
+    std::atomic<ScratchRecorder*> scratchRecorder{nullptr};
 };
 
 //==============================================================================
