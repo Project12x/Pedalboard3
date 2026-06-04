@@ -63,6 +63,7 @@ public:
     bool start(const ScratchTakeContext& context);
     void requestStop();
     void stopForDeviceChange();
+    void stopForPatchChange();
 
     void writeRawBlock(const float* const* inputChannelData, int numInputChannels, int numSamples) noexcept;
     void writeWetBlock(float* const* outputChannelData, int numOutputChannels, int numSamples) noexcept;
@@ -77,6 +78,7 @@ public:
 private:
     void handleAsyncUpdate() override;
     void finishStop();
+    void stopWithFailureReason(const juce::String& reason);
     void failStart(const juce::String& message);
     bool beginAudioWrite() noexcept;
     void endAudioWrite() noexcept;

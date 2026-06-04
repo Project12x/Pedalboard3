@@ -2056,8 +2056,12 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
         doNotSaveNextPatch = false;
     }
 
-    if (((newPatch != currentPatch) && !reloadPatch) || !savePrev)
+    const bool willLoadPatch = ((newPatch != currentPatch) && !reloadPatch) || !savePrev;
+
+    if (willLoadPatch)
     {
+        scratchRecorder.stopForPatchChange();
+        refreshScratchControls();
         PluginField* field = ((PluginField*)viewport->getViewedComponent());
         XmlElement* patch = 0;
 
@@ -2234,6 +2238,9 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
 
     if (changedObject == &deviceManager)
     {
+        scratchRecorder.stopForDeviceChange();
+        refreshScratchControls();
+
         // Audio device changed - update graph channel counts
         if (auto* device = deviceManager.getCurrentAudioDevice())
         {

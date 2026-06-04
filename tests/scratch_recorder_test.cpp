@@ -220,6 +220,72 @@ TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample count
     REQUIRE(status.recentTakes.front().complete);
 }
 
+TEST_CASE("ScratchRecorder marks audio device interruptions incomplete", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchDeviceInterruptTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Device Interrupt";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    float raw[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
+    float wetR[4] = {0.9f, 1.0f, 0.9f, 0.8f};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.stopForDeviceChange();
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Failed);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE_FALSE(status.lastTake->complete);
+    REQUIRE(status.lastTake->failureReason == "Audio device changed during scratch capture");
+}
+
+TEST_CASE("ScratchRecorder marks patch change interruptions incomplete", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchPatchInterruptTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Patch Interrupt";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    float raw[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
+    float wetR[4] = {0.9f, 1.0f, 0.9f, 0.8f};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.stopForPatchChange();
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Failed);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE_FALSE(status.lastTake->complete);
+    REQUIRE(status.lastTake->failureReason == "Patch changed during scratch capture");
+}
+
 TEST_CASE("ScratchRecorder refuses missing input or output channels", "[scratch]")
 {
     MemorySinkFactory factory;

@@ -211,12 +211,23 @@ void ScratchRecorder::requestStop()
 
 void ScratchRecorder::stopForDeviceChange()
 {
+    stopWithFailureReason("Audio device changed during scratch capture");
+}
+
+void ScratchRecorder::stopForPatchChange()
+{
+    stopWithFailureReason("Patch changed during scratch capture");
+}
+
+void ScratchRecorder::stopWithFailureReason(const juce::String& reason)
+{
     if (!isRecording())
         return;
 
     {
         const juce::ScopedLock lock(stateLock);
-        currentTake.failureReason = "Audio device changed during scratch capture";
+        if (currentTake.failureReason.isEmpty())
+            currentTake.failureReason = reason;
     }
 
     requestStop();
