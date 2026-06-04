@@ -19,10 +19,12 @@ add_executable(Pedalboard3_Tests
     nam_processor_test.cpp
     patch_switch_test.cpp
     vst3_loading_test.cpp
+    scratch_recorder_test.cpp
     midi_mapping_test.cpp
     mixer_splitter_test.cpp
     master_bus_test.cpp
     font_manager_test.cpp
+    ../src/ScratchTake.cpp
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
@@ -40,6 +42,7 @@ target_link_libraries(Pedalboard3_Tests PRIVATE
     Catch2::Catch2WithMain
     fmt::fmt
     spdlog::spdlog
+    nlohmann_json::nlohmann_json
     juce::juce_audio_processors
     juce::juce_audio_formats
     juce::juce_audio_utils
@@ -51,6 +54,7 @@ target_link_libraries(Pedalboard3_Tests PRIVATE
 target_include_directories(Pedalboard3_Tests PRIVATE
     $<TARGET_PROPERTY:Pedalboard3,JUCE_GENERATED_SOURCES_DIRECTORY>
     ${CMAKE_SOURCE_DIR}/JUCE/modules
+    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}
 )
 

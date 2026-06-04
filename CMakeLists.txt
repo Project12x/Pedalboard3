@@ -173,6 +173,8 @@ target_sources(Pedalboard3 PRIVATE
     src/InternalFilters.h
     src/PluginPoolManager.cpp
     src/PluginPoolManager.h
+    src/ScratchTake.cpp
+    src/ScratchTake.h
     
     # Plugin Components
     src/PluginComponent.cpp
