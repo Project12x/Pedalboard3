@@ -1,3 +1,4 @@
+#include "ScratchRecorder.h"
 #include "ScratchTake.h"
 
 #include <catch2/catch_approx.hpp>
@@ -26,6 +27,51 @@ public:
 
 private:
     juce::File directory;
+};
+
+class MemoryScratchSink final : public ScratchAudioSink
+{
+public:
+    bool open(const juce::File&, double, int channelsToUse, juce::TimeSliceThread&) override
+    {
+        channels = channelsToUse;
+        opened = channelsToUse > 0;
+        return opened;
+    }
+
+    bool write(const float* const* data, int numChannels, int numSamples) noexcept override
+    {
+        if (!opened || data == nullptr || numChannels < channels || numSamples <= 0)
+            return false;
+
+        for (int channel = 0; channel < channels; ++channel)
+            if (data[channel] == nullptr)
+                return false;
+
+        samplesWritten += static_cast<uint64_t>(numSamples);
+        channels = numChannels;
+        return true;
+    }
+
+    void close() override { opened = false; }
+    uint64_t getSamplesWritten() const noexcept override { return samplesWritten; }
+
+    bool opened = false;
+    int channels = 0;
+    uint64_t samplesWritten = 0;
+};
+
+class MemorySinkFactory final : public ScratchAudioSinkFactory
+{
+public:
+    std::unique_ptr<ScratchAudioSink> create() override
+    {
+        auto sink = std::make_unique<MemoryScratchSink>();
+        sinks.add(sink.get());
+        return sink;
+    }
+
+    juce::Array<MemoryScratchSink*> sinks;
 };
 }
 
@@ -134,4 +180,96 @@ TEST_CASE("ScratchTake reports storage creation failures without throwing", "[sc
     REQUIRE_FALSE(take.failureReason.isEmpty());
     REQUIRE_FALSE(take.takeDirectory.isDirectory());
     REQUIRE(take.takeId == "20260604-010203-Lead");
+}
+
+TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample counts", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchRecorderTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Recorder Test";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+    REQUIRE(recorder.getStatus().state == ScratchRecorderState::Recording);
+
+    float raw[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
+    float wetR[4] = {0.9f, 1.0f, 0.9f, 0.8f};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Saved);
+    REQUIRE(status.elapsedSamples == 4);
+    REQUIRE(status.rawSamplesWritten == 4);
+    REQUIRE(status.wetSamplesWritten == 4);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE(status.lastTake->complete);
+    REQUIRE(status.recentTakes.size() == 1);
+    REQUIRE(status.recentTakes.front().complete);
+}
+
+TEST_CASE("ScratchRecorder refuses missing input or output channels", "[scratch]")
+{
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.sampleRate = 44100.0;
+    context.rawChannelCount = 0;
+    context.wetChannelCount = 2;
+
+    REQUIRE_FALSE(recorder.start(context));
+    REQUIRE(recorder.getStatus().state == ScratchRecorderState::Failed);
+
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 0;
+
+    REQUIRE_FALSE(recorder.start(context));
+    REQUIRE(recorder.getStatus().state == ScratchRecorderState::Failed);
+}
+
+TEST_CASE("ScratchRecorder reports null channel write failures without crashing", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchNullChannelTest");
+    ThreadedWavSinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Null Channel Test";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    const float* rawPtrs[1] = {nullptr};
+    float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
+    float wetR[4] = {0.9f, 1.0f, 0.9f, 0.8f};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Failed);
+    REQUIRE(status.rawSamplesWritten == 0);
+    REQUIRE(status.wetSamplesWritten == 4);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE_FALSE(status.lastTake->complete);
+    REQUIRE(status.lastTake->failureReason == "Scratch capture write failed");
 }
