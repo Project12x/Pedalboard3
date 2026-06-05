@@ -105,11 +105,11 @@ identified during static review pass (2026-02-11).
 
 ---
 
-## Phase 6 - Gap: Unimplemented P0 Features
+## Phase 6 - Gap: Remaining P0 Feature Work
 
 ### 6.1 StarterRig and SoundcheckDialog
 - **Reference:** `P0_GIG_SPEED_FEATURES.md:29-32,69-70`
-- **Status:** No implementation exists in `src/` or `CMakeLists.txt`.
+- **Status:** `DeviceMeterTap` and Audio I/O node VU meters are implemented. `StarterRig*` and `SoundcheckDialog*` do not exist yet.
 - **Action:** Track in main ROADMAP.md. These are feature work, not bugfixes.
 
 ---

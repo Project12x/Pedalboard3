@@ -1,7 +1,9 @@
 ﻿# P0 Gig-Speed Features
 
-**Product intent:** Fast, practical gig utility for local performers.  
-**Focus:** Time-to-sound, confidence before playing, and always-visible levels.
+- **Product intent:** Fast, practical gig utility for local performers.
+- **Focus:** Time-to-sound, confidence before playing, and always-visible levels.
+- **Last updated:** 2026-06-05
+- **Status:** Active; partially complete
 
 ---
 
@@ -12,6 +14,17 @@ Ship the smallest set of high-impact features that make first use and weekly gig
 1. Starter Rig Browser
 2. One-Click Soundcheck
 3. Built-in VU meters on Audio Input/Output nodes
+
+---
+
+## Current Status
+
+| Item | Status | Notes |
+|---|---|---|
+| DeviceMeterTap foundation | Done | `src/DeviceMeterTap.h/.cpp` exists and is wired through `MainPanel`. |
+| Built-in VU meters on Audio I/O nodes | Done | `PluginComponent` renders input/output node levels from `DeviceMeterTap`. |
+| One-Click Soundcheck | Planned / next P0 | `SoundcheckDialog` has not been implemented. |
+| Starter Rig Browser | Planned / next P0 | `StarterRigManager`, `StarterRigBrowser`, and starter rig content do not exist yet. |
 
 ---
 
@@ -64,8 +77,6 @@ User can verify input signal, output signal, clipping/headroom, and basic readin
 - Clear pass/warn states for silence and clipping.
 
 ## Files to add
-- `src/DeviceMeterTap.h`
-- `src/DeviceMeterTap.cpp`
 - `src/SoundcheckDialog.h`
 - `src/SoundcheckDialog.cpp`
 
@@ -76,7 +87,7 @@ User can verify input signal, output signal, clipping/headroom, and basic readin
 - `CMakeLists.txt`
 
 ## Integration notes
-- Register `DeviceMeterTap` with `AudioDeviceManager` alongside existing callbacks.
+- Reuse the existing `DeviceMeterTap` registered by `MainPanel`.
 - Keep meter values thread-safe and UI-polled on timer.
 
 ## Acceptance criteria
@@ -116,9 +127,9 @@ Audio Input and Audio Output nodes always show live per-channel level activity d
 
 ## Build Order (Recommended)
 
-1. `DeviceMeterTap` foundation (enables both Soundcheck and node VU)
-2. Audio I/O node VU rendering (fastest visible value)
-3. Soundcheck dialog
+1. `DeviceMeterTap` foundation (done)
+2. Audio I/O node VU rendering (done)
+3. Soundcheck dialog (next)
 4. Starter Rig Browser + starter content pack
 
 ---

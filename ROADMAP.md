@@ -1,401 +1,191 @@
 # Pedalboard3 Roadmap
 
-A focused roadmap for current development. For historical completed phases, see [docs/archive/PHASED_PLAN_ARCHIVE.md](docs/archive/PHASED_PLAN_ARCHIVE.md).
+- **Last updated:** 2026-06-05
+- **Status:** Active source of truth for current product work
+
+This roadmap is intentionally narrow. Historical phase plans and completed long-form
+tracking belong in archive/status documents, not in the active work queue.
+
+Reference documents:
+
+- Historical completed phases: [docs/archive/PHASED_PLAN_ARCHIVE.md](docs/archive/PHASED_PLAN_ARCHIVE.md)
+- UI polish execution detail: [UI_POLISH_ROADMAP_UPGRADE.md](UI_POLISH_ROADMAP_UPGRADE.md)
+- Gig-speed feature detail: [P0_GIG_SPEED_FEATURES.md](P0_GIG_SPEED_FEATURES.md)
+- Bugfix/gap tracking: [BUGFIX_ROADMAP.md](BUGFIX_ROADMAP.md)
+- Current scratch-capture handoff: [INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md](INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md)
 
 ---
 
-## Current Status
+## Product Direction
 
-**Phase 6 (Stability & Polish)** — IN PROGRESS
+Pedalboard3 should prioritize immediate, local, musician-facing utility:
 
-Active work: UI polish (6A), testing expansion, remaining bug fixes. Virtual MIDI keyboard enhancements (octave/velocity/sustain), dual IR loading with blend (IR Loader + NAM), semantic tokens, mixer/splitter, NAM loader, master bus, plugin search, and typography all complete.
+1. Plug in a guitar or instrument.
+2. Start Pedalboard.
+3. Get useful sound quickly.
+4. Verify signal confidence before playing.
+5. Record scratch ideas immediately, with both raw DI and wet output preserved.
 
-**Phase 4 (Launch)** — COMPLETE
-| # | Feature | Status |
-|---|---------|--------|
-| 4.1 | Undo/Redo system | ✅ Complete |
-| 4.2 | Plugin blacklist + crash protection | ✅ Complete |
-| 4.3 | Out-of-process scanner | ✅ Complete |
-| 4.4 | Launch prep (donations, announcements) | ✅ Complete |
-
----
-
-## Phase 5: Pro Features
-
-### 5A: Pro Foundation
-| # | Feature | Status |
-|---|---------|--------|
-| 5A.4 | Talkback Mode | Planned |
-| 5A.5 | Placeholder Nodes | Planned |
-| 5A.6 | Full-Screen Lyrics | Planned |
-
-### 5A-B: Visual Nodes
-| # | Feature | Status |
-|---|---------|--------|
-| 5A-B.1 | Oscilloscope | Planned |
-| 5A-B.2 | Spectrum Analyzer | Planned |
-| 5A-B.3 | Image Node | Planned |
-| 5A-B.4 | Clock/Timer | Planned |
-| 5A-B.5 | Lyrics Sheet | Planned |
-| 5A-B.6 | 3D Visualization | Planned |
-
-### 5B: Glitch-Free Switching
-| # | Feature | Status |
-|---|---------|--------|
-| 5B.1 | CrossfadeMixer infrastructure node | Done |
-| 5B.4 | Tail Spillover | Planned |
-
-### 5C: MIDI Processors
-| # | Feature | Status |
-|---|---------|--------|
-| 5C.2 | MIDI Split | Planned |
-| 5C.4 | MIDI Layer Mode | Planned |
-
-### 5H: Backing Tracks
-| # | Feature | Status |
-|---|---------|--------|
-| 5H.1 | Streaming Audio Player | Planned |
-| 5H.2 | Transport controls | Planned |
-| 5H.3 | Per-song assignment | Planned |
-| 5H.4 | Loop regions | Planned |
-
-### 5I: Worship Features
-| # | Feature | Status |
-|---|---------|--------|
-| 5I.1 | IEM Mix Routing | Planned |
-| 5I.2 | Song Sections | Planned |
-| 5I.3 | Countdown Timer | Planned |
-| 5I.4 | Ambient Pad Generator | Planned |
-| 5I.5 | Planning Center Import | Planned |
-| 5I.6 | Presentation Output | Planned |
-| 5I.7 | CCLI Song # field | Planned |
-| 5I.8 | Ableton Link | Planned |
-
-### 5J: NAM Loader
-| # | Feature | Status |
-|---|---------|--------|
-| 5J.1 | NAM Model Loader | Done |
-| 5J.2 | Model browser (local + online) | Done |
-| 5J.3 | ToneHunt integration (online browser) | Done |
-| 5J.4 | Curated model packs | Planned |
-
-### 5J-B: IR Loader (Remaining)
-| # | Feature | Status |
-|---|---------|--------|
-| 5J-B.1 | IR Loader processor | Done |
-| 5J-B.2 | IR Browser (file browser + details) | Done |
-| 5J-B.3 | Bundled IR pack | Planned |
-| 5J-B.4 | Dual IR loading + blend | Done |
-| 5J-B.5 | Low/high cut filters | Done |
-
-### 5J-C: NAM IR Enhancements
-| # | Feature | Status |
-|---|---------|--------|
-| 5J-C.1 | Dual IR loading + blend | Done |
-| 5J-C.2 | IR2 UI controls | Done |
-
-### 5K: SFZ Sampler
-| # | Feature | Status |
-|---|---------|--------|
-| 5K.1 | sfizz integration | Planned |
-| 5K.2 | SFZ/SF2 loader | Planned |
-| 5K.3 | Curated instrument packs | Planned |
-| 5K.4 | Instrument browser | Planned |
-
-### 5L: Virtual MIDI Keyboard
-| # | Feature | Status |
-|---|---------|--------|
-| 5L.1 | Virtual MIDI Input processor | Done |
-| 5L.2 | MidiKeyboardComponent (on-screen piano) | Done |
-| 5L.3 | QWERTY to MIDI | Done |
-| 5L.4 | Octave shift | Done |
-| 5L.5 | Velocity control | Done |
-| 5L.6 | Sustain toggle | Done |
-
-### 5M: First-Run Onboarding
-| # | Feature | Status |
-|---|---------|--------|
-| 5M.1 | Instrument selector | Planned |
-| 5M.2 | Audio device setup | Planned |
-| 5M.3 | Preset auto-load | Planned |
-| 5M.4 | Quick tutorial overlay | Planned |
-| 5M.5 | "Don't show again" | Planned |
-| 5M.6 | Re-run from Help menu | Planned |
-
-### 5N: Studio Essentials Pack
-| # | Effect | Status |
-|---|--------|--------|
-| 5N.1 | Noise Gate | Planned |
-| 5N.2 | Compressor | Planned |
-| 5N.3 | Parametric EQ | Planned |
-| 5N.4 | Reverb | Planned |
-| 5N.5 | Chorus | Planned |
-| 5N.6 | Tremolo | Planned |
-| 5N.7 | Phaser | Planned |
-
-### 5O: GPL Plugin Bundle
-| # | Feature | Status |
-|---|---------|--------|
-| 5O.1 | Bundle GPL plugins with installer | Planned |
-| 5O.2 | Curated presets for bundled synths | Planned |
-| 5O.3 | Ildaeil integration (LV2/VST2 bridge) | Planned |
-
-### 5P: Plugin Format Expansion
-| # | Format | Status |
-|---|--------|--------|
-| 5P.2 | LV2 native | Planned |
-| 5P.3 | CLAP native | Deferred |
-| 5P.4 | Bundle Ildaeil with installer | Planned |
-| 5P.5 | Extended plugin scanner | Planned |
-| 5P.6 | Wrapper description system | Planned |
-| 5P.7 | Transparent load via Ildaeil | Planned |
-| 5P.8 | Fallback popup | Planned |
+Do not treat speculative primitives as roadmap items unless they are attached to a
+clear musician workflow, acceptance criteria, and implementation path.
 
 ---
 
-## Phase 6: Stability & Polish
+## Current Ship Gate: Instant Scratch Capture
 
-### 6A: Premium UI/UX Polish
+**Status:** Implemented on `codex/instant-scratch-capture`; automated verification passed; manual hardware QA pending.
 
-> Active execution plan: `UI_POLISH_ROADMAP_UPGRADE.md` (`UI_POLISH_TASK_BOARD.md` and `UI_POLISH_2_WEEK_HANDOFF.md` are deprecated).
-| # | Task | Status |
-|---|------|--------|
-| 6A.4 | SVG icon system (JUCE Drawable, BinaryData) | Planned |
-| 6A.5 | Smooth animations | Deferred (not suited to node-graph aesthetic) |
-| 6A.7 | Hover tooltips | N/A (nodes already labelled) |
-| 6A.8 | Connection highlighting | Planned |
-| 6A.9 | Plugin thumbnails | Planned |
-| 6A.10 | Drag & drop polish | Planned |
-| 6A.11 | Keyboard shortcuts overlay | Planned |
-| 6A.12 | Dark/light mode auto-switch | N/A (Midnight/Daylight themes exist) |
-| 6A.13 | Welcome screen | Planned |
-| 6A.14 | Plugin search with fuzzy match | Done |
-| 6A.15 | Recent files quick access | Planned |
-| 6A.17 | CPU meter redesign | Planned |
-| 6A.18 | Plugin bypass visual feedback | Done |
-| 6A.19 | Master gain controls (Audio I/O) | Done |
-| 6A.20 | Professional VU meters (gradient, peak hold, glow) | Done |
-| 6A.21 | Premium typography (Inter font family) | Done |
-| 6A.22 | Infrastructure node polish (MIDI/OSC pins, buttons, sizing) | Done |
-| 6A.23 | Canvas fit-to-screen, zoom-to-cursor, and smooth viewport scrolling | Done |
-| 6A.24 | DAW Mixer plugin (N-strip, gain/pan/mute/solo/phase, stereo toggle) | Done |
-| 6A.25 | DAW Splitter plugin (1-to-N, per-strip gain/mute/solo/phase) | Done |
-| 6A.26 | Pin-to-strip alignment, MIDI pin placement, button clipping fix | Done |
-| 6A.27 | Mixer/Splitter dynamic channel sync (resyncChannelCount) | Done |
-| 6A.28 | Stereo toggle cable crash fix (refreshPins connection cleanup) | Done |
-| 6A.29 | Semantic colour tokens (Danger/Warning/Success across all themes) | Done |
-| 6A.30 | Hardcoded colour purge (Token Audit Pass 1 + 2, 11 files) | Done |
-| 6A.31 | Semantic Typography System (9 font methods, 20+ file migration) | Done |
-| 6A.32 | NAM interface premium polish (16-colour palette, knob arcs, LED) | Done |
-| 6A.33 | NAM collapsible editor + multi-font typography | Done |
-| 6A.34 | Master bus insert rack (FX button, SubGraphProcessor) | Done |
-| 6A.35 | Gain smoothing (SmoothedValue, 50ms ramp) | Done |
-| 6A.36 | VU meter ballistics (IEC 60268-17, 300ms integration) | Done |
-| 6A.37 | BranchesLAF modernization (rounded scrollbar/combobox/popup) | Done |
-| 6A.38 | Browser gradient restoration (single-pass opaque gradients) | Done |
+This is the active branch gate because it directly supports the desired workflow:
+plug in, start Pedalboard, and capture an idea within moments.
 
-### 6B: Testing & Protection
-| # | Task | Status |
-|---|------|--------|
-| 6B.1 | Plugin blacklist + crash protection (SEH) | Done |
-| 6B.2 | MIDI mapping tests | Done |
-| 6B.3 | Out-of-process scanner | Done |
-| 6B.4 | Tracy profiler | Planned |
-| 6B.5 | FontManager test suite (37 assertions) | Done |
+| Item | Status | Notes |
+|---|---|---|
+| App-level scratch recorder | Done | `ScratchRecorder` writes synchronized raw and wet WAV files. |
+| Raw + wet simultaneous capture | Done | Raw tap is pre-chain; wet tap is post-chain/master output. |
+| Take folders and metadata | Done | `take.json`, `raw.wav`, and `wet.wav` are created per take. |
+| Footer controls | Done | `REC`/`STOP`, status, and `Takes` affordances are wired. |
+| File menu commands | Done | Start/stop, open panel, reveal folder. |
+| Patch/device interruption handling | Done | Capture stops with explicit incomplete-take reasons. |
+| Focused tests | Done | Scratch tests pass; full Release CTest passed in handoff evidence. |
+| Manual guitar/interface smoke test | Pending | Must verify real raw/wet capture before calling user-ready. |
+| Fresh footer scale screenshots | Pending | Needed because scratch controls add footer pressure. |
+| Scratch panel elapsed timer | Watch/Fix | Known risk: active elapsed display may stay `00:00`. |
 
-### 6C: Bug Fixes (Legacy)
-| # | Issue | Status |
-|---|-------|--------|
-| 6C.2 | Patch Organiser sync | Done |
-| 6C.3 | AudioRecorder MIDI trigger | Planned |
-| 6C.4 | Start minimized | Planned |
-| 6C.5 | Home key mapping | Planned |
-| 6C.6 | Stale CrossfadeMixer pointer on patch switch (use-after-free) | Done |
-| 6C.7 | Infrastructure nodes leaking into patch XML | Done |
-| 6C.8 | FIFO param dispatch safety during patch transitions | Done |
-| 6C.9 | Duplicate getXml() memory leak in savePatch | Done |
-| 6C.10 | Bypass not saved in patches | Done |
-| 6C.11 | JUCE 8 MIDI Input name mismatch | Done |
-| 6C.12 | Node positions overwritten on device change | Done |
-| 6C.13 | OSC Input showing audio/MIDI pins | Done |
-| 6C.14 | Audio I/O node refresh on device change | Done |
-| 6C.15 | Audio Output VU not responding (MeteringProcessorPlayer) | Done |
-| 6C.16 | Thread/lifetime safety hardening (5 subsystems) | Done |
-| 6C.17 | Eigen MSVC build error (pinned to 5.0.0) | Done |
+Immediate next agent sequence:
 
-### 6D: Code Refactoring
-| # | Task | Status |
-|---|------|--------|
-| 6D.1 | Split PedalboardProcessors (7 files) | Done |
-| 6D.2 | Global loadSVGFromMemory() | Planned |
-| 6D.3 | Atomic cross-thread vars | Done |
-| 6D.4 | RT-safe MIDI/OSC parameter dispatch (FIFO) | Done |
-| 6D.5 | Remove non-RT logging from audio path | Done |
-| 6D.6 | Oscilloscope/VuMeter thread-safe display | Done |
-| 6D.7 | Split PedalboardProcessorEditors (6 files) | Done |
-
-### 6E: Legacy UX (Niall's ToDo.txt)
-| # | Task | Status |
-|---|------|--------|
-| 6E.1 | Snap to grid | Deferred |
-| 6E.2 | Mouse wheel zoom + Ctrl+wheel scroll | Done |
-| 6E.3 | Plugin pins enlarge on hover | Planned |
-| 6E.4 | Hotkey to bypass all | Planned |
-| 6E.5 | Tempo display improvements | Planned |
-| 6E.6 | Bidirectional connection dragging | Planned |
-
-### 6F: Cross-Platform
-| # | Task | Status |
-|---|------|--------|
-| 6F.1 | macOS build | Planned |
-| 6F.2 | Linux build | Planned |
-
-### 6G: Headless Mode
-| # | Task | Status |
-|---|------|--------|
-| 6G.1 | --no-gui execution | Planned |
-| 6G.2 | JSON/OSC control API | Planned |
-| 6G.3 | Systemd service file | Planned |
+1. Run a real audio-interface/guitar capture smoke test.
+2. Confirm the take contains `raw.wav`, `wet.wav`, and `take.json`.
+3. Confirm raw is pre-chain DI and wet is what the user heard.
+4. Verify patch change and audio-device change both stop capture cleanly.
+5. Fix the panel elapsed timer if it shows `00:00` while recording.
+6. Capture scaled footer evidence if the branch is heading toward PR.
 
 ---
 
-## Phase 7: Distribution
+## P0 Gig-Speed Work
 
-### 7A: CI/CD
-| # | Task | Status |
-|---|------|--------|
-| 7A.1 | GitHub Actions | Planned |
-| 7A.2 | Multi-platform builds | Planned |
-| 7A.3 | Test automation | Planned |
+**Status:** Active; partially complete.
 
-### 7B: Installers & Sales
-| # | Task | Status |
-|---|------|--------|
-| 7B.1 | Windows installer (NSIS) | Planned |
-| 7B.2 | macOS DMG | Planned |
-| 7B.3 | Steam integration | Planned |
-| 7B.4 | itch.io page | Planned |
-| 7B.5 | Auto-update (WinSparkle) | Planned |
-| 7B.6 | Code signing | Planned |
+These features make Pedalboard feel fast enough for real use without turning the
+roadmap into a broad feature grab-bag.
 
-### 7C: Crash Reporting
-| # | Task | Status |
-|---|------|--------|
-| 7C.1 | Crash dumps (Crashpad) | Planned |
-| 7C.2 | Cloud reports (Sentry) | Planned |
+| Feature | Status | Current Evidence / Next Step |
+|---|---|---|
+| Device-level meter tap | Done | `src/DeviceMeterTap.h/.cpp` exists and is wired through `MainPanel`. |
+| Built-in VU on Audio I/O nodes | Done | `PluginComponent` renders input/output node meters from `DeviceMeterTap`. |
+| One-Click Soundcheck | Next P0 | `SoundcheckDialog` does not exist yet. Build on `DeviceMeterTap`. |
+| Starter Rig Browser | Next P0 | `StarterRig*` files and starter rig content do not exist yet. |
+
+Recommended order after scratch capture:
+
+1. One-Click Soundcheck.
+2. Starter Rig Browser and starter content pack.
+3. First-run entry point only after starter rigs are real and useful.
 
 ---
 
-## Phase 8: Advanced Features
+## P0 UI Polish
 
-### 8A: Networking
-| # | Feature | Status |
-|---|---------|--------|
-| 8A.1 | WebSocket remote | Planned |
-| 8A.2 | Preset cloud sync | Planned |
-| 8A.3 | Zeroconf | Planned |
+**Status:** P0 closed; P1/P2 polish remains.
 
-### 8B: Plugin Formats (Advanced)
-| # | Format | Status |
-|---|--------|--------|
-| 8B.1 | Plugin sandboxing | Planned |
-| 8B.2 | SoundFont (SF2/SFZ) | Planned |
+The P0 UI polish backlog in `UI_POLISH_ROADMAP_UPGRADE.md` is effectively closed:
+A1, A2, B1, B2, B3, D1, and D2 are Done. This includes the Pedalboard UI scale
+work, the 75% scale floor, footer/menu/preferences scale controls, and scaled
+visual QA evidence from the May/June passes.
 
-### 8C: Future
-| # | Feature | Status |
-|---|---------|--------|
-| 8C.1 | Accessibility | Planned |
-| 8C.2 | Localization | Planned |
-| 8C.3 | Touch interface | Planned |
-| 8C.4 | OSC timeline | Planned |
-| 8C.5 | Mobile remote | Planned |
-| 8C.6 | Scripting | Planned |
+Remaining UI work should stay subordinate to musician workflows and bug risk:
 
-### 8D: Hardware Integration
-| # | Feature | Status |
-|---|---------|--------|
-| 8D.1 | ARM Linux build | Planned |
-| 8D.2 | JACK audio backend | Planned |
-| 8D.3 | GPIO control | Planned |
-| 8D.4 | LCD/OLED display | Planned |
-| 8D.5 | Minimal memory mode | Planned |
+| Area | Priority | Status |
+|---|---|---|
+| State feedback and focused motion | P1 | Planned |
+| Secondary surface alignment | P1 | Planned |
+| Connection and bypass signal cues | P1 | Planned |
+| Internal editor consistency rollout | P2 | Planned |
+| SVG/icon and visual asset pass | P2 | Planned |
+| CPU meter redesign | P2 | Planned |
+
+Do not reopen broad "premium polish" as an undefined P0 bucket. Any new polish work
+needs a concrete workflow, affected surfaces, and verification path.
 
 ---
 
-## Phase 9: Marketing & Launch
+## Release Hardening
 
-### 9A: Pre-Launch
-| # | Task | Status |
-|---|------|--------|
-| 9A.1 | Pick ONE niche | Planned |
-| 9A.2 | Landing page | Planned |
-| 9A.3 | Email signup | Planned |
-| 9A.4 | Discord server | Planned |
-| 9A.5 | Beta tester recruitment | Planned |
-| 9A.6 | Teaser posts | Planned |
+**Status:** Important, but behind current ship gate and remaining P0 gig-speed work.
 
-### 9B: Content Creation
-| # | Content | Status |
-|---|---------|--------|
-| 9B.1 | "5-Minute Guitar Rig" video | Planned |
-| 9B.2 | Full demo/walkthrough | Planned |
-| 9B.3 | Comparison video | Planned |
-| 9B.4 | Preset showcase | Planned |
-| 9B.5 | ToneHunt integration demo | Planned |
-| 9B.6 | GIF demos | Planned |
-
-### 9C: Launch Channels
-| # | Channel | Status |
-|---|---------|--------|
-| 9C.1 | r/guitarpedals | Planned |
-| 9C.2 | r/NAMmodeler | Planned |
-| 9C.3 | r/WeAreTheMusicMakers | Planned |
-| 9C.4 | r/mainstage | Planned |
-| 9C.5 | KVR Forum | Planned |
-| 9C.6 | Gearspace | Planned |
-| 9C.7 | ToneHunt Discord | Planned |
-| 9C.8 | ProductHunt | Planned |
-| 9C.9 | Hacker News | Planned |
-
-### 9D: Post-Launch
-| # | Task | Status |
-|---|------|--------|
-| 9D.1 | Reply to all comments | Planned |
-| 9D.2 | Post update changelogs | Planned |
-| 9D.3 | Share user rigs/presets | Planned |
-| 9D.4 | New content pack announcements | Planned |
-| 9D.5 | YouTube Shorts/TikToks | Planned |
-| 9D.6 | Affiliate program setup | Planned |
-
-### 9E: Revenue Optimization
-| # | Strategy | Status |
-|---|----------|--------|
-| 9E.1 | Upsell content packs | Planned |
-| 9E.2 | Lifetime deal | Planned |
-| 9E.3 | Supporter tier | Planned |
-| 9E.4 | Affiliate program | Planned |
-| 9E.5 | Bundle deals | Planned |
-
-### 9G: Influencer Outreach
-| # | Task | Status |
-|---|------|--------|
-| 9G.1 | Research target channels | Planned |
-| 9G.2 | Prepare outreach bundles | Planned |
-| 9G.3 | Send personalized emails | Planned |
-| 9G.4 | Follow up on responses | Planned |
+| Area | Status | Notes |
+|---|---|---|
+| GitHub Actions | Planned | Should build app and tests consistently. |
+| Multi-platform build matrix | Planned | Windows first; macOS/Linux only when explicitly prioritized. |
+| Windows installer | Planned | NSIS or equivalent. |
+| Code signing | Planned | Required for credible user distribution. |
+| Crash dumps/reporting | Planned | Crashpad/Sentry class work; decide privacy posture first. |
+| Performance profiling | Planned | Tracy remains useful engineering tooling, not product feature work. |
 
 ---
 
-## Completed (Summary)
+## P1 Product Polish
 
-See [CHANGELOG.md](CHANGELOG.md) for details.
+These are useful after the current ship gate and P0 gig-speed items.
 
-- **Phase 1**: JUCE 8 migration
-- **Phase 2**: Build system, logging, testing framework
-- **Phase 3**: VST3 hosting, themes, settings
-- **Phase 4**: Undo/redo, blacklist UI, out-of-process scanner
+| Feature | Status | Notes |
+|---|---|---|
+| Scratch folder preference | Deferred | `ScratchRecorder` supports custom roots; no Preferences UI yet. |
+| Scratch take playback | Deferred | Not required for V1 capture/reamp workflow. |
+| Recent scratch take management | Planned | Keep small; avoid DAW/library bloat. |
+| Quick onboarding entry point | Planned | Should point to real starter rigs once they exist. |
+| Focused keyboard shortcut overlay | Planned | Only if it improves discoverability of existing workflows. |
 
 ---
 
-*Last updated: 2026-03-17*
+## Completed Foundation Summary
 
+See [CHANGELOG.md](CHANGELOG.md) and archived plans for details.
+
+| Phase / Area | Status |
+|---|---|
+| JUCE 8 migration | Complete |
+| Build system, logging, and test framework | Complete |
+| VST3 hosting, themes, settings | Complete |
+| Undo/redo system | Complete |
+| Plugin blacklist and crash protection | Complete |
+| Out-of-process plugin scanner | Complete |
+| NAM loader, model browser, and ToneHunt integration | Complete |
+| IR Loader, dual IR loading/blend, low/high cut filters | Complete |
+| Virtual MIDI input/keyboard enhancements | Complete |
+| Mixer/Splitter processors and master bus insert rack | Complete |
+| Thread/lifetime hardening tracked in `BUGFIX_ROADMAP.md` | Complete |
+
+---
+
+## Parking Lot / Future Bets
+
+These are not active roadmap commitments. Keep them parked until there is a
+specific workflow, user need, and implementation plan.
+
+| Area | Parked Ideas |
+|---|---|
+| Pro/live utilities | Talkback mode, placeholder nodes, full-screen lyrics |
+| Visual nodes | Oscilloscope, spectrum analyzer, image node, clock/timer, lyrics sheet, 3D visualization |
+| Switching | Tail spillover beyond existing crossfade mixer infrastructure |
+| MIDI processing | MIDI split, MIDI layer mode |
+| Backing tracks | Streaming player, transport, per-song assignment, loop regions |
+| Worship-specific workflows | IEM mix routing, song sections, countdown, ambient pads, Planning Center import, presentation output, CCLI field, Ableton Link |
+| Content packs | Curated NAM models, bundled IR pack, bundled instruments |
+| Sampler | sfizz/SFZ/SF2 integration and browser |
+| Plugin ecosystem | GPL plugin bundle, LV2, CLAP, Ildaeil bridge, scanner expansion |
+| Cross-platform/headless | macOS, Linux, `--no-gui`, JSON/OSC API, systemd |
+| Networking/cloud | WebSocket remote, preset cloud sync, Zeroconf, mobile remote |
+| Hardware appliance | ARM Linux, JACK backend, GPIO, LCD/OLED, minimal memory mode |
+| Marketing/revenue | Launch channels, influencer outreach, content strategy, affiliate/supporter/lifetime tiers |
+
+---
+
+## Roadmap Rules
+
+1. P0 work must map to a concrete musician workflow.
+2. A feature is not active just because a dependency or primitive is interesting.
+3. Research docs stay separate until an idea is approved for implementation.
+4. Manual audio hardware QA is required for capture, soundcheck, and live signal features.
+5. UI-scale verification uses Pedalboard's app-level scale controls; OS display scale is only a compatibility check.
+6. Any implementation based on researched prior art must follow the reference-code-first policy in `AGENTS.md`.

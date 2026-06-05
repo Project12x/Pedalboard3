@@ -1,8 +1,8 @@
 # UI Polish Roadmap Upgrade (Supersedes Prior UI Polish Plans)
 
-**Last updated:** 2026-02-18  
-**Status:** Active  
-**Supersedes:** `UI_POLISH_TASK_BOARD.md`, `UI_POLISH_2_WEEK_HANDOFF.md`
+- **Last updated:** 2026-06-05
+- **Status:** Active for P1/P2 polish; P0 backlog closed
+- **Supersedes:** `UI_POLISH_TASK_BOARD.md`, `UI_POLISH_2_WEEK_HANDOFF.md`
 
 ---
 
@@ -24,6 +24,11 @@ The following are now historical reference only:
 2. `UI_POLISH_2_WEEK_HANDOFF.md`
 
 Use this document as the single source of truth for UI polish going forward.
+
+Current top-level status: P0 UI polish is closed. A1, A2, B1, B2, B3, D1, and D2
+are Done in the active backlog. Remaining work is P1/P2 and should not displace
+the current ship gate (`Instant Scratch Capture`) or the remaining P0 gig-speed
+features in `ROADMAP.md`.
 
 ---
 
