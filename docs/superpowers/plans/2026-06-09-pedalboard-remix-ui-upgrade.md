@@ -1,0 +1,177 @@
+# Pedalboard Remix UI Upgrade Plan
+
+Date: 2026-06-09
+Status: Active
+Branch policy: direct local branch/main workflow; do not create pull requests unless explicitly requested.
+
+## Purpose
+
+Implement the best parts of the Pedalboard 3 mockup as native Pedalboard UI polish without replacing existing working UX.
+
+The mockup is an upgrade reference, not a new product shell. Existing controls, routing behavior, patch workflows, stage safety controls, recorder behavior, and recovery paths must remain available.
+
+## Source Material
+
+- Design handoff: `F:/Downloads/pedalboard (Remix)-handoff.zip`
+- Extracted copy: `releases/design-handoffs/pedalboard-remix/pedalboard-remix`
+- Primary open file: `project/Pedalboard 3 Demo.html`
+- Relevant mockup files inspected:
+  - `project/demo-app.jsx`
+  - `project/mw2-app.jsx`
+  - `project/mw2-chrome.jsx`
+  - `project/mw2-nodes.jsx`
+  - `project/mw2.css`
+  - `project/scratch-panel.jsx`
+  - `project/scratch.css`
+  - `project/StageMode.jsx`
+  - `project/StageHud.jsx`
+  - `project/StageSetlist.jsx`
+  - `project/StageGrid.jsx`
+  - `project/stage-shared.jsx`
+  - `project/stage.css`
+
+## Reuse And Attribution
+
+- Reuse mode: pattern-only / clean-room native JUCE implementation.
+- License status: no license file found in the handoff.
+- Prototype source and assets must not be copied into the application.
+- Acceptable reuse: layout hierarchy, interaction ideas, visual relationships, terminology, and behavior lessons.
+- Required implementation target: existing C++/JUCE UI architecture.
+
+## Non-Goals
+
+- Do not treat `TESTLATER.md` as the next implementation queue. It is a deferred manual QA parking lot.
+- Do not remove or hide existing UX functions while matching the mockup.
+- Do not replace the graph, stage mode, or scratch recorder with a prototype-style rewrite.
+- Do not add novelty features merely because the mockup leaves open space.
+- Do not open PRs as part of normal workflow.
+
+## Completed Mockup-Informed Work
+
+- Scratch Capture initial polish:
+  - Larger record-focused scratch surface.
+  - Recent take metadata including dates.
+  - RAW/WET capture context represented in UI.
+  - Scratch destination chooser added.
+  - Play/reveal clipping fixed.
+- Footer/UI scale recovery:
+  - In-app UI scale control added to settings/footer surface.
+  - Default scale starts at 75 percent.
+  - Reset-to-default path added.
+  - Footer layout improved for larger UI scale.
+- Roadmap and research:
+  - Non-AI feature research recorded.
+  - Scratch capture direction selected: manual, fast capture, using existing recorder backbones, capturing raw and wet simultaneously.
+
+## Active Track
+
+### 1. Stage Mode Mockup Polish
+
+Goal: bring the Stage mockup's stronger performance hierarchy into the native stage view while preserving all existing live safety and navigation affordances.
+
+Tasks:
+
+- Audit current native stage components against `StageMode.jsx`, `StageHud.jsx`, `StageSetlist.jsx`, `StageGrid.jsx`, and `stage.css`.
+- Preserve current working controls before adding visual polish:
+  - Fullscreen/performance view.
+  - Patch navigation.
+  - Tuner and meter visibility.
+  - Panic/safety controls.
+  - Setlist/current/next context.
+- Add the useful mockup concepts:
+  - Clearer top performance strip.
+  - Stronger current patch and next patch hierarchy.
+  - More legible safety/status bar.
+  - View switching that feels deliberate, not decorative.
+  - Better scan rhythm for stage tiles and setlist entries.
+- Verify across normal and scaled UI sizes.
+
+Done when:
+
+- Existing stage workflows still work.
+- No critical controls clip at common UI scales.
+- The stage view looks meaningfully closer to the mockup's density, contrast, and hierarchy.
+- A visual QA note or screenshot set records the result.
+
+### 2. Main Graph And Chrome Polish
+
+Goal: improve the main pedalboard surface using the mockup's visual language while keeping the existing graph UX intact.
+
+Tasks:
+
+- Audit native main graph/chrome against `mw2-app.jsx`, `mw2-chrome.jsx`, `mw2-nodes.jsx`, and `mw2.css`.
+- Preserve existing functions:
+  - Add/edit/remove devices.
+  - Routing and cable interaction.
+  - Footer controls and recovery controls.
+  - Settings/options access.
+  - Scratch and stage access.
+- Add the useful mockup concepts:
+  - Clearer footer priority model at constrained widths.
+  - Stronger node state affordances.
+  - Better pin labeling and cable readability.
+  - More intentional active/selected/bypassed visual states.
+  - Refined chrome spacing and contrast.
+- Keep all UI scale recovery paths reachable.
+
+Done when:
+
+- Footer controls remain reachable above 100 percent scale.
+- Graph interaction remains unchanged or improved.
+- Node/cable state is easier to read at a glance.
+- No existing workflow is displaced by visual polish.
+
+### 3. Scratch Capture Second Pass
+
+Goal: finish the scratch workflow as the user's "plug in, start Pedalboard, record an idea within moments" path.
+
+Tasks:
+
+- Audit current scratch UI against `scratch-panel.jsx` and `scratch.css`.
+- Preserve existing recorder backbones and simultaneous RAW/WET capture direction.
+- Improve:
+  - One-action readiness.
+  - Destination clarity.
+  - Recent take metadata density.
+  - Raw/wet reamp affordance.
+  - Empty, armed, recording, saved, and error states.
+
+Done when:
+
+- A user can identify destination, arm/record, stop, and locate the take with minimal UI travel.
+- Raw and wet capture status is visible without reading documentation.
+- Scratch takes remain date-stamped and recoverable.
+
+### 4. Secondary Mockup Harvest
+
+Goal: only after stage, graph, and scratch are solid, review the remaining mockup files for targeted polish ideas.
+
+Candidate areas:
+
+- NAM browser and loader polish if they improve existing browsing/loading workflows.
+- Shared typography and spacing cleanup.
+- Motion/transition tuning where it clarifies state.
+
+Constraints:
+
+- Skip anything that adds surface area without a clear user workflow.
+- Skip features that are only attractive in the mockup but not useful in the native app.
+
+## Verification
+
+Minimum checks for implementation slices:
+
+- Build the native app.
+- Run focused existing tests touched by the change.
+- Perform visual QA at 75 percent, 100 percent, and above 100 percent UI scale.
+- Confirm options/settings still expose UI scale and reset-to-default.
+- Confirm `TESTLATER.md` only receives deferred manual QA notes, not active implementation tasks.
+
+## Immediate Next Step
+
+Start with Stage Mode Mockup Polish:
+
+1. Inspect current native stage view files.
+2. Compare them against the stage mockup files.
+3. Produce a short implementation checklist from the delta.
+4. Patch native JUCE stage UI while preserving all current stage functions.

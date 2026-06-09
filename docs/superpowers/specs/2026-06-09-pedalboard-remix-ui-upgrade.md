@@ -1,5 +1,7 @@
 # Pedalboard Remix UI Upgrade Phase
 
+Execution plan: `docs/superpowers/plans/2026-06-09-pedalboard-remix-ui-upgrade.md`
+
 ## Source
 
 - Handoff bundle: `F:/Downloads/pedalboard (Remix)-handoff.zip`
