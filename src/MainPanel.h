@@ -331,6 +331,11 @@ class MainPanel : public Component,
     void toggleScratchCapture();
     void openScratchPanel();
     void revealScratchFolder();
+    void chooseScratchFolder();
+    void resetScratchFolderToDefault();
+    void previewScratchWetTake(const ScratchTake& take);
+    void reampScratchRawTake(const ScratchTake& take);
+    void revealScratchTake(const ScratchTake& take);
     void refreshScratchControls();
     ScratchRecorderStatus getScratchRecorderStatus() const;
 
@@ -399,7 +404,9 @@ class MainPanel : public Component,
         OptionsUiScaleResetDefault,
         ScratchCaptureToggle,
         ScratchPanelOpen,
-        ScratchRevealFolder
+        ScratchRevealFolder,
+        ScratchChooseFolder,
+        ScratchResetFolderDefault
     };
 
     //[/UserMethods]
@@ -543,6 +550,7 @@ class MainPanel : public Component,
     /// Toast notification using JUCE's BubbleMessageComponent
     std::unique_ptr<BubbleMessageComponent> toastBubble;
     void showToast(const String& message);
+    std::unique_ptr<FileChooser> scratchFolderChooser;
 
     /// Virtual MIDI keyboard state and component
     MidiKeyboardState keyboardState;

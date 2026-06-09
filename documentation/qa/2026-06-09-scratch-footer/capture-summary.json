@@ -1,0 +1,308 @@
+{
+  "app": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\build\\Pedalboard3_artefacts\\Release\\Pedalboard3.exe",
+  "patch": "C:\\Users\\estee\\AppData\\Local\\Temp\\Pedalboard3VisualQa\\visual-qa.pdl",
+  "output": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer",
+  "uiScalePercent": 100,
+  "scaledFooterMatrixEnabled": true,
+  "scaledFooterRequiredScales": [
+    125,
+    150,
+    175,
+    200
+  ],
+  "scaledFooterCaptureSizes": [
+    {
+      "Name": "normal",
+      "Width": 1280,
+      "Height": 820
+    },
+    {
+      "Name": "narrow",
+      "Width": 960,
+      "Height": 820
+    }
+  ],
+  "scaledFooterControls": [
+    "ui-scale",
+    "patch",
+    "transport",
+    "tempo",
+    "gain-fx",
+    "fit-manage",
+    "cpu"
+  ],
+  "scaledDialogMatrixEnabled": false,
+  "scaledDialogRequiredScales": [
+    150,
+    200
+  ],
+  "scaledDialogCaptureSizes": [
+    {
+      "Name": "normal",
+      "Width": 980,
+      "Height": 740
+    },
+    {
+      "Name": "narrow",
+      "Width": 760,
+      "Height": 680
+    }
+  ],
+  "scaledDialogSurfaces": [
+    "plugin-search",
+    "preferences",
+    "nam-browser",
+    "ir-browser"
+  ],
+  "dpi": 168,
+  "osScalePercent": 175.0,
+  "scalePercent": 175.0,
+  "expectedOsScalePercent": null,
+  "expectedScalePercent": null,
+  "captures": [
+    {
+      "Name": "theme-midnight-main",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\theme-midnight-main.png"
+    },
+    {
+      "Name": "workflow-dense-graph",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-dense-graph.png"
+    },
+    {
+      "Name": "workflow-stage-mode-before-switch",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-stage-mode-before-switch.png"
+    },
+    {
+      "Name": "workflow-stage-mode-after-patch-next",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-stage-mode-after-patch-next.png"
+    },
+    {
+      "Name": "workflow-main-after-patch-next",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-main-after-patch-next.png"
+    },
+    {
+      "Name": "theme-daylight-main",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\theme-daylight-main.png"
+    },
+    {
+      "Name": "theme-synthwave-main",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\theme-synthwave-main.png"
+    },
+    {
+      "Name": "theme-deep-ocean-main",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\theme-deep-ocean-main.png"
+    },
+    {
+      "Name": "theme-forest-main",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\theme-forest-main.png"
+    },
+    {
+      "Name": "workflow-scaled-footer-125-normal",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-125-normal.png",
+      "UiScalePercent": 125,
+      "Width": 1280,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-125-narrow",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-125-narrow.png",
+      "UiScalePercent": 125,
+      "Width": 960,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-150-normal",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-150-normal.png",
+      "UiScalePercent": 150,
+      "Width": 1280,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-150-narrow",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-150-narrow.png",
+      "UiScalePercent": 150,
+      "Width": 960,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-175-normal",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-175-normal.png",
+      "UiScalePercent": 175,
+      "Width": 1280,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-175-narrow",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-175-narrow.png",
+      "UiScalePercent": 175,
+      "Width": 960,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-200-normal",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-200-normal.png",
+      "UiScalePercent": 200,
+      "Width": 1280,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "workflow-scaled-footer-200-narrow",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\workflow-scaled-footer-200-narrow.png",
+      "UiScalePercent": 200,
+      "Width": 960,
+      "Height": 820,
+      "Criteria": [
+        "ui-scale",
+        "patch",
+        "transport",
+        "tempo",
+        "gain-fx",
+        "fit-manage",
+        "cpu"
+      ]
+    },
+    {
+      "Name": "dialog-plugin-search-midnight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-plugin-search-midnight.png"
+    },
+    {
+      "Name": "dialog-preferences-midnight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-preferences-midnight.png"
+    },
+    {
+      "Name": "dialog-nam-browser-midnight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-nam-browser-midnight.png"
+    },
+    {
+      "Name": "dialog-ir-browser-midnight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-ir-browser-midnight.png"
+    },
+    {
+      "Name": "dialog-plugin-search-daylight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-plugin-search-daylight.png"
+    },
+    {
+      "Name": "dialog-preferences-daylight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-preferences-daylight.png"
+    },
+    {
+      "Name": "dialog-nam-browser-daylight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-nam-browser-daylight.png"
+    },
+    {
+      "Name": "dialog-ir-browser-daylight",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-ir-browser-daylight.png"
+    },
+    {
+      "Name": "dialog-plugin-search-synthwave",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-plugin-search-synthwave.png"
+    },
+    {
+      "Name": "dialog-preferences-synthwave",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-preferences-synthwave.png"
+    },
+    {
+      "Name": "dialog-nam-browser-synthwave",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-nam-browser-synthwave.png"
+    },
+    {
+      "Name": "dialog-ir-browser-synthwave",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-ir-browser-synthwave.png"
+    },
+    {
+      "Name": "dialog-plugin-search-deep-ocean",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-plugin-search-deep-ocean.png"
+    },
+    {
+      "Name": "dialog-preferences-deep-ocean",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-preferences-deep-ocean.png"
+    },
+    {
+      "Name": "dialog-nam-browser-deep-ocean",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-nam-browser-deep-ocean.png"
+    },
+    {
+      "Name": "dialog-ir-browser-deep-ocean",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-ir-browser-deep-ocean.png"
+    },
+    {
+      "Name": "dialog-plugin-search-forest",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-plugin-search-forest.png"
+    },
+    {
+      "Name": "dialog-preferences-forest",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-preferences-forest.png"
+    },
+    {
+      "Name": "dialog-nam-browser-forest",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-nam-browser-forest.png"
+    },
+    {
+      "Name": "dialog-ir-browser-forest",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-scratch-footer\\dialog-ir-browser-forest.png"
+    }
+  ]
+}

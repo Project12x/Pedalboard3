@@ -78,6 +78,11 @@ using namespace std;
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 
+namespace
+{
+constexpr const char* kScratchRootSettingsKey = "scratchRootDirectory";
+}
+
 //------------------------------------------------------------------------------
 File MainPanel::lastDocument = File();
 
@@ -174,7 +179,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     cpuSlider->setTextBoxStyle(Slider::NoTextBox, true, 80, 20);
     cpuSlider->addListener(this);
 
-    addAndMakeVisible(cpuLabel = new Label("cpuLabel", "CPU Usage:"));
+    addAndMakeVisible(cpuLabel = new Label("cpuLabel", "CPU"));
     cpuLabel->setFont(FontManager::getInstance().getSubheadingFont());
     cpuLabel->setJustificationType(Justification::centredLeft);
     cpuLabel->setEditable(false, false, false);
@@ -278,6 +283,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     scratchPanelButton->setButtonText("Takes");
     scratchPanelButton->setTooltip("Open scratch takes");
     scratchPanelButton->addListener(this);
+
+    const auto savedScratchRoot = SettingsManager::getInstance().getString(kScratchRootSettingsKey);
+    if (savedScratchRoot.isNotEmpty())
+        scratchRecorder.setScratchRoot(File(savedScratchRoot));
 
     //[UserPreSize]
 
@@ -1337,8 +1346,8 @@ void MainPanel::toggleScratchCapture()
 void MainPanel::openScratchPanel()
 {
     auto* panel = new ScratchPanel(*this);
-    panel->setSize(420, 320);
-    JuceHelperStuff::showNonModalDialog("Scratch Takes", panel, this,
+    panel->setSize(600, 560);
+    JuceHelperStuff::showNonModalDialog("Scratch Capture", panel, this,
                                         ColourScheme::getInstance().colours["Window Background"], true, true);
 }
 
@@ -1348,6 +1357,112 @@ void MainPanel::revealScratchFolder()
     const auto root = scratchRecorder.getScratchRoot();
     root.createDirectory();
     root.revealToUser();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::chooseScratchFolder()
+{
+    auto currentRoot = scratchRecorder.getScratchRoot();
+    if (currentRoot == File())
+        currentRoot = ScratchRecorder::getDefaultScratchRoot();
+
+    scratchFolderChooser = std::make_unique<FileChooser>("Choose Scratch Ideas Folder", currentRoot, "", true);
+    const auto chooserFlags = FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories;
+    Component::SafePointer<MainPanel> safeThis(this);
+
+    scratchFolderChooser->launchAsync(chooserFlags, [safeThis](const FileChooser& chooser)
+    {
+        auto* panel = safeThis.getComponent();
+        if (panel == nullptr)
+            return;
+
+        const auto selected = chooser.getResult();
+        if (selected == File())
+            return;
+
+        selected.createDirectory();
+        panel->scratchRecorder.setScratchRoot(selected);
+        SettingsManager::getInstance().setValue(kScratchRootSettingsKey, selected.getFullPathName());
+        panel->showToast("Scratch destination set");
+        panel->refreshScratchControls();
+        panel->repaint();
+    });
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::resetScratchFolderToDefault()
+{
+    if (scratchRecorder.isRecording())
+    {
+        showToast("Stop recording before changing scratch destination");
+        return;
+    }
+
+    scratchRecorder.resetScratchRootToDefault();
+    SettingsManager::getInstance().setValue(kScratchRootSettingsKey, String{});
+    showToast("Scratch destination reset");
+    refreshScratchControls();
+    repaint();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::previewScratchWetTake(const ScratchTake& take)
+{
+    if (!take.canPlayWetPreview())
+    {
+        showToast("Wet take unavailable");
+        return;
+    }
+
+    showToast(take.wetFile.startAsProcess() ? "Opening wet take" : "Could not open wet take");
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::reampScratchRawTake(const ScratchTake& take)
+{
+    if (!take.canReampRawCapture())
+    {
+        showToast("Raw take unavailable");
+        return;
+    }
+
+    auto* field = viewport != nullptr ? dynamic_cast<PluginField*>(viewport->getViewedComponent()) : nullptr;
+    if (field == nullptr || field->getFilterGraph() == nullptr)
+    {
+        showToast("Patch graph unavailable");
+        return;
+    }
+
+    auto* graph = field->getFilterGraph();
+    const auto previousLastIndex = graph->getNumFilters() - 1;
+    const auto x = static_cast<double>(viewport->getViewPositionX() + viewport->getWidth() / 2);
+    const auto y = static_cast<double>(viewport->getViewPositionY() + viewport->getHeight() / 2);
+
+    graph->addFilter(new FilePlayerProcessor(take.rawFile), x, y);
+
+    if ((graph->getNumFilters() - 1) > previousLastIndex)
+    {
+        field->addFilter(graph->getNumFilters() - 1);
+        field->clearDoubleClickMessage();
+        field->sendChangeMessage();
+        showToast("Raw take added for reamp");
+    }
+    else
+    {
+        showToast("Could not add raw take");
+    }
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::revealScratchTake(const ScratchTake& take)
+{
+    if (!take.canReveal())
+    {
+        showToast("Take folder unavailable");
+        return;
+    }
+
+    take.takeDirectory.revealToUser();
 }
 
 //------------------------------------------------------------------------------
@@ -1434,6 +1549,8 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, ScratchCaptureToggle);
         retval.addCommandItem(commandManager, ScratchPanelOpen);
         retval.addCommandItem(commandManager, ScratchRevealFolder);
+        retval.addCommandItem(commandManager, ScratchChooseFolder);
+        retval.addCommandItem(commandManager, ScratchResetFolderDefault);
         retval.addSeparator();
         retval.addCommandItem(commandManager, FileSaveAsDefault);
         retval.addCommandItem(commandManager, FileResetDefault);
@@ -1553,6 +1670,8 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              ScratchCaptureToggle,
                              ScratchPanelOpen,
                              ScratchRevealFolder,
+                             ScratchChooseFolder,
+                             ScratchResetFolderDefault,
                              FileExit,
                              EditDeleteConnection,
                              EditOrganisePatches,
@@ -1627,6 +1746,16 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case ScratchRevealFolder:
         result.setInfo("Reveal Scratch Ideas Folder", "Opens the scratch ideas folder.", fileCategory, 0);
+        break;
+    case ScratchChooseFolder:
+        result.setInfo("Choose Scratch Ideas Folder", "Sets where new raw and wet scratch takes are saved.",
+                       fileCategory, 0);
+        result.setActive(!scratchRecorder.isRecording());
+        break;
+    case ScratchResetFolderDefault:
+        result.setInfo("Reset Scratch Ideas Folder", "Restores scratch ideas to the default app data folder.",
+                       fileCategory, 0);
+        result.setActive(!scratchRecorder.isRecording());
         break;
     case EditDeleteConnection:
         result.setInfo("Delete selected connection(s)", "Deletes the selected connection(s).", editCategory, 0);
@@ -1773,6 +1902,12 @@ bool MainPanel::perform(const InvocationInfo& info)
         break;
     case ScratchRevealFolder:
         revealScratchFolder();
+        break;
+    case ScratchChooseFolder:
+        chooseScratchFolder();
+        break;
+    case ScratchResetFolderDefault:
+        resetScratchFolderToDefault();
         break;
     case FileSaveAsDefault:
     {
@@ -2885,7 +3020,7 @@ BEGIN_JUCER_METADATA
           textBoxWidth="80" textBoxHeight="20" skewFactor="1"/>
   <LABEL name="cpuLabe" id="896921bd35cf3005" memberName="cpuLabe" virtualName=""
          explicitFocusOrder="0" pos="236R 33R 78 24" edTextCol="ff000000"
-         edBkgCol="0" labelText="CPU Usage:" editableSingleClick="0" editableDoubleClick="0"
+         edBkgCol="0" labelText="CPU" editableSingleClick="0" editableDoubleClick="0"
          focusDiscardsChanges="0" fontname="Default font" fontsize="15"
          bold="0" italic="0" justification="33"/>
   <GENERICCOMPONENT name="playButton" id="382190f9abb24dc2" memberName="playButton"

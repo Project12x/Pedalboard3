@@ -43,6 +43,11 @@ struct ScratchTake
     static ScratchTake createPending(const ScratchTakeContext& context);
 
     double durationSeconds() const noexcept;
+    juce::String displayDateLabel() const;
+    juce::String displayTimeLabel() const;
+    bool canReveal() const;
+    bool canPlayWetPreview() const;
+    bool canReampRawCapture() const;
     juce::String toJsonString() const;
     bool writeMetadata() const;
 };

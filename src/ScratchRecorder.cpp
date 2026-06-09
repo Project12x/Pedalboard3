@@ -9,13 +9,6 @@ constexpr int kThreadedWriterBufferSamples = 32768;
 constexpr int kWriterThreadStopTimeoutMs = 1000;
 constexpr size_t kMaxRecentTakes = 8;
 
-juce::File getDefaultScratchRoot()
-{
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("Pedalboard3")
-        .getChildFile("Scratch Ideas");
-}
-
 ScratchRecorderState loadState(const std::atomic<int>& state) noexcept
 {
     return static_cast<ScratchRecorderState>(state.load(std::memory_order_acquire));
@@ -100,6 +93,7 @@ std::unique_ptr<ScratchAudioSink> ThreadedWavSinkFactory::create()
 ScratchRecorder::ScratchRecorder(ScratchAudioSinkFactory& factory)
     : sinkFactory(factory), scratchRoot(getDefaultScratchRoot())
 {
+    status.scratchRoot = scratchRoot;
     writerThread.startThread();
 }
 
@@ -146,6 +140,8 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         status.elapsedSamples = 0;
         status.rawSamplesWritten = 0;
         status.wetSamplesWritten = 0;
+        status.scratchRoot = scratchRoot;
+        status.activeTake.reset();
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
         state.store(static_cast<int>(ScratchRecorderState::Failed), std::memory_order_release);
@@ -176,6 +172,8 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         status.elapsedSamples = 0;
         status.rawSamplesWritten = 0;
         status.wetSamplesWritten = 0;
+        status.scratchRoot = scratchRoot;
+        status.activeTake.reset();
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
         state.store(static_cast<int>(ScratchRecorderState::Failed), std::memory_order_release);
@@ -193,6 +191,8 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
     status.elapsedSamples = 0;
     status.rawSamplesWritten = 0;
     status.wetSamplesWritten = 0;
+    status.scratchRoot = scratchRoot;
+    status.activeTake = currentTake;
     status.lastTake.reset();
     status.recentTakes = recentTakes;
 
@@ -278,9 +278,15 @@ ScratchRecorderStatus ScratchRecorder::getStatus() const
     copy.rawSamplesWritten = rawSamplesWritten.load(std::memory_order_relaxed);
     copy.wetSamplesWritten = wetSamplesWritten.load(std::memory_order_relaxed);
     copy.elapsedSamples = elapsedFromCounts(copy.rawSamplesWritten, copy.wetSamplesWritten);
+    copy.scratchRoot = scratchRoot;
 
     if (copy.state == ScratchRecorderState::Recording)
+    {
         copy.message = "Recording";
+        copy.activeTake = currentTake;
+        if (currentTake.takeDirectory != juce::File())
+            copy.scratchRoot = currentTake.takeDirectory.getParentDirectory().getParentDirectory();
+    }
     else if (copy.state == ScratchRecorderState::Saving)
         copy.message = "Saving";
 
@@ -290,6 +296,13 @@ ScratchRecorderStatus ScratchRecorder::getStatus() const
 bool ScratchRecorder::isRecording() const noexcept
 {
     return loadState(state) == ScratchRecorderState::Recording;
+}
+
+juce::File ScratchRecorder::getDefaultScratchRoot()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+        .getChildFile("Pedalboard3")
+        .getChildFile("Scratch Ideas");
 }
 
 juce::File ScratchRecorder::getScratchRoot() const
@@ -302,6 +315,12 @@ void ScratchRecorder::setScratchRoot(const juce::File& root)
 {
     const juce::ScopedLock lock(stateLock);
     scratchRoot = root;
+    status.scratchRoot = scratchRoot;
+}
+
+void ScratchRecorder::resetScratchRootToDefault()
+{
+    setScratchRoot(getDefaultScratchRoot());
 }
 
 void ScratchRecorder::finishPendingStopForTests()
@@ -372,6 +391,8 @@ void ScratchRecorder::finishStop()
     status.elapsedSamples = durationSamples;
     status.rawSamplesWritten = rawSamples;
     status.wetSamplesWritten = wetSamples;
+    status.scratchRoot = scratchRoot;
+    status.activeTake.reset();
     status.lastTake = currentTake;
     status.recentTakes = recentTakes;
 
@@ -394,6 +415,8 @@ void ScratchRecorder::failStart(const juce::String& message)
     status.elapsedSamples = 0;
     status.rawSamplesWritten = 0;
     status.wetSamplesWritten = 0;
+    status.scratchRoot = scratchRoot;
+    status.activeTake.reset();
     status.lastTake.reset();
     status.recentTakes = recentTakes;
 

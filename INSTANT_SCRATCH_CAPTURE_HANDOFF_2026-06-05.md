@@ -2,11 +2,15 @@
 
 This handoff lets the next agent resume the Instant Scratch Capture branch without replaying the session. It documents what is implemented, what evidence exists, where the risks are, and what should happen next.
 
+Updated 2026-06-09: the active continuation branch is `codex/pedalboard-remix-ui-polish`, which layers mockup-informed Scratch Capture and footer polish on top of the original scratch-capture branch.
+
 ## Current Baseline
 
-- Branch: `codex/instant-scratch-capture`
-- Head commit at handoff creation: `ed2532d fix: stop scratch capture on disruptive changes`
-- Tracked worktree status at handoff creation: clean before this document was added.
+- Original branch: `codex/instant-scratch-capture`
+- Current continuation branch: `codex/pedalboard-remix-ui-polish`
+- Original handoff head commit: `ed2532d fix: stop scratch capture on disruptive changes`
+- Current pre-polish checkpoint: `5aec6aa docs: reconcile active roadmap`
+- Tracked worktree status at original handoff creation: clean before this document was added.
 - Unrelated untracked directory present: `documentation/research/`
   - Do not stage it unless the user explicitly asks to include those research notes.
 
@@ -25,6 +29,7 @@ Primary planning docs:
 
 - `docs/superpowers/specs/2026-06-04-instant-scratch-capture-design.md`
 - `docs/superpowers/plans/2026-06-04-instant-scratch-capture.md`
+- `docs/superpowers/specs/2026-06-09-pedalboard-remix-ui-upgrade.md`
 
 ## Product Intent
 
@@ -120,12 +125,16 @@ Behavior:
   - `Start/Stop Scratch Capture`
   - `Open Scratch Panel`
   - `Reveal Scratch Ideas Folder`
+  - `Choose Scratch Ideas Folder`
+  - `Reset Scratch Ideas Folder`
 - Adds default shortcut for capture toggle:
   - Command/Ctrl + Shift + R
 - Adds compact footer controls:
   - `REC` / `STOP`
   - status label
   - `Takes` button
+- Persists custom scratch destination via `scratchRootDirectory`.
+- Adds wet preview, raw reamp, and take reveal helpers for the scratch panel.
 - Footer layout has progressive fallback:
   - full scratch strip when space allows
   - record + takes when tighter
@@ -143,11 +152,20 @@ Files:
 Behavior:
 
 - Non-modal utility panel.
-- Shows record/stop button, reveal button, status, elapsed field, and recent takes.
+- Shows a hero record/stop button, reveal button, choose/reset destination controls, status, elapsed field, RAW/WET context, and recent takes.
 - Uses `juce::Component::SafePointer<MainPanel>` instead of holding a raw recorder reference.
 - If the owning `MainPanel` is gone, the timer stops and the panel disables its buttons instead of dereferencing stale state.
 - Record button routes through `MainPanel::toggleScratchCapture()`.
 - Reveal button routes through `MainPanel::revealScratchFolder()`.
+- Recent take rows show date/time, patch context, duration, RAW/WET availability, and action buttons.
+- Wet `Play` opens `wet.wav` with the OS handler when a complete wet file exists.
+- Raw `Reamp` adds a `FilePlayerProcessor` loaded with `raw.wav` when a complete raw file exists.
+
+Additional layout/presentation helpers:
+
+- `src/ScratchPanelLayout.h`
+- `src/ScratchPanelPresentation.h`
+- Focused tests cover non-overlapping row/destination actions and active elapsed display.
 
 ## Verification Already Run
 
@@ -167,6 +185,14 @@ Observed results:
 - Scratch tests: 9/9 passed.
 - Full Release CTest suite: 200/200 passed.
 - `git diff --check` was clean before Task 7 commit.
+
+Latest consolidation verification on 2026-06-09:
+
+- `git diff --check`: passed; only normal CRLF working-copy warnings were reported.
+- `cmake --build build --config Release --target Pedalboard3_Tests -- /m:1`: passed.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[scratch]"`: passed, 126 assertions in 17 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][scale]"`: passed, 55 assertions in 9 test cases.
+- `cmake --build build --config Release --target Pedalboard3 -- /m:1`: passed and produced `build\Pedalboard3_artefacts\Release\Pedalboard3.exe`.
 
 Expected warning noise:
 
@@ -200,41 +226,44 @@ Next agent should run this before calling the feature user-ready:
 
 ### Panel Elapsed Display
 
-`ScratchPanel` currently computes elapsed time from `status.elapsedSamples` only when `status.lastTake` has a sample rate. During an active recording `lastTake` is reset, so the panel may show `00:00` until the take is finalized.
+Updated 2026-06-09: fixed.
 
-Suggested fix:
-
-- Add `currentSampleRate` or `sampleRate` to `ScratchRecorderStatus`, populate it at start, and compute elapsed from that while recording.
-- Add a focused test if status shape changes.
+`ScratchPanelPresentation::formatElapsedLabel()` now uses the active take sample rate while recording, falling back to the last take after capture. `tests/scratch_recorder_test.cpp` includes a focused regression proving active recording elapsed labels advance from `00:01` to `00:02` at 48 kHz.
 
 ### Footer Visual QA
 
-The footer layout compiles and existing UI scale regression tests pass, but no fresh screenshot matrix was captured after adding scratch controls.
+Updated 2026-06-09: fresh screenshot evidence was captured after adding scratch controls.
 
-Suggested follow-up:
+Command used:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputName 2026-06-05-scratch-footer -CaptureScaledFooterMatrix
+& 'C:\Program Files\PowerShell\7\pwsh.exe' -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -OutputName 2026-06-09-scratch-footer -CaptureScaledFooterMatrix
 ```
 
-Review normal and narrow screenshots at `125%`, `150%`, `175%`, and `200%` to ensure `REC` remains recoverable and does not crowd patch/transport/CPU controls.
+Evidence lives at `documentation/qa/2026-06-09-scratch-footer`. Narrow captures at `125%`, `150%`, `175%`, and `200%` keep `REC`, `Takes`, patch selection, transport, UI Scale, CPU meter, FX, and IN/OUT gain controls visible and reachable.
 
-### No Playback In Scratch Panel
+Updated 2026-06-09: an additional main-footer scale follow-up was captured at `documentation/qa/2026-06-09-main-footer-scale-v2`. The two-row breakpoint now engages earlier, the CPU label is shortened to `CPU`, and narrow captures keep the existing footer functions visible at high Pedalboard UI scale.
 
-The design allowed optional wet playback if it stayed small. That is not implemented.
+### Playback And Reamp Scope
 
-Do not add this unless the user asks; immediate capture and reampable raw/wet files are the core value.
+Updated 2026-06-09: small take actions are implemented.
+
+- `Play` opens a completed `wet.wav` externally.
+- `Reamp` adds a `FilePlayerProcessor` node for a completed `raw.wav`.
+- `Reveal` opens the take folder.
+
+Do not expand this into a DAW-style timeline or library unless the user explicitly asks; immediate capture and reampable raw/wet files are the core value.
 
 ### Scratch Folder Setting
 
-The recorder has `setScratchRoot()`, but no Preferences UI for a custom scratch folder is wired yet.
+Updated 2026-06-09: V1 destination selection is implemented in the scratch panel and app menu.
 
-Current default behavior is acceptable for v1:
+Current default behavior remains:
 
 - user application data directory
 - `Pedalboard3/Scratch Ideas`
 
-Only add a setting if the user asks or manual QA shows the default is hard to find.
+The chosen folder is persisted through `SettingsManager` key `scratchRootDirectory`. Reset returns to the app-data default. There is no Preferences mirror yet; add one only if the user asks or manual QA shows the menu/panel path is not discoverable enough.
 
 ### Subagent Review Note
 
@@ -274,9 +303,10 @@ Recommended next sequence:
 1. Read this file, the spec, and the plan.
 2. Run `git status --short --branch` and confirm only intended work is present.
 3. Do the manual hardware capture verification above.
-4. Fix the panel elapsed display if it shows `00:00` during recording.
-5. Capture scaled footer screenshots if UI confidence is needed before PR.
-6. Push the branch and open a draft PR after manual verification.
+4. Confirm scratch destination choose/reset behaves correctly outside a recording and is disabled while recording.
+5. Confirm wet `Play`, raw `Reamp`, and `Reveal` actions enable only when their files exist.
+6. Review the two June 9 footer QA folders if UI-scale evidence is needed before PR.
+7. Push the branch and open a draft PR after manual verification.
 
 Suggested commands:
 
@@ -296,7 +326,8 @@ Adds app-level Instant Scratch Capture for manual raw/wet take recording.
 - Adds ScratchRecorder with ThreadedWriter-backed raw/wet sinks
 - Taps raw pre-chain input and wet post-chain output in MeteringProcessorPlayer
 - Adds footer REC/Takes controls and File menu commands
-- Adds a non-modal ScratchPanel with safe MainPanel lifetime handling
+- Adds a non-modal ScratchPanel with hero record control, RAW/WET context, destination controls, and safe MainPanel lifetime handling
+- Adds recent take date labels and scoped Play/Reamp/Reveal actions
 - Stops/marks takes incomplete on patch switch and audio device changes
 - Covers scratch take/recorder behavior with focused tests
 ```

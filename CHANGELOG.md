@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Instant Scratch Capture Polish** — Scratch Capture now has a larger non-modal capture panel with hero record/stop control, live elapsed time, RAW/WET context, destination visibility, recent take date/time metadata, and scoped `Play`, `Reamp`, and `Reveal` actions.
+- **Scratch Destination Controls** — Added scratch folder choose/reset commands through the scratch panel and app menu, with persisted `scratchRootDirectory` settings and focused layout coverage for destination controls.
 - **Virtual MIDI Input Toggle** — New toggle in Preferences > Visible I/O Nodes for enabling/disabling the Virtual MIDI Input node. Full chain: `PluginField`, `MainPanel`, `PreferencesDialog`, `PluginFieldPersistence` patch-load guard. State persisted via `SettingsManager`.
 - **Plugin Search Floating Window** — Added `PluginSearchWindow` as the final plugin search UI, replacing the earlier in-canvas `PluginSearchOverlay`. Uses a top-level `DocumentWindow` with custom `SearchWindowLookAndFeel`, rounded corners, themed title bar, fuzzy ranking, category tabs, keyboard navigation, and format badges.
 - **Browser Window Theming** — NAM Model Browser and IR Browser now use custom `BrowserWindowLookAndFeel` with rounded corners, themed title bar, custom close button, and pill-shaped search fields.
@@ -24,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Main Footer High-Scale Recovery** — The main footer now enters stacked layout earlier at high Pedalboard UI scale, and the CPU label is shortened to `CPU` so patch, transport, scratch, gain, FX, Manage, Fit, CPU, and UI Scale controls remain reachable in narrow captures.
 - **D2 Visual QA Scaling** — D2 visual QA now drives Pedalboard app UI scale with `-UiScalePercent` / `--visual-qa-ui-scale` instead of requiring Windows Display scale changes. `-CaptureScaledFooterMatrix` captures the high-scale footer breakpoint set, `-CaptureScaledDialogMatrix` captures high-scale secondary surfaces, and OS display scale remains available only as an optional compatibility guard via `-ExpectedOsScalePercent`.
 - **Scaled Footer Layout** — The main footer now switches out of single-row mode using scale-aware available width, then falls back to a stacked footer when two rows would still crowd controls. Patch, transport, tempo, gain/FX, UI scale, Fit/Manage, and CPU controls remain reachable at high Pedalboard UI scale.
 - **BranchesLAF Theme Refresh** — Shared button, menu, combo box, text editor, label, toggle, slider, scrollbar, list, progress, and file-browser highlight colours now refresh from `ColourScheme::getLookAndFeelColourSpecs()`.
@@ -39,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Scratch Panel Elapsed Timer** — Active scratch recordings now format elapsed time from the active take sample rate instead of waiting for a finalized last take.
+- **Scratch Take Action Clipping** — Scratch recent-take `Play`, `Reamp`, and `Reveal` buttons now use a deterministic row layout so actions do not overlap at panel width.
 - **Preferences High-Scale Layout** — Preferences now keeps UI Scale visible near the top, shortens the OSC multicast hint, and uses a vertical viewport so lower settings remain reachable at high Pedalboard UI scale.
 - **Audio Input Toggle Spawn Position** — `enableAudioInput` was re-creating the node at (10, 10) instead of standard (540, 500).
 - **OSC Input Toggle Spawn Position** — `enableOscInput` was re-creating the node at (50, dynamic_Y). Fixed to standard (540, 860).

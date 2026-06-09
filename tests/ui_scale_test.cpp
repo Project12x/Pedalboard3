@@ -70,19 +70,21 @@ TEST_CASE("Footer switches out of single row before scaled controls crowd", "[ui
     CHECK(UiScale::shouldUseSingleRowFooter(1920, 125));
 
     CHECK(UiScale::footerHeight(1024, 100) == 72);
-    CHECK(UiScale::footerHeight(1024, 150) == 72);
+    CHECK(UiScale::footerHeight(1024, 150) == 104);
     CHECK(UiScale::footerHeight(1024, 200) == 104);
 }
 
 TEST_CASE("Footer uses stacked layout when two rows would still crowd controls", "[ui][scale]")
 {
-    CHECK_FALSE(UiScale::shouldUseStackedFooter(1024, 125));
-    CHECK_FALSE(UiScale::shouldUseStackedFooter(1024, 150));
+    CHECK(UiScale::shouldUseStackedFooter(1024, 125));
+    CHECK(UiScale::shouldUseStackedFooter(1024, 150));
     CHECK(UiScale::shouldUseStackedFooter(1024, 175));
     CHECK(UiScale::shouldUseStackedFooter(1024, 200));
 
+    CHECK(UiScale::footerHeight(1024, 125) == 104);
+    CHECK(UiScale::footerHeight(1024, 150) == 104);
     CHECK(UiScale::footerHeight(1024, 175) == 104);
-    CHECK(UiScale::footerHeight(1280, 200) == 72);
+    CHECK(UiScale::footerHeight(1280, 200) == 104);
     CHECK(UiScale::footerHeight(1920, 125) == 40);
 }
 

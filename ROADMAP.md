@@ -1,6 +1,6 @@
 # Pedalboard3 Roadmap
 
-- **Last updated:** 2026-06-05
+- **Last updated:** 2026-06-09
 - **Status:** Active source of truth for current product work
 
 This roadmap is intentionally narrow. Historical phase plans and completed long-form
@@ -33,7 +33,7 @@ clear musician workflow, acceptance criteria, and implementation path.
 
 ## Current Ship Gate: Instant Scratch Capture
 
-**Status:** Implemented on `codex/instant-scratch-capture`; automated verification passed; manual hardware QA pending.
+**Status:** Implemented on `codex/pedalboard-remix-ui-polish`; automated verification passed; manual hardware QA pending.
 
 This is the active branch gate because it directly supports the desired workflow:
 plug in, start Pedalboard, and capture an idea within moments.
@@ -48,8 +48,11 @@ plug in, start Pedalboard, and capture an idea within moments.
 | Patch/device interruption handling | Done | Capture stops with explicit incomplete-take reasons. |
 | Focused tests | Done | Scratch tests pass; full Release CTest passed in handoff evidence. |
 | Manual guitar/interface smoke test | Pending | Must verify real raw/wet capture before calling user-ready. |
-| Fresh footer scale screenshots | Pending | Needed because scratch controls add footer pressure. |
-| Scratch panel elapsed timer | Watch/Fix | Known risk: active elapsed display may stay `00:00`. |
+| Fresh footer scale screenshots | Done | Captured at `documentation/qa/2026-06-09-scratch-footer`; narrow 125%-200% keeps scratch controls recoverable. |
+| Main footer scale follow-up | Done | Captured at `documentation/qa/2026-06-09-main-footer-scale-v2`; high-scale footer keeps existing controls visible. |
+| Scratch panel elapsed timer | Done | Active recording elapsed label is covered by a focused scratch regression. |
+| Scratch panel remix polish | Done | Hero record control, RAW/WET context, destination display, date labels, and recent take actions are implemented. |
+| Scratch destination controls | Done | Scratch folder choose/reset is available from the scratch panel and app menu, with persisted path setting. |
 
 Immediate next agent sequence:
 
@@ -57,8 +60,8 @@ Immediate next agent sequence:
 2. Confirm the take contains `raw.wav`, `wet.wav`, and `take.json`.
 3. Confirm raw is pre-chain DI and wet is what the user heard.
 4. Verify patch change and audio-device change both stop capture cleanly.
-5. Fix the panel elapsed timer if it shows `00:00` while recording.
-6. Capture scaled footer evidence if the branch is heading toward PR.
+5. Confirm `Play`, `Reamp`, and `Reveal` take actions enable only when their files exist.
+6. Review `documentation/qa/2026-06-09-scratch-footer` and `documentation/qa/2026-06-09-main-footer-scale-v2` if UI-scale evidence is needed before PR.
 
 ---
 
@@ -130,9 +133,9 @@ These are useful after the current ship gate and P0 gig-speed items.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Scratch folder preference | Deferred | `ScratchRecorder` supports custom roots; no Preferences UI yet. |
-| Scratch take playback | Deferred | Not required for V1 capture/reamp workflow. |
-| Recent scratch take management | Planned | Keep small; avoid DAW/library bloat. |
+| Scratch folder preference | Done for V1 | Scratch panel and app menu expose choose/reset; no Preferences mirror unless later requested. |
+| Scratch take playback/reamp | Partial | Wet preview opens the saved wet file; raw reamp adds a file-player node for the raw capture. No timeline/editor. |
+| Recent scratch take management | Partial | Recent list shows date/time, patch context, RAW/WET metadata, and reveal/play/reamp actions. Keep small; avoid DAW/library bloat. |
 | Quick onboarding entry point | Planned | Should point to real starter rigs once they exist. |
 | Focused keyboard shortcut overlay | Planned | Only if it improves discoverability of existing workflows. |
 

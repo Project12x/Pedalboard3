@@ -102,6 +102,31 @@ double ScratchTake::durationSeconds() const noexcept
     return sampleRate > 0.0 ? static_cast<double>(durationSamples) / sampleRate : 0.0;
 }
 
+juce::String ScratchTake::displayDateLabel() const
+{
+    return startTime.formatted("%Y-%m-%d");
+}
+
+juce::String ScratchTake::displayTimeLabel() const
+{
+    return startTime.formatted("%H:%M:%S");
+}
+
+bool ScratchTake::canReveal() const
+{
+    return takeDirectory.isDirectory();
+}
+
+bool ScratchTake::canPlayWetPreview() const
+{
+    return complete && wetFile.existsAsFile();
+}
+
+bool ScratchTake::canReampRawCapture() const
+{
+    return complete && rawFile.existsAsFile();
+}
+
 juce::String ScratchTake::toJsonString() const
 {
     nlohmann::json json;

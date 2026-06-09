@@ -1,4 +1,6 @@
 #include "ScratchRecorder.h"
+#include "ScratchPanelLayout.h"
+#include "ScratchPanelPresentation.h"
 #include "ScratchTake.h"
 
 #include <catch2/catch_approx.hpp>
@@ -182,6 +184,99 @@ TEST_CASE("ScratchTake reports storage creation failures without throwing", "[sc
     REQUIRE(take.takeId == "20260604-010203-Lead");
 }
 
+TEST_CASE("ScratchTake reports row action availability from saved files", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchTakeActionAvailabilityTest");
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Action Patch";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+    context.startTime = juce::Time(2026, 5, 4, 1, 2, 3, 0, true);
+
+    auto take = ScratchTake::createPending(context);
+    take.complete = true;
+
+    REQUIRE(take.canReveal());
+    REQUIRE_FALSE(take.canPlayWetPreview());
+    REQUIRE_FALSE(take.canReampRawCapture());
+
+    REQUIRE(take.wetFile.replaceWithText("wet"));
+    REQUIRE(take.canPlayWetPreview());
+    REQUIRE_FALSE(take.canReampRawCapture());
+
+    REQUIRE(take.rawFile.replaceWithText("raw"));
+    REQUIRE(take.canReampRawCapture());
+
+    take.complete = false;
+    REQUIRE_FALSE(take.canPlayWetPreview());
+    REQUIRE_FALSE(take.canReampRawCapture());
+    REQUIRE(take.canReveal());
+}
+
+TEST_CASE("ScratchTake exposes stable display date and time labels", "[scratch]")
+{
+    ScratchTake take;
+    take.startTime = juce::Time(2026, 5, 4, 1, 2, 3, 0, true);
+
+    REQUIRE(take.displayDateLabel() == "2026-06-04");
+    REQUIRE(take.displayTimeLabel() == "01:02:03");
+}
+
+TEST_CASE("Scratch take row actions stay separated at panel width", "[scratch]")
+{
+    const auto layout = ScratchPanelLayout::calculateTakeRowActions(600 - 36 - 14);
+
+    REQUIRE(layout.play.getWidth() >= 56);
+    REQUIRE(layout.reamp.getWidth() >= 64);
+    REQUIRE(layout.reveal.getWidth() >= 60);
+    REQUIRE(layout.play.getRight() + 8 <= layout.reamp.getX());
+    REQUIRE(layout.reamp.getRight() + 8 <= layout.reveal.getX());
+    REQUIRE(layout.reveal.getRight() <= layout.rowRight);
+}
+
+TEST_CASE("Scratch destination actions reserve non-overlapping controls", "[scratch]")
+{
+    const auto layout = ScratchPanelLayout::calculateDestinationLayout({0, 0, 600 - 36, 54});
+
+    REQUIRE(layout.text.getWidth() >= 240);
+    REQUIRE(layout.choose.getWidth() >= 80);
+    REQUIRE(layout.reset.getWidth() >= 68);
+    REQUIRE(layout.reveal.getWidth() >= 68);
+    REQUIRE(layout.text.getRight() + 8 <= layout.choose.getX());
+    REQUIRE(layout.choose.getRight() + 8 <= layout.reset.getX());
+    REQUIRE(layout.reset.getRight() + 8 <= layout.reveal.getX());
+    REQUIRE(layout.reveal.getRight() <= layout.rowRight);
+}
+
+TEST_CASE("Scratch destination display compacts long paths", "[scratch]")
+{
+    const juce::String longPath("C:\\Users\\estee\\Documents\\Pedalboard\\Very Long Folder Name\\Scratch Ideas");
+
+    const auto compacted = ScratchPanelLayout::compactDestinationPathForDisplay(longPath, 42);
+
+    REQUIRE(compacted.length() <= 42);
+    REQUIRE(compacted.contains("..."));
+    REQUIRE(compacted.endsWith("Scratch Ideas"));
+}
+
+TEST_CASE("ScratchRecorder resets scratch root to application default", "[scratch]")
+{
+    ScopedTempDirectory customRoot("Pedalboard3ScratchCustomRootTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    recorder.setScratchRoot(customRoot.get());
+    REQUIRE(recorder.getScratchRoot().getFullPathName() == customRoot.get().getFullPathName());
+
+    recorder.resetScratchRootToDefault();
+
+    REQUIRE(recorder.getScratchRoot().getFullPathName() ==
+            ScratchRecorder::getDefaultScratchRoot().getFullPathName());
+}
+
 TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample counts", "[scratch]")
 {
     ScopedTempDirectory root("Pedalboard3ScratchRecorderTest");
@@ -218,6 +313,79 @@ TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample count
     REQUIRE(status.lastTake->complete);
     REQUIRE(status.recentTakes.size() == 1);
     REQUIRE(status.recentTakes.front().complete);
+}
+
+TEST_CASE("ScratchRecorder exposes active take context while recording", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchRecorderStatusTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Live Idea";
+    context.patchIndex = 3;
+    context.deviceName = "Status Device";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+    context.masterInputGainDb = -2.5;
+    context.masterOutputGainDb = -4.0;
+
+    REQUIRE(recorder.start(context));
+
+    auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Recording);
+    REQUIRE(status.activeTake.has_value());
+    REQUIRE(status.activeTake->patchName == "Live Idea");
+    REQUIRE(status.activeTake->patchIndex == 3);
+    REQUIRE(status.activeTake->deviceName == "Status Device");
+    REQUIRE(status.activeTake->sampleRate == Catch::Approx(48000.0));
+    REQUIRE(status.activeTake->rawChannelCount == 1);
+    REQUIRE(status.activeTake->wetChannelCount == 2);
+    REQUIRE(status.activeTake->masterInputGainDb == Catch::Approx(-2.5));
+    REQUIRE(status.activeTake->masterOutputGainDb == Catch::Approx(-4.0));
+    REQUIRE(status.scratchRoot.getFullPathName() == root.get().getFullPathName());
+    REQUIRE_FALSE(status.lastTake.has_value());
+
+    float raw[480] = {};
+    const float* rawPtrs[1] = {raw};
+    float wetL[480] = {};
+    float wetR[480] = {};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 480);
+    recorder.writeWetBlock(wetPtrs, 2, 480);
+
+    status = recorder.getStatus();
+    REQUIRE(status.elapsedSamples == 480);
+    REQUIRE(status.activeTake.has_value());
+    REQUIRE(status.activeTake->sampleRate == Catch::Approx(48000.0));
+
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Saved);
+    REQUIRE_FALSE(status.activeTake.has_value());
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE(status.lastTake->patchName == "Live Idea");
+}
+
+TEST_CASE("Scratch panel elapsed label uses active take sample rate while recording", "[scratch]")
+{
+    ScratchRecorderStatus status;
+    status.state = ScratchRecorderState::Recording;
+    status.elapsedSamples = 48000;
+
+    ScratchTake activeTake;
+    activeTake.sampleRate = 48000.0;
+    status.activeTake = activeTake;
+
+    REQUIRE(ScratchPanelPresentation::formatElapsedLabel(status) == "00:01");
+
+    status.elapsedSamples = 96000;
+    REQUIRE(ScratchPanelPresentation::formatElapsedLabel(status) == "00:02");
 }
 
 TEST_CASE("ScratchRecorder marks audio device interruptions incomplete", "[scratch]")

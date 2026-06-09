@@ -25,6 +25,8 @@ struct ScratchRecorderStatus
     uint64_t elapsedSamples = 0;
     uint64_t rawSamplesWritten = 0;
     uint64_t wetSamplesWritten = 0;
+    juce::File scratchRoot;
+    std::optional<ScratchTake> activeTake;
     std::optional<ScratchTake> lastTake;
     std::vector<ScratchTake> recentTakes;
 };
@@ -70,8 +72,10 @@ public:
 
     ScratchRecorderStatus getStatus() const;
     bool isRecording() const noexcept;
+    static juce::File getDefaultScratchRoot();
     juce::File getScratchRoot() const;
     void setScratchRoot(const juce::File& root);
+    void resetScratchRootToDefault();
 
     void finishPendingStopForTests();
 

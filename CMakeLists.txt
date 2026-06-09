@@ -161,6 +161,8 @@ target_sources(Pedalboard3 PRIVATE
     src/MainPanel.h
     src/ScratchPanel.cpp
     src/ScratchPanel.h
+    src/ScratchPanelLayout.h
+    src/ScratchPanelPresentation.h
     
     # Audio Core
     src/FilterGraph.cpp

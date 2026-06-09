@@ -62,6 +62,7 @@ Implementing*.md
 
 # AI tool directories
 .claude/
+.superpowers/
 
 # OS files
 .DS_Store
