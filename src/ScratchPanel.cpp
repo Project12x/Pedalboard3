@@ -657,7 +657,7 @@ void ScratchPanel::refresh()
     recordButton.setEnabled(status.state != ScratchRecorderState::Saving);
     chooseButton.setEnabled(!isRecording && !isSaving);
     resetButton.setEnabled(!isRecording && !isSaving);
-    statusLabel.setText(isRecording ? "Recording RAW + WET" : status.message, juce::dontSendNotification);
+    statusLabel.setText(ScratchPanelPresentation::formatStatusLine(status), juce::dontSendNotification);
     statusLabel.setColour(juce::Label::textColourId, getColour("Text Colour", juce::Colours::white).withAlpha(0.88f));
     elapsedLabel.setColour(juce::Label::textColourId, getColour("Text Colour", juce::Colours::white));
 

@@ -32,4 +32,52 @@ inline juce::String formatElapsedLabel(const ScratchRecorderStatus& status)
     const double sampleRate = take != nullptr ? take->sampleRate : 0.0;
     return formatDurationLabel(status.elapsedSamples, sampleRate);
 }
+
+inline juce::String formatCapturePairLabel(const ScratchRecorderStatus& status)
+{
+    const auto* take = getDisplayTake(status);
+    if (take == nullptr)
+        return "RAW + WET armed";
+
+    return "RAW " + juce::String(take->rawChannelCount) + "ch + WET "
+           + juce::String(take->wetChannelCount) + "ch";
+}
+
+inline juce::String formatStatusLine(const ScratchRecorderStatus& status)
+{
+    switch (status.state)
+    {
+    case ScratchRecorderState::Recording:
+        return "Recording " + formatElapsedLabel(status) + "  |  " + formatCapturePairLabel(status);
+    case ScratchRecorderState::Saving:
+        return "Saving take  |  " + formatCapturePairLabel(status);
+    case ScratchRecorderState::Saved:
+        return "Saved " + formatElapsedLabel(status) + "  |  " + formatCapturePairLabel(status);
+    case ScratchRecorderState::Failed:
+        return status.message.isNotEmpty() ? status.message : "Scratch capture failed";
+    case ScratchRecorderState::Ready:
+        break;
+    }
+
+    return "Ready  |  " + formatCapturePairLabel(status);
+}
+
+inline juce::String formatFooterStatusLine(const ScratchRecorderStatus& status)
+{
+    switch (status.state)
+    {
+    case ScratchRecorderState::Recording:
+        return "REC " + formatElapsedLabel(status) + "  |  " + formatCapturePairLabel(status);
+    case ScratchRecorderState::Saving:
+        return "Saving RAW + WET";
+    case ScratchRecorderState::Saved:
+        return "Saved " + formatElapsedLabel(status);
+    case ScratchRecorderState::Failed:
+        return status.message.isNotEmpty() ? status.message : "Scratch failed";
+    case ScratchRecorderState::Ready:
+        break;
+    }
+
+    return "Ready  |  RAW + WET";
+}
 } // namespace ScratchPanelPresentation

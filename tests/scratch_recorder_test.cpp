@@ -388,6 +388,37 @@ TEST_CASE("Scratch panel elapsed label uses active take sample rate while record
     REQUIRE(ScratchPanelPresentation::formatElapsedLabel(status) == "00:02");
 }
 
+TEST_CASE("Scratch panel status labels expose raw wet capture context", "[scratch]")
+{
+    ScratchRecorderStatus status;
+    status.state = ScratchRecorderState::Ready;
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("RAW + WET"));
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status).contains("RAW + WET"));
+
+    ScratchTake activeTake;
+    activeTake.sampleRate = 48000.0;
+    activeTake.rawChannelCount = 1;
+    activeTake.wetChannelCount = 2;
+    status.state = ScratchRecorderState::Recording;
+    status.elapsedSamples = 96000;
+    status.activeTake = activeTake;
+
+    REQUIRE(ScratchPanelPresentation::formatCapturePairLabel(status) == "RAW 1ch + WET 2ch");
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("Recording 00:02"));
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("RAW 1ch + WET 2ch"));
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status).contains("REC 00:02"));
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status).contains("RAW 1ch + WET 2ch"));
+
+    status.state = ScratchRecorderState::Saving;
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("Saving take"));
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status) == "Saving RAW + WET");
+
+    status.state = ScratchRecorderState::Failed;
+    status.message = "No input channels available";
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status) == "No input channels available");
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status) == "No input channels available");
+}
+
 TEST_CASE("ScratchRecorder marks audio device interruptions incomplete", "[scratch]")
 {
     ScopedTempDirectory root("Pedalboard3ScratchDeviceInterruptTest");

@@ -54,6 +54,12 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - RAW/WET capture context represented in UI.
   - Scratch destination chooser added.
   - Play/reveal clipping fixed.
+- Scratch Capture second polish pass:
+  - Footer and panel status now share one formatter for Ready, Recording, Saving, Saved, and Failed states.
+  - Recording status exposes elapsed time plus RAW/WET channel context.
+  - Footer REC button shows STOP while recording, SAVE while saving, and disables during the saving state.
+  - Full scratch status is available as a footer tooltip when scaled layouts wrap or clip.
+  - Scaled footer visual QA recorded in `documentation/qa/2026-06-09-scratch-status-polish`.
 - Footer/UI scale recovery:
   - In-app UI scale control added to settings/footer surface.
   - Default scale starts at 75 percent.
@@ -140,6 +146,8 @@ Done when:
 
 Goal: finish the scratch workflow as the user's "plug in, start Pedalboard, record an idea within moments" path.
 
+Status: Second native polish pass complete for status clarity and scaled footer visibility. Further scratch work should be driven by manual capture friction, not mockup-only decoration.
+
 Tasks:
 
 - Audit current scratch UI against `scratch-panel.jsx` and `scratch.css`.
@@ -184,9 +192,9 @@ Minimum checks for implementation slices:
 
 ## Immediate Next Step
 
-Start with Scratch Capture Second Pass:
+Start with Secondary Mockup Harvest:
 
-1. Inspect current native scratch capture files and recorder backbone.
-2. Compare them against `scratch-panel.jsx` and `scratch.css`.
-3. Preserve the existing fast manual record flow, destination chooser, date-stamped takes, and raw/wet capture direction.
-4. Patch only the UI gaps that make the "plug in and record within moments" workflow clearer.
+1. Review the remaining mockup files for high-signal native polish candidates.
+2. Reject anything that adds surface area without a real existing workflow.
+3. Prefer small improvements to existing browser, loader, typography, spacing, and state feedback surfaces.
+4. Preserve all existing UX functions and keep implementation clean-room/pattern-only.

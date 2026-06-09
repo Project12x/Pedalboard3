@@ -57,6 +57,7 @@
 #include "SafePluginScanner.h"
 #include "SettingsManager.h"
 #include "ScratchPanel.h"
+#include "ScratchPanelPresentation.h"
 #include "StageView.h"
 #include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
@@ -1471,10 +1472,26 @@ void MainPanel::refreshScratchControls()
     const auto status = scratchRecorder.getStatus();
 
     if (scratchRecordButton != nullptr)
-        scratchRecordButton->setButtonText(status.state == ScratchRecorderState::Recording ? "STOP" : "REC");
+    {
+        if (status.state == ScratchRecorderState::Recording)
+            scratchRecordButton->setButtonText("STOP");
+        else if (status.state == ScratchRecorderState::Saving)
+            scratchRecordButton->setButtonText("SAVE");
+        else
+            scratchRecordButton->setButtonText("REC");
+
+        scratchRecordButton->setEnabled(status.state != ScratchRecorderState::Saving);
+        scratchRecordButton->setTooltip(status.state == ScratchRecorderState::Recording
+                                            ? "Stop scratch capture and save raw plus wet takes"
+                                            : "Record a scratch idea as raw input plus wet output");
+    }
 
     if (scratchStatusLabel != nullptr)
-        scratchStatusLabel->setText(status.message, dontSendNotification);
+    {
+        const auto statusText = ScratchPanelPresentation::formatFooterStatusLine(status);
+        scratchStatusLabel->setText(statusText, dontSendNotification);
+        scratchStatusLabel->setTooltip(statusText);
+    }
 }
 
 //------------------------------------------------------------------------------
