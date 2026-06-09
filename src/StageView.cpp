@@ -231,6 +231,12 @@ void StageView::paint(Graphics& g)
                                      bounds.getHeight(), false));
     g.fillAll();
 
+    g.setColour(colours["Plugin Border"].withAlpha(0.045f));
+    for (int x = metrics.gridSpacing; x < getWidth(); x += metrics.gridSpacing)
+        g.drawVerticalLine(x, 0.0f, (float)getHeight());
+    for (int y = metrics.gridSpacing; y < getHeight(); y += metrics.gridSpacing)
+        g.drawHorizontalLine(y, 0.0f, (float)getWidth());
+
     // Layout areas
     auto headerArea = bounds.removeFromTop((float)metrics.headerHeight);
     auto footerArea = bounds.removeFromBottom((float)metrics.footerHeight);
@@ -241,8 +247,10 @@ void StageView::paint(Graphics& g)
     drawStatusBar(g, headerArea);
     drawPatchDisplay(g, patchArea);
 
-    if (showTuner && tunerProcessor != nullptr)
+    if (showTuner)
         drawTunerDisplay(g, tunerArea);
+
+    drawSafetyBar(g, footerArea);
 
     // Draw VU meters in footer area
     {
@@ -328,10 +336,10 @@ void StageView::paint(Graphics& g)
             }
         };
 
-        drawVU(startX, footerY + metrics.meterChannelGap, "IN", cachedInputLevels[0], cachedInputLevels[1], peakHoldInput,
+        drawVU(startX, footerY + metrics.meterTopOffset, "IN", cachedInputLevels[0], cachedInputLevels[1], peakHoldInput,
                peakHoldInputCounters);
         drawVU(startX + labelW + meterW + metrics.meterSpacing + metrics.panicButtonWidth,
-               footerY + metrics.meterChannelGap, "OUT", cachedOutputLevels[0], cachedOutputLevels[1], peakHoldOutput,
+               footerY + metrics.meterTopOffset, "OUT", cachedOutputLevels[0], cachedOutputLevels[1], peakHoldOutput,
                peakHoldOutputCounters);
     }
 }
@@ -342,17 +350,46 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    // "STAGE MODE" title
-    g.setColour(colours["Text Colour"].withAlpha(0.5f));
-    g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
-    g.drawText("STAGE MODE", bounds.reduced((float)metrics.margin, 0), Justification::centredLeft);
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.34f));
+    g.fillRect(bounds);
 
-    // Time display (optional)
+    g.setColour(colours["Plugin Border"].withAlpha(0.45f));
+    g.drawHorizontalLine(juce::roundToInt(bounds.getBottom()) - 1, bounds.getX(), bounds.getRight());
+
+    auto leftArea = bounds.reduced((float)metrics.margin, 0.0f)
+                        .withWidth(juce::jmax(220.0f, bounds.getWidth() * 0.24f));
+    const auto dotSize = metrics.liveDotSize;
+    const auto dotArea =
+        Rectangle<float>(leftArea.getX(), leftArea.getCentreY() - dotSize * 0.5f, dotSize, dotSize);
+
+    g.setColour(colours["Accent Colour"].withAlpha(0.18f));
+    g.fillEllipse(dotArea.expanded(dotSize * 0.65f));
+    g.setColour(colours["Accent Colour"]);
+    g.fillEllipse(dotArea);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.58f));
+    g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
+    g.drawText("STAGE MODE", leftArea.withTrimmedLeft(dotSize + 12.0f), Justification::centredLeft);
+
+    const auto chipBounds =
+        Rectangle<float>((bounds.getCentreX() - metrics.topBarChipWidth * 0.5f),
+                         bounds.getCentreY() - metrics.topBarChipHeight * 0.5f, (float)metrics.topBarChipWidth,
+                         (float)metrics.topBarChipHeight);
+    g.setColour(colours["Accent Colour"].withAlpha(0.12f));
+    g.fillRoundedRectangle(chipBounds, 10.0f);
+    g.setColour(colours["Accent Colour"].withAlpha(0.68f));
+    g.drawRoundedRectangle(chipBounds, 10.0f, 1.2f);
+    g.setColour(colours["Accent Colour"]);
+    g.setFont(fonts.getDisplayFont(metrics.modeChipFontHeight));
+    g.drawText("LIVE PATCH", chipBounds, Justification::centred);
+
     Time now = Time::getCurrentTime();
     String timeStr = now.formatted("%H:%M");
+    auto timeArea = bounds.reduced((float)metrics.margin, 0.0f);
+    timeArea.removeFromRight((float)(metrics.utilityButtonWidth * 2 + metrics.margin * 2));
     g.setFont(fonts.getMonoDisplayFont(metrics.timeFontHeight));
-    g.drawText(timeStr, bounds.reduced((float)(metrics.utilityButtonWidth * 2 + metrics.margin * 3), 0),
-               Justification::centredRight);
+    g.setColour(colours["Text Colour"].withAlpha(0.58f));
+    g.drawText(timeStr, timeArea, Justification::centredRight);
 }
 
 void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
@@ -361,41 +398,121 @@ void StageView::drawPatchDisplay(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    // Large patch name
+    auto content = bounds.reduced((float)metrics.heroHorizontalInset, (float)metrics.margin * 0.5f);
+    if (content.getWidth() < 260.0f)
+        content = bounds.reduced((float)metrics.margin * 2.0f, (float)metrics.margin * 0.5f);
+
+    auto eyebrowArea = content.removeFromTop((float)metrics.heroEyebrowHeight);
+    auto eyebrowPill = eyebrowArea.withSizeKeepingCentre(juce::jmin(eyebrowArea.getWidth() * 0.7f, 520.0f),
+                                                         eyebrowArea.getHeight() - 4.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.11f));
+    g.fillRoundedRectangle(eyebrowPill, 10.0f);
+
+    const auto positionText = totalPatchCount > 0 ? String(currentPatchIndex + 1) + " / " + String(totalPatchCount)
+                                                  : String("0 / 0");
+    auto nowArea = eyebrowPill.reduced(16.0f, 0.0f);
+    auto posArea = nowArea.removeFromRight(juce::jmax(92.0f, metrics.positionFontHeight * 5.2f));
+    nowArea.removeFromRight(18.0f);
+
+    g.setColour(colours["Accent Colour"]);
+    g.setFont(fonts.getDisplayFont(metrics.eyebrowFontHeight));
+    g.drawText("NOW PLAYING", nowArea, Justification::centredRight);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.72f));
+    g.setFont(fonts.getMonoDisplayFont(metrics.positionFontHeight));
+    g.drawText(positionText, posArea, Justification::centredLeft);
+
+    const auto titleArea = content.withTrimmedBottom((float)metrics.heroNextCueHeight + metrics.progressDotSize * 3.0f);
+    const auto displayName = StageLayout::elideLabel(currentPatchName, metrics.patchNameMaxChars);
+
     g.setColour(colours["Text Colour"]);
     g.setFont(fonts.getDisplayFont(metrics.patchNameFontHeight));
+    g.drawText(displayName, titleArea, Justification::centred);
 
-    const auto displayName = StageLayout::elideLabel(currentPatchName, metrics.patchNameMaxChars);
-    const auto horizontalInset = juce::jmax((float)metrics.margin * 2.0f, (float)metrics.navButtonWidth + metrics.margin * 2.0f);
+    auto lowerArea = content.removeFromBottom((float)metrics.heroNextCueHeight + metrics.progressDotSize * 3.0f);
+    auto nextCueArea = lowerArea.removeFromTop((float)metrics.heroNextCueHeight).reduced(24.0f, 4.0f);
 
-    g.drawText(displayName, bounds.reduced(horizontalInset, 0).withTrimmedBottom(metrics.positionFontHeight * 1.6f),
-               Justification::centred);
-
-    // Next Patch Preview
     if (nextPatchName.isNotEmpty())
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.5f));
+        g.setColour(colours["Warning Colour"].withAlpha(0.12f));
+        g.fillRoundedRectangle(nextCueArea, 12.0f);
+        g.setColour(colours["Warning Colour"].withAlpha(0.5f));
+        g.drawRoundedRectangle(nextCueArea, 12.0f, 1.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.72f));
         g.setFont(fonts.getDisplayFont(metrics.nextPatchFontHeight));
-        g.drawText("NEXT: " + StageLayout::elideLabel(nextPatchName, metrics.nextPatchMaxChars),
-                   bounds.removeFromBottom(metrics.nextPatchFontHeight * 3.4f).withTrimmedBottom(metrics.nextPatchFontHeight),
-                   Justification::centredTop);
+        g.drawText("NEXT  " + StageLayout::elideLabel(nextPatchName, metrics.nextPatchMaxChars), nextCueArea,
+                   Justification::centred);
     }
     else
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.3f));
+        g.setColour(colours["Stage Panel Background"].withAlpha(0.28f));
+        g.fillRoundedRectangle(nextCueArea, 12.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.38f));
         g.setFont(fonts.getDisplayFont(metrics.nextPatchFontHeight));
-        g.drawText("(End of Set)", bounds.removeFromBottom(metrics.nextPatchFontHeight * 3.4f)
-                                       .withTrimmedBottom(metrics.nextPatchFontHeight),
-                   Justification::centredTop);
+        g.drawText("END OF SET", nextCueArea, Justification::centred);
     }
 
-    // Patch position indicator
-    if (totalPatchCount > 0)
+    drawPatchProgress(g, lowerArea);
+}
+
+void StageView::drawPatchProgress(Graphics& g, Rectangle<float> bounds)
+{
+    if (totalPatchCount <= 1)
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
+    const auto activeIndex = juce::jlimit(0, juce::jmax(0, totalPatchCount - 1), currentPatchIndex);
+
+    auto progressArea = bounds.withHeight(metrics.progressDotSize * 2.4f).withCentre(bounds.getCentre());
+
+    if (totalPatchCount > metrics.maxProgressDots)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.5f));
-        g.setFont(fonts.getMonoDisplayFont(metrics.positionFontHeight));
-        String posStr = String(currentPatchIndex + 1) + " / " + String(totalPatchCount);
-        g.drawText(posStr, bounds.withTrimmedTop(bounds.getHeight() * 0.62f), Justification::centred);
+        const auto trackWidth = juce::jmin(progressArea.getWidth() * 0.42f, 280.0f);
+        const auto trackHeight = juce::jmax(5.0f, metrics.progressDotSize * 0.42f);
+        const auto track = Rectangle<float>(progressArea.getCentreX() - trackWidth * 0.5f,
+                                            progressArea.getCentreY() - trackHeight * 0.5f, trackWidth, trackHeight);
+        const auto progress = totalPatchCount > 1 ? (float)activeIndex / (float)(totalPatchCount - 1) : 0.0f;
+
+        g.setColour(colours["Plugin Border"].withAlpha(0.28f));
+        g.fillRoundedRectangle(track, trackHeight * 0.5f);
+        g.setColour(colours["Accent Colour"]);
+        g.fillRoundedRectangle(track.withWidth(track.getWidth() * progress), trackHeight * 0.5f);
+        return;
+    }
+
+    float totalWidth = 0.0f;
+    for (int i = 0; i < totalPatchCount; ++i)
+        totalWidth += (i == activeIndex ? metrics.progressActiveWidth : metrics.progressDotSize);
+    totalWidth += (float)(totalPatchCount - 1) * metrics.progressDotGap;
+
+    auto x = progressArea.getCentreX() - totalWidth * 0.5f;
+    const auto y = progressArea.getCentreY() - metrics.progressDotSize * 0.5f;
+
+    for (int i = 0; i < totalPatchCount; ++i)
+    {
+        const auto isActive = i == activeIndex;
+        const auto isPast = i < activeIndex;
+        const auto dotWidth = isActive ? metrics.progressActiveWidth : metrics.progressDotSize;
+        const auto dot = Rectangle<float>(x, y, dotWidth, metrics.progressDotSize);
+
+        if (isActive)
+        {
+            g.setColour(colours["Accent Colour"]);
+            g.fillRoundedRectangle(dot, metrics.progressDotSize * 0.5f);
+        }
+        else if (isPast)
+        {
+            g.setColour(colours["Text Colour"].withAlpha(0.32f));
+            g.fillEllipse(dot.withWidth(metrics.progressDotSize));
+        }
+        else
+        {
+            g.setColour(colours["Plugin Border"].withAlpha(0.55f));
+            g.drawEllipse(dot.withWidth(metrics.progressDotSize), 1.2f);
+        }
+
+        x += dotWidth + metrics.progressDotGap;
     }
 }
 
@@ -405,18 +522,25 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    // Separator line
-    g.setColour(colours["Plugin Border"].withAlpha(0.3f));
-    g.drawHorizontalLine(static_cast<int>(bounds.getY()), bounds.getX() + 40, bounds.getRight() - 40);
+    auto panel = bounds.reduced((float)metrics.margin * 2.2f, (float)metrics.margin * 0.35f);
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.34f));
+    g.fillRoundedRectangle(panel, 14.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.35f));
+    g.drawRoundedRectangle(panel, 14.0f, 1.0f);
 
-    auto centreX = bounds.getCentreX();
-    auto centreY = bounds.getCentreY();
+    auto labelArea = panel.removeFromTop(juce::jmax(24.0f, metrics.tunerCentsFontHeight * 0.95f));
+    g.setColour(colours["Tuner Active Colour"].withAlpha(0.82f));
+    g.setFont(fonts.getDisplayFont(metrics.safetyFontHeight));
+    g.drawText("TUNER ACTIVE", labelArea.reduced(14.0f, 0.0f), Justification::centredLeft);
+
+    auto centreX = panel.getCentreX();
+    auto centreY = panel.getCentreY();
 
     if (tunerProcessor == nullptr || !tunerProcessor->isPitchDetected())
     {
         g.setColour(colours["Text Colour"].withAlpha(0.25f));
         g.setFont(fonts.getDisplayFont(metrics.tunerWaitingFontHeight));
-        g.drawText("Waiting for signal...", bounds, Justification::centred);
+        g.drawText("Waiting for signal...", panel, Justification::centred);
         return;
     }
 
@@ -426,12 +550,12 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 
     g.setColour(noteCol);
     g.setFont(fonts.getDisplayFont(metrics.tunerNoteFontHeight));
-    g.drawText(noteName, bounds.withTrimmedBottom(metrics.tunerCentsFontHeight * 1.8f), Justification::centred);
+    g.drawText(noteName, panel.withTrimmedBottom(metrics.tunerCentsFontHeight * 1.8f), Justification::centred);
 
     // Cents display
     g.setFont(fonts.getMonoDisplayFont(metrics.tunerCentsFontHeight));
     String centsStr = (displayedCents >= 0 ? "+" : "") + String(static_cast<int>(displayedCents)) + " cents";
-    g.drawText(centsStr, bounds.withTrimmedTop(metrics.tunerNoteFontHeight * 1.15f), Justification::centred);
+    g.drawText(centsStr, panel.withTrimmedTop(metrics.tunerNoteFontHeight * 1.15f), Justification::centred);
 
     // Simple bar indicator
     float barWidth = metrics.tunerBarWidth;
@@ -455,6 +579,37 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     g.fillEllipse(indicatorX - 8, barY - 2, 16, barHeight + 4);
 }
 
+void StageView::drawSafetyBar(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
+
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.42f));
+    g.fillRect(bounds);
+    g.setColour(colours["Plugin Border"].withAlpha(0.45f));
+    g.drawHorizontalLine(juce::roundToInt(bounds.getY()), bounds.getX(), bounds.getRight());
+
+    auto labelArea = bounds.reduced((float)metrics.margin, 0.0f).removeFromTop(metrics.meterTopOffset - 2.0f);
+    g.setFont(fonts.getDisplayFont(metrics.safetyFontHeight));
+    g.setColour(colours["Text Colour"].withAlpha(0.46f));
+    g.drawText("SAFETY BAR", labelArea.withWidth(86.0f), Justification::centredLeft);
+
+    const auto meterGroupX = metrics.meterStartX + metrics.meterLabelWidth + 6.0f;
+    auto meterLabelArea = Rectangle<float>(meterGroupX + 72.0f, labelArea.getY(),
+                                           metrics.meterWidth * 2.0f + metrics.meterSpacing, labelArea.getHeight());
+    g.setColour(colours["Text Colour"].withAlpha(0.34f));
+    g.drawText("MASTER BUS", meterLabelArea, Justification::centredLeft);
+
+    auto panicGlow = panicButton != nullptr ? panicButton->getBounds().toFloat().expanded(4.0f)
+                                            : Rectangle<float>();
+    if (!panicGlow.isEmpty())
+    {
+        g.setColour(colours["Danger Colour"].withAlpha(0.13f));
+        g.fillRoundedRectangle(panicGlow, 14.0f);
+    }
+}
+
 //==============================================================================
 void StageView::resized()
 {
@@ -465,21 +620,28 @@ void StageView::resized()
     const int utilityButtonWidth = metrics.utilityButtonWidth;
 
     // Header buttons (top right)
-    exitButton->setBounds(bounds.getWidth() - utilityButtonWidth - margin, margin, utilityButtonWidth,
+    const int headerButtonY = (metrics.headerHeight - utilityButtonHeight) / 2;
+    exitButton->setBounds(bounds.getWidth() - utilityButtonWidth - margin, headerButtonY, utilityButtonWidth,
                           utilityButtonHeight);
-    tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, margin, utilityButtonWidth,
-                                 utilityButtonHeight);
+    tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, headerButtonY,
+                                 utilityButtonWidth, utilityButtonHeight);
 
-    // Navigation buttons (sides, vertically centered)
-    const int navY = bounds.getCentreY() - metrics.navButtonHeight / 2;
+    auto performanceArea = bounds;
+    performanceArea.removeFromTop(metrics.headerHeight);
+    performanceArea.removeFromBottom(metrics.footerHeight);
+    performanceArea.removeFromBottom(metrics.tunerHeight);
+
+    // Navigation buttons (sides of the live patch area)
+    const int navY = performanceArea.getCentreY() - metrics.navButtonHeight / 2;
     prevButton->setBounds(margin, navY, metrics.navButtonWidth, metrics.navButtonHeight);
     nextButton->setBounds(bounds.getWidth() - metrics.navButtonWidth - margin, navY, metrics.navButtonWidth,
                           metrics.navButtonHeight);
 
-    // Panic button (bottom right)
+    // Panic button (bottom right safety bar)
     panicButton->setBounds(bounds.getWidth() - metrics.panicButtonWidth - margin,
-                           bounds.getHeight() - metrics.navButtonHeight - margin, metrics.panicButtonWidth,
-                           metrics.navButtonHeight);
+                           bounds.getHeight() - metrics.panicButtonHeight -
+                               juce::roundToInt((metrics.footerHeight - metrics.panicButtonHeight) * 0.5f),
+                           metrics.panicButtonWidth, metrics.panicButtonHeight);
 
     // Master gain sliders in footer area (next to VU meters)
     {
@@ -490,13 +652,13 @@ void StageView::resized()
 
         // Input slider below input VU
         int inSliderX = (int)(startX + labelW + 6.0f);
-        inputGainSlider->setBounds(inSliderX, footerY + juce::roundToInt(metrics.footerHeight * 0.42f),
+        inputGainSlider->setBounds(inSliderX, footerY + juce::roundToInt(metrics.sliderTopOffset),
                                    (int)meterW, juce::roundToInt(metrics.sliderHeight));
 
         // Output slider below output VU
         int outSliderX = (int)(startX + labelW + meterW + metrics.meterSpacing + metrics.panicButtonWidth + labelW +
                                6.0f);
-        outputGainSlider->setBounds(outSliderX, footerY + juce::roundToInt(metrics.footerHeight * 0.42f),
+        outputGainSlider->setBounds(outSliderX, footerY + juce::roundToInt(metrics.sliderTopOffset),
                                     (int)meterW, juce::roundToInt(metrics.sliderHeight));
     }
 }

@@ -36,6 +36,27 @@ TEST_CASE("Stage layout reserves non-overlapping live performance regions", "[ui
     CHECK(withoutTuner.patchAreaMinHeight > withTuner.patchAreaMinHeight);
 }
 
+TEST_CASE("Stage chrome and safety bar metrics preserve reachable controls", "[ui][regression][stage][layout]")
+{
+    const auto compact = StageLayout::calculateMetrics(760, 540, true);
+    const auto wide = StageLayout::calculateMetrics(1920, 1080, true);
+
+    CHECK(compact.topBarChipHeight < compact.headerHeight);
+    CHECK(compact.utilityButtonHeight < compact.headerHeight);
+    CHECK(compact.panicButtonHeight < compact.footerHeight);
+    CHECK(compact.sliderTopOffset + compact.sliderHeight <= compact.footerHeight);
+    CHECK(compact.meterTopOffset + compact.meterHeight * 2.0f + compact.meterChannelGap * 2.0f <
+          compact.sliderTopOffset);
+
+    CHECK(compact.heroHorizontalInset * 2 < 760);
+    CHECK(compact.progressActiveWidth > compact.progressDotSize);
+    CHECK(compact.maxProgressDots >= 6);
+
+    CHECK(wide.topBarChipWidth > compact.topBarChipWidth);
+    CHECK(wide.meterWidth > compact.meterWidth);
+    CHECK(wide.maxProgressDots >= compact.maxProgressDots);
+}
+
 TEST_CASE("Stage patch labels preserve short names and elide long names", "[ui][regression][stage][layout]")
 {
     CHECK(StageLayout::elideLabel("Clean Lead", 18) == "Clean Lead");
@@ -47,4 +68,3 @@ TEST_CASE("Stage patch labels preserve short names and elide long names", "[ui][
 
     CHECK(StageLayout::elideLabel("ABCDE", 3) == "ABC");
 }
-

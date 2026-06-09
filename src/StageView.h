@@ -94,6 +94,8 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void drawPatchDisplay(Graphics& g, Rectangle<float> bounds);
     void drawTunerDisplay(Graphics& g, Rectangle<float> bounds);
     void drawStatusBar(Graphics& g, Rectangle<float> bounds);
+    void drawSafetyBar(Graphics& g, Rectangle<float> bounds);
+    void drawPatchProgress(Graphics& g, Rectangle<float> bounds);
     String getNoteName(int midiNote) const;
     Colour getTuningColour(float cents) const;
     void updateAfterPatchChange();

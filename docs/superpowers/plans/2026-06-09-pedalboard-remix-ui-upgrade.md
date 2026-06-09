@@ -59,6 +59,11 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - Default scale starts at 75 percent.
   - Reset-to-default path added.
   - Footer layout improved for larger UI scale.
+- Stage Mode first polish pass:
+  - Native live strip added with current performance mode and clock hierarchy.
+  - Current patch, position, next/end cue, and progress dots now match the mockup's stronger stage hierarchy.
+  - Tuner and safety-bar surfaces were visually upgraded while preserving tuner, exit, prev/next, meters, gain sliders, and panic controls.
+  - Visual QA recorded in `documentation/qa/2026-06-09-stage-remix-polish`.
 - Roadmap and research:
   - Non-AI feature research recorded.
   - Scratch capture direction selected: manual, fast capture, using existing recorder backbones, capturing raw and wet simultaneously.
@@ -68,6 +73,8 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
 ### 1. Stage Mode Mockup Polish
 
 Goal: bring the Stage mockup's stronger performance hierarchy into the native stage view while preserving all existing live safety and navigation affordances.
+
+Status: First native polish pass complete. Further Stage work should only add real setlist/grid switching if backed by the app's actual patch/setlist model; do not add decorative inactive mockup tabs.
 
 Tasks:
 
@@ -169,9 +176,9 @@ Minimum checks for implementation slices:
 
 ## Immediate Next Step
 
-Start with Stage Mode Mockup Polish:
+Start with Main Graph And Chrome Polish:
 
-1. Inspect current native stage view files.
-2. Compare them against the stage mockup files.
+1. Inspect current native graph/chrome files.
+2. Compare them against `mw2-app.jsx`, `mw2-chrome.jsx`, `mw2-nodes.jsx`, and `mw2.css`.
 3. Produce a short implementation checklist from the delta.
-4. Patch native JUCE stage UI while preserving all current stage functions.
+4. Patch native JUCE graph/chrome UI while preserving all existing graph and footer functions.
