@@ -64,6 +64,12 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - Current patch, position, next/end cue, and progress dots now match the mockup's stronger stage hierarchy.
   - Tuner and safety-bar surfaces were visually upgraded while preserving tuner, exit, prev/next, meters, gain sliders, and panic controls.
   - Visual QA recorded in `documentation/qa/2026-06-09-stage-remix-polish`.
+- Main Graph first polish pass:
+  - Native graph canvas now has clearer major/minor grid hierarchy.
+  - Cable rendering gained a stable low-alpha bed and wider clipping bounds for readability in dense routing.
+  - Audio and parameter pins now have distinct shapes while preserving the existing drag/connect hit targets.
+  - Nodes gained mockup-informed accent strips plus hover, drag, and bypass cues without moving edit, mapping, bypass, delete, or plugin editor controls.
+  - Visual QA recorded in `documentation/qa/2026-06-09-main-graph-remix-polish`.
 - Roadmap and research:
   - Non-AI feature research recorded.
   - Scratch capture direction selected: manual, fast capture, using existing recorder backbones, capturing raw and wet simultaneously.
@@ -103,6 +109,8 @@ Done when:
 ### 2. Main Graph And Chrome Polish
 
 Goal: improve the main pedalboard surface using the mockup's visual language while keeping the existing graph UX intact.
+
+Status: First native polish pass complete. Further graph/chrome work should focus on real remaining usability gaps, not prototype-only decoration.
 
 Tasks:
 
@@ -176,9 +184,9 @@ Minimum checks for implementation slices:
 
 ## Immediate Next Step
 
-Start with Main Graph And Chrome Polish:
+Start with Scratch Capture Second Pass:
 
-1. Inspect current native graph/chrome files.
-2. Compare them against `mw2-app.jsx`, `mw2-chrome.jsx`, `mw2-nodes.jsx`, and `mw2.css`.
-3. Produce a short implementation checklist from the delta.
-4. Patch native JUCE graph/chrome UI while preserving all existing graph and footer functions.
+1. Inspect current native scratch capture files and recorder backbone.
+2. Compare them against `scratch-panel.jsx` and `scratch.css`.
+3. Preserve the existing fast manual record flow, destination chooser, date-stamped takes, and raw/wet capture direction.
+4. Patch only the UI gaps that make the "plug in and record within moments" workflow clearer.

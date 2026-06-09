@@ -200,18 +200,29 @@ void PluginField::paint(Graphics& g)
     g.fillRect(bounds);
 
     // === Grid pattern ===
-    float gridSize = 30.0f;
-    Colour gridCol = colours["Plugin Border"].withAlpha(0.15f);
-    g.setColour(gridCol);
+    const float gridSize = 30.0f;
+    const float majorGridSize = gridSize * 4.0f;
+    Colour gridCol = colours["Plugin Border"].withAlpha(0.10f);
+    Colour majorGridCol = colours["Accent Colour"].interpolatedWith(colours["Plugin Border"], 0.65f).withAlpha(0.13f);
 
-    // Vertical lines
+    g.setColour(gridCol);
     for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
     {
         g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
     }
 
-    // Horizontal lines
     for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
+    {
+        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+    }
+
+    g.setColour(majorGridCol);
+    for (float x = 0.0f; x < bounds.getWidth(); x += majorGridSize)
+    {
+        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
+    }
+
+    for (float y = 0.0f; y < bounds.getHeight(); y += majorGridSize)
     {
         g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
     }

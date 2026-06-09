@@ -78,8 +78,6 @@ void PluginConnection::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     Colour cableColour = paramCon ? colours["Parameter Connection"] : colours["Audio Connection"];
 
-    auto bounds = getLocalBounds().toFloat();
-
     // === Signal-based glow (DISABLED - low priority, potentially distracting) ===
     // TODO: Re-enable when true per-connection signal detection is implemented
     /*
@@ -107,7 +105,15 @@ void PluginConnection::paint(Graphics& g)
     }
     */
 
-    // === Selection glow (soft halo around selected cables) ===
+    // === Cable bed and selection glow ===
+    const float baseHaloWidth = selected ? 18.0f : 13.0f;
+    const float baseHaloAlpha = selected ? 0.28f : 0.13f;
+    g.setColour(cableColour.withAlpha(baseHaloAlpha));
+    g.strokePath(glowPath, PathStrokeType(baseHaloWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+
+    g.setColour(cableColour.darker(0.55f).withAlpha(selected ? 0.38f : 0.24f));
+    g.strokePath(glowPath, PathStrokeType(11.0f, PathStrokeType::mitered, PathStrokeType::rounded));
+
     if (selected)
     {
         melatonin::DropShadow cableGlow{cableColour.withAlpha(0.4f), 8, {0, 0}};
@@ -316,11 +322,11 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     // 2. Set bounds
     // 3. Build path by subtracting getPosition() for local coords
 
-    // Calculate bounding rectangle with 5px padding (JUCE uses 4, we use 5 for thicker cables)
+    // Calculate bounding rectangle with padding for the visible cable halo.
     auto p1 = Point<float>((float)sX, (float)sY);
     auto p2 = Point<float>((float)dX, (float)dY);
 
-    auto newBounds = Rectangle<float>(p1, p2).expanded(5.0f).getSmallestIntegerContainer();
+    auto newBounds = Rectangle<float>(p1, p2).expanded(12.0f).getSmallestIntegerContainer();
 
     // Set bounds - JUCE allows negative component positions
     setBounds(newBounds);

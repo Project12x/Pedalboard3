@@ -144,6 +144,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     pluginName = node->getProcessor()->getName();
     spdlog::debug("[PluginComponent] creating '{}'", pluginName.toStdString());
 
+    setRepaintsOnMouseActivity(true);
+
     determineSize();
 
     titleLabel = new Label("titleLabe", pluginName);
@@ -291,6 +293,13 @@ void PluginComponent::paint(Graphics& g)
     float w = (float)getWidth();
     float h = (float)getHeight();
     const float cornerRadius = 8.0f;
+    const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
+    const bool highlighted = beingDragged || isMouseOver(true);
+    const bool hasAudioPins = inputPins.size() > 0 || outputPins.size() > 0;
+    Colour accentColour = (isAudioIONode() || hasAudioPins) ? colours["Audio Connection"]
+                                                            : colours["Accent Colour"];
+    if (!hasAudioPins && paramPins.size() > 0)
+        accentColour = colours["Parameter Connection"];
 
     // === MAIN FILL (gradient for premium feel) ===
     Colour bgTop = colours["Plugin Background"].brighter(0.08f);
@@ -315,8 +324,11 @@ void PluginComponent::paint(Graphics& g)
         }
         else
         {
-            headerTop = colours["Plugin Border"].brighter(0.12f);
-            headerBottom = colours["Plugin Border"].darker(0.08f);
+            Colour base = colours["Plugin Border"].interpolatedWith(accentColour, 0.18f);
+            if (bypassed)
+                base = base.interpolatedWith(colours["Warning Colour"], 0.22f);
+            headerTop = base.brighter(0.12f);
+            headerBottom = base.darker(0.08f);
         }
         g.setGradientFill(ColourGradient(headerTop, 0, 2.0f, headerBottom, 0, headerHeight + 2.0f, false));
     }
@@ -326,6 +338,9 @@ void PluginComponent::paint(Graphics& g)
                                        false, false);
         g.fillPath(headerPath);
     }
+
+    g.setColour(accentColour.withAlpha(bypassed ? 0.38f : 0.56f));
+    g.fillRoundedRectangle(3.0f, 7.0f, 2.0f, h - 14.0f, 1.0f);
 
     // Subtle top highlight (inner bevel)
     g.setColour(colours["Text Colour"].withAlpha(0.06f));
@@ -377,6 +392,21 @@ void PluginComponent::paint(Graphics& g)
         float footerY = h - 36.0f;
         g.setColour(colours["Plugin Border"].withAlpha(0.4f));
         g.drawHorizontalLine((int)footerY, 6.0f, w - 6.0f);
+    }
+
+    if (bypassed)
+    {
+        g.setColour(colours["Warning Colour"].withAlpha(0.20f));
+        g.fillRoundedRectangle(5.0f, headerHeight + 4.0f, w - 10.0f, 3.0f, 1.5f);
+        g.setColour(colours["Warning Colour"].withAlpha(0.42f));
+        g.drawRoundedRectangle(4.0f, 4.0f, w - 8.0f, h - 8.0f, cornerRadius - 2.0f, 1.3f);
+    }
+
+    if (highlighted)
+    {
+        g.setColour(accentColour.withAlpha(beingDragged ? 0.46f : 0.24f));
+        g.drawRoundedRectangle(1.0f, 1.0f, w - 2.0f, h - 2.0f, cornerRadius + 1.0f,
+                               beingDragged ? 2.2f : 1.4f);
     }
 
     // Draw the plugin name.
@@ -765,6 +795,7 @@ void PluginComponent::buttonClicked(Button* button)
         if (bypassable)
         {
             bypassable->setBypass(bypassButton->getToggleState());
+            repaint();
         }
     }
     else if (button == deleteButton)
@@ -1571,6 +1602,9 @@ void PluginPinComponent::paint(Graphics& g)
     const float cx = 1.0f + w * 0.5f;
     const float cy = 1.0f + h * 0.5f;
     const float radius = jmin(w, h) * 0.5f;
+    const bool audioPin = !parameterPin;
+    auto pinBounds = Rectangle<float>(1.0f, 1.0f, w, h);
+    const float pinCorner = largePin ? 4.0f : 3.0f;
 
     // Get base color
     Colour baseColour = parameterPin ? ColourScheme::getInstance().colours["Parameter Connection"]
@@ -1579,25 +1613,42 @@ void PluginPinComponent::paint(Graphics& g)
     // === Hover glow (melatonin_blur) ===
     if (isMouseOver())
     {
-        Path pinCircle;
-        pinCircle.addEllipse(0.0f, 0.0f, (float)getWidth(), (float)getHeight());
+        Path pinShape;
+        if (audioPin)
+            pinShape.addRoundedRectangle(pinBounds.expanded(1.0f), pinCorner);
+        else
+            pinShape.addEllipse(0.0f, 0.0f, (float)getWidth(), (float)getHeight());
+
         melatonin::DropShadow pinGlow{baseColour.withAlpha(0.6f), 6, {0, 0}};
-        pinGlow.render(g, pinCircle);
+        pinGlow.render(g, pinShape);
     }
 
-    // === 3D Gradient sphere effect ===
+    // === 3D Gradient body ===
     ColourGradient sphereGrad(baseColour.brighter(0.4f), cx - radius * 0.3f, cy - radius * 0.3f,
                               baseColour.darker(0.3f), cx + radius * 0.5f, cy + radius * 0.5f, true);
     g.setGradientFill(sphereGrad);
-    g.fillEllipse(1, 1, w, h);
+    if (audioPin)
+        g.fillRoundedRectangle(pinBounds, pinCorner);
+    else
+        g.fillEllipse(pinBounds);
 
     // === Highlight for gloss effect ===
     g.setColour(baseColour.contrasting(0.25f));
-    g.fillEllipse(cx - radius * 0.5f, cy - radius * 0.6f, radius * 0.6f, radius * 0.4f);
+    if (audioPin)
+    {
+        auto highlightBounds = pinBounds.reduced(3.0f, 3.0f);
+        highlightBounds = highlightBounds.removeFromTop(jmax(2.0f, h * 0.26f));
+        g.fillRoundedRectangle(highlightBounds, 1.5f);
+    }
+    else
+        g.fillEllipse(cx - radius * 0.5f, cy - radius * 0.6f, radius * 0.6f, radius * 0.4f);
 
     // === Border ===
     g.setColour(baseColour.darker(0.5f));
-    g.drawEllipse(1, 1, w, h, 1.5f);
+    if (audioPin)
+        g.drawRoundedRectangle(pinBounds, pinCorner, 1.5f);
+    else
+        g.drawEllipse(pinBounds, 1.5f);
 
     // === Direction indicator (chevron) ===
     Path chevron;
