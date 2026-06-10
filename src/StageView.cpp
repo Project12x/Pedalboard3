@@ -920,9 +920,19 @@ void StageView::drawQueueFocus(Graphics& g, Rectangle<float> bounds)
             tagArea = tagArea.reduced(0.0f, 5.0f);
             g.setColour(active ? colours["Accent Colour"] : colours["Warning Colour"].withAlpha(0.13f));
             g.fillRoundedRectangle(tagArea, 8.0f);
+            auto tagText = tagArea;
+            if (active)
+            {
+                auto led = Rectangle<float>(6.0f, 6.0f).withCentre({tagArea.getX() + 11.0f, tagArea.getCentreY()});
+                g.setColour(colours["Window Background"].darker(0.45f).withAlpha(0.18f));
+                g.fillEllipse(led.expanded(4.0f));
+                g.setColour(colours["Window Background"].darker(0.45f));
+                g.fillEllipse(led);
+                tagText.removeFromLeft(12.0f);
+            }
             g.setColour(active ? colours["Window Background"].darker(0.4f) : colours["Warning Colour"]);
             g.setFont(fonts.getDisplayFont(11.0f));
-            g.drawText(active ? "LIVE" : "NEXT", tagArea, Justification::centred);
+            g.drawText(active ? "LIVE" : "NEXT", tagText, Justification::centred);
         }
 
         body.removeFromRight(8.0f);
@@ -954,6 +964,7 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
     gridTileHitboxes.clear();
+    gridBankHitboxes.clear();
 
     const int patchCount = patchNames.isEmpty() ? totalPatchCount : patchNames.size();
     auto content = bounds.reduced((float)metrics.margin * 1.35f, (float)metrics.margin * 0.9f);
@@ -967,34 +978,67 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
     const int bankEnd = juce::jmin(bankStart + bankSize, patchCount);
     const int bankNumber = patchCount > 0 ? bankStart / bankSize + 1 : 1;
     const int totalBanks = patchCount > 0 ? (patchCount + bankSize - 1) / bankSize : 1;
+    const int activeBank = juce::jmax(0, bankNumber - 1);
 
-    auto drawBankPill = [&](Rectangle<float> pill, const String& text, bool active)
+    auto drawBankPill = [&](Rectangle<float> pill, int bankIndex, bool active, bool enabled)
     {
-        g.setColour(active ? colours["Accent Colour"].withAlpha(0.16f)
-                           : colours["Stage Panel Background"].withAlpha(0.42f));
+        const auto accent = active ? colours["Accent Colour"] : colours["Text Colour"].withAlpha(0.62f);
+        g.setColour(active ? colours["Accent Colour"].withAlpha(0.17f)
+                           : colours["Stage Panel Background"].withAlpha(enabled ? 0.46f : 0.26f));
         g.fillRoundedRectangle(pill, 11.0f);
-        g.setColour((active ? colours["Accent Colour"] : colours["Plugin Border"]).withAlpha(active ? 0.72f : 0.42f));
-        g.drawRoundedRectangle(pill.reduced(0.5f), 11.0f, active ? 1.4f : 1.0f);
+        g.setColour((active ? colours["Accent Colour"] : colours["Plugin Border"]).withAlpha(active ? 0.74f : 0.40f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 11.0f, active ? 1.5f : 1.0f);
+
+        if (active)
+        {
+            auto led = Rectangle<float>(7.0f, 7.0f).withCentre({pill.getX() + 16.0f, pill.getCentreY()});
+            g.setColour(colours["Accent Colour"].withAlpha(0.16f));
+            g.fillEllipse(led.expanded(5.0f));
+            g.setColour(colours["Accent Colour"]);
+            g.fillEllipse(led);
+        }
+
         g.setFont(fonts.getDisplayFont(14.0f));
-        g.setColour((active ? colours["Accent Colour"] : colours["Text Colour"]).withAlpha(active ? 0.92f : 0.52f));
-        g.drawText(text, pill, Justification::centred);
+        g.setColour(accent.withAlpha(enabled ? 0.92f : 0.34f));
+        g.drawText(StageLayout::formatBankLabel(bankIndex).toUpperCase(),
+                   pill.withTrimmedLeft(active ? 12.0f : 0.0f), Justification::centred);
+
+        if (enabled && !active)
+            gridBankHitboxes.push_back({pill, bankIndex * bankSize});
     };
 
-    auto bankPill = bankRow.removeFromLeft(112.0f).reduced(0.0f, 3.0f);
-    drawBankPill(bankPill, "BANK " + String(bankNumber), true);
-    bankRow.removeFromLeft(8.0f);
-    drawBankPill(bankRow.removeFromLeft(112.0f).reduced(0.0f, 3.0f),
-                 totalBanks > 1 ? "OF " + String(totalBanks) : "ONE SET", false);
+    auto titlePill = bankRow.removeFromLeft(128.0f).reduced(0.0f, 3.0f);
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.38f));
+    g.fillRoundedRectangle(titlePill, 11.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.38f));
+    g.drawRoundedRectangle(titlePill.reduced(0.5f), 11.0f, 1.0f);
+    g.setFont(fonts.getDisplayFont(13.0f));
+    g.setColour(colours["Text Colour"].withAlpha(0.62f));
+    g.drawText("PATCH GRID", titlePill, Justification::centred);
+    bankRow.removeFromLeft(10.0f);
+
+    const float hintWidth = juce::jmin(520.0f, bankRow.getWidth() * 0.42f);
+    auto hintArea = bankRow.removeFromRight(hintWidth);
+    const float bankPillWidth = juce::jlimit(94.0f, 118.0f, bankRow.getWidth() * 0.22f);
+    const float bankPillGap = 8.0f;
+    const int maxBankPills = juce::jmax(1, juce::roundToInt((bankRow.getWidth() + bankPillGap) /
+                                                            (bankPillWidth + bankPillGap)));
+    const auto visibleBanks = StageLayout::collectVisibleBankIndices(activeBank, totalBanks, maxBankPills);
+
+    for (int bankIndex : visibleBanks)
+    {
+        auto bankPill = bankRow.removeFromLeft(bankPillWidth).reduced(0.0f, 3.0f);
+        drawBankPill(bankPill, bankIndex, bankIndex == activeBank, patchCount > 0);
+        bankRow.removeFromLeft(bankPillGap);
+    }
 
     const auto rangeText = patchCount > 0
                                ? String(bankStart + 1).paddedLeft('0', 2) + "-" +
                                      String(bankEnd).paddedLeft('0', 2) + " of " + String(patchCount) +
-                                     " patches - click a tile to switch"
+                                     " patches - tap a bank or tile to switch"
                                : String("No patches loaded");
     g.setFont(fonts.getDisplayFont(14.0f));
     g.setColour(colours["Text Colour"].withAlpha(0.42f));
-    auto hintArea = bankRow;
-    hintArea.removeFromRight(300.0f);
     g.drawText(rangeText, hintArea, Justification::centredRight);
 
     if (patchCount <= 0)
@@ -1057,9 +1101,19 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
             auto tag = top.removeFromRight(isActive ? 76.0f : 70.0f).reduced(0.0f, 4.0f);
             g.setColour(isActive ? colours["Accent Colour"] : colours["Warning Colour"].withAlpha(0.12f));
             g.fillRoundedRectangle(tag, 8.0f);
+            auto tagText = tag;
+            if (isActive)
+            {
+                auto led = Rectangle<float>(6.0f, 6.0f).withCentre({tag.getX() + 12.0f, tag.getCentreY()});
+                g.setColour(colours["Window Background"].darker(0.45f).withAlpha(0.18f));
+                g.fillEllipse(led.expanded(4.0f));
+                g.setColour(colours["Window Background"].darker(0.45f));
+                g.fillEllipse(led);
+                tagText.removeFromLeft(12.0f);
+            }
             g.setColour(isActive ? colours["Window Background"].darker(0.4f) : colours["Warning Colour"]);
             g.setFont(fonts.getDisplayFont(12.0f));
-            g.drawText(isActive ? "LIVE" : "NEXT", tag, Justification::centred);
+            g.drawText(isActive ? "LIVE" : "NEXT", tagText, Justification::centred);
         }
 
         const String storedName = patchIndex >= 0 && patchIndex < patchNames.size() ? patchNames[patchIndex] : String();
@@ -1302,10 +1356,22 @@ void StageView::resized()
 void StageView::mouseDown(const MouseEvent& event)
 {
     const auto point = event.position;
-    auto& hitboxes = viewMode == ViewMode::Grid ? gridTileHitboxes : setlistRowHitboxes;
     if (viewMode != ViewMode::Grid && viewMode != ViewMode::Queue)
         return;
 
+    if (viewMode == ViewMode::Grid)
+    {
+        for (const auto& hitbox : gridBankHitboxes)
+        {
+            if (hitbox.first.contains(point))
+            {
+                switchToPatchIndex(hitbox.second);
+                return;
+            }
+        }
+    }
+
+    auto& hitboxes = viewMode == ViewMode::Grid ? gridTileHitboxes : setlistRowHitboxes;
     for (const auto& hitbox : hitboxes)
     {
         if (hitbox.first.contains(point))

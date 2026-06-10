@@ -11,6 +11,8 @@
 
 #include "JuceHeader.h"
 
+#include <vector>
+
 namespace StageLayout
 {
 struct Metrics
@@ -75,4 +77,6 @@ struct Metrics
 
 Metrics calculateMetrics(int width, int height, bool showTuner);
 juce::String elideLabel(const juce::String& text, int maxChars);
+juce::String formatBankLabel(int bankIndex);
+std::vector<int> collectVisibleBankIndices(int activeBank, int totalBanks, int maxVisible);
 } // namespace StageLayout

@@ -69,6 +69,7 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - Native live strip added with current performance mode and clock hierarchy.
   - Current patch, position, next/end cue, and progress dots now match the mockup's stronger stage hierarchy.
   - Tuner and safety-bar surfaces were visually upgraded while preserving tuner, exit, prev/next, meters, gain sliders, and panic controls.
+  - Stage mode includes real Hero, Setlist, Grid, and Tuner view modes backed by the native patch list; the Grid bank rail now uses Bank A/B/C language with clickable visible bank selectors for larger sets.
   - Visual QA recorded in `documentation/qa/2026-06-09-stage-remix-polish`.
 - Main Graph first polish pass:
   - Native graph canvas now has clearer major/minor grid hierarchy.
@@ -242,6 +243,17 @@ Minimum checks for implementation slices:
 - Tests:
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed.
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed.
+- Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
+
+## 2026-06-10 Stage Grid Bank Rail Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/StageMode.jsx`, `StageGrid.jsx`, and `stage.css`.
+- Reuse mode: pattern-only / clean-room. No prototype code, assets, or fonts were copied into the native app.
+- Intended scope: existing Stage Grid workflow polish only. Bank selectors jump to the first patch in visible banks and tile hitboxes still switch directly to individual patches.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 224 existing warnings and 0 errors. The `set Path=&` prefix is required in this Codex shell because the inherited environment exposes both `PATH` and `Path`, which otherwise makes MSBuild fail before compiling.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[stage][layout]"` passed: 43 assertions in 5 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 562 assertions in 14 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 - Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
 ## Next For Agent

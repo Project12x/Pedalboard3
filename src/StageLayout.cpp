@@ -101,4 +101,29 @@ juce::String elideLabel(const juce::String& text, int maxChars)
 
     return prefix + "...";
 }
+
+juce::String formatBankLabel(int bankIndex)
+{
+    if (bankIndex >= 0 && bankIndex < 26)
+        return "Bank " + juce::String::charToString((juce_wchar)('A' + bankIndex));
+
+    return "Bank " + juce::String(bankIndex + 1);
+}
+
+std::vector<int> collectVisibleBankIndices(int activeBank, int totalBanks, int maxVisible)
+{
+    std::vector<int> banks;
+    if (totalBanks <= 0 || maxVisible <= 0)
+        return banks;
+
+    const int visibleCount = juce::jlimit(1, totalBanks, maxVisible);
+    const int clampedActive = juce::jlimit(0, totalBanks - 1, activeBank);
+    const int start = juce::jlimit(0, juce::jmax(0, totalBanks - visibleCount), clampedActive - visibleCount / 2);
+
+    banks.reserve((size_t)visibleCount);
+    for (int i = 0; i < visibleCount; ++i)
+        banks.push_back(start + i);
+
+    return banks;
+}
 } // namespace StageLayout

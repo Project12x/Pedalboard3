@@ -72,3 +72,16 @@ TEST_CASE("Stage patch labels preserve short names and elide long names", "[ui][
 
     CHECK(StageLayout::elideLabel("ABCDE", 3) == "ABC");
 }
+
+TEST_CASE("Stage grid bank labels and visible windows are deterministic", "[ui][regression][stage][layout]")
+{
+    CHECK(StageLayout::formatBankLabel(0) == "Bank A");
+    CHECK(StageLayout::formatBankLabel(2) == "Bank C");
+    CHECK(StageLayout::formatBankLabel(26) == "Bank 27");
+
+    CHECK(StageLayout::collectVisibleBankIndices(0, 0, 3).empty());
+    CHECK(StageLayout::collectVisibleBankIndices(1, 3, 5) == std::vector<int>{0, 1, 2});
+    CHECK(StageLayout::collectVisibleBankIndices(4, 8, 3) == std::vector<int>{3, 4, 5});
+    CHECK(StageLayout::collectVisibleBankIndices(0, 8, 3) == std::vector<int>{0, 1, 2});
+    CHECK(StageLayout::collectVisibleBankIndices(7, 8, 3) == std::vector<int>{5, 6, 7});
+}

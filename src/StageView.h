@@ -130,6 +130,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void switchToPatchIndex(int patchIndex);
 
     std::vector<std::pair<Rectangle<float>, int>> gridTileHitboxes;
+    std::vector<std::pair<Rectangle<float>, int>> gridBankHitboxes;
     std::vector<std::pair<Rectangle<float>, int>> setlistRowHitboxes;
 
     // Smoothing constants
