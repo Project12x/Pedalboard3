@@ -37,6 +37,26 @@ File getColourSchemeAppDataFolder()
     return JuceHelperStuff::getAppDataFolder();
 #endif
 }
+
+void ensureGraphCategoryColours(map<String, Colour>& colours, bool overrideExisting)
+{
+    auto setRole = [&colours, overrideExisting](const String& role, Colour colour)
+    {
+        if (overrideExisting || colours.find(role) == colours.end())
+            colours[role] = colour;
+    };
+
+    // Fixed processor-category palette from the Pedalboard 3 mockup M2_CAT map.
+    setRole("Graph Category Source", Colour(0xFF7DD3FC));
+    setRole("Graph Category Dynamics", Colour(0xFF4ADE80));
+    setRole("Graph Category Drive", Colour(0xFFFBBF24));
+    setRole("Graph Category Amp", Colour(0xFFFB7185));
+    setRole("Graph Category Modulation", Colour(0xFFF472D6));
+    setRole("Graph Category Delay", Colour(0xFF818CF8));
+    setRole("Graph Category Reverb", Colour(0xFF22D3EE));
+    setRole("Graph Category Meter", Colour(0xFF38BDF8));
+    setRole("Graph Category Output", Colour(0xFF7DD3FC));
+}
 } // namespace
 
 //------------------------------------------------------------------------------
@@ -111,6 +131,8 @@ void ColourScheme::loadPreset(const String& name)
         // Try loading as built-in preset
         loadBuiltInPreset(name);
     }
+
+    ensureGraphCategoryColours(colours, false);
 }
 
 //------------------------------------------------------------------------------
@@ -227,6 +249,15 @@ const std::vector<ColourRoleSpec>& ColourScheme::getSemanticColourRoles()
         {"Danger Colour", "semantic", "danger", "Destructive, panic, error, clip, and invalid states."},
         {"Warning Colour", "semantic", "warning", "Caution, transitional, and elevated-risk states."},
         {"Success Colour", "semantic", "success", "Successful, ready, armed, and valid states."},
+        {"Graph Category Source", "graph-node", "category", "Source, input, file player, and instrument node identity."},
+        {"Graph Category Dynamics", "graph-node", "category", "Dynamics processor node identity."},
+        {"Graph Category Drive", "graph-node", "category", "Drive, distortion, saturation, and fuzz node identity."},
+        {"Graph Category Amp", "graph-node", "category", "Amp, NAM, cabinet, and impulse node identity."},
+        {"Graph Category Modulation", "graph-node", "category", "Modulation processor node identity."},
+        {"Graph Category Delay", "graph-node", "category", "Delay, echo, and generic module node identity."},
+        {"Graph Category Reverb", "graph-node", "category", "Reverb and ambience node identity."},
+        {"Graph Category Meter", "graph-node", "category", "Meter, tuner, analyser, and scope node identity."},
+        {"Graph Category Output", "graph-node", "category", "Output and master node identity."},
     };
 
     return roles;
@@ -492,6 +523,8 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
     {
         return false; // Unknown preset
     }
+
+    ensureGraphCategoryColours(colours, true);
 
     presetName = name;
     return true;

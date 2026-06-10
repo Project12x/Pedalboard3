@@ -129,6 +129,10 @@ class PluginComponent : public Component,
 
     /// Returns true if this is an Audio Input or Audio Output node
     bool isAudioIONode() const;
+    /// Returns the mockup-derived visual accent for this node category.
+    Colour getVisualAccentColour() const { return visualAccentColour; }
+    /// Returns the mockup-derived visual category name for this node.
+    const String& getVisualCategoryName() const { return visualCategoryName; }
 
     /// Re-queries proc->getSize() and resizes the node + repositions internal control.
     /// Used by PedalboardProcessor controls that dynamically change size (e.g. collapse).
@@ -207,6 +211,10 @@ class PluginComponent : public Component,
 
     /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
     melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};
+
+    /// Mockup-derived category identity used for node/pin/cable visual polish.
+    Colour visualAccentColour{Colours::skyblue};
+    String visualCategoryName{"source"};
 
     // Drag animation state
     float targetDragX = 0.0f;
@@ -372,6 +380,8 @@ class PluginConnection : public Component, public ChangeListener, public Settabl
 
     ///	The bezier curve that the connection is drawn as.
     Path drawnCurve;
+    ///	Wide invisible stroked curve used for hit testing.
+    Path hitCurve;
     ///	The original bezier curve for glow rendering.
     Path glowPath;
 

@@ -106,6 +106,78 @@ bool producesMidiSafe(AudioProcessor* proc)
         return bypassable->getCachedProducesMidi();
     return proc->producesMidi();
 }
+
+struct NodeVisualStyle
+{
+    String category;
+    Colour accent;
+};
+
+bool containsAnyToken(const String& text, std::initializer_list<const char*> tokens)
+{
+    for (auto* token : tokens)
+    {
+        if (text.containsIgnoreCase(token))
+            return true;
+    }
+
+    return false;
+}
+
+Colour graphCategoryColour(const String& role)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto found = colours.find(role);
+    if (found != colours.end())
+        return found->second;
+
+    return colours["Accent Colour"];
+}
+
+NodeVisualStyle getNodeVisualStyle(AudioProcessor* processor, const String& displayName)
+{
+    PluginDescription desc;
+    if (auto* pluginInstance = dynamic_cast<AudioPluginInstance*>(processor))
+        pluginInstance->fillInPluginDescription(desc);
+
+    const String text = displayName + " " + desc.name + " " + desc.category + " " + desc.manufacturerName + " " +
+                        desc.pluginFormatName;
+
+    // Palette copied from the Pedalboard 3 mockup M2_CAT category identity map.
+    if (displayName.equalsIgnoreCase("Audio Output") || containsAnyToken(text, {"master output", "audio output"}))
+        return {"out", graphCategoryColour("Graph Category Output")};
+
+    if (displayName.equalsIgnoreCase("Audio Input") || displayName.equalsIgnoreCase("MIDI Input") ||
+        displayName.equalsIgnoreCase("OSC Input") || displayName.equalsIgnoreCase("Virtual MIDI Input") ||
+        containsAnyToken(text, {"file player", "tone generator", "source"}))
+        return {"source", graphCategoryColour("Graph Category Source")};
+
+    if (containsAnyToken(text, {"tuner", "vu meter", "meter", "analyser", "analyzer", "scope"}))
+        return {"meter", graphCategoryColour("Graph Category Meter")};
+
+    if (containsAnyToken(text, {"compressor", "limiter", "gate", "expander", "dynamics"}))
+        return {"dyn", graphCategoryColour("Graph Category Dynamics")};
+
+    if (containsAnyToken(text, {"distortion", "overdrive", "fuzz", "saturat", "clipper", "drive"}))
+        return {"drive", graphCategoryColour("Graph Category Drive")};
+
+    if (containsAnyToken(text, {"nam", "neural amp", "amp model", "amplifier", "cabinet", "cab sim", "impulse"}))
+        return {"amp", graphCategoryColour("Graph Category Amp")};
+
+    if (containsAnyToken(text, {"chorus", "flanger", "phaser", "tremolo", "vibrato", "rotary", "modulation"}))
+        return {"mod", graphCategoryColour("Graph Category Modulation")};
+
+    if (containsAnyToken(text, {"delay", "echo"}))
+        return {"delay", graphCategoryColour("Graph Category Delay")};
+
+    if (containsAnyToken(text, {"reverb", "room", "plate", "hall", "shimmer"}))
+        return {"reverb", graphCategoryColour("Graph Category Reverb")};
+
+    if (desc.isInstrument)
+        return {"source", graphCategoryColour("Graph Category Source")};
+
+    return {"module", graphCategoryColour("Graph Category Delay")};
+}
 } // namespace
 
 //------------------------------------------------------------------------------
@@ -142,6 +214,9 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
 
     pluginName = node->getProcessor()->getName();
+    const auto visualStyle = getNodeVisualStyle(node->getProcessor(), pluginName);
+    visualCategoryName = visualStyle.category;
+    visualAccentColour = visualStyle.accent;
     spdlog::debug("[PluginComponent] creating '{}'", pluginName.toStdString());
 
     setRepaintsOnMouseActivity(true);
@@ -149,7 +224,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     determineSize();
 
     titleLabel = new Label("titleLabe", pluginName);
-    titleLabel->setBounds(5, 3, getWidth() - 10, 20);
+    titleLabel->setBounds(20, 3, getWidth() - 28, 20);
     titleLabel->setInterceptsMouseClicks(false, false);
     titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
     titleLabel->setJustificationType(Justification::centredLeft);
@@ -158,7 +233,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 
     // Shift title label to make room for icon on Audio I/O nodes
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
-        titleLabel->setBounds(18, 3, getWidth() - 23, 20);
+        titleLabel->setBounds(22, 3, getWidth() - 30, 20);
 
     if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
@@ -176,7 +251,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 
         // So the audio I/O etc. don't get their titles squeezed by the
         // non-existent close button.
-        titleLabel->setBounds(5, 3, getWidth() - 17, 20);
+        titleLabel->setBounds(20, 3, getWidth() - 40, 20);
 
         // Skip edit/mappings buttons for Tuner (no external editor, no mappable params)
         if (pluginName != "Tuner")
@@ -295,41 +370,28 @@ void PluginComponent::paint(Graphics& g)
     const float cornerRadius = 8.0f;
     const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
     const bool highlighted = beingDragged || isMouseOver(true);
-    const bool hasAudioPins = inputPins.size() > 0 || outputPins.size() > 0;
-    Colour accentColour = (isAudioIONode() || hasAudioPins) ? colours["Audio Connection"]
-                                                            : colours["Accent Colour"];
-    if (!hasAudioPins && paramPins.size() > 0)
-        accentColour = colours["Parameter Connection"];
+    Colour accentColour = visualAccentColour;
 
     // === MAIN FILL (gradient for premium feel) ===
-    Colour bgTop = colours["Plugin Background"].brighter(0.08f);
-    Colour bgBottom = colours["Plugin Background"].darker(0.08f);
+    Colour bgBase = colours["Plugin Background"].interpolatedWith(accentColour, isAudioIONode() ? 0.08f : 0.045f);
+    Colour bgTop = bgBase.brighter(0.08f);
+    Colour bgBottom = bgBase.darker(0.08f);
     g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBottom, 0, h, false));
     g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
 
     // === BORDER (thicker, more defined) ===
-    g.setColour(colours["Plugin Border"]);
+    g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, highlighted ? 0.34f : 0.18f));
     g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, 2.0f);
 
     // === HEADER BAR (title area with gradient) ===
     const float headerHeight = 23.0f;
     {
         Colour headerTop, headerBottom;
-        if (isAudioIONode())
-        {
-            Colour accent = colours["Audio Connection"].withAlpha(0.6f);
-            Colour base = accent.interpolatedWith(colours["Plugin Border"], 0.3f);
-            headerTop = base.brighter(0.15f);
-            headerBottom = base.darker(0.1f);
-        }
-        else
-        {
-            Colour base = colours["Plugin Border"].interpolatedWith(accentColour, 0.18f);
-            if (bypassed)
-                base = base.interpolatedWith(colours["Warning Colour"], 0.22f);
-            headerTop = base.brighter(0.12f);
-            headerBottom = base.darker(0.08f);
-        }
+        Colour base = colours["Plugin Border"].interpolatedWith(accentColour, isAudioIONode() ? 0.42f : 0.30f);
+        if (bypassed)
+            base = base.interpolatedWith(colours["Warning Colour"], 0.22f);
+        headerTop = base.brighter(0.14f);
+        headerBottom = base.darker(0.10f);
         g.setGradientFill(ColourGradient(headerTop, 0, 2.0f, headerBottom, 0, headerHeight + 2.0f, false));
     }
     {
@@ -337,6 +399,21 @@ void PluginComponent::paint(Graphics& g)
         headerPath.addRoundedRectangle(2.0f, 2.0f, w - 4.0f, headerHeight, cornerRadius, cornerRadius, true, true,
                                        false, false);
         g.fillPath(headerPath);
+    }
+
+    {
+        const bool showHeaderDot = !isAudioIONode();
+        const float dotRadius = showHeaderDot ? 4.0f : 3.0f;
+        const float dotX = showHeaderDot ? 11.0f : w - 13.0f;
+        const float dotY = 13.5f;
+        Path dot;
+        dot.addEllipse(dotX - dotRadius, dotY - dotRadius, dotRadius * 2.0f, dotRadius * 2.0f);
+        melatonin::DropShadow dotGlow{accentColour.withAlpha(bypassed ? 0.30f : 0.55f), 5, {0, 0}};
+        dotGlow.render(g, dot);
+        g.setColour(accentColour.withAlpha(bypassed ? 0.48f : 0.94f));
+        g.fillPath(dot);
+        g.setColour(colours["Text Colour"].withAlpha(0.18f));
+        g.drawEllipse(dotX - dotRadius, dotY - dotRadius, dotRadius * 2.0f, dotRadius * 2.0f, 0.8f);
     }
 
     g.setColour(accentColour.withAlpha(bypassed ? 0.38f : 0.56f));
@@ -361,9 +438,9 @@ void PluginComponent::paint(Graphics& g)
         std::unique_ptr<Drawable> icon;
 
         if (pluginName == "Audio Input")
-            icon = iconManager.getMicIcon(colours["Text Colour"]);
+            icon = iconManager.getMicIcon(accentColour.brighter(0.18f));
         else
-            icon = iconManager.getSpeakerIcon(colours["Text Colour"]);
+            icon = iconManager.getSpeakerIcon(accentColour.brighter(0.18f));
 
         if (icon)
             icon->drawWithin(g, Rectangle<float>(iconX, iconY, iconSize, iconSize), RectanglePlacement::centred, 1.0f);
@@ -837,7 +914,11 @@ void PluginComponent::labelTextChanged(Label* label)
 
     // Reset the Component's size/layout.
     determineSize(true);
-    titleLabel->setBounds(5, 3, getWidth() - 17, 20);
+    {
+        const int titleLeft = isAudioIONode() ? 22 : 20;
+        const int titleRightInset = deleteButton ? 24 : 8;
+        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+    }
     if (deleteButton)
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
     if (bypassButton)
@@ -1246,6 +1327,11 @@ bool PluginComponent::isAudioIONode() const
 void PluginComponent::updateNodeSize()
 {
     determineSize();
+    {
+        const int titleLeft = isAudioIONode() ? 22 : 20;
+        const int titleRightInset = deleteButton ? 24 : 8;
+        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+    }
 
     // Reposition bottom buttons after size change
     if (editButton)
@@ -1346,6 +1432,11 @@ void PluginComponent::refreshPins()
 
     // Recalculate size and recreate pins
     determineSize();
+    {
+        const int titleLeft = isAudioIONode() ? 22 : 20;
+        const int titleRightInset = deleteButton ? 24 : 8;
+        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+    }
     createPins();
 
     // Resync the BypassableInstance wrapper's channel count when a
@@ -1605,10 +1696,15 @@ void PluginPinComponent::paint(Graphics& g)
     const bool audioPin = !parameterPin;
     auto pinBounds = Rectangle<float>(1.0f, 1.0f, w, h);
     const float pinCorner = largePin ? 4.0f : 3.0f;
+    auto& colours = ColourScheme::getInstance().colours;
 
     // Get base color
-    Colour baseColour = parameterPin ? ColourScheme::getInstance().colours["Parameter Connection"]
-                                     : ColourScheme::getInstance().colours["Audio Connection"];
+    Colour ownerAccent = colours["Audio Connection"];
+    if (auto* owner = dynamic_cast<PluginComponent*>(getParentComponent()))
+        ownerAccent = owner->getVisualAccentColour();
+
+    Colour baseColour = parameterPin ? colours["Parameter Connection"].interpolatedWith(ownerAccent, 0.18f)
+                                     : ownerAccent.interpolatedWith(colours["Audio Connection"], 0.35f);
 
     // === Hover glow (melatonin_blur) ===
     if (isMouseOver())

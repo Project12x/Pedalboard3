@@ -76,7 +76,18 @@ PluginConnection::~PluginConnection()
 void PluginConnection::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    Colour cableColour = paramCon ? colours["Parameter Connection"] : colours["Audio Connection"];
+    Colour sourceAccent = colours["Audio Connection"];
+    Colour destAccent = colours["Audio Connection"];
+
+    if (auto* sourceComp = source != nullptr ? dynamic_cast<PluginComponent*>(source->getParentComponent()) : nullptr)
+        sourceAccent = sourceComp->getVisualAccentColour();
+    if (auto* destComp =
+            destination != nullptr ? dynamic_cast<PluginComponent*>(destination->getParentComponent()) : nullptr)
+        destAccent = destComp->getVisualAccentColour();
+
+    Colour cableColour = paramCon ? colours["Parameter Connection"]
+                                  : sourceAccent.interpolatedWith(destAccent, 0.48f)
+                                        .interpolatedWith(colours["Audio Connection"], 0.24f);
 
     // === Signal-based glow (DISABLED - low priority, potentially distracting) ===
     // TODO: Re-enable when true per-connection signal detection is implemented
@@ -105,24 +116,23 @@ void PluginConnection::paint(Graphics& g)
     }
     */
 
-    // === Cable bed and selection glow ===
-    const float baseHaloWidth = selected ? 18.0f : 13.0f;
-    const float baseHaloAlpha = selected ? 0.28f : 0.13f;
-    g.setColour(cableColour.withAlpha(baseHaloAlpha));
-    g.strokePath(glowPath, PathStrokeType(baseHaloWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+    // === Cable bed, glow, and wire ===
+    const float softGlowWidth = selected ? 22.0f : 17.0f;
+    const float softGlowAlpha = selected ? 0.32f : 0.18f;
+    g.setColour(cableColour.withAlpha(softGlowAlpha));
+    g.strokePath(glowPath, PathStrokeType(softGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
 
-    g.setColour(cableColour.darker(0.55f).withAlpha(selected ? 0.38f : 0.24f));
-    g.strokePath(glowPath, PathStrokeType(11.0f, PathStrokeType::mitered, PathStrokeType::rounded));
+    melatonin::DropShadow cableGlow{cableColour.withAlpha(selected ? 0.42f : 0.22f), selected ? 10 : 6, {0, 0}};
+    cableGlow.render(g, glowPath);
 
-    if (selected)
-    {
-        melatonin::DropShadow cableGlow{cableColour.withAlpha(0.4f), 8, {0, 0}};
-        cableGlow.render(g, glowPath);
-    }
+    g.setColour(cableColour.darker(0.58f).withAlpha(selected ? 0.42f : 0.28f));
+    g.strokePath(glowPath, PathStrokeType(selected ? 10.0f : 8.0f, PathStrokeType::mitered, PathStrokeType::rounded));
 
     // === Gradient fill from source to destination (bidirectional) ===
-    Colour startCol = cableColour.brighter(selected ? 0.6f : 0.25f);
-    Colour endCol = cableColour.darker(selected ? 0.0f : 0.15f);
+    Colour startCol = paramCon ? colours["Parameter Connection"].brighter(selected ? 0.55f : 0.24f)
+                               : sourceAccent.brighter(selected ? 0.55f : 0.24f);
+    Colour endCol = paramCon ? colours["Parameter Connection"].darker(selected ? 0.0f : 0.08f)
+                             : destAccent.brighter(selected ? 0.30f : 0.06f);
 
     // Use actual start/end points from the bezier curve for proper bidirectional gradient
     Point<float> gradStart = glowPath.getBounds().getTopLeft();
@@ -135,6 +145,21 @@ void PluginConnection::paint(Graphics& g)
     // === Thin highlight stroke for depth ===
     g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.12f));
     g.strokePath(glowPath, PathStrokeType(1.0f, PathStrokeType::mitered, PathStrokeType::rounded));
+
+    if (selected && destination != nullptr)
+    {
+        const float pathLength = glowPath.getLength();
+        Point<float> mid = glowPath.getPointAlongPath(pathLength * 0.5f);
+        auto bubble = Rectangle<float>(mid.x - 7.0f, mid.y - 7.0f, 14.0f, 14.0f);
+        g.setColour(colours["Window Background"].withAlpha(0.86f));
+        g.fillEllipse(bubble);
+        g.setColour(cableColour.withAlpha(0.90f));
+        g.drawEllipse(bubble, 1.2f);
+
+        auto xBounds = bubble.reduced(4.2f);
+        g.drawLine(xBounds.getX(), xBounds.getY(), xBounds.getRight(), xBounds.getBottom(), 1.4f);
+        g.drawLine(xBounds.getRight(), xBounds.getY(), xBounds.getX(), xBounds.getBottom(), 1.4f);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -173,7 +198,7 @@ bool PluginConnection::hitTest(int x, int y)
 {
     bool retval = false;
 
-    if (drawnCurve.contains((float)x, (float)y))
+    if (hitCurve.contains((float)x, (float)y))
     {
         // Make sure clicking the source pin doesn't select this connection.
         if (x > 10)
@@ -326,7 +351,7 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     auto p1 = Point<float>((float)sX, (float)sY);
     auto p2 = Point<float>((float)dX, (float)dY);
 
-    auto newBounds = Rectangle<float>(p1, p2).expanded(12.0f).getSmallestIntegerContainer();
+    auto newBounds = Rectangle<float>(p1, p2).expanded(18.0f).getSmallestIntegerContainer();
 
     // Set bounds - JUCE allows negative component positions
     setBounds(newBounds);
@@ -350,7 +375,9 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     // Store for glow rendering
     glowPath = tempPath;
 
-    // Create stroked path for hit testing and rendering
-    PathStrokeType drawnType(9.0f, PathStrokeType::mitered, PathStrokeType::rounded);
+    // Create separate stroked paths for rendering and forgiving hit testing.
+    PathStrokeType drawnType(5.0f, PathStrokeType::mitered, PathStrokeType::rounded);
     drawnType.createStrokedPath(drawnCurve, tempPath);
+    PathStrokeType hitType(18.0f, PathStrokeType::mitered, PathStrokeType::rounded);
+    hitType.createStrokedPath(hitCurve, tempPath);
 }
