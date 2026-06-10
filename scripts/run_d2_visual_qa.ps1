@@ -332,6 +332,12 @@ function Get-ProcessWindows {
     }
 }
 
+function Write-CaptureProgress {
+    param([string]$Message)
+
+    Write-Host ("[visual-qa] {0}" -f $Message)
+}
+
 function Find-QaWindow {
     param(
         [System.Diagnostics.Process]$Process,
@@ -420,6 +426,7 @@ $dialogSpecs = @(
     @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") },
     @{ Name = "scratch-panel"; Title = "Scratch Capture"; Arguments = @("--visual-qa-scratch-panel") }
 )
+$scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -contains $_.Name })
 
 try {
     foreach ($theme in $themes) {
@@ -433,11 +440,13 @@ try {
 
             $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
             $path = Join-Path $outputDir ("theme-{0}-main.png" -f $safeTheme)
+            Write-CaptureProgress ("theme {0} main" -f $theme)
             Capture-Window -Handle $session.Handle -Path $path -CaptureWidth 1280 -CaptureHeight 820
             $captures.Add([pscustomobject]@{ Name = "theme-$safeTheme-main"; Path = $path }) | Out-Null
 
             if ($theme -eq "Midnight") {
                 $densePath = Join-Path $outputDir "workflow-dense-graph.png"
+                Write-CaptureProgress "workflow dense graph"
                 Capture-Window -Handle $session.Handle -Path $densePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-dense-graph"; Path = $densePath }) | Out-Null
 
@@ -446,6 +455,7 @@ try {
 
                 $stagePath = Join-Path $outputDir "workflow-stage-mode-before-switch.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage")
+                Write-CaptureProgress "workflow stage before switch"
                 Capture-Window -Handle $session.Handle -Path $stagePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-before-switch"; Path = $stagePath }) | Out-Null
 
@@ -454,6 +464,7 @@ try {
 
                 $stageQueuePath = Join-Path $outputDir "workflow-stage-mode-queue.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-queue")
+                Write-CaptureProgress "workflow stage queue"
                 Capture-Window -Handle $session.Handle -Path $stageQueuePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-queue"; Path = $stageQueuePath }) | Out-Null
 
@@ -462,6 +473,7 @@ try {
 
                 $stageGridPath = Join-Path $outputDir "workflow-stage-mode-grid.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-grid")
+                Write-CaptureProgress "workflow stage grid"
                 Capture-Window -Handle $session.Handle -Path $stageGridPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-grid"; Path = $stageGridPath }) | Out-Null
 
@@ -470,6 +482,7 @@ try {
 
                 $stageTunerPath = Join-Path $outputDir "workflow-stage-mode-tuner.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-tuner")
+                Write-CaptureProgress "workflow stage tuner"
                 Capture-Window -Handle $session.Handle -Path $stageTunerPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-tuner"; Path = $stageTunerPath }) | Out-Null
 
@@ -478,6 +491,7 @@ try {
 
                 $stageAfterSwitchPath = Join-Path $outputDir "workflow-stage-mode-after-patch-next.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch", "--visual-qa-stage")
+                Write-CaptureProgress "workflow stage after patch next"
                 Capture-Window -Handle $session.Handle -Path $stageAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-after-patch-next"; Path = $stageAfterSwitchPath }) | Out-Null
 
@@ -486,6 +500,7 @@ try {
 
                 $mainAfterSwitchPath = Join-Path $outputDir "workflow-main-after-patch-next.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch")
+                Write-CaptureProgress "workflow main after patch next"
                 Capture-Window -Handle $session.Handle -Path $mainAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-main-after-patch-next"; Path = $mainAfterSwitchPath }) | Out-Null
 
@@ -494,6 +509,7 @@ try {
 
                 $collapsedKeyboardPath = Join-Path $outputDir "workflow-main-keyboard-collapsed.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch", "--visual-qa-keyboard-collapsed")
+                Write-CaptureProgress "workflow keyboard collapsed"
                 Capture-Window -Handle $session.Handle -Path $collapsedKeyboardPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-main-keyboard-collapsed"; Path = $collapsedKeyboardPath }) | Out-Null
             }
@@ -518,6 +534,7 @@ try {
                 foreach ($size in $scaledFooterCaptureSizes) {
                     $captureName = "workflow-scaled-footer-{0}-{1}" -f $scale, $size.Name
                     $path = Join-Path $outputDir ("{0}.png" -f $captureName)
+                    Write-CaptureProgress $captureName
                     Capture-Window -Handle $session.Handle -Path $path -CaptureWidth $size.Width -CaptureHeight $size.Height
                     $captures.Add([pscustomobject]@{
                         Name = $captureName
@@ -550,6 +567,7 @@ try {
                 $safeTheme = $theme.ToLowerInvariant().Replace(" ", "-")
                 $dialogHandle = Find-QaWindow -Process $session.Process -Title $dialog.Title
                 $path = Join-Path $outputDir ("dialog-{0}-{1}.png" -f $dialog.Name, $safeTheme)
+                Write-CaptureProgress ("dialog {0} {1}" -f $dialog.Name, $theme)
                 Capture-Window -Handle $dialogHandle -Path $path
                 $captures.Add([pscustomobject]@{ Name = "dialog-$($dialog.Name)-$safeTheme"; Path = $path }) | Out-Null
             }
@@ -563,7 +581,7 @@ try {
 
     if ($CaptureScaledDialogMatrix) {
         foreach ($scale in $scaledDialogScales) {
-            foreach ($dialog in $dialogSpecs) {
+            foreach ($dialog in $scaledDialogSpecs) {
                 foreach ($size in $scaledDialogCaptureSizes) {
                     $session = $null
                     try {
@@ -576,6 +594,7 @@ try {
                         $dialogHandle = Find-QaWindow -Process $session.Process -Title $dialog.Title
                         $captureName = "workflow-scaled-dialog-{0}-{1}-{2}" -f $dialog.Name, $scale, $size.Name
                         $path = Join-Path $outputDir ("{0}.png" -f $captureName)
+                        Write-CaptureProgress $captureName
                         Capture-Window -Handle $dialogHandle -Path $path -CaptureWidth $size.Width -CaptureHeight $size.Height
                         $captures.Add([pscustomobject]@{
                             Name = $captureName

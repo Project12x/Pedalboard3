@@ -362,3 +362,31 @@ TEST_CASE("Visual QA gate covers scaled dialog breakpoints and surfaces", "[ui][
         REQUIRE_FALSE(surface.empty());
     }
 }
+
+TEST_CASE("Visual QA script keeps scaled dialog matrix scoped to documented surfaces",
+          "[ui][regression][visual][source]")
+{
+    const auto source = loadSourceFile("scripts/run_d2_visual_qa.ps1");
+    REQUIRE(source.has_value());
+
+    const auto scaledSurfaceDeclaration = source->find("$scaledDialogSurfaces = @(");
+    REQUIRE(scaledSurfaceDeclaration != std::string::npos);
+
+    const auto scaledSurfaceDeclarationEnd = source->find(")", scaledSurfaceDeclaration);
+    REQUIRE(scaledSurfaceDeclarationEnd != std::string::npos);
+
+    const auto scaledSurfaceList = source->substr(
+        scaledSurfaceDeclaration, scaledSurfaceDeclarationEnd - scaledSurfaceDeclaration);
+
+    for (auto surface : requiredScaledDialogSurfaces)
+    {
+        INFO("surface: " << surface);
+        const auto quotedSurface = "\"" + std::string{surface} + "\"";
+        CHECK(scaledSurfaceList.find(quotedSurface) != std::string::npos);
+    }
+
+    CHECK(scaledSurfaceList.find("scratch-panel") == std::string::npos);
+    CHECK(source->find("$scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -contains $_.Name })") !=
+          std::string::npos);
+    CHECK(source->find("foreach ($dialog in $scaledDialogSpecs)") != std::string::npos);
+}
