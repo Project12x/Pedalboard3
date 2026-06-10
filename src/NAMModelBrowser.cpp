@@ -978,9 +978,9 @@ int IRListModel::getNumRows()
 
 void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
-    auto& colours = ColourScheme::getInstance().colours;
     const auto palette = makeBrowserPalette();
-    const int margin = 6;
+    const bool compact = width < 300 || height <= 48;
+    const int margin = compact ? 5 : 6;
     const float cornerRadius = 6.0f;
     Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
                                 static_cast<float>(height - 4));
@@ -1018,13 +1018,17 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& ir = allFiles[filteredIndices[rowNumber]];
-        const int textX = margin + 52;
-        const int badgeWidth = 50;
-        const int badgeHeight = 18;
-        const int badgeX = width - margin - badgeWidth - 8;
+        const int glyphSize = compact ? 26 : 30;
+        const int textX = margin + (compact ? 42 : 52);
+        const int badgeWidth = compact ? 46 : 50;
+        const int badgeHeight = compact ? 17 : 18;
+        const bool showDurationBadge = width >= (compact ? 235 : 250);
+        const int badgeX = showDurationBadge ? width - margin - badgeWidth - 8 : width - margin - 8;
         const Colour irAccent = palette.accent2;
 
-        drawIRGlyph(g, Rectangle<float>((float)(margin + 10), (height - 30.0f) * 0.5f, 30.0f, 30.0f), irAccent,
+        drawIRGlyph(g, Rectangle<float>((float)(margin + (compact ? 8 : 10)),
+                                        (height - static_cast<float>(glyphSize)) * 0.5f,
+                                        static_cast<float>(glyphSize), static_cast<float>(glyphSize)), irAccent,
                     rowIsSelected);
 
         // Duration badge
@@ -1037,7 +1041,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
                 durationText = String(static_cast<int>(ir.durationSeconds * 1000)) + "ms";
         }
 
-        if (durationText.isNotEmpty())
+        if (durationText.isNotEmpty() && showDurationBadge)
         {
             Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(badgeWidth), static_cast<float>(badgeHeight));
@@ -1054,8 +1058,11 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
 
         // IR name
         g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
-        g.setFont(FontManager::getInstance().getBodyBoldFont());
-        g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2, Justification::centredLeft, true);
+        g.setFont(compact ? FontManager::getInstance().getBodyBoldFont().withHeight(12.0f)
+                          : FontManager::getInstance().getBodyBoldFont());
+        const int nameHeight = compact ? jmax(18, height / 2) : height / 2;
+        g.drawText(String(ir.name), textX, compact ? 5 : 4, badgeX - textX - 8, nameHeight,
+                   Justification::centredLeft, true);
 
         // Sample rate and channels on bottom line
         String details;
@@ -1071,9 +1078,9 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         if (details.isNotEmpty())
         {
             g.setColour(palette.text.withAlpha(0.5f));
-            g.setFont(FontManager::getInstance().getMonoFont(11.0f));
-            g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4, Justification::centredLeft,
-                       true);
+            g.setFont(FontManager::getInstance().getMonoFont(compact ? 10.0f : 11.0f));
+            g.drawText(details, textX, compact ? height / 2 - 1 : height / 2, badgeX - textX - 8,
+                       height / 2 - (compact ? 2 : 4), Justification::centredLeft, true);
         }
     }
 
@@ -3238,6 +3245,20 @@ void IRBrowserComponent::paint(Graphics& g)
 {
     const auto palette = makeBrowserPalette();
     auto bounds = getLocalBounds().toFloat();
+    const bool compactLayout = getWidth() < 620 || getHeight() < 500;
+    const bool shortLayout = getHeight() < 430;
+    const int outerPadding = compactLayout ? 10 : 12;
+    const int titleHeight = compactLayout ? 30 : 32;
+    const int headerGap = compactLayout ? 6 : 8;
+    const int searchHeight = compactLayout ? 30 : 32;
+    const int contentGap = compactLayout ? 8 : 12;
+    const int statusHeight = compactLayout ? 18 : 20;
+    const int bottomGap = compactLayout ? 6 : 8;
+    const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
+    const int detailsInset = compactLayout ? 6 : 8;
+    const float previewHeight = shortLayout ? 58.0f : (compactLayout ? 70.0f : 86.0f);
+    const bool showPreviewGlyph = !compactLayout || detailsWidth >= 190;
+    const bool showLocalChip = !compactLayout || detailsWidth >= 200;
 
     // Gradient background
     ColourGradient bg(palette.top, 0.0f, 0.0f, palette.bottom, 0.0f, bounds.getHeight(), false);
@@ -3254,7 +3275,9 @@ void IRBrowserComponent::paint(Graphics& g)
     }
 
     // Header faceplate with gradient
-    Rectangle<float> headerArea(12.0f, 10.0f, bounds.getWidth() - 24.0f, 44.0f);
+    Rectangle<float> headerArea(static_cast<float>(outerPadding), static_cast<float>(outerPadding - 2),
+                                bounds.getWidth() - static_cast<float>(outerPadding * 2),
+                                static_cast<float>(titleHeight + (compactLayout ? 10 : 12)));
     ColourGradient headerGradient(palette.face2, headerArea.getX(), headerArea.getY(), palette.face,
                                   headerArea.getX(), headerArea.getBottom(), false);
     g.setGradientFill(headerGradient);
@@ -3262,23 +3285,24 @@ void IRBrowserComponent::paint(Graphics& g)
     g.setColour(palette.edge);
     g.drawRoundedRectangle(headerArea.reduced(0.5f), 9.0f, 1.0f);
     g.setColour(palette.accent2.withAlpha(0.7f));
-    g.drawLine(headerArea.getX() + 12.0f, headerArea.getBottom() - 7.0f, headerArea.getX() + 145.0f,
+    g.drawLine(headerArea.getX() + 12.0f, headerArea.getBottom() - 7.0f,
+               jmin(headerArea.getX() + 145.0f, headerArea.getRight() - 12.0f),
                headerArea.getBottom() - 7.0f, 2.0f);
 
     // Header bottom separator
     g.setColour(palette.edge.withAlpha(0.45f));
-    g.drawHorizontalLine(62, 16, bounds.getWidth() - 16);
+    g.drawHorizontalLine(outerPadding + titleHeight + headerGap + 2, outerPadding + 4, bounds.getWidth() - outerPadding - 4);
 
     // Details panel and list well. Keep this geometry aligned with resized().
-    auto contentBounds = getLocalBounds().reduced(12);
-    contentBounds.removeFromTop(32);
-    contentBounds.removeFromTop(8);
-    contentBounds.removeFromTop(32);
-    contentBounds.removeFromTop(12);
-    contentBounds.removeFromBottom(20);
-    contentBounds.removeFromBottom(8);
-    auto detailsArea = contentBounds.removeFromRight(210).reduced(8);
-    contentBounds.removeFromRight(12);
+    auto contentBounds = getLocalBounds().reduced(outerPadding);
+    contentBounds.removeFromTop(titleHeight);
+    contentBounds.removeFromTop(headerGap);
+    contentBounds.removeFromTop(searchHeight);
+    contentBounds.removeFromTop(contentGap);
+    contentBounds.removeFromBottom(statusHeight);
+    contentBounds.removeFromBottom(bottomGap);
+    auto detailsArea = contentBounds.removeFromRight(detailsWidth).reduced(detailsInset);
+    contentBounds.removeFromRight(compactLayout ? 8 : 12);
     auto listArea = contentBounds.reduced(4);
 
     g.setColour(palette.inset);
@@ -3302,8 +3326,8 @@ void IRBrowserComponent::paint(Graphics& g)
 
     const auto* selectedIR = irList ? listModel.getFileAt(irList->getSelectedRow()) : nullptr;
     const bool selectedIRReady = selectedIR != nullptr && isReadableIRFile(*selectedIR);
-    auto previewArea = detailsArea.toFloat().reduced(10.0f);
-    previewArea = previewArea.removeFromTop(86.0f);
+    auto previewArea = detailsArea.toFloat().reduced(compactLayout ? 7.0f : 10.0f);
+    previewArea = previewArea.removeFromTop(previewHeight);
     g.setColour(selectedIR ? palette.accent2.withAlpha(selectedIRReady ? 0.12f : 0.08f)
                            : palette.text.withAlpha(0.045f));
     g.fillRoundedRectangle(previewArea, 9.0f);
@@ -3311,14 +3335,20 @@ void IRBrowserComponent::paint(Graphics& g)
                            : palette.edge.withAlpha(0.42f));
     g.drawRoundedRectangle(previewArea.reduced(0.5f), 9.0f, 1.0f);
 
-    auto glyphArea = previewArea.removeFromLeft(52.0f).withSizeKeepingCentre(40.0f, 40.0f);
-    drawIRGlyph(g, glyphArea, selectedIRReady ? palette.accent2 : palette.accent, selectedIR != nullptr);
+    if (showPreviewGlyph)
+    {
+        auto glyphArea = previewArea.removeFromLeft(compactLayout ? 42.0f : 52.0f)
+                             .withSizeKeepingCentre(compactLayout ? 30.0f : 40.0f, compactLayout ? 30.0f : 40.0f);
+        drawIRGlyph(g, glyphArea, selectedIRReady ? palette.accent2 : palette.accent, selectedIR != nullptr);
+    }
 
-    auto previewText = previewArea.reduced(4.0f, 7.0f);
-    auto chipRow = previewText.removeFromBottom(20.0f);
-    g.setFont(FontManager::getInstance().getBodyBoldFont());
+    auto previewText = previewArea.reduced(4.0f, compactLayout ? 5.0f : 7.0f);
+    auto chipRow = previewText.removeFromBottom(compactLayout ? 18.0f : 20.0f);
+    g.setFont(compactLayout ? FontManager::getInstance().getBodyBoldFont().withHeight(12.0f)
+                            : FontManager::getInstance().getBodyBoldFont());
     g.setColour(selectedIR ? palette.text : palette.text.withAlpha(0.54f));
-    g.drawText(selectedIR ? String(selectedIR->name) : String("Select an IR"), previewText.removeFromTop(24.0f),
+    g.drawText(selectedIR ? String(selectedIR->name) : String("Select an IR"),
+               previewText.removeFromTop(compactLayout ? 18.0f : 24.0f),
                Justification::centredLeft, true);
 
     g.setFont(FontManager::getInstance().getCaptionFont());
@@ -3330,12 +3360,15 @@ void IRBrowserComponent::paint(Graphics& g)
                     selectedIR ? (selectedIRReady ? "READY" : "MISSING") : "EMPTY",
                     selectedIR ? (selectedIRReady ? palette.led : palette.accent) : palette.text.withAlpha(0.45f),
                     selectedIR != nullptr);
-    chipRow.removeFromLeft(6.0f);
-    drawBrowserChip(g, chipRow.removeFromLeft(56.0f), "LOCAL", palette.accent2, selectedIR != nullptr);
+    if (showLocalChip)
+    {
+        chipRow.removeFromLeft(6.0f);
+        drawBrowserChip(g, chipRow.removeFromLeft(56.0f), "LOCAL", palette.accent2, selectedIR != nullptr);
+    }
 
     auto drawDetailRowBacking = [&](Label* label, Label* value, int rowIndex)
     {
-        if (label == nullptr || value == nullptr)
+        if (label == nullptr || value == nullptr || !label->isVisible() || !value->isVisible())
             return;
 
         auto row = label->getBounds().getUnion(value->getBounds()).toFloat().expanded(5.0f, 2.0f);
@@ -3359,11 +3392,12 @@ void IRBrowserComponent::paint(Graphics& g)
     }
 
     // Status bar background
-    Rectangle<float> statusArea(0, bounds.getHeight() - 30, bounds.getWidth(), 30);
+    const float statusStripHeight = compactLayout ? 26.0f : 30.0f;
+    Rectangle<float> statusArea(0, bounds.getHeight() - statusStripHeight, bounds.getWidth(), statusStripHeight);
     g.setColour(palette.bottom.darker(0.08f));
     g.fillRect(statusArea);
     g.setColour(palette.edge);
-    g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - 30), 0, bounds.getWidth());
+    g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - statusStripHeight), 0, bounds.getWidth());
 }
 
 void IRBrowserComponent::paintOverChildren(Graphics& g)
@@ -3388,50 +3422,96 @@ void IRBrowserComponent::paintOverChildren(Graphics& g)
 
 void IRBrowserComponent::resized()
 {
-    auto bounds = getLocalBounds().reduced(12);
+    const bool compactLayout = getWidth() < 620 || getHeight() < 500;
+    const bool shortLayout = getHeight() < 430;
+    const int outerPadding = compactLayout ? 10 : 12;
+    const int titleHeight = compactLayout ? 30 : 32;
+    const int headerGap = compactLayout ? 6 : 8;
+    const int searchHeight = compactLayout ? 30 : 32;
+    const int contentGap = compactLayout ? 8 : 12;
+    const int statusHeight = compactLayout ? 18 : 20;
+    const int bottomGap = compactLayout ? 6 : 8;
+    const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
+    const int detailsInset = compactLayout ? 6 : 8;
+    const int previewReserved = shortLayout ? 68 : (compactLayout ? 82 : 96);
+    const int rowHeight = compactLayout ? 20 : 22;
+    const int rowGap = compactLayout ? 3 : 4;
+    const int labelWidth = compactLayout ? 62 : 76;
+
+    titleLabel->setFont(compactLayout ? FontManager::getInstance().getBodyBoldFont()
+                                      : FontManager::getInstance().getSubheadingFont());
+    searchBox->setFont(compactLayout ? FontManager::getInstance().getBodyFont()
+                                     : FontManager::getInstance().getSubheadingFont());
+    irList->setRowHeight(compactLayout ? 46 : 52);
+
+    auto bounds = getLocalBounds().reduced(outerPadding);
 
     // Title row (inside header area)
-    auto titleRow = bounds.removeFromTop(32);
-    titleLabel->setBounds(titleRow.removeFromLeft(120));
-    closeButton->setBounds(titleRow.removeFromRight(65));
-    titleRow.removeFromRight(8);
-    loadButton->setBounds(titleRow.removeFromRight(80));
+    auto titleRow = bounds.removeFromTop(titleHeight);
+    titleLabel->setBounds(titleRow.removeFromLeft(compactLayout ? 104 : 120));
+    closeButton->setBounds(titleRow.removeFromRight(compactLayout ? 58 : 65));
+    titleRow.removeFromRight(compactLayout ? 6 : 8);
+    loadButton->setBounds(titleRow.removeFromRight(compactLayout ? 72 : 80));
 
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(headerGap);
 
     // Search/button row
-    auto searchRow = bounds.removeFromTop(32);
-    searchBox->setBounds(searchRow.removeFromLeft(180));
-    searchRow.removeFromLeft(8);
-    refreshButton->setBounds(searchRow.removeFromLeft(65));
-    searchRow.removeFromLeft(5);
-    browseFolderButton->setBounds(searchRow.removeFromLeft(70));
+    auto searchRow = bounds.removeFromTop(searchHeight);
+    if (compactLayout)
+    {
+        browseFolderButton->setBounds(searchRow.removeFromRight(68));
+        searchRow.removeFromRight(5);
+        refreshButton->setBounds(searchRow.removeFromRight(62));
+        searchRow.removeFromRight(6);
+        searchBox->setBounds(searchRow);
+    }
+    else
+    {
+        searchBox->setBounds(searchRow.removeFromLeft(180));
+        searchRow.removeFromLeft(8);
+        refreshButton->setBounds(searchRow.removeFromLeft(65));
+        searchRow.removeFromLeft(5);
+        browseFolderButton->setBounds(searchRow.removeFromLeft(70));
+    }
 
-    bounds.removeFromTop(12);
+    bounds.removeFromTop(contentGap);
 
     // Status bar at bottom
-    auto statusRow = bounds.removeFromBottom(20);
+    auto statusRow = bounds.removeFromBottom(statusHeight);
     statusLabel->setBounds(statusRow);
 
-    bounds.removeFromBottom(8);
+    bounds.removeFromBottom(bottomGap);
 
     // Details panel on right
-    auto detailsArea = bounds.removeFromRight(210).reduced(8);
-    bounds.removeFromRight(12);
+    auto detailsArea = bounds.removeFromRight(detailsWidth).reduced(detailsInset);
+    bounds.removeFromRight(compactLayout ? 8 : 12);
 
-    detailsArea.removeFromTop(96);
+    detailsArea.removeFromTop(previewReserved);
 
-    detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(10);
+    detailsTitle->setBounds(detailsArea.removeFromTop(compactLayout ? 20 : 24));
+    detailsArea.removeFromTop(compactLayout ? 7 : 10);
 
     auto addDetailLayout = [&](Label* label, Label* value)
     {
-        auto row = detailsArea.removeFromTop(22);
-        label->setBounds(row.removeFromLeft(76));
-        row.removeFromLeft(5);
+        if (label == nullptr || value == nullptr || !label->isVisible() || !value->isVisible())
+            return;
+
+        auto row = detailsArea.removeFromTop(rowHeight);
+        label->setBounds(row.removeFromLeft(labelWidth));
+        row.removeFromLeft(compactLayout ? 4 : 5);
         value->setBounds(row);
-        detailsArea.removeFromTop(4); // Small gap between rows
+        detailsArea.removeFromTop(rowGap);
     };
+
+    const bool showSampleRateRow = detailsArea.getHeight() >= (compactLayout ? 50 : 74);
+    const bool showChannelsRow = !compactLayout || detailsArea.getHeight() >= 78;
+    const bool showFileSizeRow = !compactLayout || detailsArea.getHeight() >= 106;
+    sampleRateLabel->setVisible(showSampleRateRow);
+    sampleRateValue->setVisible(showSampleRateRow);
+    channelsLabel->setVisible(showChannelsRow);
+    channelsValue->setVisible(showChannelsRow);
+    fileSizeLabel->setVisible(showFileSizeRow);
+    fileSizeValue->setVisible(showFileSizeRow);
 
     addDetailLayout(nameLabel.get(), nameValue.get());
     addDetailLayout(durationLabel.get(), durationValue.get());
