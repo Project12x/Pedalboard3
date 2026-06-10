@@ -29,6 +29,7 @@
 
 class PresetBar;
 class PluginEditorWindow;
+class NodeParameterMiniControl;
 class PluginPinComponent;
 
 //------------------------------------------------------------------------------
@@ -138,6 +139,9 @@ class PluginComponent : public Component,
     /// Used by PedalboardProcessor controls that dynamically change size (e.g. collapse).
     void updateNodeSize();
 
+    /// Rebuilds optional compact parameter controls after the global setting changes.
+    void refreshNodeParameterControls();
+
   private:
     ///	Helper method to determine what size the component should be.
     /*!
@@ -147,6 +151,10 @@ class PluginComponent : public Component,
     void determineSize(bool onlyUpdateWidth = false);
     ///	Helper method to create the necessary pins for the plugin.
     void createPins();
+    int getNodeParameterControlCount() const;
+    int getNodeParameterControlsHeight() const;
+    void rebuildNodeParameterControls();
+    void layoutNodeParameterControls();
 
     ///	The title label.
     Label* titleLabel;
@@ -208,6 +216,8 @@ class PluginComponent : public Component,
 
     /// Per-channel gain sliders for Audio I/O nodes
     OwnedArray<Slider> channelGainSliders;
+    /// Optional compact parameter controls shown on external plugin nodes.
+    OwnedArray<NodeParameterMiniControl> nodeParameterControls;
 
     /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
     melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};

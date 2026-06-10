@@ -113,6 +113,12 @@ struct NodeVisualStyle
     Colour accent;
 };
 
+constexpr const char* kShowNodeParameterControlsSettingsKey = "ShowNodeParameterControls";
+constexpr int kMaxNodeParameterControls = 3;
+constexpr int kNodeParameterControlHeight = 24;
+constexpr int kNodeParameterControlGap = 4;
+constexpr int kNodeParameterControlVerticalPadding = 8;
+
 bool containsAnyToken(const String& text, std::initializer_list<const char*> tokens)
 {
     for (auto* token : tokens)
@@ -178,7 +184,226 @@ NodeVisualStyle getNodeVisualStyle(AudioProcessor* processor, const String& disp
 
     return {"module", graphCategoryColour("Graph Category Delay")};
 }
+
+bool areNodeParameterControlsEnabled()
+{
+    return SettingsManager::getInstance().getBool(kShowNodeParameterControlsSettingsKey, true);
+}
+
+AudioPluginInstance* getPreviewParameterProcessor(AudioProcessor* processor)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(processor))
+    {
+        auto* plugin = bypassable->getPlugin();
+        if (dynamic_cast<PedalboardProcessor*>(plugin) == nullptr)
+            return plugin;
+    }
+
+    return nullptr;
+}
+
+bool isUsefulPreviewParameter(AudioProcessorParameter* parameter)
+{
+    return parameter != nullptr && parameter->isAutomatable() && !parameter->isMetaParameter();
+}
+
+AudioProcessorParameter* getPreviewParameter(AudioProcessor* processor, int previewIndex)
+{
+    if (previewIndex < 0)
+        return nullptr;
+
+    if (auto* plugin = getPreviewParameterProcessor(processor))
+    {
+        int usefulIndex = 0;
+        auto& params = plugin->getParameters();
+        for (auto* parameter : params)
+        {
+            if (!isUsefulPreviewParameter(parameter))
+                continue;
+
+            if (usefulIndex == previewIndex)
+                return parameter;
+
+            ++usefulIndex;
+        }
+    }
+
+    return nullptr;
+}
+
+int countPreviewParameters(AudioProcessor* processor)
+{
+    if (auto* plugin = getPreviewParameterProcessor(processor))
+    {
+        int count = 0;
+        auto& params = plugin->getParameters();
+        for (auto* parameter : params)
+        {
+            if (isUsefulPreviewParameter(parameter) && ++count >= kMaxNodeParameterControls)
+                return kMaxNodeParameterControls;
+        }
+
+        return count;
+    }
+
+    return 0;
+}
+
+String formatPreviewParameterValue(AudioProcessorParameter& parameter)
+{
+    const auto value = parameter.getValue();
+    auto text = parameter.getText(value, 16).trim();
+    if (text.isEmpty())
+        text = parameter.getCurrentValueAsText().trim();
+    if (text.isEmpty())
+        text = String(roundToInt(value * 100.0f)) + "%";
+
+    auto label = parameter.getLabel().trim();
+    if (label.isNotEmpty() && !text.containsIgnoreCase(label))
+        text << " " << label;
+
+    return text.substring(0, 18);
+}
 } // namespace
+
+//------------------------------------------------------------------------------
+class NodeParameterMiniControl final : public Component, public SettableTooltipClient
+{
+  public:
+    explicit NodeParameterMiniControl(AudioProcessorParameter& parameterToUse) : parameter(parameterToUse)
+    {
+        setRepaintsOnMouseActivity(true);
+        refreshTooltip();
+    }
+
+    ~NodeParameterMiniControl() override
+    {
+        endGestureIfNeeded();
+    }
+
+    void paint(Graphics& g) override
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+        const auto value = jlimit(0.0f, 1.0f, parameter.getValue());
+        const auto active = isMouseOverOrDragging();
+
+        auto accent = colours["Accent Colour"];
+        if (auto* owner = dynamic_cast<PluginComponent*>(getParentComponent()))
+            accent = owner->getVisualAccentColour();
+
+        auto panel = colours["Plugin Background"].interpolatedWith(accent, active ? 0.14f : 0.08f);
+        ColourGradient fill(panel.brighter(0.10f), bounds.getX(), bounds.getY(), panel.darker(0.12f), bounds.getX(),
+                            bounds.getBottom(), false);
+        fill.addColour(0.52, panel);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bounds, 5.0f);
+
+        g.setColour(colours["Plugin Border"].interpolatedWith(accent, active ? 0.42f : 0.22f));
+        g.drawRoundedRectangle(bounds, 5.0f, active ? 1.2f : 0.8f);
+
+        auto textBounds = bounds.reduced(7.0f, 3.0f).toNearestInt();
+        auto nameArea = textBounds.removeFromLeft(jmax(44, textBounds.getWidth() / 2));
+        auto valueArea = textBounds;
+
+        g.setFont(FontManager::getInstance().getCaptionFont());
+        g.setColour(colours["Text Colour"].withAlpha(0.78f));
+        g.drawFittedText(parameter.getName(18), nameArea, Justification::centredLeft, 1);
+
+        g.setFont(FontManager::getInstance().getBadgeFont());
+        g.setColour(colours["Text Colour"].withAlpha(0.68f));
+        g.drawFittedText(formatPreviewParameterValue(parameter), valueArea, Justification::centredRight, 1);
+
+        auto track = Rectangle<float>(bounds.getX() + 7.0f, bounds.getBottom() - 5.0f, bounds.getWidth() - 14.0f, 2.0f);
+        g.setColour(colours["Window Background"].darker(0.25f).withAlpha(0.72f));
+        g.fillRoundedRectangle(track, 1.0f);
+
+        auto filled = track.withWidth(track.getWidth() * value);
+        ColourGradient valueFill(accent.brighter(0.30f), filled.getX(), filled.getY(), accent.darker(0.12f),
+                                 filled.getRight(), filled.getY(), false);
+        g.setGradientFill(valueFill);
+        g.fillRoundedRectangle(filled, 1.0f);
+
+        const auto thumbX = track.getX() + track.getWidth() * value;
+        g.setColour(accent.withAlpha(active ? 0.95f : 0.72f));
+        g.fillEllipse(thumbX - 2.5f, track.getCentreY() - 2.5f, 5.0f, 5.0f);
+    }
+
+    void mouseDown(const MouseEvent& event) override
+    {
+        if (event.getNumberOfClicks() >= 2)
+        {
+            beginGestureIfNeeded();
+            setParameterValue(parameter.getDefaultValue());
+            endGestureIfNeeded();
+            return;
+        }
+
+        beginGestureIfNeeded();
+        setValueFromX((float)event.x);
+    }
+
+    void mouseDrag(const MouseEvent& event) override
+    {
+        beginGestureIfNeeded();
+        setValueFromX((float)event.x);
+    }
+
+    void mouseUp(const MouseEvent&) override
+    {
+        endGestureIfNeeded();
+    }
+
+    void mouseWheelMove(const MouseEvent&, const MouseWheelDetails& wheel) override
+    {
+        beginGestureIfNeeded();
+        const auto delta = wheel.deltaY * (wheel.isReversed ? -1.0f : 1.0f) * 0.06f;
+        setParameterValue(parameter.getValue() + delta);
+        endGestureIfNeeded();
+    }
+
+  private:
+    void beginGestureIfNeeded()
+    {
+        if (!gestureActive)
+        {
+            parameter.beginChangeGesture();
+            gestureActive = true;
+        }
+    }
+
+    void endGestureIfNeeded()
+    {
+        if (gestureActive)
+        {
+            parameter.endChangeGesture();
+            gestureActive = false;
+        }
+    }
+
+    void setValueFromX(float x)
+    {
+        setParameterValue(x / jmax(1.0f, (float)getWidth()));
+    }
+
+    void setParameterValue(float newValue)
+    {
+        parameter.setValueNotifyingHost(jlimit(0.0f, 1.0f, newValue));
+        refreshTooltip();
+        repaint();
+    }
+
+    void refreshTooltip()
+    {
+        setTooltip(parameter.getName(64) + ": " + formatPreviewParameterValue(parameter) +
+                   " (drag to adjust, double-click to reset)");
+    }
+
+    AudioProcessorParameter& parameter;
+    bool gestureActive = false;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeParameterMiniControl)
+};
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -304,6 +529,8 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     }
 
     createPins();
+    rebuildNodeParameterControls();
+    layoutNodeParameterControls();
 
     // Create per-channel gain sliders for Audio I/O nodes (inline with pins)
     if (isAudioIONode())
@@ -355,6 +582,7 @@ PluginComponent::~PluginComponent()
 {
     stopTimer();                     // Stop drag lerp timer
     channelGainSliders.clear(false); // Release without deleting - deleteAllChildren() handles it
+    nodeParameterControls.clear(false);
     deleteAllChildren();
     if (pluginWindow)
         delete pluginWindow;
@@ -677,6 +905,12 @@ void PluginComponent::timerUpdate()
                 }
             }
         }
+    }
+
+    for (auto* control : nodeParameterControls)
+    {
+        if (control != nullptr)
+            control->repaint();
     }
 }
 
@@ -1311,6 +1545,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         spdlog::info("[determineSize] '{}': FINAL w={} h={}", pluginName.toStdString(), w, h);
     }
 
+    if (!onlyUpdateWidth)
+        h += getNodeParameterControlsHeight();
+
     if (onlyUpdateWidth)
         setSize(w, getHeight());
     else
@@ -1344,6 +1581,8 @@ void PluginComponent::updateNodeSize()
     // Reposition PedalboardProcessor control component
     auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
     auto* proc = bypassable ? dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()) : nullptr;
+    if (!proc)
+        proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
     if (proc)
     {
         Point<int> compSize = proc->getSize();
@@ -1357,6 +1596,8 @@ void PluginComponent::updateNodeSize()
                 continue;
             if (dynamic_cast<Slider*>(child) != nullptr)
                 continue;
+            if (dynamic_cast<NodeParameterMiniControl*>(child) != nullptr)
+                continue;
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
             child->setTopLeftPosition(cx, 26);
             child->setSize(compSize.getX(), compSize.getY());
@@ -1365,7 +1606,108 @@ void PluginComponent::updateNodeSize()
     }
 
     createPins();
+    rebuildNodeParameterControls();
+    layoutNodeParameterControls();
     repaint();
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::refreshNodeParameterControls()
+{
+    determineSize();
+    {
+        const int titleLeft = isAudioIONode() ? 22 : 20;
+        const int titleRightInset = deleteButton ? 24 : 8;
+        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+    }
+
+    if (editButton)
+        editButton->setBounds(10, getHeight() - 30, 20, 20);
+    if (mappingsButton)
+        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+    if (bypassButton)
+        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+
+    rebuildNodeParameterControls();
+    layoutNodeParameterControls();
+    repaint();
+    sendChangeMessage();
+}
+
+//------------------------------------------------------------------------------
+int PluginComponent::getNodeParameterControlCount() const
+{
+    if (!areNodeParameterControlsEnabled() || isAudioIONode() || node == nullptr)
+        return 0;
+
+    const auto excludedSystemNode =
+        pluginName == "MIDI Input" || pluginName == "OSC Input" || pluginName == "Virtual MIDI Input";
+    if (excludedSystemNode)
+        return 0;
+
+    return countPreviewParameters(node->getProcessor());
+}
+
+//------------------------------------------------------------------------------
+int PluginComponent::getNodeParameterControlsHeight() const
+{
+    const int count = getNodeParameterControlCount();
+    if (count <= 0)
+        return 0;
+
+    return kNodeParameterControlVerticalPadding + count * kNodeParameterControlHeight +
+           (count - 1) * kNodeParameterControlGap;
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::rebuildNodeParameterControls()
+{
+    for (auto* control : nodeParameterControls)
+        removeChildComponent(control);
+    nodeParameterControls.clear(true);
+
+    const int count = getNodeParameterControlCount();
+    if (count <= 0)
+        return;
+
+    auto* processor = node != nullptr ? node->getProcessor() : nullptr;
+    for (int i = 0; i < count; ++i)
+    {
+        if (auto* parameter = getPreviewParameter(processor, i))
+        {
+            auto* control = new NodeParameterMiniControl(*parameter);
+            addAndMakeVisible(control);
+            nodeParameterControls.add(control);
+        }
+    }
+
+    for (auto* control : nodeParameterControls)
+    {
+        if (control != nullptr)
+            control->repaint();
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::layoutNodeParameterControls()
+{
+    const int count = nodeParameterControls.size();
+    if (count <= 0)
+        return;
+
+    const int totalHeight = count * kNodeParameterControlHeight + (count - 1) * kNodeParameterControlGap;
+    int y = getHeight() - 38 - totalHeight;
+    const int x = 26;
+    const int width = jmax(74, getWidth() - 52);
+
+    for (auto* control : nodeParameterControls)
+    {
+        if (control != nullptr)
+        {
+            control->setBounds(x, y, width, kNodeParameterControlHeight);
+            y += kNodeParameterControlHeight + kNodeParameterControlGap;
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -1459,7 +1801,14 @@ void PluginComponent::refreshPins()
 
     // Reposition the internal PedalboardProcessor control component if present
     // (mirrors the positioning logic in the constructor)
-    if (auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor()))
+    auto* innerProc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
+    if (innerProc == nullptr)
+    {
+        if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))
+            innerProc = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin());
+    }
+
+    if (auto* proc = innerProc)
     {
         Point<int> compSize = proc->getSize();
         // Find the control component among our children and reposition it
@@ -1473,6 +1822,8 @@ void PluginComponent::refreshPins()
                 child == deleteButton)
                 continue;
             if (dynamic_cast<Slider*>(child) != nullptr)
+                continue;
+            if (dynamic_cast<NodeParameterMiniControl*>(child) != nullptr)
                 continue;
             // This should be the PedalboardProcessor's control component
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
@@ -1520,6 +1871,8 @@ void PluginComponent::refreshPins()
         }
     }
 
+    rebuildNodeParameterControls();
+    layoutNodeParameterControls();
     repaint();
 }
 

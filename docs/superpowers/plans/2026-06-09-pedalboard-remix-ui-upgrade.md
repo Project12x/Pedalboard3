@@ -90,6 +90,7 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
 - Main graph/control polish follow-up:
   - Shared `BranchesLAF` TextButtons and linear sliders now carry mockup-informed depth, sheen, hover/pressed/disabled states, and theme-aware accent handling while preserving existing command targets and layouts.
   - The main graph canvas now has a persisted `Options > Graph Grid` selector for `Dots`, `Lines`, and `Off`, matching the useful mockup grid primitive without replacing graph behavior.
+  - Wrapped plugin nodes now have optional compact body parameter controls inspired by `mw2-nodes.jsx`; the feature is controlled by persisted `Options > Node Parameter Controls` and leaves edit, mappings, bypass, delete, pin, and cable workflows intact.
   - Deferred manual visual QA for grid/control polish is recorded in `TESTLATER.md`.
 - Roadmap and research:
   - Non-AI feature research recorded.
@@ -228,6 +229,20 @@ Minimum checks for implementation slices:
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"`
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"`
 - Deferred manual visual QA: `TESTLATER.md` > `Mockup Polish Visual QA`.
+
+## 2026-06-10 Node Parameter Control Polish Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/mw2-nodes.jsx` and `mw2-prims.jsx`.
+- Reuse mode: pattern-only / clean-room. No prototype code, assets, or fonts were copied into the native app.
+- Intended scope: existing graph workflow polish only. Compact controls are limited to wrapped plugin parameters and can be disabled from `Options > Node Parameter Controls`.
+- Build:
+  - `cmake --build build --config Release --target Pedalboard3 -- /m:1` could not run because the existing CMake cache pins a VS Community instance currently marked incomplete/reboot-required by the Visual Studio installer.
+  - `MSBuild.exe build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1` passed.
+  - `MSBuild.exe build\Pedalboard3.sln /t:Pedalboard3_Tests /p:Configuration=Release /m:1` passed.
+- Tests:
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed.
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed.
+- Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
 ## Next For Agent
 

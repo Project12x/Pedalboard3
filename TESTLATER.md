@@ -74,5 +74,7 @@ Steps:
 3. Confirm the grid mode changes immediately, persists after app restart, and does not affect node dragging, cable hit testing, or double-click add-plugin.
 4. Check shared TextButton polish in the footer, plugin search, NAM browser, IR browser, Scratch panel, and dialog action rows.
 5. Check shared linear slider polish on CPU, master input/output gain, and Audio I/O per-channel gain sliders.
-6. Repeat the visual pass in dark, light/daylight, and synthwave themes.
-7. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
+6. Add a wrapped plugin with automatable parameters and confirm its compact node parameter strips are readable, draggable, mouse-wheel adjustable, and double-click resettable.
+7. Toggle `Options > Node Parameter Controls` off and on, then confirm edit, mappings, bypass, delete, pins, cable hit testing, and graph connections remain intact.
+8. Repeat the visual pass in dark, light/daylight, and synthwave themes.
+9. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.

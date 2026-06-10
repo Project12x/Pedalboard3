@@ -245,6 +245,8 @@ class PluginField : public Component,
   public:
     ///	Fits all nodes to the visible viewport.
     void fitToScreen();
+    /// Refreshes optional compact parameter controls on existing nodes.
+    void refreshNodeParameterControls();
     /// Shows the floating plugin search window for deterministic visual QA.
     void showPluginSearchWindowForVisualQa();
     ///	Returns current zoom level.

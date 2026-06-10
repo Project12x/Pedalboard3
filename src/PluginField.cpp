@@ -1453,6 +1453,18 @@ void PluginField::refreshAudioIOPins()
 }
 
 //------------------------------------------------------------------------------
+void PluginField::refreshNodeParameterControls()
+{
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* comp = dynamic_cast<PluginComponent*>(getChildComponent(i)))
+            comp->refreshNodeParameterControls();
+    }
+
+    repaint();
+}
+
+//------------------------------------------------------------------------------
 void PluginField::showPluginSearchWindowForVisualQa()
 {
     if (searchWindow)

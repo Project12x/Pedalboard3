@@ -85,9 +85,11 @@ namespace
 constexpr const char* kScratchRootSettingsKey = "scratchRootDirectory";
 constexpr const char* kVirtualKeyboardCollapsedSettingsKey = "VirtualKeyboardCollapsed";
 constexpr const char* kGraphGridStyleSettingsKey = "GraphGridStyle";
+constexpr const char* kShowNodeParameterControlsSettingsKey = "ShowNodeParameterControls";
 constexpr int kGraphGridDotsMenuId = 910001;
 constexpr int kGraphGridLinesMenuId = 910002;
 constexpr int kGraphGridOffMenuId = 910003;
+constexpr int kNodeParameterControlsMenuId = 910004;
 
 String normaliseGraphGridStyle(String style)
 {
@@ -1943,6 +1945,8 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         graphGridMenu.addItem(kGraphGridLinesMenuId, "Lines", true, currentGridStyle == "lines");
         graphGridMenu.addItem(kGraphGridOffMenuId, "Off", true, currentGridStyle == "off");
         retval.addSubMenu("Graph Grid", graphGridMenu);
+        retval.addItem(kNodeParameterControlsMenuId, "Node Parameter Controls", true,
+                       SettingsManager::getInstance().getBool(kShowNodeParameterControlsSettingsKey, true));
         retval.addCommandItem(commandManager, OptionsKeyMappings);
         retval.addSeparator();
         retval.addCommandItem(commandManager, ToggleStageMode);
@@ -2005,6 +2009,17 @@ void MainPanel::menuItemSelected(int menuItemID, int topLevelMenuIndex)
         if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
             field->repaint();
         showToast("Graph grid: " + style);
+        menuItemsChanged();
+    }
+    break;
+    case kNodeParameterControlsMenuId:
+    {
+        auto& settings = SettingsManager::getInstance();
+        const bool enabled = !settings.getBool(kShowNodeParameterControlsSettingsKey, true);
+        settings.setValue(kShowNodeParameterControlsSettingsKey, enabled);
+        if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+            field->refreshNodeParameterControls();
+        showToast(enabled ? "Node parameter controls shown" : "Node parameter controls hidden");
         menuItemsChanged();
     }
     break;
