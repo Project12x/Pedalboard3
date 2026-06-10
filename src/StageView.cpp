@@ -136,8 +136,9 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
         return button;
     };
 
-    patchViewButton = makeViewButton("PATCH");
-    queueViewButton = makeViewButton("QUEUE");
+    patchViewButton = makeViewButton("HERO");
+    queueViewButton = makeViewButton("SETLIST");
+    gridViewButton = makeViewButton("GRID");
     tunerViewButton = makeViewButton("TUNE");
     syncViewButtons();
 
@@ -186,18 +187,21 @@ StageView::~StageView()
     tunerToggleButton->setLookAndFeel(nullptr);
     patchViewButton->setLookAndFeel(nullptr);
     queueViewButton->setLookAndFeel(nullptr);
+    gridViewButton->setLookAndFeel(nullptr);
     tunerViewButton->setLookAndFeel(nullptr);
 }
 
 //==============================================================================
 void StageView::updatePatchInfo(const String& patchName, const String& previousPatchNameToUse,
-                                const String& nextPatchNameToUse, int currentIndex, int totalPatches)
+                                const String& nextPatchNameToUse, int currentIndex, int totalPatches,
+                                const StringArray& patchNamesToUse)
 {
     this->currentPatchName = patchName;
     this->previousPatchName = previousPatchNameToUse;
     this->nextPatchName = nextPatchNameToUse;
     this->currentPatchIndex = currentIndex;
     this->totalPatchCount = totalPatches;
+    this->patchNames = patchNamesToUse;
     repaint();
 }
 
@@ -345,6 +349,8 @@ void StageView::paint(Graphics& g)
 
         if (viewMode == ViewMode::Queue)
             drawQueueFocus(g, mainArea);
+        else if (viewMode == ViewMode::Grid)
+            drawGridView(g, mainArea);
         else
             drawPatchDisplay(g, mainArea);
 
@@ -473,10 +479,12 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
     g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
     g.drawText("STAGE MODE", leftArea.withTrimmedLeft(dotSize + 12.0f), Justification::centredLeft);
 
-    if (patchViewButton != nullptr && queueViewButton != nullptr && tunerViewButton != nullptr)
+    if (patchViewButton != nullptr && queueViewButton != nullptr && gridViewButton != nullptr &&
+        tunerViewButton != nullptr)
     {
         auto modeRail = patchViewButton->getBounds()
                             .getUnion(queueViewButton->getBounds())
+                            .getUnion(gridViewButton->getBounds())
                             .getUnion(tunerViewButton->getBounds())
                             .expanded(4, 3)
                             .toFloat();
@@ -778,6 +786,154 @@ void StageView::drawQueueFocus(Graphics& g, Rectangle<float> bounds)
                    false, nextPatchName.isEmpty());
 }
 
+void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
+
+    gridTileHitboxes.clear();
+
+    const int patchCount = patchNames.isEmpty() ? totalPatchCount : patchNames.size();
+    auto content = bounds.reduced((float)metrics.margin * 1.35f, (float)metrics.margin * 0.9f);
+
+    auto bankRow = content.removeFromTop(46.0f);
+    content.removeFromTop(12.0f);
+
+    const int bankSize = 8;
+    const int activeIndex = juce::jlimit(0, juce::jmax(0, patchCount - 1), currentPatchIndex);
+    const int bankStart = patchCount > 0 ? (activeIndex / bankSize) * bankSize : 0;
+    const int bankEnd = juce::jmin(bankStart + bankSize, patchCount);
+    const int bankNumber = patchCount > 0 ? bankStart / bankSize + 1 : 1;
+    const int totalBanks = patchCount > 0 ? (patchCount + bankSize - 1) / bankSize : 1;
+
+    auto drawBankPill = [&](Rectangle<float> pill, const String& text, bool active)
+    {
+        g.setColour(active ? colours["Accent Colour"].withAlpha(0.16f)
+                           : colours["Stage Panel Background"].withAlpha(0.42f));
+        g.fillRoundedRectangle(pill, 11.0f);
+        g.setColour((active ? colours["Accent Colour"] : colours["Plugin Border"]).withAlpha(active ? 0.72f : 0.42f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 11.0f, active ? 1.4f : 1.0f);
+        g.setFont(fonts.getDisplayFont(14.0f));
+        g.setColour((active ? colours["Accent Colour"] : colours["Text Colour"]).withAlpha(active ? 0.92f : 0.52f));
+        g.drawText(text, pill, Justification::centred);
+    };
+
+    auto bankPill = bankRow.removeFromLeft(112.0f).reduced(0.0f, 3.0f);
+    drawBankPill(bankPill, "BANK " + String(bankNumber), true);
+    bankRow.removeFromLeft(8.0f);
+    drawBankPill(bankRow.removeFromLeft(112.0f).reduced(0.0f, 3.0f),
+                 totalBanks > 1 ? "OF " + String(totalBanks) : "ONE SET", false);
+
+    const auto rangeText = patchCount > 0
+                               ? String(bankStart + 1).paddedLeft('0', 2) + "-" +
+                                     String(bankEnd).paddedLeft('0', 2) + " of " + String(patchCount) +
+                                     " patches - click a tile to switch"
+                               : String("No patches loaded");
+    g.setFont(fonts.getDisplayFont(14.0f));
+    g.setColour(colours["Text Colour"].withAlpha(0.42f));
+    auto hintArea = bankRow;
+    hintArea.removeFromRight(300.0f);
+    g.drawText(rangeText, hintArea, Justification::centredRight);
+
+    if (patchCount <= 0)
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.28f));
+        g.setFont(fonts.getDisplayFont(28.0f));
+        g.drawText("No patches loaded", content, Justification::centred);
+        return;
+    }
+
+    const int visibleCount = juce::jmax(1, bankEnd - bankStart);
+    const int columns = content.getWidth() < 780.0f ? 2 : 4;
+    const int rows = juce::jmax(1, (visibleCount + columns - 1) / columns);
+    const float gap = juce::jlimit(10.0f, 18.0f, content.getWidth() * 0.012f);
+    const float tileW = (content.getWidth() - gap * (float)(columns - 1)) / (float)columns;
+    const float tileH = (content.getHeight() - gap * (float)(rows - 1)) / (float)rows;
+
+    for (int slot = 0; slot < visibleCount; ++slot)
+    {
+        const int patchIndex = bankStart + slot;
+        const int col = slot % columns;
+        const int row = slot / columns;
+        auto tile = Rectangle<float>(content.getX() + (tileW + gap) * (float)col,
+                                     content.getY() + (tileH + gap) * (float)row, tileW, tileH);
+
+        if (tile.getHeight() < 68.0f)
+            continue;
+
+        gridTileHitboxes.push_back({tile, patchIndex});
+
+        const bool isActive = patchIndex == activeIndex;
+        const bool isNext = patchIndex == activeIndex + 1;
+        const bool isPast = patchIndex < activeIndex;
+        const auto accent = isActive   ? colours["Accent Colour"]
+                            : isNext  ? colours["Warning Colour"]
+                            : isPast  ? colours["Text Colour"].withAlpha(0.42f)
+                                      : colours["Slider Colour"].withAlpha(0.72f);
+
+        ColourGradient fill(isActive ? colours["Accent Colour"].withAlpha(0.22f)
+                                     : colours["Stage Panel Background"].withAlpha(0.58f),
+                            tile.getX(), tile.getY(),
+                            isActive ? colours["Stage Panel Background"].withAlpha(0.72f)
+                                     : colours["Stage Panel Background"].withAlpha(0.34f),
+                            tile.getX(), tile.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(tile, 16.0f);
+
+        g.setColour((isActive || isNext ? accent : colours["Plugin Border"]).withAlpha(isActive ? 0.9f : 0.46f));
+        g.drawRoundedRectangle(tile.reduced(0.5f), 16.0f, isActive ? 1.8f : 1.0f);
+
+        auto inner = tile.reduced(18.0f, 14.0f);
+        auto top = inner.removeFromTop(34.0f);
+        const auto patchNumber = String(patchIndex + 1).paddedLeft('0', 2);
+        g.setFont(fonts.getMonoDisplayFont(22.0f));
+        g.setColour(isActive ? colours["Accent Colour"] : colours["Text Colour"].withAlpha(0.46f));
+        g.drawText(patchNumber, top.removeFromLeft(52.0f), Justification::centredLeft);
+
+        if (isActive || isNext)
+        {
+            auto tag = top.removeFromRight(isActive ? 76.0f : 70.0f).reduced(0.0f, 4.0f);
+            g.setColour(isActive ? colours["Accent Colour"] : colours["Warning Colour"].withAlpha(0.12f));
+            g.fillRoundedRectangle(tag, 8.0f);
+            g.setColour(isActive ? colours["Window Background"].darker(0.4f) : colours["Warning Colour"]);
+            g.setFont(fonts.getDisplayFont(12.0f));
+            g.drawText(isActive ? "LIVE" : "NEXT", tag, Justification::centred);
+        }
+
+        const String storedName = patchIndex >= 0 && patchIndex < patchNames.size() ? patchNames[patchIndex] : String();
+        String rawName = storedName.isNotEmpty() ? storedName : "Patch " + patchNumber;
+        String title = rawName;
+        String tone;
+        const int dash = rawName.indexOf(" - ");
+        if (dash > 0)
+        {
+            title = rawName.substring(0, dash).trim();
+            tone = rawName.substring(dash + 3).trim();
+        }
+
+        auto nameArea = inner.withTrimmedBottom(20.0f);
+        const int titleChars = juce::jlimit(12, 30, juce::roundToInt(nameArea.getWidth() / 10.0f));
+        g.setFont(fonts.getDisplayFont(juce::jlimit(18.0f, 28.0f, tileH * 0.15f)));
+        g.setColour(colours["Text Colour"].withAlpha(isPast ? 0.58f : 0.96f));
+        g.drawFittedText(StageLayout::elideLabel(title, titleChars), nameArea.toNearestInt(),
+                         Justification::centredLeft, 2);
+
+        if (tone.isNotEmpty())
+        {
+            auto toneArea = inner.removeFromBottom(22.0f);
+            const int toneChars = juce::jlimit(12, 36, juce::roundToInt(toneArea.getWidth() / 8.0f));
+            g.setFont(fonts.getDisplayFont(14.0f));
+            g.setColour((isNext ? colours["Warning Colour"] : colours["Text Colour"]).withAlpha(isPast ? 0.42f : 0.62f));
+            g.drawText(StageLayout::elideLabel(tone, toneChars), toneArea, Justification::centredLeft);
+        }
+
+        auto stripe = Rectangle<float>(tile.getX(), tile.getBottom() - 7.0f, tile.getWidth(), 7.0f);
+        g.setColour(accent.withAlpha(isActive ? 0.98f : 0.72f));
+        g.fillRoundedRectangle(stripe, 3.5f);
+    }
+}
+
 void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
@@ -888,13 +1044,15 @@ void StageView::resized()
     tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, headerButtonY,
                                  utilityButtonWidth, utilityButtonHeight);
 
-    const int modeButtonW = juce::jlimit(72, 98, bounds.getWidth() / 18);
+    const int modeButtonW = juce::jlimit(72, 96, bounds.getWidth() / 24);
     const int modeButtonGap = 6;
-    const int modeGroupW = modeButtonW * 3 + modeButtonGap * 2;
+    const int modeGroupW = modeButtonW * 4 + modeButtonGap * 3;
     const int modeX = (bounds.getWidth() - modeGroupW) / 2;
     patchViewButton->setBounds(modeX, headerButtonY, modeButtonW, utilityButtonHeight);
     queueViewButton->setBounds(modeX + modeButtonW + modeButtonGap, headerButtonY, modeButtonW, utilityButtonHeight);
-    tunerViewButton->setBounds(modeX + (modeButtonW + modeButtonGap) * 2, headerButtonY, modeButtonW,
+    gridViewButton->setBounds(modeX + (modeButtonW + modeButtonGap) * 2, headerButtonY, modeButtonW,
+                              utilityButtonHeight);
+    tunerViewButton->setBounds(modeX + (modeButtonW + modeButtonGap) * 3, headerButtonY, modeButtonW,
                                utilityButtonHeight);
 
     auto performanceArea = bounds;
@@ -904,11 +1062,21 @@ void StageView::resized()
 
     // Navigation buttons (sides of the live patch area)
     const int navY = performanceArea.getCentreY() - metrics.navButtonHeight / 2;
-    prevButton->setBounds(margin, navY, metrics.navButtonWidth, metrics.navButtonHeight);
-    const bool reserveLiveQueueRail = viewMode == ViewMode::Patch && metrics.liveQueueRailWidth > 0;
-    const int nextRightInset = reserveLiveQueueRail ? metrics.liveQueueRailWidth + margin * 3 : margin;
-    nextButton->setBounds(bounds.getWidth() - metrics.navButtonWidth - nextRightInset, navY, metrics.navButtonWidth,
-                          metrics.navButtonHeight);
+    if (viewMode == ViewMode::Grid)
+    {
+        const int gridNavY = metrics.headerHeight + margin + 6;
+        const int gridNavW = juce::jmax(92, metrics.navButtonWidth - 22);
+        nextButton->setBounds(bounds.getWidth() - gridNavW - margin, gridNavY, gridNavW, metrics.utilityButtonHeight);
+        prevButton->setBounds(nextButton->getX() - gridNavW - 8, gridNavY, gridNavW, metrics.utilityButtonHeight);
+    }
+    else
+    {
+        prevButton->setBounds(margin, navY, metrics.navButtonWidth, metrics.navButtonHeight);
+        const bool reserveLiveQueueRail = viewMode == ViewMode::Patch && metrics.liveQueueRailWidth > 0;
+        const int nextRightInset = reserveLiveQueueRail ? metrics.liveQueueRailWidth + margin * 3 : margin;
+        nextButton->setBounds(bounds.getWidth() - metrics.navButtonWidth - nextRightInset, navY, metrics.navButtonWidth,
+                              metrics.navButtonHeight);
+    }
 
     // Panic button (bottom right safety bar)
     panicButton->setBounds(bounds.getWidth() - metrics.panicButtonWidth - margin,
@@ -933,6 +1101,23 @@ void StageView::resized()
                                6.0f);
         outputGainSlider->setBounds(outSliderX, footerY + juce::roundToInt(metrics.sliderTopOffset),
                                     (int)meterW, juce::roundToInt(metrics.sliderHeight));
+    }
+}
+
+//==============================================================================
+void StageView::mouseDown(const MouseEvent& event)
+{
+    if (viewMode != ViewMode::Grid)
+        return;
+
+    const auto point = event.position;
+    for (const auto& hitbox : gridTileHitboxes)
+    {
+        if (hitbox.first.contains(point))
+        {
+            switchToPatchIndex(hitbox.second);
+            return;
+        }
     }
 }
 
@@ -973,6 +1158,10 @@ void StageView::buttonClicked(Button* button)
     else if (button == queueViewButton.get())
     {
         setViewMode(ViewMode::Queue);
+    }
+    else if (button == gridViewButton.get())
+    {
+        setViewMode(ViewMode::Grid);
     }
     else if (button == tunerViewButton.get())
     {
@@ -1044,6 +1233,11 @@ bool StageView::keyPressed(const KeyPress& key)
     }
     else if (key == KeyPress(L'3'))
     {
+        setViewMode(ViewMode::Grid);
+        return true;
+    }
+    else if (key == KeyPress(L'4') || key == KeyPress(L't') || key == KeyPress(L'T'))
+    {
         setViewMode(ViewMode::Tuner);
         return true;
     }
@@ -1099,6 +1293,9 @@ void StageView::setViewModeForVisualQa(int modeIndex)
         setViewMode(ViewMode::Queue);
         break;
     case 2:
+        setViewMode(ViewMode::Grid);
+        break;
+    case 3:
         setViewMode(ViewMode::Tuner);
         break;
     default:
@@ -1113,6 +1310,8 @@ void StageView::syncViewButtons()
         patchViewButton->setToggleState(viewMode == ViewMode::Patch, dontSendNotification);
     if (queueViewButton)
         queueViewButton->setToggleState(viewMode == ViewMode::Queue, dontSendNotification);
+    if (gridViewButton)
+        gridViewButton->setToggleState(viewMode == ViewMode::Grid, dontSendNotification);
     if (tunerViewButton)
         tunerViewButton->setToggleState(viewMode == ViewMode::Tuner, dontSendNotification);
 }
@@ -1135,4 +1334,13 @@ void StageView::updateAfterPatchChange()
             mainPanel->updateStageView();
         }
     }
+}
+
+void StageView::switchToPatchIndex(int patchIndex)
+{
+    if (mainPanel == nullptr || patchIndex < 0 || patchIndex >= totalPatchCount)
+        return;
+
+    if (auto* patchBox = mainPanel->getPatchComboBox())
+        patchBox->setSelectedItemIndex(patchIndex, sendNotification);
 }

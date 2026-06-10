@@ -12,6 +12,9 @@
 
 #include "JuceHeader.h"
 
+#include <utility>
+#include <vector>
+
 class MainPanel;
 class TunerProcessor;
 class TunerControl;
@@ -36,13 +39,15 @@ class StageView : public Component, public Button::Listener, public Slider::List
     //==========================================================================
     // Update methods (called by MainPanel)
     void updatePatchInfo(const String& patchName, const String& previousPatchNameToUse,
-                         const String& nextPatchNameToUse, int currentIndex, int totalPatches);
+                         const String& nextPatchNameToUse, int currentIndex, int totalPatches,
+                         const StringArray& patchNamesToUse = {});
     void setTunerProcessor(TunerProcessor* tuner);
 
     //==========================================================================
     // Component overrides
     void paint(Graphics& g) override;
     void resized() override;
+    void mouseDown(const MouseEvent& event) override;
     void buttonClicked(Button* button) override;
     void sliderValueChanged(Slider* slider) override;
     bool keyPressed(const KeyPress& key) override;
@@ -57,6 +62,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     {
         Patch,
         Queue,
+        Grid,
         Tuner
     };
 
@@ -68,6 +74,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     String currentPatchName = "No Patch";
     String previousPatchName = "";
     String nextPatchName = "";
+    StringArray patchNames;
     int currentPatchIndex = 0;
     int totalPatchCount = 0;
     ViewMode viewMode = ViewMode::Patch;
@@ -86,6 +93,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     std::unique_ptr<TextButton> tunerToggleButton;
     std::unique_ptr<TextButton> patchViewButton;
     std::unique_ptr<TextButton> queueViewButton;
+    std::unique_ptr<TextButton> gridViewButton;
     std::unique_ptr<TextButton> tunerViewButton;
 
     // Master gain sliders
@@ -112,11 +120,15 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void drawPatchProgress(Graphics& g, Rectangle<float> bounds);
     void drawLiveQueue(Graphics& g, Rectangle<float> bounds);
     void drawQueueFocus(Graphics& g, Rectangle<float> bounds);
+    void drawGridView(Graphics& g, Rectangle<float> bounds);
     String getNoteName(int midiNote) const;
     Colour getTuningColour(float cents) const;
     void setViewMode(ViewMode mode);
     void syncViewButtons();
     void updateAfterPatchChange();
+    void switchToPatchIndex(int patchIndex);
+
+    std::vector<std::pair<Rectangle<float>, int>> gridTileHitboxes;
 
     // Smoothing constants
     static constexpr float NEEDLE_SMOOTHING = 0.15f;

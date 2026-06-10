@@ -224,6 +224,8 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
 
     // Section separator Y positions (computed in resized, drawn in paint)
     std::vector<int> detailsSeparatorPositions;
+    Rectangle<int> libraryRailBounds;
+    Rectangle<int> detailsPanelBounds;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NAMModelBrowserComponent)
 };

@@ -115,6 +115,65 @@ void drawStatusLed(Graphics& g, Rectangle<float> area, Colour colour, bool activ
     g.setColour(Colours::black.withAlpha(0.45f));
     g.drawEllipse(dot, 1.0f);
 }
+
+void drawLibraryRail(Graphics& g, Rectangle<float> bounds, const String& heading, const String& primary,
+                     const String& secondary, const String& folder, int totalCount, int filteredCount, bool online)
+{
+    if (bounds.isEmpty())
+        return;
+
+    auto& colours = ::ColourScheme::getInstance().colours;
+    auto& fonts = ::FontManager::getInstance();
+
+    g.setColour(colours["Dialog Inner Background"].darker(0.06f).withAlpha(0.92f));
+    g.fillRoundedRectangle(bounds, 10.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.11f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 10.0f, 1.0f);
+
+    auto inner = bounds.reduced(12.0f, 12.0f);
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.46f));
+    g.drawText(heading.toUpperCase(), inner.removeFromTop(18.0f), Justification::centredLeft, true);
+    inner.removeFromTop(6.0f);
+
+    auto drawRailRow = [&](const String& label, const String& value, bool active, Colour accent)
+    {
+        auto row = inner.removeFromTop(36.0f);
+        g.setColour(active ? accent.withAlpha(0.15f) : colours["Text Colour"].withAlpha(0.045f));
+        g.fillRoundedRectangle(row, 8.0f);
+        g.setColour(active ? accent.withAlpha(0.58f) : colours["Text Colour"].withAlpha(0.055f));
+        g.drawRoundedRectangle(row.reduced(0.5f), 8.0f, 1.0f);
+        auto text = row.reduced(9.0f, 0.0f);
+        g.setFont(fonts.getLabelFont());
+        g.setColour(active ? accent : colours["Text Colour"].withAlpha(0.66f));
+        g.drawText(label, text.removeFromLeft(text.getWidth() - 38.0f), Justification::centredLeft, true);
+        g.setFont(fonts.getMonoFont(11.0f));
+        g.setColour(colours["Text Colour"].withAlpha(active ? 0.9f : 0.46f));
+        g.drawText(value, text, Justification::centredRight, true);
+        inner.removeFromTop(6.0f);
+    };
+
+    drawRailRow(primary, String(totalCount), true, colours["Warning Colour"]);
+    drawRailRow(secondary, String(filteredCount), filteredCount != totalCount, colours["Slider Colour"]);
+
+    inner.removeFromTop(8.0f);
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.42f));
+    g.drawText("SOURCE", inner.removeFromTop(18.0f), Justification::centredLeft, true);
+    inner.removeFromTop(5.0f);
+
+    auto status = inner.removeFromTop(30.0f);
+    drawStatusLed(g, status.removeFromLeft(20.0f), online ? colours["VU Meter Lower Colour"] : colours["Slider Colour"],
+                  online);
+    g.setFont(fonts.getLabelFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.7f));
+    g.drawText(online ? "Online" : "Local folder", status, Justification::centredLeft, true);
+
+    inner.removeFromTop(6.0f);
+    g.setFont(fonts.getMonoFont(10.5f));
+    g.setColour(colours["Text Colour"].withAlpha(0.38f));
+    g.drawFittedText(folder, inner.toNearestInt(), Justification::topLeft, 3);
+}
 } // namespace
 
 //==============================================================================
@@ -846,7 +905,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Search box with rounded styling
     searchBox = std::make_unique<TextEditor>("search");
-    searchBox->setTextToShowWhenEmpty("Search models...", colours["Text Colour"].withAlpha(0.5f));
+    searchBox->setTextToShowWhenEmpty("Search models, makers, authors...", colours["Text Colour"].withAlpha(0.5f));
     searchBox->addListener(this);
     searchBox->setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
@@ -900,7 +959,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Model list - transparent background for custom rounded painting
     modelList = std::make_unique<ListBox>("models", &listModel);
-    modelList->setRowHeight(64);
+    modelList->setRowHeight(58);
     modelList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     modelList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     modelList->setOutlineThickness(0);
@@ -909,7 +968,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(modelList.get());
 
     // Details panel
-    detailsTitle = std::make_unique<Label>("detailsTitle", "Model Details");
+    detailsTitle = std::make_unique<Label>("detailsTitle", "Selected Model");
     detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(detailsTitle.get());
@@ -929,6 +988,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     };
 
     createLabelPair(nameLabel, nameValue, "Name:", "-");
+    nameLabel->setText("Selected:", dontSendNotification);
+    nameValue->setFont(FontManager::getInstance().getSubheadingFont());
     createLabelPair(authorLabel, authorValue, "Author:", "-");
     createLabelPair(modelTypeLabel, modelTypeValue, "Type:", "-");
     createLabelPair(architectureLabel, architectureValue, "Architecture:", "-");
@@ -1286,16 +1347,19 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     // Draw panels for Local and IR tabs
     if (currentTab == 0 || currentTab == 2)
     {
-        auto bounds = getLocalBounds().reduced(16);
-        bounds.removeFromTop(34 + 8 + 28 + 8);    // Title + tabs + search row spacing
-        bounds.removeFromBottom(20 + 4 + 36 + 8); // Status + button row
+        const auto listBounds =
+            (currentTab == 0 && modelList) ? modelList->getBounds().toFloat()
+                                           : (irList ? irList->getBounds().toFloat() : Rectangle<float>());
+        const auto detailsBounds = detailsPanelBounds.toFloat();
 
-        int listWidth = static_cast<int>(bounds.getWidth() * 0.62f);
-        auto listArea = bounds.removeFromLeft(listWidth);
-        bounds.removeFromLeft(16); // Gap
+        const int total = currentTab == 0 ? listModel.getTotalCount() : irListModel.getTotalCount();
+        const int filtered = currentTab == 0 ? listModel.getFilteredCount() : irListModel.getFilteredCount();
+        const auto folder = currentTab == 0 ? currentDirectory.getFileName() : irDirectory.getFileName();
+        drawLibraryRail(g, libraryRailBounds.toFloat(), currentTab == 0 ? "Type" : "Cabinet",
+                        currentTab == 0 ? "Models" : "IRs", "Visible", folder.isNotEmpty() ? folder : "No folder",
+                        total, filtered, false);
 
         // Draw rounded list background with subtle inner shadow
-        auto listBounds = listArea.toFloat();
         g.setColour(colours["Dialog Inner Background"].darker(0.12f));
         g.fillRoundedRectangle(listBounds, 8.0f);
         g.setColour(Colours::black.withAlpha(0.18f));
@@ -1304,7 +1368,6 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
         // Draw card-style details panel with shadow
-        auto detailsBounds = bounds.toFloat();
         Path detailsPath;
         detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
@@ -1325,13 +1388,16 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.setColour(colours["Text Colour"].withAlpha(0.12f));
         g.strokePath(detailsPath, PathStrokeType(1.0f));
 
-        if (detailsBounds.getWidth() >= 320.0f)
+        if (detailsBounds.getWidth() >= 250.0f)
         {
-            auto glyph = Rectangle<float>(detailsBounds.getRight() - 62.0f, detailsBounds.getY() + 16.0f, 44.0f, 44.0f);
+            auto glyph = Rectangle<float>(detailsBounds.getRight() - 82.0f, detailsBounds.getY() + 20.0f, 58.0f, 58.0f);
             if (currentTab == 0)
                 drawModelGlyph(g, glyph, colours["Slider Colour"], modelList && modelList->getSelectedRow() >= 0);
             else
                 drawIRGlyph(g, glyph, colours["Audio Connection"], irList && irList->getSelectedRow() >= 0);
+
+            g.setColour((currentTab == 0 ? colours["Warning Colour"] : colours["Audio Connection"]).withAlpha(0.7f));
+            g.fillRoundedRectangle(detailsBounds.withTrimmedTop(96.0f).withHeight(2.0f).reduced(16.0f, 0.0f), 1.0f);
         }
 
         auto drawDetailRowBacking = [&](Label* label, Component* value, int rowIndex)
@@ -1340,7 +1406,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 return;
 
             auto row = label->getBounds().getUnion(value->getBounds()).expanded(7, 3).toFloat();
-            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 320.0f ? 76.0f : 16.0f));
+            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 250.0f && row.getY() < detailsBounds.getY() + 104.0f ? 96.0f : 16.0f));
             row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
 
             g.setColour(colours["Dialog Inner Background"].darker(rowIndex % 2 == 0 ? 0.08f : 0.03f).withAlpha(0.72f));
@@ -1433,6 +1499,8 @@ void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
 void NAMModelBrowserComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(16);
+    libraryRailBounds = {};
+    detailsPanelBounds = {};
 
     // Title row with tab buttons
     auto titleRow = bounds.removeFromTop(34);
@@ -1549,10 +1617,20 @@ void NAMModelBrowserComponent::resized()
         irLoadButton->setBounds(buttonRow.removeFromRight(80));
         irLoadButton->setVisible(true);
 
-        // Split remaining area: list-forward browser plus focused inspector card
-        int listWidth = bounds.getWidth() * 0.62f;
-        auto listArea = bounds.removeFromLeft(listWidth);
-        bounds.removeFromLeft(16);
+        // Split remaining area: library rail, list, and focused inspector card.
+        const bool showRail = bounds.getWidth() >= 720;
+        if (showRail)
+        {
+            const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
+            libraryRailBounds = bounds.removeFromLeft(railWidth);
+            bounds.removeFromLeft(12);
+        }
+
+        const int detailsWidth = jlimit(240, 330, juce::roundToInt(bounds.getWidth() * 0.33f));
+        auto detailsArea = bounds.removeFromRight(detailsWidth);
+        detailsPanelBounds = detailsArea;
+        bounds.removeFromRight(12);
+        auto listArea = bounds;
 
         // IR list
         irList->setBounds(listArea);
@@ -1561,15 +1639,15 @@ void NAMModelBrowserComponent::resized()
         updateIRBrowserState();
 
         // IR details panel
-        auto detailsArea = bounds;
+        detailsArea.reduce(14, 12);
 
-        irDetailsTitle->setBounds(detailsArea.removeFromTop(24));
+        irDetailsTitle->setBounds(detailsArea.removeFromTop(22));
         irDetailsTitle->setVisible(true);
-        detailsArea.removeFromTop(8);
+        detailsArea.removeFromTop(82);
 
         auto layoutIRLabelValue = [&detailsArea](Label* label, Label* value)
         {
-            auto row = detailsArea.removeFromTop(20);
+            auto row = detailsArea.removeFromTop(22);
             label->setBounds(row.removeFromLeft(90));
             label->setVisible(true);
             value->setBounds(row);
@@ -1586,7 +1664,7 @@ void NAMModelBrowserComponent::resized()
         detailsArea.removeFromTop(8);
 
         // File path row
-        auto fileRow = detailsArea.removeFromTop(20);
+        auto fileRow = detailsArea.removeFromTop(22);
         irFilePathLabel->setBounds(fileRow.removeFromLeft(40));
         irFilePathLabel->setVisible(true);
         irFilePathValue->setBounds(fileRow);
@@ -1651,24 +1729,34 @@ void NAMModelBrowserComponent::resized()
     buttonRow.removeFromRight(8);
     loadButton->setBounds(buttonRow.removeFromRight(100));
 
-    // Split remaining area: list-forward browser plus focused inspector card
-    int listWidth = bounds.getWidth() * 0.62f;
-    auto listArea = bounds.removeFromLeft(listWidth);
-    bounds.removeFromLeft(16); // Gap
+    // Split remaining area: library rail, list, and focused inspector card.
+    const bool showRail = bounds.getWidth() >= 720;
+    if (showRail)
+    {
+        const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
+        libraryRailBounds = bounds.removeFromLeft(railWidth);
+        bounds.removeFromLeft(12);
+    }
+
+    const int detailsWidth = jlimit(250, 350, juce::roundToInt(bounds.getWidth() * 0.34f));
+    auto detailsArea = bounds.removeFromRight(detailsWidth);
+    detailsPanelBounds = detailsArea;
+    bounds.removeFromRight(12);
+    auto listArea = bounds;
 
     // Model list or empty state
     modelList->setBounds(listArea);
     emptyStateLabel->setBounds(listArea);
 
     // Details panel with section grouping
-    auto detailsArea = bounds;
+    detailsArea.reduce(14, 12);
     const int labelWidth = 90;
     const int sectionGap = 10;
-    const int rowH = 20;
+    const int rowH = 22;
     const int rowGap = 4;
 
-    detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(6);
+    detailsTitle->setBounds(detailsArea.removeFromTop(22));
+    detailsArea.removeFromTop(8);
 
     // Store separator positions for paint()
     detailsSeparatorPositions.clear();
@@ -1681,9 +1769,18 @@ void NAMModelBrowserComponent::resized()
         detailsArea.removeFromTop(rowGap);
     };
 
-    // -- Identity section --
-    layoutLabelValue(nameLabel.get(), nameValue.get());
-    layoutLabelValue(authorLabel.get(), authorValue.get());
+    // -- Identity / preview section --
+    auto heroArea = detailsArea.removeFromTop(82);
+    auto heroText = heroArea;
+    if (heroText.getWidth() >= 230)
+        heroText.removeFromRight(78);
+    nameLabel->setBounds(heroText.removeFromTop(18));
+    nameValue->setBounds(heroText.removeFromTop(34));
+    heroText.removeFromTop(2);
+    auto authorRow = heroText.removeFromTop(22);
+    authorLabel->setBounds(authorRow.removeFromLeft(labelWidth));
+    authorValue->setBounds(authorRow);
+    detailsArea.removeFromTop(8);
 
     // Separator after Identity
     detailsSeparatorPositions.push_back(detailsArea.getY());

@@ -3125,10 +3125,14 @@ void MainPanel::updateStageView()
         String currentName = getCurrentPatchName();
         String previousName = "";
         String nextName = "";
+        StringArray patchNames;
 
         // Safety check for patching index
         if (currentPatch >= 0 && currentPatch < patches.size())
         {
+            for (int i = 0; i < patches.size(); ++i)
+                patchNames.add(patches[i] != nullptr ? patches[i]->getStringAttribute("name") : String());
+
             // Get current name from array to be sure
             currentName = patches[currentPatch]->getStringAttribute("name");
 
@@ -3142,7 +3146,7 @@ void MainPanel::updateStageView()
             }
         }
 
-        stageView->updatePatchInfo(currentName, previousName, nextName, currentPatch, patches.size());
+        stageView->updatePatchInfo(currentName, previousName, nextName, currentPatch, patches.size(), patchNames);
     }
 }
 

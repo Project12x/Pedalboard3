@@ -208,6 +208,25 @@ function Write-QaPatch {
 </Pedalboard3PatchFile>
 '@ | Set-Content -Path $qaPatch -Encoding UTF8
 
+    [xml]$qaXml = Get-Content -LiteralPath $qaPatch
+    $templatePatch = $qaXml.Pedalboard3PatchFile.Patch[1]
+    $extraPatchNames = @(
+        "QA Clean Verse - Edge Chorus",
+        "QA Drive Lead - Tape Delay",
+        "QA Ambient Swell - Hall Reverb",
+        "QA Crunch Rhythm - Room Verb",
+        "QA Acoustic Sim - Plate",
+        "QA Octave Fuzz - Encore"
+    )
+
+    foreach ($name in $extraPatchNames) {
+        $clone = $templatePatch.Clone()
+        $clone.SetAttribute("name", $name)
+        $qaXml.Pedalboard3PatchFile.AppendChild($clone) | Out-Null
+    }
+
+    $qaXml.Save($qaPatch)
+
     Copy-Item -LiteralPath $qaPatch -Destination $defaultPatchPath -Force
 }
 
@@ -437,6 +456,14 @@ try {
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-queue")
                 Capture-Window -Handle $session.Handle -Path $stageQueuePath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-queue"; Path = $stageQueuePath }) | Out-Null
+
+                Stop-QaApp -Process $session.Process
+                $session = $null
+
+                $stageGridPath = Join-Path $outputDir "workflow-stage-mode-grid.png"
+                $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-grid")
+                Capture-Window -Handle $session.Handle -Path $stageGridPath -CaptureWidth 1280 -CaptureHeight 820
+                $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-grid"; Path = $stageGridPath }) | Out-Null
 
                 Stop-QaApp -Process $session.Process
                 $session = $null
