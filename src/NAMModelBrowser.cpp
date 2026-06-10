@@ -17,6 +17,7 @@
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <nlohmann/json.hpp>
+#include <array>
 #include <set>
 #include <spdlog/spdlog.h>
 
@@ -116,6 +117,115 @@ void drawStatusLed(Graphics& g, Rectangle<float> area, Colour colour, bool activ
     g.drawEllipse(dot, 1.0f);
 }
 
+struct BrowserPalette
+{
+    Colour top;
+    Colour bottom;
+    Colour accent;
+    Colour accent2;
+    Colour led;
+    Colour text;
+    Colour face;
+    Colour face2;
+    Colour inset;
+    Colour edge;
+    Colour edgeHi;
+};
+
+BrowserPalette makeBrowserPalette()
+{
+    auto& colours = ::ColourScheme::getInstance().colours;
+    const auto preset = ::ColourScheme::getInstance().presetName;
+
+    auto palette = [](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge, uint32 edgeHi,
+                      uint32 accent, uint32 accent2, uint32 led, uint32 text)
+    {
+        return BrowserPalette{Colour(top),    Colour(bottom), Colour(accent), Colour(accent2), Colour(led),
+                              Colour(text),   Colour(face),   Colour(face2),  Colour(inset),   Colour(edge),
+                              Colour(edgeHi)};
+    };
+
+    if (preset == "Midnight")
+        return palette(0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57, 0xFF5B4C6E,
+                       0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84, 0xFFF4ECDD);
+    if (preset == "Deep Ocean")
+        return palette(0xFF102029, 0xFF08131B, 0xFF142A36, 0xFF1B3543, 0xFF07121A, 0xFF2C5563, 0xFF3C6B7A,
+                       0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD, 0xFFEAF3F1);
+    if (preset == "Synthwave")
+        return palette(0xFF1E0A28, 0xFF0F0518, 0xFF2A1139, 0xFF351747, 0xFF0C0414, 0xFF5A2D72, 0xFF76439A,
+                       0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0, 0xFFF6EBFF);
+    if (preset == "Forest")
+        return palette(0xFF1C1D13, 0xFF10110A, 0xFF26281A, 0xFF2F3120, 0xFF0E0F08, 0xFF4A4D2E, 0xFF5F633D,
+                       0xFFE6AD36, 0xFF79D479, 0xFF7CE87C, 0xFFF1EEDA);
+    if (preset == "Daylight")
+        return palette(0xFF3B332A, 0xFF2B241C, 0xFF473E33, 0xFF52483B, 0xFF241F18, 0xFF615648, 0xFF796B58,
+                       0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84, 0xFFF5EDDE);
+
+    const auto accent = colours["Warning Colour"];
+    const auto accent2 = colours["Audio Connection"];
+    const auto top = colours["Window Background"].interpolatedWith(accent, 0.08f);
+    const auto bottom = colours["Window Background"].darker(0.16f).interpolatedWith(accent, 0.04f);
+    const auto face = colours["Dialog Inner Background"].interpolatedWith(accent, 0.055f);
+    const auto face2 = colours["Dialog Inner Background"].brighter(0.08f).interpolatedWith(accent, 0.075f);
+    const auto inset = colours["Window Background"].darker(0.06f).interpolatedWith(accent, 0.025f);
+    const auto edge = colours["Plugin Border"].interpolatedWith(accent, 0.12f);
+
+    return {top, bottom, accent, accent2, colours["Success Colour"], colours["Text Colour"], face, face2, inset, edge,
+            edge.brighter(0.2f)};
+}
+
+Colour toneColourForTag(const String& tone)
+{
+    if (tone.equalsIgnoreCase("Clean"))
+        return Colour(0xFF38BDF8);
+    if (tone.equalsIgnoreCase("Crunch"))
+        return makeBrowserPalette().accent;
+    if (tone.equalsIgnoreCase("Hi-Gain"))
+        return Colour(0xFFFF5D5D);
+    if (tone.equalsIgnoreCase("Lead"))
+        return Colour(0xFFC084FC);
+
+    return makeBrowserPalette().text.withAlpha(0.5f);
+}
+
+String inferToneTag(const String& text)
+{
+    const auto haystack = text.toLowerCase();
+    if (haystack.contains("rect") || haystack.contains("5150") || haystack.contains("metal") ||
+        haystack.contains("high gain") || haystack.contains("hi-gain") || haystack.contains("rat") ||
+        haystack.contains("muff") || haystack.contains("fuzz"))
+        return "Hi-Gain";
+
+    if (haystack.contains("lead") || haystack.contains("slo") || haystack.contains("soldano") ||
+        haystack.contains("dumble") || haystack.contains("solo"))
+        return "Lead";
+
+    if (haystack.contains("clean") || haystack.contains("twin") || haystack.contains("jc-120") ||
+        haystack.contains("jazz chorus") || haystack.contains("blackface"))
+        return "Clean";
+
+    if (haystack.contains("crunch") || haystack.contains("jcm") || haystack.contains("plexi") ||
+        haystack.contains("klon") || haystack.contains("808") || haystack.contains("drive") ||
+        haystack.contains("tweed") || haystack.contains("ac30"))
+        return "Crunch";
+
+    return {};
+}
+
+void drawBrowserChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour colour, bool strong)
+{
+    if (bounds.isEmpty() || text.isEmpty())
+        return;
+
+    g.setColour(colour.withAlpha(strong ? 0.2f : 0.13f));
+    g.fillRoundedRectangle(bounds, bounds.getHeight() * 0.5f);
+    g.setColour(colour.withAlpha(strong ? 0.68f : 0.48f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), bounds.getHeight() * 0.5f, 1.0f);
+    g.setFont(FontManager::getInstance().getBadgeFont());
+    g.setColour(colour.withAlpha(strong ? 0.94f : 0.78f));
+    g.drawText(text, bounds, Justification::centred, true);
+}
+
 void drawLibraryRail(Graphics& g, Rectangle<float> bounds, const String& heading, const String& primary,
                      const String& secondary, const String& folder, int totalCount, int filteredCount, bool online)
 {
@@ -125,53 +235,80 @@ void drawLibraryRail(Graphics& g, Rectangle<float> bounds, const String& heading
     auto& colours = ::ColourScheme::getInstance().colours;
     auto& fonts = ::FontManager::getInstance();
 
-    g.setColour(colours["Dialog Inner Background"].darker(0.06f).withAlpha(0.92f));
+    const auto palette = makeBrowserPalette();
+
+    g.setColour(palette.face.withAlpha(0.94f));
     g.fillRoundedRectangle(bounds, 10.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.11f));
+    g.setColour(palette.edge);
     g.drawRoundedRectangle(bounds.reduced(0.5f), 10.0f, 1.0f);
 
     auto inner = bounds.reduced(12.0f, 12.0f);
     g.setFont(fonts.getBadgeFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.46f));
+    g.setColour(palette.text.withAlpha(0.46f));
     g.drawText(heading.toUpperCase(), inner.removeFromTop(18.0f), Justification::centredLeft, true);
     inner.removeFromTop(6.0f);
 
     auto drawRailRow = [&](const String& label, const String& value, bool active, Colour accent)
     {
         auto row = inner.removeFromTop(36.0f);
-        g.setColour(active ? accent.withAlpha(0.15f) : colours["Text Colour"].withAlpha(0.045f));
+        g.setColour(active ? accent.withAlpha(0.15f) : palette.text.withAlpha(0.045f));
         g.fillRoundedRectangle(row, 8.0f);
-        g.setColour(active ? accent.withAlpha(0.58f) : colours["Text Colour"].withAlpha(0.055f));
+        g.setColour(active ? accent.withAlpha(0.58f) : palette.text.withAlpha(0.055f));
         g.drawRoundedRectangle(row.reduced(0.5f), 8.0f, 1.0f);
         auto text = row.reduced(9.0f, 0.0f);
         g.setFont(fonts.getLabelFont());
-        g.setColour(active ? accent : colours["Text Colour"].withAlpha(0.66f));
+        g.setColour(active ? accent : palette.text.withAlpha(0.66f));
         g.drawText(label, text.removeFromLeft(text.getWidth() - 38.0f), Justification::centredLeft, true);
         g.setFont(fonts.getMonoFont(11.0f));
-        g.setColour(colours["Text Colour"].withAlpha(active ? 0.9f : 0.46f));
+        g.setColour(palette.text.withAlpha(active ? 0.9f : 0.46f));
         g.drawText(value, text, Justification::centredRight, true);
         inner.removeFromTop(6.0f);
     };
 
-    drawRailRow(primary, String(totalCount), true, colours["Warning Colour"]);
-    drawRailRow(secondary, String(filteredCount), filteredCount != totalCount, colours["Slider Colour"]);
+    drawRailRow(primary, String(totalCount), true, palette.accent);
+    drawRailRow(secondary, String(filteredCount), filteredCount != totalCount, palette.accent2);
 
     inner.removeFromTop(8.0f);
+    if (primary.equalsIgnoreCase("Models"))
+    {
+        g.setFont(fonts.getBadgeFont());
+        g.setColour(palette.text.withAlpha(0.42f));
+        g.drawText("TONE", inner.removeFromTop(18.0f), Justification::centredLeft, true);
+        inner.removeFromTop(5.0f);
+
+        const std::array<String, 4> tones = {"Clean", "Crunch", "Hi-Gain", "Lead"};
+        for (const auto& tone : tones)
+        {
+            auto row = inner.removeFromTop(26.0f);
+            const auto toneColour = toneColourForTag(tone);
+            auto dot = row.removeFromLeft(20.0f).withSizeKeepingCentre(8.0f, 8.0f);
+            g.setColour(toneColour.withAlpha(0.68f));
+            g.fillEllipse(dot);
+            g.setColour(toneColour.withAlpha(0.22f));
+            g.drawEllipse(dot.expanded(2.0f), 1.0f);
+
+            g.setFont(fonts.getLabelFont());
+            g.setColour(palette.text.withAlpha(0.62f));
+            g.drawText(tone, row, Justification::centredLeft, true);
+        }
+
+        inner.removeFromTop(8.0f);
+    }
+
     g.setFont(fonts.getBadgeFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.42f));
+    g.setColour(palette.text.withAlpha(0.42f));
     g.drawText("SOURCE", inner.removeFromTop(18.0f), Justification::centredLeft, true);
     inner.removeFromTop(5.0f);
 
     auto status = inner.removeFromTop(30.0f);
-    drawStatusLed(g, status.removeFromLeft(20.0f), online ? colours["VU Meter Lower Colour"] : colours["Slider Colour"],
-                  online);
+    drawStatusLed(g, status.removeFromLeft(20.0f), online ? palette.led : palette.accent2, online);
     g.setFont(fonts.getLabelFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.7f));
+    g.setColour(palette.text.withAlpha(0.7f));
     g.drawText(online ? "Online" : "Local folder", status, Justification::centredLeft, true);
 
     inner.removeFromTop(6.0f);
     g.setFont(fonts.getMonoFont(10.5f));
-    g.setColour(colours["Text Colour"].withAlpha(0.38f));
+    g.setColour(palette.text.withAlpha(0.38f));
     g.drawFittedText(folder, inner.toNearestInt(), Justification::topLeft, 3);
 }
 } // namespace
@@ -184,9 +321,9 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
   public:
     BrowserWindowLookAndFeel()
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
-        auto bg = colours["Window Background"];
-        auto text = colours["Text Colour"];
+        const auto palette = makeBrowserPalette();
+        auto bg = palette.bottom;
+        auto text = palette.text;
 
         // DocumentWindow colours
         setColour(DocumentWindow::backgroundColourId, bg);
@@ -199,9 +336,9 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
     void drawDocumentWindowTitleBar(DocumentWindow& window, Graphics& g, int w, int h, int titleSpaceX, int titleSpaceW,
                                     const Image* /*icon*/, bool /*drawTitleTextOnLeft*/) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
-        auto bg = colours["Window Background"].darker(0.12f);
-        auto text = colours["Text Colour"];
+        const auto palette = makeBrowserPalette();
+        auto bg = palette.face;
+        auto text = palette.text;
 
         // Title bar background with rounded top corners
         Path titlePath;
@@ -214,7 +351,7 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
         // Subtle bottom border and accent trace
         g.setColour(text.withAlpha(0.08f));
         g.drawHorizontalLine(h - 1, 0.0f, (float)w);
-        g.setColour(colours["Accent Colour"].withAlpha(0.34f));
+        g.setColour(palette.accent.withAlpha(0.42f));
         g.drawLine((float)titleSpaceX, (float)h - 2.0f, (float)jmin(w - 34, titleSpaceX + titleSpaceW / 2),
                    (float)h - 2.0f, 1.0f);
 
@@ -242,8 +379,8 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
 
     void drawCornerResizer(Graphics& g, int w, int h, bool /*isMouseOver*/, bool /*isMouseDragging*/) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
-        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        const auto palette = makeBrowserPalette();
+        g.setColour(palette.text.withAlpha(0.15f));
         // Small grip dots
         for (int i = 0; i < 3; ++i)
             for (int j = 0; j < 3 - i; ++j)
@@ -252,13 +389,12 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
 
     void fillTextEditorBackground(Graphics& g, int width, int height, TextEditor& editor) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
         float cr = editor.isMultiLine() ? 8.0f : height / 2.0f;
 
-        ColourGradient fill(colours["Dialog Inner Background"].darker(0.04f), bounds.getX(), bounds.getY(),
-                            colours["Dialog Inner Background"].brighter(0.03f), bounds.getX(), bounds.getBottom(),
-                            false);
+        ColourGradient fill(palette.inset, bounds.getX(), bounds.getY(), palette.face2, bounds.getX(),
+                            bounds.getBottom(), false);
         g.setGradientFill(fill);
         g.fillRoundedRectangle(bounds, cr);
 
@@ -271,13 +407,13 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
 
     void drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& editor) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
         float cr = editor.isMultiLine() ? 8.0f : height / 2.0f;
 
         // Subtle pill border — brighter when focused
         float alpha = editor.hasKeyboardFocus(true) ? 0.5f : 0.2f;
-        g.setColour(colours["Text Colour"].withAlpha(alpha));
+        g.setColour((editor.hasKeyboardFocus(true) ? palette.accent : palette.text).withAlpha(alpha));
         g.drawRoundedRectangle(bounds.reduced(0.5f), cr, 1.0f);
     }
 
@@ -292,23 +428,23 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
 
         void paintButton(Graphics& g, bool isMouseOverButton, bool isButtonDown) override
         {
-            auto& colours = ::ColourScheme::getInstance().colours;
+            const auto palette = makeBrowserPalette();
             auto area = getLocalBounds().toFloat().reduced(4.0f);
 
             if (isButtonDown)
             {
-                g.setColour(colours["Danger Colour"].withAlpha(0.6f));
+                g.setColour(Colours::red.withAlpha(0.6f));
                 g.fillEllipse(area);
             }
             else if (isMouseOverButton)
             {
-                g.setColour(colours["Danger Colour"].withAlpha(0.3f));
+                g.setColour(Colours::red.withAlpha(0.3f));
                 g.fillEllipse(area);
             }
 
             // X symbol
             auto cross = area.reduced(area.getWidth() * 0.25f);
-            g.setColour(isMouseOverButton ? Colours::white : colours["Text Colour"].withAlpha(0.7f));
+            g.setColour(isMouseOverButton ? palette.text : palette.text.withAlpha(0.7f));
             g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.5f);
             g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.5f);
         }
@@ -339,6 +475,7 @@ int NAMModelListModel::getNumRows()
 void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
     const int margin = 6;
     const float cornerRadius = 8.0f;
     Rectangle<float> itemBounds(static_cast<float>(margin), 3.0f, static_cast<float>(width - margin * 2),
@@ -347,32 +484,32 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     // Card background for every item
     if (rowIsSelected)
     {
-        ColourGradient selectedFill(colours["Accent Colour"].withAlpha(0.23f), itemBounds.getX(), itemBounds.getY(),
-                                    colours["Dialog Inner Background"].brighter(0.08f), itemBounds.getX(),
-                                    itemBounds.getBottom(), false);
+        ColourGradient selectedFill(palette.inset.interpolatedWith(palette.accent, 0.14f), itemBounds.getX(),
+                                    itemBounds.getY(), palette.inset.interpolatedWith(palette.accent, 0.06f),
+                                    itemBounds.getX(), itemBounds.getBottom(), false);
         g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.62f));
+        g.setColour(palette.accent.withAlpha(0.74f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
 
         // Left-edge accent stripe (DAW-style selection indicator)
         Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 4.0f, 3.0f, itemBounds.getHeight() - 8.0f);
-        g.setColour(colours["Accent Colour"]);
+        g.setColour(palette.accent);
         g.fillRoundedRectangle(stripe, 1.5f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(palette.text.withAlpha(0.08f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.28f));
+        g.setColour(palette.accent.withAlpha(0.28f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
     else
     {
         // Subtle card background for non-selected items
-        g.setColour(colours["Text Colour"].withAlpha(0.03f));
+        g.setColour(palette.inset.interpolatedWith(palette.face, 0.18f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Text Colour"].withAlpha(0.06f));
+        g.setColour(palette.edge.withAlpha(0.5f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 0.5f);
     }
 
@@ -422,7 +559,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             }
         }
 
-        // Badge layout - rightmost is architecture, then model type
+        // Badge layout - rightmost is architecture, then model type and inferred tone.
         const int badgeHeight = 18;
         const int badgeSpacing = 5;
         int badgeX = width - margin - 10;
@@ -442,7 +579,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         else if (archShort.containsIgnoreCase("Linear"))
             archColour = Colour(0xFFB088E8); // lavender
         else
-            archColour = colours["Text Colour"].withAlpha(0.4f);
+            archColour = palette.text.withAlpha(0.4f);
 
         drawModelGlyph(g,
                        Rectangle<float>((float)(margin + 12), (height - 38.0f) * 0.5f, 38.0f, 38.0f),
@@ -450,14 +587,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
-        g.setColour(archColour.withAlpha(0.15f));
-        g.fillRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f);
-        g.setColour(archColour.withAlpha(0.6f));
-        g.drawRoundedRectangle(archBadgeBounds, badgeHeight / 2.0f, 1.0f);
-
-        g.setFont(FontManager::getInstance().getBadgeFont());
-        g.setColour(archColour.withAlpha(0.8f));
-        g.drawText(archShort, archBadgeBounds, Justification::centred, true);
+        drawBrowserChip(g, archBadgeBounds, archShort, archColour, rowIsSelected);
 
         // Model type badge (left of architecture badge, if we have type info)
         if (modelType.isNotEmpty())
@@ -490,7 +620,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             else
             {
                 typeDisplay = modelType.substring(0, 10); // Truncate unknown types
-                typeColour = colours["Text Colour"].withAlpha(0.5f);
+                typeColour = palette.text.withAlpha(0.5f);
             }
 
             int typeBadgeWidth =
@@ -499,21 +629,27 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
             Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                              static_cast<float>(typeBadgeWidth), static_cast<float>(badgeHeight));
-            g.setColour(typeColour.withAlpha(0.15f));
-            g.fillRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f);
-            g.setColour(typeColour.withAlpha(0.6f));
-            g.drawRoundedRectangle(typeBadgeBounds, badgeHeight / 2.0f, 1.0f);
+            drawBrowserChip(g, typeBadgeBounds, typeDisplay, typeColour, rowIsSelected);
+        }
 
-            g.setFont(FontManager::getInstance().getBadgeFont());
-            g.setColour(typeColour.withAlpha(0.8f));
-            g.drawText(typeDisplay, typeBadgeBounds, Justification::centred, true);
+        const auto toneTag = inferToneTag(String(model.name) + " " + rigType + " " + modelType);
+        if (toneTag.isNotEmpty())
+        {
+            badgeX -= badgeSpacing;
+            const auto toneColour = toneColourForTag(toneTag);
+            const int toneBadgeWidth =
+                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag)) + 14;
+            badgeX -= toneBadgeWidth;
+            Rectangle<float> toneBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                             static_cast<float>(toneBadgeWidth), static_cast<float>(badgeHeight));
+            drawBrowserChip(g, toneBadgeBounds, toneTag, toneColour, rowIsSelected);
         }
 
         // Model name (top line) - adjust width to not overlap badges
-        const int textEndX = badgeX - 8;
+        const int textEndX = jmax(textX + 80, badgeX - 8);
         const int topPad = 10;
         const int nameH = 20;
-        g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
+        g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
         g.setFont(FontManager::getInstance().getSubheadingFont());
         g.drawText(String(model.name).replace("_", " "), textX, topPad, textEndX - textX, nameH,
                    Justification::centredLeft, true);
@@ -536,7 +672,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
 
         if (infoLine.isNotEmpty())
         {
-            g.setColour(colours["Text Colour"].withAlpha(0.45f));
+            g.setColour(palette.text.withAlpha(0.45f));
             g.setFont(FontManager::getInstance().getLabelFont());
             g.drawText(infoLine, textX, topPad + nameH + 2, textEndX - textX, 16, Justification::centredLeft, true);
         }
@@ -545,7 +681,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     // Subtle bottom separator
     if (!rowIsSelected)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         g.drawLine(static_cast<float>(margin + 4), static_cast<float>(height - 1),
                    static_cast<float>(width - margin - 4), static_cast<float>(height - 1), 1.0f);
     }
@@ -607,6 +743,7 @@ int IRListModel::getNumRows()
 void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
     const int margin = 6;
     const float cornerRadius = 6.0f;
     Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
@@ -615,31 +752,30 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     // Background with rounded corners
     if (rowIsSelected)
     {
-        ColourGradient selectedFill(colours["Accent Colour"].withAlpha(0.2f), itemBounds.getX(), itemBounds.getY(),
-                                    colours["Dialog Inner Background"].brighter(0.07f), itemBounds.getX(),
-                                    itemBounds.getBottom(), false);
+        ColourGradient selectedFill(palette.accent2.withAlpha(0.2f), itemBounds.getX(), itemBounds.getY(),
+                                    palette.face2.withAlpha(0.85f), itemBounds.getX(), itemBounds.getBottom(), false);
         g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
+        g.setColour(palette.accent2.withAlpha(0.55f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
 
         // Left-edge accent stripe (DAW-style selection indicator)
         Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
-        g.setColour(colours["Accent Colour"]);
+        g.setColour(palette.accent2);
         g.fillRoundedRectangle(stripe, 1.5f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
+        g.setColour(palette.accent2.withAlpha(0.24f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
     else
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.025f));
+        g.setColour(palette.face.withAlpha(0.24f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Text Colour"].withAlpha(0.055f));
+        g.setColour(palette.edge.withAlpha(0.45f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 0.5f);
     }
 
@@ -650,7 +786,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         const int badgeWidth = 50;
         const int badgeHeight = 18;
         const int badgeX = width - margin - badgeWidth - 8;
-        const Colour irAccent = Colour(0xFF38C8E8);
+        const Colour irAccent = palette.accent2;
 
         drawIRGlyph(g, Rectangle<float>((float)(margin + 10), (height - 30.0f) * 0.5f, 30.0f, 30.0f), irAccent,
                     rowIsSelected);
@@ -681,7 +817,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         }
 
         // IR name
-        g.setColour(rowIsSelected ? colours["Text Colour"] : colours["Text Colour"].withAlpha(0.95f));
+        g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
         g.setFont(FontManager::getInstance().getBodyBoldFont());
         g.drawText(String(ir.name), textX, 4, badgeX - textX - 8, height / 2, Justification::centredLeft, true);
 
@@ -698,7 +834,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
 
         if (details.isNotEmpty())
         {
-            g.setColour(colours["Text Colour"].withAlpha(0.5f));
+            g.setColour(palette.text.withAlpha(0.5f));
             g.setFont(FontManager::getInstance().getMonoFont(11.0f));
             g.drawText(details, textX, height / 2, badgeX - textX - 8, height / 2 - 4, Justification::centredLeft,
                        true);
@@ -708,7 +844,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     // Subtle bottom separator
     if (!rowIsSelected)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         g.drawLine(static_cast<float>(margin + 4), static_cast<float>(height - 1),
                    static_cast<float>(width - margin - 4), static_cast<float>(height - 1), 1.0f);
     }
@@ -756,31 +892,42 @@ class PillTabLookAndFeel : public LookAndFeel_V4
                               bool isButtonDown) override
     {
         auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto bounds = button.getLocalBounds().toFloat().reduced(2);
         float cornerRadius = bounds.getHeight() / 2;
 
         if (button.getToggleState())
         {
-            // Active: filled pill with accent color
-            auto fillColour = colours["Accent Colour"];
+            // Active: raised faceplate tab with amber text, matching the mockup browser.
+            auto fillTop = palette.face2.brighter(0.08f);
+            auto fillBottom = palette.face.darker(0.04f);
             if (isButtonDown)
-                fillColour = fillColour.darker(0.1f);
+            {
+                fillTop = fillTop.darker(0.1f);
+                fillBottom = fillBottom.darker(0.1f);
+            }
             else if (isMouseOverButton)
-                fillColour = fillColour.brighter(0.1f);
+            {
+                fillTop = fillTop.brighter(0.07f);
+                fillBottom = fillBottom.brighter(0.04f);
+            }
 
-            ColourGradient active(fillColour.brighter(0.18f), bounds.getX(), bounds.getY(), fillColour.darker(0.1f),
-                                  bounds.getX(), bounds.getBottom(), false);
+            ColourGradient active(fillTop, bounds.getX(), bounds.getY(), fillBottom, bounds.getX(), bounds.getBottom(),
+                                  false);
             g.setGradientFill(active);
             g.fillRoundedRectangle(bounds, cornerRadius);
-            g.setColour(Colours::white.withAlpha(0.14f));
+            g.setColour(palette.accent.withAlpha(0.5f));
             g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
+            g.setColour(Colours::white.withAlpha(0.1f));
+            g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.5f, bounds.getRight() - 7.0f, bounds.getY() + 1.5f,
+                       1.0f);
         }
         else
         {
             // Inactive: subtle hover effect only
             if (isMouseOverButton || isButtonDown)
             {
-                g.setColour(colours["Text Colour"].withAlpha(0.1f));
+                g.setColour(palette.accent.withAlpha(0.1f));
                 g.fillRoundedRectangle(bounds, cornerRadius);
             }
         }
@@ -788,15 +935,15 @@ class PillTabLookAndFeel : public LookAndFeel_V4
 
     void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto bounds = button.getLocalBounds().toFloat();
 
         g.setFont(FontManager::getInstance().getBodyBoldFont());
 
-    if (button.getToggleState())
-            g.setColour(Colours::white.withAlpha(0.96f));
+        if (button.getToggleState())
+            g.setColour(palette.accent.withAlpha(0.94f));
         else
-            g.setColour(colours["Text Colour"].withAlpha(0.7f));
+            g.setColour(palette.text.withAlpha(0.7f));
 
         g.drawText(button.getButtonText(), bounds, Justification::centred);
     }
@@ -811,13 +958,14 @@ class BrowserActionButtonLookAndFeel : public LookAndFeel_V4
                               bool isButtonDown) override
     {
         auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
-        const bool primary = button.findColour(TextButton::textColourOffId).getBrightness() > 0.82f &&
-                             backgroundColour.getBrightness() > colours["Button Colour"].getBrightness();
+        const auto buttonText = button.findColour(TextButton::textColourOffId);
         const bool danger = button.findColour(TextButton::textColourOffId).getHue() > 0.95f ||
                             button.getButtonText().containsIgnoreCase("delete");
+        const bool primary = !danger && buttonText == palette.accent;
         auto base = danger ? colours["Danger Colour"].withAlpha(0.25f)
-                           : (primary ? backgroundColour : colours["Button Colour"].withAlpha(0.9f));
+                           : (primary ? palette.inset.withAlpha(0.96f) : palette.face2.withAlpha(0.92f));
 
         if (!button.isEnabled())
             base = base.withMultipliedSaturation(0.35f).withAlpha(0.34f);
@@ -840,17 +988,17 @@ class BrowserActionButtonLookAndFeel : public LookAndFeel_V4
 
         g.setColour(Colours::white.withAlpha(primary ? 0.16f : 0.07f));
         g.drawLine(bounds.getX() + 5.0f, bounds.getY() + 1.5f, bounds.getRight() - 5.0f, bounds.getY() + 1.5f, 1.0f);
-        g.setColour((danger ? colours["Danger Colour"] : (primary ? colours["Accent Colour"] : colours["Text Colour"]))
+        g.setColour((danger ? colours["Danger Colour"] : (primary ? palette.accent : palette.text))
                         .withAlpha(primary ? 0.62f : 0.22f));
         g.drawRoundedRectangle(bounds.reduced(0.5f), radius, primary ? 1.4f : 1.0f);
     }
 
     void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
     {
-        auto& colours = ::ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto text = button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId);
         if (!button.isEnabled())
-            text = colours["Text Colour"].withAlpha(0.32f);
+            text = palette.text.withAlpha(0.32f);
 
         g.setFont(FontManager::getInstance().getBodyBoldFont());
         g.setColour(text);
@@ -868,11 +1016,12 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     : namProcessor(processor), onModelLoadedCallback(std::move(onModelLoaded))
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
 
     // Title
     titleLabel = std::make_unique<Label>("title", "NAM Library");
     titleLabel->setFont(FontManager::getInstance().getHeadingFont());
-    titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
+    titleLabel->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(titleLabel.get());
 
     // Tab buttons with pill-style look
@@ -905,10 +1054,10 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Search box with rounded styling
     searchBox = std::make_unique<TextEditor>("search");
-    searchBox->setTextToShowWhenEmpty("Search models, makers, authors...", colours["Text Colour"].withAlpha(0.5f));
+    searchBox->setTextToShowWhenEmpty("Search models, makers, authors...", palette.text.withAlpha(0.5f));
     searchBox->addListener(this);
     searchBox->setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
-    searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
+    searchBox->setColour(TextEditor::textColourId, palette.text);
     searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
     searchBox->setIndents(28, 6); // Left indent for search icon, top indent to center text
@@ -916,24 +1065,24 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     addAndMakeVisible(searchBox.get());
 
     // Buttons with styled colors
-    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
+    auto styleButton = [&colours, &palette](TextButton* btn, bool isPrimary = false)
     {
         btn->setLookAndFeel(&browserActionButtonLookAndFeel);
         if (isPrimary)
         {
             // Primary action button (accent color)
-            btn->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
-            btn->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
-            btn->setColour(TextButton::textColourOffId, Colours::white);
-            btn->setColour(TextButton::textColourOnId, Colours::white);
+            btn->setColour(TextButton::buttonColourId, palette.accent);
+            btn->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
+            btn->setColour(TextButton::textColourOffId, palette.accent);
+            btn->setColour(TextButton::textColourOnId, palette.accent.brighter(0.12f));
         }
         else
         {
             // Secondary button
-            btn->setColour(TextButton::buttonColourId, colours["Button Colour"]);
-            btn->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
-            btn->setColour(TextButton::textColourOffId, colours["Text Colour"]);
-            btn->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+            btn->setColour(TextButton::buttonColourId, palette.face2);
+            btn->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+            btn->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+            btn->setColour(TextButton::textColourOnId, palette.text);
         }
     };
 
@@ -970,20 +1119,20 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Details panel
     detailsTitle = std::make_unique<Label>("detailsTitle", "Selected Model");
     detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
-    detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    detailsTitle->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(detailsTitle.get());
 
-    auto createLabelPair = [&colours, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
+    auto createLabelPair = [&palette, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
                                             const String& labelText, const String& valueText)
     {
         labelPtr = std::make_unique<Label>("", labelText);
         labelPtr->setFont(FontManager::getInstance().getLabelFont());
-        labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+        labelPtr->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
         addAndMakeVisible(labelPtr.get());
 
         valuePtr = std::make_unique<Label>("", valueText);
         valuePtr->setFont(FontManager::getInstance().getBodyBoldFont());
-        valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
+        valuePtr->setColour(Label::textColourId, palette.text.withAlpha(0.9f));
         addAndMakeVisible(valuePtr.get());
     };
 
@@ -998,15 +1147,15 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     metadataLabel = std::make_unique<Label>("", "Metadata:");
     metadataLabel->setFont(FontManager::getInstance().getLabelFont());
-    metadataLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+    metadataLabel->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
     addAndMakeVisible(metadataLabel.get());
 
     metadataDisplay = std::make_unique<TextEditor>("metadata");
     metadataDisplay->setMultiLine(true);
     metadataDisplay->setReadOnly(true);
-    metadataDisplay->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
-    metadataDisplay->setColour(TextEditor::textColourId, colours["Text Colour"]);
-    metadataDisplay->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+    metadataDisplay->setColour(TextEditor::backgroundColourId, palette.inset);
+    metadataDisplay->setColour(TextEditor::textColourId, palette.text.withAlpha(0.84f));
+    metadataDisplay->setColour(TextEditor::outlineColourId, palette.edge);
     metadataDisplay->setFont(FontManager::getInstance().getMonoFont(11.0f));
     addAndMakeVisible(metadataDisplay.get());
 
@@ -1019,8 +1168,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     deleteButton->addListener(this);
     deleteButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     // Delete button — secondary style (outline, not filled)
-    deleteButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
-    deleteButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
+    deleteButton->setColour(TextButton::buttonColourId, palette.face2);
+    deleteButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
     deleteButton->setColour(TextButton::textColourOffId, colours["Danger Colour"]);
     deleteButton->setColour(TextButton::textColourOnId, colours["Danger Colour"]);
     addAndMakeVisible(deleteButton.get());
@@ -1028,7 +1177,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Status bar
     statusLabel = std::make_unique<Label>("status", "");
     statusLabel->setFont(FontManager::getInstance().getCaptionFont());
-    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
+    statusLabel->setColour(Label::textColourId, palette.text.withAlpha(0.6f));
     addAndMakeVisible(statusLabel.get());
 
     // Empty state message
@@ -1037,7 +1186,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
         makeEmptyStateCopy("No NAM models found", "Use Browse Folder to select a folder or switch to Online.",
                            String()));
     emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
-    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    emptyStateLabel->setColour(Label::textColourId, palette.text.withAlpha(0.4f));
     emptyStateLabel->setJustificationType(Justification::centred);
     emptyStateLabel->setVisible(false);
     addAndMakeVisible(emptyStateLabel.get());
@@ -1057,7 +1206,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
         "irEmptyState", makeEmptyStateCopy("No impulse responses found", "Use Browse IR Folder to choose a cabinet folder.",
                                            String()));
     irEmptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
-    irEmptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    irEmptyStateLabel->setColour(Label::textColourId, palette.text.withAlpha(0.4f));
     irEmptyStateLabel->setJustificationType(Justification::centred);
     irEmptyStateLabel->setVisible(false);
     addAndMakeVisible(irEmptyStateLabel.get());
@@ -1065,42 +1214,42 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     irBrowseFolderButton = std::make_unique<TextButton>("Browse IR Folder...");
     irBrowseFolderButton->addListener(this);
     irBrowseFolderButton->setLookAndFeel(&browserActionButtonLookAndFeel);
-    irBrowseFolderButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
-    irBrowseFolderButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
-    irBrowseFolderButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
-    irBrowseFolderButton->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+    irBrowseFolderButton->setColour(TextButton::buttonColourId, palette.face2);
+    irBrowseFolderButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    irBrowseFolderButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+    irBrowseFolderButton->setColour(TextButton::textColourOnId, palette.text);
     irBrowseFolderButton->setVisible(false);
     addAndMakeVisible(irBrowseFolderButton.get());
 
     irLoadButton = std::make_unique<TextButton>("Load IR");
     irLoadButton->addListener(this);
     irLoadButton->setLookAndFeel(&browserActionButtonLookAndFeel);
-    irLoadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
-    irLoadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
-    irLoadButton->setColour(TextButton::textColourOffId, Colours::white);
-    irLoadButton->setColour(TextButton::textColourOnId, Colours::white);
+    irLoadButton->setColour(TextButton::buttonColourId, palette.accent);
+    irLoadButton->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
+    irLoadButton->setColour(TextButton::textColourOffId, palette.accent);
+    irLoadButton->setColour(TextButton::textColourOnId, palette.accent.brighter(0.12f));
     irLoadButton->setVisible(false);
     addAndMakeVisible(irLoadButton.get());
 
     // IR details panel
     irDetailsTitle = std::make_unique<Label>("irDetailsTitle", "IR Details");
     irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
-    irDetailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    irDetailsTitle->setColour(Label::textColourId, palette.text);
     irDetailsTitle->setVisible(false);
     addAndMakeVisible(irDetailsTitle.get());
 
-    auto createIRLabelPair = [&colours, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
+    auto createIRLabelPair = [&palette, this](std::unique_ptr<Label>& labelPtr, std::unique_ptr<Label>& valuePtr,
                                               const String& labelText, const String& valueText)
     {
         labelPtr = std::make_unique<Label>("", labelText);
         labelPtr->setFont(FontManager::getInstance().getLabelFont());
-        labelPtr->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+        labelPtr->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
         labelPtr->setVisible(false);
         addAndMakeVisible(labelPtr.get());
 
         valuePtr = std::make_unique<Label>("", valueText);
         valuePtr->setFont(FontManager::getInstance().getLabelFont());
-        valuePtr->setColour(Label::textColourId, colours["Text Colour"]);
+        valuePtr->setColour(Label::textColourId, palette.text.withAlpha(0.9f));
         valuePtr->setVisible(false);
         addAndMakeVisible(valuePtr.get());
     };
@@ -1152,32 +1301,33 @@ NAMModelBrowserComponent::~NAMModelBrowserComponent()
 void NAMModelBrowserComponent::refreshColours()
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
 
     // Title
-    titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
+    titleLabel->setColour(Label::textColourId, palette.text);
 
     // Search box
-    searchBox->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
-    searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
-    searchBox->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+    searchBox->setColour(TextEditor::backgroundColourId, palette.inset);
+    searchBox->setColour(TextEditor::textColourId, palette.text);
+    searchBox->setColour(TextEditor::outlineColourId, palette.edge);
 
     // Style helper (mirrors constructor logic)
-    auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
+    auto styleButton = [&palette](TextButton* btn, bool isPrimary = false)
     {
         btn->setLookAndFeel(&browserActionButtonLookAndFeel);
         if (isPrimary)
         {
-            btn->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
-            btn->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
-            btn->setColour(TextButton::textColourOffId, Colours::white);
-            btn->setColour(TextButton::textColourOnId, Colours::white);
+            btn->setColour(TextButton::buttonColourId, palette.accent);
+            btn->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
+            btn->setColour(TextButton::textColourOffId, palette.accent);
+            btn->setColour(TextButton::textColourOnId, palette.accent.brighter(0.12f));
         }
         else
         {
-            btn->setColour(TextButton::buttonColourId, colours["Button Colour"]);
-            btn->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
-            btn->setColour(TextButton::textColourOffId, colours["Text Colour"]);
-            btn->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+            btn->setColour(TextButton::buttonColourId, palette.face2);
+            btn->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+            btn->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+            btn->setColour(TextButton::textColourOnId, palette.text);
         }
     };
 
@@ -1187,11 +1337,11 @@ void NAMModelBrowserComponent::refreshColours()
     styleButton(closeButton.get());
 
     // Details panel labels
-    detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
-    auto refreshLabelPair = [&colours](Label* label, Label* value)
+    detailsTitle->setColour(Label::textColourId, palette.text);
+    auto refreshLabelPair = [&palette](Label* label, Label* value)
     {
-        label->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
-        value->setColour(Label::textColourId, colours["Text Colour"]);
+        label->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
+        value->setColour(Label::textColourId, palette.text.withAlpha(0.9f));
     };
     refreshLabelPair(nameLabel.get(), nameValue.get());
     refreshLabelPair(authorLabel.get(), authorValue.get());
@@ -1201,24 +1351,26 @@ void NAMModelBrowserComponent::refreshColours()
     refreshLabelPair(loudnessLabel.get(), loudnessValue.get());
     refreshLabelPair(filePathLabel.get(), filePathValue.get());
 
-    metadataLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
-    metadataDisplay->setColour(TextEditor::backgroundColourId, colours["Dialog Inner Background"]);
-    metadataDisplay->setColour(TextEditor::textColourId, colours["Text Colour"]);
-    metadataDisplay->setColour(TextEditor::outlineColourId, colours["Text Colour"].withAlpha(0.3f));
+    metadataLabel->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
+    metadataDisplay->setColour(TextEditor::backgroundColourId, palette.inset);
+    metadataDisplay->setColour(TextEditor::textColourId, palette.text.withAlpha(0.84f));
+    metadataDisplay->setColour(TextEditor::outlineColourId, palette.edge);
 
     // Status and empty state
-    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
-    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    statusLabel->setColour(Label::textColourId, palette.text.withAlpha(0.6f));
+    emptyStateLabel->setColour(Label::textColourId, palette.text.withAlpha(0.4f));
     if (irEmptyStateLabel)
-        irEmptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+        irEmptyStateLabel->setColour(Label::textColourId, palette.text.withAlpha(0.4f));
 
     // IR browser buttons
     styleButton(irBrowseFolderButton.get());
-    irLoadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
-    irLoadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
+    irLoadButton->setColour(TextButton::buttonColourId, palette.accent);
+    irLoadButton->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
+    irLoadButton->setColour(TextButton::textColourOffId, palette.accent);
+    irLoadButton->setColour(TextButton::textColourOnId, palette.accent.brighter(0.12f));
 
     // IR details labels
-    irDetailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    irDetailsTitle->setColour(Label::textColourId, palette.text);
     refreshLabelPair(irNameLabel.get(), irNameValue.get());
     refreshLabelPair(irDurationLabel.get(), irDurationValue.get());
     refreshLabelPair(irSampleRateLabel.get(), irSampleRateValue.get());
@@ -1262,17 +1414,16 @@ void NAMModelBrowserComponent::refreshColours()
 void NAMModelBrowserComponent::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    auto bgColour = colours["Window Background"];
+    const auto palette = makeBrowserPalette();
 
     // Gradient background
-    ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0, bgColour.darker(0.06f), 0,
-                              static_cast<float>(getHeight()), false);
+    ColourGradient bgGradient(palette.top, 0, 0, palette.bottom, 0, static_cast<float>(getHeight()), false);
     g.setGradientFill(bgGradient);
     g.fillAll();
 
     // Subtle dot-grid pattern on background for visual character
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         const int gridStep = 16;
         for (int gy = 0; gy < getHeight(); gy += gridStep)
             for (int gx = 0; gx < getWidth(); gx += gridStep)
@@ -1294,27 +1445,27 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         melatonin::DropShadow shadow(Colours::black.withAlpha(0.24f), 9, {1, 2});
         shadow.render(g, headerPath);
 
-        ColourGradient face(colours["Dialog Inner Background"].brighter(0.12f), headerBounds.getX(),
-                            headerBounds.getY(), colours["Dialog Inner Background"].darker(0.08f),
+        ColourGradient face(palette.face2, headerBounds.getX(), headerBounds.getY(), palette.face,
                             headerBounds.getX(), headerBounds.getBottom(), false);
         g.setGradientFill(face);
         g.fillPath(headerPath);
-        g.setColour(colours["Text Colour"].withAlpha(0.14f));
+        g.setColour(palette.edge);
         g.strokePath(headerPath, PathStrokeType(1.0f));
 
-        g.setColour(colours["Slider Colour"].withAlpha(0.75f));
+        g.setColour(palette.accent.withAlpha(0.75f));
         g.drawLine(headerBounds.getX() + 14.0f, headerBounds.getBottom() - 7.0f,
                    headerBounds.getX() + 205.0f, headerBounds.getBottom() - 7.0f, 2.0f);
 
         auto statusPill = Rectangle<float>(headerBounds.getRight() - 116.0f, headerBounds.getCentreY() - 13.0f,
                                            88.0f, 26.0f);
-        g.setColour(colours["Dialog Inner Background"].darker(0.2f));
+        g.setColour(palette.inset);
         g.fillRoundedRectangle(statusPill, 8.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.12f));
+        g.setColour(palette.edge);
         g.drawRoundedRectangle(statusPill.reduced(0.5f), 8.0f, 1.0f);
-        drawStatusLed(g, statusPill.removeFromLeft(24.0f), colours["VU Meter Lower Colour"], currentTab == 1);
+        drawStatusLed(g, statusPill.removeFromLeft(24.0f), currentTab == 1 ? palette.led : palette.accent2,
+                      currentTab == 1);
         g.setFont(FontManager::getInstance().getBadgeFont());
-        g.setColour(currentTab == 1 ? colours["VU Meter Lower Colour"] : colours["Text Colour"].withAlpha(0.55f));
+        g.setColour(currentTab == 1 ? palette.led : palette.text.withAlpha(0.55f));
         g.drawText(currentTab == 1 ? "ONLINE" : "LOCAL", statusPill, Justification::centredLeft, true);
 
         for (auto corner : {headerBounds.getTopLeft(), headerBounds.getTopRight(), headerBounds.getBottomLeft(),
@@ -1325,7 +1476,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                           5.0f);
             g.setColour(Colours::black.withAlpha(0.45f));
             g.fillEllipse(screw);
-            g.setColour(colours["Text Colour"].withAlpha(0.18f));
+            g.setColour(palette.edgeHi.withAlpha(0.72f));
             g.drawEllipse(screw, 1.0f);
         }
     }
@@ -1338,9 +1489,9 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                          .toFloat()
                          .expanded(4.0f, 2.0f);
         float cr = tabBg.getHeight() / 2.0f;
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(palette.inset.withAlpha(0.88f));
         g.fillRoundedRectangle(tabBg, cr);
-        g.setColour(colours["Text Colour"].withAlpha(0.1f));
+        g.setColour(palette.edge);
         g.drawRoundedRectangle(tabBg, cr, 1.0f);
     }
 
@@ -1360,11 +1511,11 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                         total, filtered, false);
 
         // Draw rounded list background with subtle inner shadow
-        g.setColour(colours["Dialog Inner Background"].darker(0.12f));
+        g.setColour(palette.inset);
         g.fillRoundedRectangle(listBounds, 8.0f);
         g.setColour(Colours::black.withAlpha(0.18f));
         g.drawRoundedRectangle(listBounds.reduced(2.0f), 6.0f, 1.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.14f));
+        g.setColour(palette.edge);
         g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
         // Draw card-style details panel with shadow
@@ -1376,27 +1527,26 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         shadow.render(g, detailsPath);
 
         // Card fill with subtle gradient
-        ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f), detailsBounds.getX(),
-                                detailsBounds.getY(), colours["Dialog Inner Background"].darker(0.03f),
+        ColourGradient cardGrad(palette.face2, detailsBounds.getX(), detailsBounds.getY(), palette.face,
                                 detailsBounds.getX(), detailsBounds.getBottom(), false);
         g.setGradientFill(cardGrad);
         g.fillPath(detailsPath);
 
         // Card border with glow effect
-        g.setColour(colours["Accent Colour"].withAlpha(0.1f));
+        g.setColour((currentTab == 0 ? palette.accent : palette.accent2).withAlpha(0.14f));
         g.strokePath(detailsPath, PathStrokeType(2.0f));
-        g.setColour(colours["Text Colour"].withAlpha(0.12f));
+        g.setColour(palette.edge);
         g.strokePath(detailsPath, PathStrokeType(1.0f));
 
         if (detailsBounds.getWidth() >= 250.0f)
         {
             auto glyph = Rectangle<float>(detailsBounds.getRight() - 82.0f, detailsBounds.getY() + 20.0f, 58.0f, 58.0f);
             if (currentTab == 0)
-                drawModelGlyph(g, glyph, colours["Slider Colour"], modelList && modelList->getSelectedRow() >= 0);
+                drawModelGlyph(g, glyph, palette.accent2, modelList && modelList->getSelectedRow() >= 0);
             else
-                drawIRGlyph(g, glyph, colours["Audio Connection"], irList && irList->getSelectedRow() >= 0);
+                drawIRGlyph(g, glyph, palette.accent2, irList && irList->getSelectedRow() >= 0);
 
-            g.setColour((currentTab == 0 ? colours["Warning Colour"] : colours["Audio Connection"]).withAlpha(0.7f));
+            g.setColour((currentTab == 0 ? palette.accent : palette.accent2).withAlpha(0.7f));
             g.fillRoundedRectangle(detailsBounds.withTrimmedTop(96.0f).withHeight(2.0f).reduced(16.0f, 0.0f), 1.0f);
         }
 
@@ -1409,9 +1559,9 @@ void NAMModelBrowserComponent::paint(Graphics& g)
             row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 250.0f && row.getY() < detailsBounds.getY() + 104.0f ? 96.0f : 16.0f));
             row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
 
-            g.setColour(colours["Dialog Inner Background"].darker(rowIndex % 2 == 0 ? 0.08f : 0.03f).withAlpha(0.72f));
+            g.setColour((rowIndex % 2 == 0 ? palette.inset : palette.face).withAlpha(0.72f));
             g.fillRoundedRectangle(row, 6.0f);
-            g.setColour(colours["Text Colour"].withAlpha(0.055f));
+            g.setColour(palette.edge.withAlpha(0.45f));
             g.drawRoundedRectangle(row.reduced(0.5f), 6.0f, 1.0f);
         };
 
@@ -1442,7 +1592,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         auto detailsX = nameLabel ? nameLabel->getX() : 0;
         auto detailsRight = nameValue ? nameValue->getRight() : getWidth();
 
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(palette.edge.withAlpha(0.5f));
         for (auto y : detailsSeparatorPositions)
         {
             float yf = static_cast<float>(y) + 4.0f;
@@ -1459,7 +1609,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
         // Large magnifying glass
         float r = 14.0f;
-        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        g.setColour(palette.text.withAlpha(0.15f));
         g.drawEllipse(cx - r, iconTop, r * 2.0f, r * 2.0f, 2.0f);
         float hx = cx + r * 0.7f;
         float hy = iconTop + r * 2.0f - r * 0.3f;
@@ -1469,7 +1619,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     {
         auto emptyBounds = irEmptyStateLabel->getBounds().toFloat();
         drawIRGlyph(g, emptyBounds.withSizeKeepingCentre(44.0f, 44.0f).translated(0.0f, -52.0f),
-                    colours["Audio Connection"].withAlpha(0.8f), false);
+                    palette.accent2.withAlpha(0.8f), false);
     }
 }
 
@@ -1478,7 +1628,7 @@ void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
     // Draw magnifying glass icon centered in the search pill
     if (currentTab == 0 || currentTab == 2)
     {
-        auto& colours = ColourScheme::getInstance().colours;
+        const auto palette = makeBrowserPalette();
         auto searchBounds = searchBox->getBounds().toFloat();
 
         float iconSize = 13.0f;
@@ -1486,7 +1636,7 @@ void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
         float iconX = searchBounds.getX() + 10.0f;
         float iconCentreY = searchBounds.getCentreY();
 
-        g.setColour(colours["Text Colour"].withAlpha(0.45f));
+        g.setColour(palette.text.withAlpha(0.45f));
         // Circle part — centered vertically
         g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
         // Handle
@@ -2586,10 +2736,10 @@ void NAMModelBrowser::paint(Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
     float cr = BrowserWindowLookAndFeel::cornerRadius;
-    auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
 
     // Rounded window background
-    g.setColour(colours["Window Background"]);
+    g.setColour(palette.bottom);
     g.fillRoundedRectangle(bounds, cr);
 }
 
@@ -2615,18 +2765,19 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     : onIRSelectedCallback(std::move(onIRSelected))
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
 
     // Title with icon-like styling
     titleLabel = std::make_unique<Label>("title", "IR Browser");
     titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
-    titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
+    titleLabel->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(titleLabel.get());
 
     // Search box with improved styling
     searchBox = std::make_unique<TextEditor>("search");
-    searchBox->setTextToShowWhenEmpty("Search IRs...", colours["Text Colour"].withAlpha(0.4f));
+    searchBox->setTextToShowWhenEmpty("Search IRs...", palette.text.withAlpha(0.4f));
     searchBox->setColour(TextEditor::backgroundColourId, Colours::transparentBlack);
-    searchBox->setColour(TextEditor::textColourId, colours["Text Colour"]);
+    searchBox->setColour(TextEditor::textColourId, palette.text);
     searchBox->setColour(TextEditor::outlineColourId, Colours::transparentBlack);
     searchBox->setColour(TextEditor::focusedOutlineColourId, Colours::transparentBlack);
     searchBox->setIndents(28, 6); // Left indent for search icon, top indent to center text
@@ -2638,28 +2789,40 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     refreshButton = std::make_unique<TextButton>("Refresh");
     refreshButton->setTooltip("Rescan IR folders");
     refreshButton->setLookAndFeel(&browserActionButtonLookAndFeel);
+    refreshButton->setColour(TextButton::buttonColourId, palette.face2);
+    refreshButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    refreshButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+    refreshButton->setColour(TextButton::textColourOnId, palette.text);
     refreshButton->addListener(this);
     addAndMakeVisible(refreshButton.get());
 
     browseFolderButton = std::make_unique<TextButton>("Folder...");
     browseFolderButton->setTooltip("Select IR folder to scan");
     browseFolderButton->setLookAndFeel(&browserActionButtonLookAndFeel);
+    browseFolderButton->setColour(TextButton::buttonColourId, palette.face2);
+    browseFolderButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    browseFolderButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+    browseFolderButton->setColour(TextButton::textColourOnId, palette.text);
     browseFolderButton->addListener(this);
     addAndMakeVisible(browseFolderButton.get());
 
-    // Load button with accent color (prominent action button)
+    // Load button with amber outline treatment to match the shared browser action style.
     loadButton = std::make_unique<TextButton>("Load IR");
     loadButton->setTooltip("Load selected IR");
     loadButton->setLookAndFeel(&browserActionButtonLookAndFeel);
-    loadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
-    loadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
-    loadButton->setColour(TextButton::textColourOffId, Colours::white);
-    loadButton->setColour(TextButton::textColourOnId, Colours::white);
+    loadButton->setColour(TextButton::buttonColourId, palette.accent);
+    loadButton->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
+    loadButton->setColour(TextButton::textColourOffId, palette.accent);
+    loadButton->setColour(TextButton::textColourOnId, palette.accent.brighter(0.12f));
     loadButton->addListener(this);
     addAndMakeVisible(loadButton.get());
 
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->setLookAndFeel(&browserActionButtonLookAndFeel);
+    closeButton->setColour(TextButton::buttonColourId, palette.face2);
+    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+    closeButton->setColour(TextButton::textColourOnId, palette.text);
     closeButton->addListener(this);
     addAndMakeVisible(closeButton.get());
 
@@ -2675,27 +2838,27 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     emptyStateLabel = std::make_unique<Label>(
         "emptyState", makeEmptyStateCopy("No impulse responses found", "Use Folder to choose a cabinet folder.", String()));
     emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
-    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    emptyStateLabel->setColour(Label::textColourId, palette.text.withAlpha(0.4f));
     emptyStateLabel->setJustificationType(Justification::centred);
     addAndMakeVisible(emptyStateLabel.get());
 
     // Details panel labels with improved styling
     detailsTitle = std::make_unique<Label>("detailsTitle", "IR Details");
     detailsTitle->setFont(FontManager::getInstance().getBodyBoldFont());
-    detailsTitle->setColour(Label::textColourId, colours["Text Colour"]);
+    detailsTitle->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(detailsTitle.get());
 
     auto addDetailRow = [&](std::unique_ptr<Label>& label, std::unique_ptr<Label>& value, const String& labelText)
     {
         label = std::make_unique<Label>("", labelText);
         label->setFont(FontManager::getInstance().getCaptionFont());
-        label->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
+        label->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
         label->setJustificationType(Justification::centredRight);
         addAndMakeVisible(label.get());
 
         value = std::make_unique<Label>("", "-");
         value->setFont(FontManager::getInstance().getCaptionFont());
-        value->setColour(Label::textColourId, colours["Text Colour"]);
+        value->setColour(Label::textColourId, palette.text.withAlpha(0.9f));
         value->setJustificationType(Justification::centredLeft);
         addAndMakeVisible(value.get());
     };
@@ -2709,7 +2872,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Status bar with path display
     statusLabel = std::make_unique<Label>("status", "");
     statusLabel->setFont(FontManager::getInstance().getCaptionFont());
-    statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.5f));
+    statusLabel->setColour(Label::textColourId, palette.text.withAlpha(0.5f));
     statusLabel->setJustificationType(Justification::centredLeft);
     addAndMakeVisible(statusLabel.get());
 
@@ -2735,18 +2898,17 @@ IRBrowserComponent::~IRBrowserComponent()
 
 void IRBrowserComponent::paint(Graphics& g)
 {
-    auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
     auto bounds = getLocalBounds().toFloat();
 
     // Gradient background
-    ColourGradient bg(colours["Window Background"].brighter(0.04f), 0.0f, 0.0f,
-                      colours["Window Background"].darker(0.06f), 0.0f, bounds.getHeight(), false);
+    ColourGradient bg(palette.top, 0.0f, 0.0f, palette.bottom, 0.0f, bounds.getHeight(), false);
     g.setGradientFill(bg);
     g.fillAll();
 
     // Subtle dot-grid pattern on background
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         const int gridStep = 16;
         for (int gy = 0; gy < getHeight(); gy += gridStep)
             for (int gx = 0; gx < getWidth(); gx += gridStep)
@@ -2755,19 +2917,18 @@ void IRBrowserComponent::paint(Graphics& g)
 
     // Header faceplate with gradient
     Rectangle<float> headerArea(12.0f, 10.0f, bounds.getWidth() - 24.0f, 44.0f);
-    ColourGradient headerGradient(colours["Dialog Inner Background"].brighter(0.11f), headerArea.getX(),
-                                  headerArea.getY(), colours["Dialog Inner Background"].darker(0.08f),
+    ColourGradient headerGradient(palette.face2, headerArea.getX(), headerArea.getY(), palette.face,
                                   headerArea.getX(), headerArea.getBottom(), false);
     g.setGradientFill(headerGradient);
     g.fillRoundedRectangle(headerArea, 9.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.13f));
+    g.setColour(palette.edge);
     g.drawRoundedRectangle(headerArea.reduced(0.5f), 9.0f, 1.0f);
-    g.setColour(colours["Audio Connection"].withAlpha(0.7f));
+    g.setColour(palette.accent2.withAlpha(0.7f));
     g.drawLine(headerArea.getX() + 12.0f, headerArea.getBottom() - 7.0f, headerArea.getX() + 145.0f,
                headerArea.getBottom() - 7.0f, 2.0f);
 
     // Header bottom separator
-    g.setColour(colours["Border Colour"].withAlpha(0.45f));
+    g.setColour(palette.edge.withAlpha(0.45f));
     g.drawHorizontalLine(62, 16, bounds.getWidth() - 16);
 
     // Details panel and list well
@@ -2777,9 +2938,9 @@ void IRBrowserComponent::paint(Graphics& g)
     auto detailsArea = contentBounds.removeFromRight(210).reduced(5);
     auto listArea = contentBounds.reduced(4);
 
-    g.setColour(colours["Dialog Inner Background"].darker(0.12f));
+    g.setColour(palette.inset);
     g.fillRoundedRectangle(listArea.toFloat(), 8.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.12f));
+    g.setColour(palette.edge);
     g.drawRoundedRectangle(listArea.toFloat().reduced(0.5f), 8.0f, 1.0f);
 
     // Panel shadow
@@ -2787,38 +2948,37 @@ void IRBrowserComponent::paint(Graphics& g)
     g.fillRoundedRectangle(detailsArea.toFloat().translated(2, 2), 8.0f);
 
     // Panel background with gradient
-    ColourGradient panelGradient(colours["Background Light"].brighter(0.02f), detailsArea.getX(), detailsArea.getY(),
-                                 colours["Background Light"].darker(0.02f), detailsArea.getX(), detailsArea.getBottom(),
-                                 false);
+    ColourGradient panelGradient(palette.face2, detailsArea.getX(), detailsArea.getY(), palette.face,
+                                 detailsArea.getX(), detailsArea.getBottom(), false);
     g.setGradientFill(panelGradient);
     g.fillRoundedRectangle(detailsArea.toFloat(), 8.0f);
 
     // Panel border
-    g.setColour(colours["Border Colour"].withAlpha(0.5f));
+    g.setColour(palette.edge);
     g.drawRoundedRectangle(detailsArea.toFloat(), 8.0f, 1.0f);
 
     drawIRGlyph(g, detailsArea.toFloat().withTrimmedBottom(detailsArea.getHeight() - 48.0f).withSizeKeepingCentre(42.0f, 42.0f),
-                colours["Audio Connection"], irList && irList->getSelectedRow() >= 0);
+                palette.accent2, irList && irList->getSelectedRow() >= 0);
 
     if (emptyStateLabel && emptyStateLabel->isVisible())
     {
         auto emptyBounds = emptyStateLabel->getBounds().toFloat();
         drawIRGlyph(g, emptyBounds.withSizeKeepingCentre(42.0f, 42.0f).translated(0.0f, -52.0f),
-                    colours["Audio Connection"].withAlpha(0.8f), false);
+                    palette.accent2.withAlpha(0.8f), false);
     }
 
     // Status bar background
     Rectangle<float> statusArea(0, bounds.getHeight() - 30, bounds.getWidth(), 30);
-    g.setColour(colours["Background"].darker(0.1f));
+    g.setColour(palette.bottom.darker(0.08f));
     g.fillRect(statusArea);
-    g.setColour(colours["Border Colour"]);
+    g.setColour(palette.edge);
     g.drawHorizontalLine(static_cast<int>(bounds.getHeight() - 30), 0, bounds.getWidth());
 }
 
 void IRBrowserComponent::paintOverChildren(Graphics& g)
 {
     // Draw magnifying glass icon centered in the search pill
-    auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeBrowserPalette();
     auto searchBounds = searchBox->getBounds().toFloat();
 
     float iconSize = 13.0f;
@@ -2826,7 +2986,7 @@ void IRBrowserComponent::paintOverChildren(Graphics& g)
     float iconX = searchBounds.getX() + 10.0f;
     float iconCentreY = searchBounds.getCentreY();
 
-    g.setColour(colours["Text Colour"].withAlpha(0.45f));
+    g.setColour(palette.text.withAlpha(0.45f));
     // Circle part — centered vertically
     g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
     // Handle
