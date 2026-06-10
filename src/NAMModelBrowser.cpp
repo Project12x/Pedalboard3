@@ -49,6 +49,70 @@ String makeEmptyStateCopy(const String& title, const String& action, const Strin
     return title + "\n\n" + action;
 }
 
+String formatIRDuration(double durationSeconds)
+{
+    if (durationSeconds <= 0.0)
+        return "-";
+
+    if (durationSeconds >= 1.0)
+        return String(durationSeconds, 3) + " s";
+
+    return String(static_cast<int>(durationSeconds * 1000.0)) + " ms";
+}
+
+String formatIRSampleRate(double sampleRate)
+{
+    if (sampleRate <= 0.0)
+        return "-";
+
+    if (sampleRate >= 1000.0)
+        return String(sampleRate / 1000.0, sampleRate >= 10000.0 ? 1 : 2) + " kHz";
+
+    return String(static_cast<int>(sampleRate)) + " Hz";
+}
+
+String formatIRChannels(int numChannels)
+{
+    if (numChannels <= 0)
+        return "-";
+
+    if (numChannels == 1)
+        return "Mono";
+    if (numChannels == 2)
+        return "Stereo";
+
+    return String(numChannels) + " ch";
+}
+
+String formatIRFileSize(int64_t fileSize)
+{
+    if (fileSize <= 0)
+        return "-";
+
+    if (fileSize >= 1024 * 1024)
+        return String(fileSize / (1024.0 * 1024.0), 2) + " MB";
+
+    return String((fileSize + 1023) / 1024) + " KB";
+}
+
+String makeIRPreviewSummary(const IRFileInfo& ir)
+{
+    StringArray parts;
+    if (ir.durationSeconds > 0.0)
+        parts.add(formatIRDuration(ir.durationSeconds));
+    if (ir.sampleRate > 0.0)
+        parts.add(formatIRSampleRate(ir.sampleRate));
+    if (ir.numChannels > 0)
+        parts.add(formatIRChannels(ir.numChannels));
+
+    return parts.isEmpty() ? "Cabinet impulse response" : parts.joinIntoString("  |  ");
+}
+
+bool isReadableIRFile(const IRFileInfo& ir)
+{
+    return File(String(ir.filePath)).existsAsFile();
+}
+
 void drawMagnifierGlyph(Graphics& g, Rectangle<float> area, Colour colour, float thickness)
 {
     const auto size = jmin(area.getWidth(), area.getHeight()) * 0.58f;
@@ -824,12 +888,12 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         // Sample rate and channels on bottom line
         String details;
         if (ir.sampleRate > 0)
-            details = String(static_cast<int>(ir.sampleRate / 1000)) + "kHz";
+            details = formatIRSampleRate(ir.sampleRate);
         if (ir.numChannels > 0)
         {
             if (details.isNotEmpty())
                 details += "  |  ";
-            details += ir.numChannels == 1 ? "Mono" : (ir.numChannels == 2 ? "Stereo" : String(ir.numChannels) + "ch");
+            details += formatIRChannels(ir.numChannels);
         }
 
         if (details.isNotEmpty())
@@ -2931,11 +2995,16 @@ void IRBrowserComponent::paint(Graphics& g)
     g.setColour(palette.edge.withAlpha(0.45f));
     g.drawHorizontalLine(62, 16, bounds.getWidth() - 16);
 
-    // Details panel and list well
-    auto contentBounds = getLocalBounds();
-    contentBounds.removeFromTop(82);    // Title + search row
-    contentBounds.removeFromBottom(35); // Status bar
-    auto detailsArea = contentBounds.removeFromRight(210).reduced(5);
+    // Details panel and list well. Keep this geometry aligned with resized().
+    auto contentBounds = getLocalBounds().reduced(12);
+    contentBounds.removeFromTop(32);
+    contentBounds.removeFromTop(8);
+    contentBounds.removeFromTop(32);
+    contentBounds.removeFromTop(12);
+    contentBounds.removeFromBottom(20);
+    contentBounds.removeFromBottom(8);
+    auto detailsArea = contentBounds.removeFromRight(210).reduced(8);
+    contentBounds.removeFromRight(12);
     auto listArea = contentBounds.reduced(4);
 
     g.setColour(palette.inset);
@@ -2957,8 +3026,56 @@ void IRBrowserComponent::paint(Graphics& g)
     g.setColour(palette.edge);
     g.drawRoundedRectangle(detailsArea.toFloat(), 8.0f, 1.0f);
 
-    drawIRGlyph(g, detailsArea.toFloat().withTrimmedBottom(detailsArea.getHeight() - 48.0f).withSizeKeepingCentre(42.0f, 42.0f),
-                palette.accent2, irList && irList->getSelectedRow() >= 0);
+    const auto* selectedIR = irList ? listModel.getFileAt(irList->getSelectedRow()) : nullptr;
+    const bool selectedIRReady = selectedIR != nullptr && isReadableIRFile(*selectedIR);
+    auto previewArea = detailsArea.toFloat().reduced(10.0f);
+    previewArea = previewArea.removeFromTop(86.0f);
+    g.setColour(selectedIR ? palette.accent2.withAlpha(selectedIRReady ? 0.12f : 0.08f)
+                           : palette.text.withAlpha(0.045f));
+    g.fillRoundedRectangle(previewArea, 9.0f);
+    g.setColour(selectedIR ? (selectedIRReady ? palette.accent2 : palette.accent).withAlpha(0.46f)
+                           : palette.edge.withAlpha(0.42f));
+    g.drawRoundedRectangle(previewArea.reduced(0.5f), 9.0f, 1.0f);
+
+    auto glyphArea = previewArea.removeFromLeft(52.0f).withSizeKeepingCentre(40.0f, 40.0f);
+    drawIRGlyph(g, glyphArea, selectedIRReady ? palette.accent2 : palette.accent, selectedIR != nullptr);
+
+    auto previewText = previewArea.reduced(4.0f, 7.0f);
+    auto chipRow = previewText.removeFromBottom(20.0f);
+    g.setFont(FontManager::getInstance().getBodyBoldFont());
+    g.setColour(selectedIR ? palette.text : palette.text.withAlpha(0.54f));
+    g.drawText(selectedIR ? String(selectedIR->name) : String("Select an IR"), previewText.removeFromTop(24.0f),
+               Justification::centredLeft, true);
+
+    g.setFont(FontManager::getInstance().getCaptionFont());
+    g.setColour(palette.text.withAlpha(selectedIR ? 0.62f : 0.38f));
+    g.drawText(selectedIR ? makeIRPreviewSummary(*selectedIR) : String("Double-click a row or use Load IR"),
+               previewText, Justification::centredLeft, true);
+
+    drawBrowserChip(g, chipRow.removeFromLeft(selectedIR && !selectedIRReady ? 70.0f : 58.0f),
+                    selectedIR ? (selectedIRReady ? "READY" : "MISSING") : "EMPTY",
+                    selectedIR ? (selectedIRReady ? palette.led : palette.accent) : palette.text.withAlpha(0.45f),
+                    selectedIR != nullptr);
+    chipRow.removeFromLeft(6.0f);
+    drawBrowserChip(g, chipRow.removeFromLeft(56.0f), "LOCAL", palette.accent2, selectedIR != nullptr);
+
+    auto drawDetailRowBacking = [&](Label* label, Label* value, int rowIndex)
+    {
+        if (label == nullptr || value == nullptr)
+            return;
+
+        auto row = label->getBounds().getUnion(value->getBounds()).toFloat().expanded(5.0f, 2.0f);
+        g.setColour((rowIndex % 2 == 0 ? palette.inset : palette.face).withAlpha(0.44f));
+        g.fillRoundedRectangle(row, 6.0f);
+        g.setColour(palette.edge.withAlpha(0.32f));
+        g.drawRoundedRectangle(row.reduced(0.5f), 6.0f, 0.75f);
+    };
+
+    drawDetailRowBacking(nameLabel.get(), nameValue.get(), 0);
+    drawDetailRowBacking(durationLabel.get(), durationValue.get(), 1);
+    drawDetailRowBacking(sampleRateLabel.get(), sampleRateValue.get(), 2);
+    drawDetailRowBacking(channelsLabel.get(), channelsValue.get(), 3);
+    drawDetailRowBacking(fileSizeLabel.get(), fileSizeValue.get(), 4);
 
     if (emptyStateLabel && emptyStateLabel->isVisible())
     {
@@ -3025,19 +3142,21 @@ void IRBrowserComponent::resized()
     bounds.removeFromBottom(8);
 
     // Details panel on right
-    auto detailsArea = bounds.removeFromRight(190).reduced(8);
+    auto detailsArea = bounds.removeFromRight(210).reduced(8);
     bounds.removeFromRight(12);
 
+    detailsArea.removeFromTop(96);
+
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(12);
+    detailsArea.removeFromTop(10);
 
     auto addDetailLayout = [&](Label* label, Label* value)
     {
-        auto row = detailsArea.removeFromTop(20);
-        label->setBounds(row.removeFromLeft(75));
+        auto row = detailsArea.removeFromTop(22);
+        label->setBounds(row.removeFromLeft(76));
         row.removeFromLeft(5);
         value->setBounds(row);
-        detailsArea.removeFromTop(2); // Small gap between rows
+        detailsArea.removeFromTop(4); // Small gap between rows
     };
 
     addDetailLayout(nameLabel.get(), nameValue.get());
@@ -3221,49 +3340,14 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
     {
         nameValue->setText(String(irInfo->name), dontSendNotification);
 
-        if (irInfo->durationSeconds > 0)
-        {
-            if (irInfo->durationSeconds >= 1.0)
-                durationValue->setText(String(irInfo->durationSeconds, 3) + " s", dontSendNotification);
-            else
-                durationValue->setText(String(static_cast<int>(irInfo->durationSeconds * 1000)) + " ms",
-                                       dontSendNotification);
-        }
-        else
-        {
-            durationValue->setText("-", dontSendNotification);
-        }
-
-        if (irInfo->sampleRate > 0)
-            sampleRateValue->setText(String(static_cast<int>(irInfo->sampleRate)) + " Hz", dontSendNotification);
-        else
-            sampleRateValue->setText("-", dontSendNotification);
-
-        if (irInfo->numChannels > 0)
-        {
-            String chText = irInfo->numChannels == 1
-                                ? "Mono"
-                                : (irInfo->numChannels == 2 ? "Stereo" : String(irInfo->numChannels) + " ch");
-            channelsValue->setText(chText, dontSendNotification);
-        }
-        else
-        {
-            channelsValue->setText("-", dontSendNotification);
-        }
-
-        if (irInfo->fileSize > 0)
-        {
-            if (irInfo->fileSize >= 1024 * 1024)
-                fileSizeValue->setText(String(irInfo->fileSize / (1024.0 * 1024.0), 2) + " MB", dontSendNotification);
-            else
-                fileSizeValue->setText(String(irInfo->fileSize / 1024) + " KB", dontSendNotification);
-        }
-        else
-        {
-            fileSizeValue->setText("-", dontSendNotification);
-        }
+        durationValue->setText(formatIRDuration(irInfo->durationSeconds), dontSendNotification);
+        sampleRateValue->setText(formatIRSampleRate(irInfo->sampleRate), dontSendNotification);
+        channelsValue->setText(formatIRChannels(irInfo->numChannels), dontSendNotification);
+        fileSizeValue->setText(formatIRFileSize(irInfo->fileSize), dontSendNotification);
         statusLabel->setText("Selected " + String(irInfo->name) + " - double-click or Load IR to use it.",
                              dontSendNotification);
+        if (loadButton)
+            loadButton->setEnabled(isReadableIRFile(*irInfo));
     }
     else
     {
@@ -3272,6 +3356,8 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
         sampleRateValue->setText("-", dontSendNotification);
         channelsValue->setText("-", dontSendNotification);
         fileSizeValue->setText("-", dontSendNotification);
+        if (loadButton)
+            loadButton->setEnabled(false);
         updateBrowserState();
     }
 }
@@ -3296,7 +3382,9 @@ void IRBrowserComponent::updateBrowserState()
         dontSendNotification);
     irList->setVisible(hasFilteredRows);
     emptyStateLabel->setVisible(!hasFilteredRows);
-    loadButton->setEnabled(hasFilteredRows);
+    const int selectedRow = irList->getSelectedRow();
+    const auto* selectedIR = selectedRow >= 0 ? listModel.getFileAt(selectedRow) : nullptr;
+    loadButton->setEnabled(hasFilteredRows && selectedIR != nullptr && isReadableIRFile(*selectedIR));
     repaint();
 }
 

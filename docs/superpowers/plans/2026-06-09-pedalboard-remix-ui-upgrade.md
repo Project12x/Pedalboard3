@@ -267,14 +267,27 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 - Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
+## 2026-06-10 IR Browser Preview Polish Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/nam-browser.jsx` and `nam-browser.css`.
+- Native source inspected: `src/NAMModelBrowser.cpp`.
+- Reuse mode: pattern-only / clean-room. No prototype source, assets, fonts, CSS, or React code were copied.
+- Intended scope: standalone IR Browser workflow polish only. Search, folder browse, refresh, row selection, double-click load, Load IR, Close, status text, and empty-state behavior are preserved.
+- `git diff --check` passed.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3_Tests /p:Configuration=Release /m:1"` passed with 20 existing warnings and 0 errors.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` compiled the touched UI source, then failed only at final link with `LNK1104` because the launched visual-evaluation `build\Pedalboard3_artefacts\Release\Pedalboard3.exe` process was still running.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 562 assertions in 14 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
+- Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
 
-1. Run `-CaptureScaledDialogMatrix` against `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2` surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
-2. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density and hierarchy, not wholesale replacement.
-3. Revisit IR browser spacing and state feedback, especially empty/folder states and selected IR preview. IR Loader has a first mockup-informed chassis pass, but still needs manual screenshot review across themes and scale.
-4. If plugin search gets another pass, preserve category tabs, keyboard navigation, format badges, double-click selection, and the top-level window recovery path.
+1. After the currently launched visual-evaluation app is closed, rerun the Release app target so `Pedalboard3.exe` can relink.
+2. Run `-CaptureScaledDialogMatrix` against the latest browser/search polish surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
+3. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density and hierarchy, not wholesale replacement.
+4. Continue with real workflow polish: NAM browser density and preview hierarchy, plugin search button/state finish, Stage view mode polish, and IR browser empty/folder states.
 5. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
 
 ## Immediate Next Step
@@ -283,5 +296,5 @@ Continue the Secondary Mockup Harvest aesthetic polish:
 
 1. Re-run the scaled dialog matrix for the latest browser/search polish.
 2. Inspect high-scale screenshots for clipping or hidden recovery controls.
-3. Continue only with real workflow polish: IR browser state clarity, browser density, selected preview hierarchy, and screenshot comparison against the actual mockup.
+3. Continue only with real workflow polish: NAM browser density, IR browser state clarity, selected preview hierarchy, Stage view mode polish, and screenshot comparison against the actual mockup.
 4. Preserve all existing UX functions and keep implementation clean-room/pattern-only.

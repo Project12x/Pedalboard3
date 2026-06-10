@@ -78,5 +78,7 @@ Steps:
 7. Toggle `Options > Node Parameter Controls` off and on, then confirm edit, mappings, bypass, delete, pins, cable hit testing, and graph connections remain intact.
 8. In Stage Grid with a set larger than eight patches, confirm visible Bank A/B/C selectors jump to the first patch in the selected bank and do not interfere with tile clicks.
 9. Add or open a standalone IR Loader node, then confirm empty IR slots, loaded IR slots, the footer status, Load/Browse/Clear buttons, Blend/Mix sliders, and Lo/Hi Cut sliders remain readable and functional.
-10. Repeat the visual pass in dark, light/daylight, and synthwave themes.
-11. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
+10. Open the standalone IR Browser, select an IR, and confirm the right preview card shows the cabinet glyph, selected name, READY chip, local source chip, duration, sample rate, channel count, and file size without clipping.
+11. If a listed IR file has been moved or deleted, confirm the preview shows MISSING and `Load IR` stays disabled.
+12. Repeat the visual pass in dark, light/daylight, and synthwave themes.
+13. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
