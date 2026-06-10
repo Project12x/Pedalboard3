@@ -36,6 +36,7 @@ class NAMModelListModel : public ListBoxModel
     void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) override;
 
     const NAMModelInfo* getModelAt(int index) const;
+    int getTotalCount() const { return static_cast<int>(allModels.size()); }
     int getFilteredCount() const { return static_cast<int>(filteredIndices.size()); }
 
     void setHoveredRow(int row) { hoveredRow = row; }
@@ -80,6 +81,7 @@ class IRListModel : public ListBoxModel
     void paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected) override;
 
     const IRFileInfo* getFileAt(int index) const;
+    int getTotalCount() const { return static_cast<int>(allFiles.size()); }
     int getFilteredCount() const { return static_cast<int>(filteredIndices.size()); }
 
     void setHoveredRow(int row) { hoveredRow = row; }
@@ -125,6 +127,8 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     void deleteSelectedModel();
     void onListSelectionChanged();
     void switchToTab(int tabIndex);
+    void updateLocalBrowserState();
+    void syncLocalSelectionAfterListChange();
 
     // IR browser methods
     void scanIRDirectory(const File& directory);
@@ -132,6 +136,8 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     void updateIRDetailsPanel(const IRFileInfo* irInfo);
     void loadSelectedIR();
     void onIRListSelectionChanged();
+    void updateIRBrowserState();
+    void syncIRSelectionAfterListChange();
 
     NAMProcessor* namProcessor;
     std::function<void()> onModelLoadedCallback;
@@ -180,6 +186,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
 
     // Empty state
     std::unique_ptr<Label> emptyStateLabel;
+    std::unique_ptr<Label> irEmptyStateLabel;
 
     File currentDirectory;
     std::vector<NAMModelInfo> models;
@@ -274,6 +281,8 @@ class IRBrowserComponent : public Component, public Button::Listener, public Tex
     void updateDetailsPanel(const IRFileInfo* irInfo);
     void loadSelectedIR();
     void onListSelectionChanged();
+    void updateBrowserState();
+    void syncSelectionAfterListChange();
 
     std::function<void(const File&)> onIRSelectedCallback;
 
@@ -302,6 +311,7 @@ class IRBrowserComponent : public Component, public Button::Listener, public Tex
 
     // Status bar
     std::unique_ptr<Label> statusLabel;
+    std::unique_ptr<Label> emptyStateLabel;
 
     File currentDirectory;
     File namModelsDirectory; // Also scan NAM Models folder for IRs

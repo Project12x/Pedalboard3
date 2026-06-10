@@ -20,6 +20,103 @@
 #include <set>
 #include <spdlog/spdlog.h>
 
+namespace
+{
+String describeBrowserCount(const File& primaryDirectory, const String& secondarySource, int totalCount,
+                            int filteredCount, const String& singular, const String& plural, const String& query)
+{
+    String status = primaryDirectory.getFullPathName();
+    if (secondarySource.isNotEmpty())
+        status += " + " + secondarySource;
+
+    const auto trimmedQuery = query.trim();
+    if (totalCount <= 0)
+        return status + " - No " + plural + " found";
+
+    if (trimmedQuery.isNotEmpty())
+        return status + " - " + String(filteredCount) + " of " + String(totalCount) + " " + plural + " match \"" +
+               trimmedQuery + "\"";
+
+    return status + " - " + String(totalCount) + " " + (totalCount == 1 ? singular : plural);
+}
+
+String makeEmptyStateCopy(const String& title, const String& action, const String& query)
+{
+    if (query.trim().isNotEmpty())
+        return "No matches for \"" + query.trim() + "\"\n\nTry a broader search or clear the search field.";
+
+    return title + "\n\n" + action;
+}
+
+void drawMagnifierGlyph(Graphics& g, Rectangle<float> area, Colour colour, float thickness)
+{
+    const auto size = jmin(area.getWidth(), area.getHeight()) * 0.58f;
+    const auto circle = Rectangle<float>(area.getCentreX() - size * 0.55f, area.getCentreY() - size * 0.6f, size, size);
+    g.setColour(colour);
+    g.drawEllipse(circle, thickness);
+    g.drawLine(circle.getRight() - size * 0.08f, circle.getBottom() - size * 0.08f, circle.getRight() + size * 0.36f,
+               circle.getBottom() + size * 0.36f, thickness);
+}
+
+void drawModelGlyph(Graphics& g, Rectangle<float> tile, Colour accent, bool active)
+{
+    const auto base = active ? accent.withAlpha(0.24f) : accent.withAlpha(0.13f);
+    g.setColour(base);
+    g.fillRoundedRectangle(tile, 9.0f);
+    g.setColour(accent.withAlpha(active ? 0.7f : 0.42f));
+    g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.0f);
+
+    const auto speaker = tile.reduced(tile.getWidth() * 0.26f, tile.getHeight() * 0.22f);
+    g.setColour(accent.withAlpha(active ? 0.95f : 0.7f));
+    g.drawEllipse(speaker, 1.4f);
+    g.fillEllipse(speaker.withSizeKeepingCentre(speaker.getWidth() * 0.26f, speaker.getHeight() * 0.26f));
+    g.drawLine(tile.getX() + tile.getWidth() * 0.24f, tile.getY() + tile.getHeight() * 0.25f,
+               tile.getX() + tile.getWidth() * 0.42f, tile.getY() + tile.getHeight() * 0.25f, 1.2f);
+}
+
+void drawIRGlyph(Graphics& g, Rectangle<float> tile, Colour accent, bool active)
+{
+    g.setColour(active ? accent.withAlpha(0.22f) : accent.withAlpha(0.12f));
+    g.fillRoundedRectangle(tile, 9.0f);
+    g.setColour(accent.withAlpha(active ? 0.7f : 0.42f));
+    g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.0f);
+
+    const auto cell = jmin(tile.getWidth(), tile.getHeight()) * 0.2f;
+    for (int y = 0; y < 2; ++y)
+    {
+        for (int x = 0; x < 2; ++x)
+        {
+            auto dot = Rectangle<float>(tile.getX() + tile.getWidth() * (0.32f + x * 0.28f) - cell * 0.5f,
+                                        tile.getY() + tile.getHeight() * (0.33f + y * 0.28f) - cell * 0.5f, cell,
+                                        cell);
+            g.setColour(accent.withAlpha(active ? 0.82f : 0.58f));
+            g.drawEllipse(dot, 1.2f);
+            g.setColour(accent.withAlpha(active ? 0.22f : 0.12f));
+            g.fillEllipse(dot.reduced(3.0f));
+        }
+    }
+}
+
+void drawStatusLed(Graphics& g, Rectangle<float> area, Colour colour, bool active)
+{
+    const auto dot = area.withSizeKeepingCentre(8.0f, 8.0f);
+    if (active)
+    {
+        g.setColour(colour.withAlpha(0.22f));
+        g.fillEllipse(dot.expanded(6.0f));
+        g.setColour(colour.withAlpha(0.34f));
+        g.fillEllipse(dot.expanded(3.5f));
+    }
+
+    ColourGradient ledGradient(colour.brighter(0.35f), dot.getX(), dot.getY(), colour.darker(0.35f), dot.getRight(),
+                               dot.getBottom(), false);
+    g.setGradientFill(ledGradient);
+    g.fillEllipse(dot);
+    g.setColour(Colours::black.withAlpha(0.45f));
+    g.drawEllipse(dot, 1.0f);
+}
+} // namespace
+
 //==============================================================================
 // Custom LookAndFeel for browser windows — rounded corners + dark title bar
 //==============================================================================
@@ -44,19 +141,23 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
                                     const Image* /*icon*/, bool /*drawTitleTextOnLeft*/) override
     {
         auto& colours = ::ColourScheme::getInstance().colours;
-        auto bg = colours["Window Background"].darker(0.15f);
+        auto bg = colours["Window Background"].darker(0.12f);
         auto text = colours["Text Colour"];
 
         // Title bar background with rounded top corners
         Path titlePath;
         titlePath.addRoundedRectangle(0.0f, 0.0f, (float)w, (float)h + cornerRadius, cornerRadius, cornerRadius, true,
                                       true, false, false);
-        g.setColour(bg);
+        ColourGradient titleGradient(bg.brighter(0.08f), 0.0f, 0.0f, bg.darker(0.12f), 0.0f, (float)h, false);
+        g.setGradientFill(titleGradient);
         g.fillPath(titlePath);
 
-        // Subtle bottom border
-        g.setColour(text.withAlpha(0.1f));
+        // Subtle bottom border and accent trace
+        g.setColour(text.withAlpha(0.08f));
         g.drawHorizontalLine(h - 1, 0.0f, (float)w);
+        g.setColour(colours["Accent Colour"].withAlpha(0.34f));
+        g.drawLine((float)titleSpaceX, (float)h - 2.0f, (float)jmin(w - 34, titleSpaceX + titleSpaceW / 2),
+                   (float)h - 2.0f, 1.0f);
 
         // Title text
         g.setColour(text.withAlpha(0.9f));
@@ -94,18 +195,26 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
     {
         auto& colours = ::ColourScheme::getInstance().colours;
         auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
-        float cr = height / 2.0f; // Full pill shape
+        float cr = editor.isMultiLine() ? 8.0f : height / 2.0f;
 
-        // Pill background
-        g.setColour(colours["Dialog Inner Background"]);
+        ColourGradient fill(colours["Dialog Inner Background"].darker(0.04f), bounds.getX(), bounds.getY(),
+                            colours["Dialog Inner Background"].brighter(0.03f), bounds.getX(), bounds.getBottom(),
+                            false);
+        g.setGradientFill(fill);
         g.fillRoundedRectangle(bounds, cr);
+
+        if (editor.isMultiLine())
+        {
+            g.setColour(Colours::black.withAlpha(0.12f));
+            g.drawRoundedRectangle(bounds.reduced(2.0f), cr - 2.0f, 1.0f);
+        }
     }
 
     void drawTextEditorOutline(Graphics& g, int width, int height, TextEditor& editor) override
     {
         auto& colours = ::ColourScheme::getInstance().colours;
         auto bounds = Rectangle<float>(0, 0, (float)width, (float)height);
-        float cr = height / 2.0f;
+        float cr = editor.isMultiLine() ? 8.0f : height / 2.0f;
 
         // Subtle pill border — brighter when focused
         float alpha = editor.hasKeyboardFocus(true) ? 0.5f : 0.2f;
@@ -179,9 +288,12 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     // Card background for every item
     if (rowIsSelected)
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
+        ColourGradient selectedFill(colours["Accent Colour"].withAlpha(0.23f), itemBounds.getX(), itemBounds.getY(),
+                                    colours["Dialog Inner Background"].brighter(0.08f), itemBounds.getX(),
+                                    itemBounds.getBottom(), false);
+        g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
+        g.setColour(colours["Accent Colour"].withAlpha(0.62f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
 
         // Left-edge accent stripe (DAW-style selection indicator)
@@ -191,9 +303,9 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.07f));
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.25f));
+        g.setColour(colours["Accent Colour"].withAlpha(0.28f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
     else
@@ -208,7 +320,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& model = allModels[filteredIndices[rowNumber]];
-        const int textX = margin + 10;
+        const int textX = margin + 58;
 
         // Extract rig type and model type from metadata
         String rigType;
@@ -272,6 +384,10 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
             archColour = Colour(0xFFB088E8); // lavender
         else
             archColour = colours["Text Colour"].withAlpha(0.4f);
+
+        drawModelGlyph(g,
+                       Rectangle<float>((float)(margin + 12), (height - 38.0f) * 0.5f, 38.0f, 38.0f),
+                       archColour, rowIsSelected);
 
         Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
@@ -440,7 +556,10 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
     // Background with rounded corners
     if (rowIsSelected)
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
+        ColourGradient selectedFill(colours["Accent Colour"].withAlpha(0.2f), itemBounds.getX(), itemBounds.getY(),
+                                    colours["Dialog Inner Background"].brighter(0.07f), itemBounds.getX(),
+                                    itemBounds.getBottom(), false);
+        g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
         g.setColour(colours["Accent Colour"].withAlpha(0.5f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
@@ -457,14 +576,25 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         g.setColour(colours["Accent Colour"].withAlpha(0.2f));
         g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
     }
+    else
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.025f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Text Colour"].withAlpha(0.055f));
+        g.drawRoundedRectangle(itemBounds, cornerRadius, 0.5f);
+    }
 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& ir = allFiles[filteredIndices[rowNumber]];
-        const int textX = margin + 10;
+        const int textX = margin + 52;
         const int badgeWidth = 50;
         const int badgeHeight = 18;
         const int badgeX = width - margin - badgeWidth - 8;
+        const Colour irAccent = Colour(0xFF38C8E8);
+
+        drawIRGlyph(g, Rectangle<float>((float)(margin + 10), (height - 30.0f) * 0.5f, 30.0f, 30.0f), irAccent,
+                    rowIsSelected);
 
         // Duration badge
         String durationText;
@@ -480,7 +610,7 @@ void IRListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int he
         {
             Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                          static_cast<float>(badgeWidth), static_cast<float>(badgeHeight));
-            Colour badgeColour = Colour(0xFF38C8E8); // bright cyan for IR duration
+            Colour badgeColour = irAccent; // bright cyan for IR duration
             g.setColour(badgeColour.withAlpha(0.2f));
             g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
             g.setColour(badgeColour);
@@ -579,8 +709,12 @@ class PillTabLookAndFeel : public LookAndFeel_V4
             else if (isMouseOverButton)
                 fillColour = fillColour.brighter(0.1f);
 
-            g.setColour(fillColour);
+            ColourGradient active(fillColour.brighter(0.18f), bounds.getX(), bounds.getY(), fillColour.darker(0.1f),
+                                  bounds.getX(), bounds.getBottom(), false);
+            g.setGradientFill(active);
             g.fillRoundedRectangle(bounds, cornerRadius);
+            g.setColour(Colours::white.withAlpha(0.14f));
+            g.drawRoundedRectangle(bounds.reduced(0.5f), cornerRadius, 1.0f);
         }
         else
         {
@@ -600,8 +734,8 @@ class PillTabLookAndFeel : public LookAndFeel_V4
 
         g.setFont(FontManager::getInstance().getBodyBoldFont());
 
-        if (button.getToggleState())
-            g.setColour(Colours::white);
+    if (button.getToggleState())
+            g.setColour(Colours::white.withAlpha(0.96f));
         else
             g.setColour(colours["Text Colour"].withAlpha(0.7f));
 
@@ -621,7 +755,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     auto& colours = ColourScheme::getInstance().colours;
 
     // Title
-    titleLabel = std::make_unique<Label>("title", "NAM Model Browser");
+    titleLabel = std::make_unique<Label>("title", "NAM Library");
     titleLabel->setFont(FontManager::getInstance().getHeadingFont());
     titleLabel->setColour(Label::textColourId, colours["Text Colour"]);
     addAndMakeVisible(titleLabel.get());
@@ -781,7 +915,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Empty state message
     emptyStateLabel = std::make_unique<Label>(
         "emptyState",
-        "No NAM models found\n\nUse 'Browse Folder...' to select a folder\nor download models from the Online tab.");
+        makeEmptyStateCopy("No NAM models found", "Use Browse Folder to select a folder or switch to Online.",
+                           String()));
     emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
     emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
     emptyStateLabel->setJustificationType(Justification::centred);
@@ -798,6 +933,15 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     irList->addMouseListener(this, true);
     irList->setVisible(false);
     addAndMakeVisible(irList.get());
+
+    irEmptyStateLabel = std::make_unique<Label>(
+        "irEmptyState", makeEmptyStateCopy("No impulse responses found", "Use Browse IR Folder to choose a cabinet folder.",
+                                           String()));
+    irEmptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
+    irEmptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    irEmptyStateLabel->setJustificationType(Justification::centred);
+    irEmptyStateLabel->setVisible(false);
+    addAndMakeVisible(irEmptyStateLabel.get());
 
     irBrowseFolderButton = std::make_unique<TextButton>("Browse IR Folder...");
     irBrowseFolderButton->addListener(this);
@@ -936,6 +1080,8 @@ void NAMModelBrowserComponent::refreshColours()
     // Status and empty state
     statusLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.6f));
     emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    if (irEmptyStateLabel)
+        irEmptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
 
     // IR browser buttons
     styleButton(irBrowseFolderButton.get());
@@ -969,6 +1115,8 @@ void NAMModelBrowserComponent::refreshColours()
     metadataDisplay->setFont(FontManager::getInstance().getMonoFont(11.0f));
     statusLabel->setFont(FontManager::getInstance().getCaptionFont());
     emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
+    if (irEmptyStateLabel)
+        irEmptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
     searchBox->setFont(FontManager::getInstance().getSubheadingFont());
 
     irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
@@ -1002,6 +1150,57 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
     }
 
+    // Mockup-informed faceplate header: title, tabs, and active/offline status live on one raised chassis strip.
+    {
+        auto headerBounds = titleLabel->getBounds()
+                                .getUnion(localTabButton->getBounds())
+                                .getUnion(onlineTabButton->getBounds())
+                                .getUnion(irTabButton->getBounds())
+                                .expanded(10, 8)
+                                .toFloat();
+        headerBounds.setRight((float)getWidth() - 16.0f);
+
+        Path headerPath;
+        headerPath.addRoundedRectangle(headerBounds, 10.0f);
+        melatonin::DropShadow shadow(Colours::black.withAlpha(0.24f), 9, {1, 2});
+        shadow.render(g, headerPath);
+
+        ColourGradient face(colours["Dialog Inner Background"].brighter(0.12f), headerBounds.getX(),
+                            headerBounds.getY(), colours["Dialog Inner Background"].darker(0.08f),
+                            headerBounds.getX(), headerBounds.getBottom(), false);
+        g.setGradientFill(face);
+        g.fillPath(headerPath);
+        g.setColour(colours["Text Colour"].withAlpha(0.14f));
+        g.strokePath(headerPath, PathStrokeType(1.0f));
+
+        g.setColour(colours["Slider Colour"].withAlpha(0.75f));
+        g.drawLine(headerBounds.getX() + 14.0f, headerBounds.getBottom() - 7.0f,
+                   headerBounds.getX() + 205.0f, headerBounds.getBottom() - 7.0f, 2.0f);
+
+        auto statusPill = Rectangle<float>(headerBounds.getRight() - 116.0f, headerBounds.getCentreY() - 13.0f,
+                                           88.0f, 26.0f);
+        g.setColour(colours["Dialog Inner Background"].darker(0.2f));
+        g.fillRoundedRectangle(statusPill, 8.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.12f));
+        g.drawRoundedRectangle(statusPill.reduced(0.5f), 8.0f, 1.0f);
+        drawStatusLed(g, statusPill.removeFromLeft(24.0f), colours["VU Meter Lower Colour"], currentTab == 1);
+        g.setFont(FontManager::getInstance().getBadgeFont());
+        g.setColour(currentTab == 1 ? colours["VU Meter Lower Colour"] : colours["Text Colour"].withAlpha(0.55f));
+        g.drawText(currentTab == 1 ? "ONLINE" : "LOCAL", statusPill, Justification::centredLeft, true);
+
+        for (auto corner : {headerBounds.getTopLeft(), headerBounds.getTopRight(), headerBounds.getBottomLeft(),
+                            headerBounds.getBottomRight()})
+        {
+            auto screw = Rectangle<float>(corner.x - (corner.x == headerBounds.getX() ? -6.0f : 10.0f),
+                                          corner.y - (corner.y == headerBounds.getY() ? -6.0f : 10.0f), 5.0f,
+                                          5.0f);
+            g.setColour(Colours::black.withAlpha(0.45f));
+            g.fillEllipse(screw);
+            g.setColour(colours["Text Colour"].withAlpha(0.18f));
+            g.drawEllipse(screw, 1.0f);
+        }
+    }
+
     // Draw pill-container capsule behind tab buttons
     {
         auto tabBg = localTabButton->getBounds()
@@ -1029,9 +1228,11 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
         // Draw rounded list background with subtle inner shadow
         auto listBounds = listArea.toFloat();
-        g.setColour(colours["Dialog Inner Background"].darker(0.02f));
+        g.setColour(colours["Dialog Inner Background"].darker(0.12f));
         g.fillRoundedRectangle(listBounds, 8.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.15f));
+        g.setColour(Colours::black.withAlpha(0.18f));
+        g.drawRoundedRectangle(listBounds.reduced(2.0f), 6.0f, 1.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.14f));
         g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
         // Draw card-style details panel with shadow
@@ -1055,6 +1256,50 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.strokePath(detailsPath, PathStrokeType(2.0f));
         g.setColour(colours["Text Colour"].withAlpha(0.12f));
         g.strokePath(detailsPath, PathStrokeType(1.0f));
+
+        if (detailsBounds.getWidth() >= 320.0f)
+        {
+            auto glyph = Rectangle<float>(detailsBounds.getRight() - 62.0f, detailsBounds.getY() + 16.0f, 44.0f, 44.0f);
+            if (currentTab == 0)
+                drawModelGlyph(g, glyph, colours["Slider Colour"], modelList && modelList->getSelectedRow() >= 0);
+            else
+                drawIRGlyph(g, glyph, colours["Audio Connection"], irList && irList->getSelectedRow() >= 0);
+        }
+
+        auto drawDetailRowBacking = [&](Label* label, Component* value, int rowIndex)
+        {
+            if (label == nullptr || value == nullptr || !label->isVisible() || !value->isVisible())
+                return;
+
+            auto row = label->getBounds().getUnion(value->getBounds()).expanded(7, 3).toFloat();
+            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 320.0f ? 76.0f : 16.0f));
+            row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
+
+            g.setColour(colours["Dialog Inner Background"].darker(rowIndex % 2 == 0 ? 0.08f : 0.03f).withAlpha(0.72f));
+            g.fillRoundedRectangle(row, 6.0f);
+            g.setColour(colours["Text Colour"].withAlpha(0.055f));
+            g.drawRoundedRectangle(row.reduced(0.5f), 6.0f, 1.0f);
+        };
+
+        if (currentTab == 0)
+        {
+            drawDetailRowBacking(nameLabel.get(), nameValue.get(), 0);
+            drawDetailRowBacking(authorLabel.get(), authorValue.get(), 1);
+            drawDetailRowBacking(modelTypeLabel.get(), modelTypeValue.get(), 2);
+            drawDetailRowBacking(architectureLabel.get(), architectureValue.get(), 3);
+            drawDetailRowBacking(sampleRateLabel.get(), sampleRateValue.get(), 4);
+            drawDetailRowBacking(loudnessLabel.get(), loudnessValue.get(), 5);
+            drawDetailRowBacking(filePathLabel.get(), filePathValue.get(), 6);
+        }
+        else
+        {
+            drawDetailRowBacking(irNameLabel.get(), irNameValue.get(), 0);
+            drawDetailRowBacking(irDurationLabel.get(), irDurationValue.get(), 1);
+            drawDetailRowBacking(irSampleRateLabel.get(), irSampleRateValue.get(), 2);
+            drawDetailRowBacking(irChannelsLabel.get(), irChannelsValue.get(), 3);
+            drawDetailRowBacking(irFileSizeLabel.get(), irFileSizeValue.get(), 4);
+            drawDetailRowBacking(irFilePathLabel.get(), irFilePathValue.get(), 5);
+        }
     }
 
     // Draw section separators in details panel
@@ -1085,6 +1330,12 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         float hx = cx + r * 0.7f;
         float hy = iconTop + r * 2.0f - r * 0.3f;
         g.drawLine(hx, hy, hx + r * 0.8f, hy + r * 0.8f, 2.0f);
+    }
+    else if (currentTab == 2 && irEmptyStateLabel && irEmptyStateLabel->isVisible())
+    {
+        auto emptyBounds = irEmptyStateLabel->getBounds().toFloat();
+        drawIRGlyph(g, emptyBounds.withSizeKeepingCentre(44.0f, 44.0f).translated(0.0f, -52.0f),
+                    colours["Audio Connection"].withAlpha(0.8f), false);
     }
 }
 
@@ -1133,6 +1384,8 @@ void NAMModelBrowserComponent::resized()
     auto hideIRComponents = [this]()
     {
         irList->setVisible(false);
+        if (irEmptyStateLabel)
+            irEmptyStateLabel->setVisible(false);
         irBrowseFolderButton->setVisible(false);
         irLoadButton->setVisible(false);
         irDetailsTitle->setVisible(false);
@@ -1235,7 +1488,9 @@ void NAMModelBrowserComponent::resized()
 
         // IR list
         irList->setBounds(listArea);
-        irList->setVisible(true);
+        if (irEmptyStateLabel)
+            irEmptyStateLabel->setBounds(listArea);
+        updateIRBrowserState();
 
         // IR details panel
         auto detailsArea = bounds;
@@ -1302,9 +1557,7 @@ void NAMModelBrowserComponent::resized()
     statusLabel->setVisible(true);
 
     // Show list or empty state based on model count
-    bool hasModels = listModel.getNumRows() > 0;
-    modelList->setVisible(hasModels);
-    emptyStateLabel->setVisible(!hasModels);
+    updateLocalBrowserState();
 
     // Search and refresh row
     auto searchRow = bounds.removeFromTop(32);
@@ -1320,11 +1573,15 @@ void NAMModelBrowserComponent::resized()
     statusLabel->setBounds(statusRow);
     bounds.removeFromBottom(4);
 
-    // Button row at bottom — only Close
+    // Button row at bottom
     auto buttonRow = bounds.removeFromBottom(36);
     bounds.removeFromBottom(8);
 
     closeButton->setBounds(buttonRow.removeFromRight(70));
+    buttonRow.removeFromRight(8);
+    deleteButton->setBounds(buttonRow.removeFromRight(100));
+    buttonRow.removeFromRight(8);
+    loadButton->setBounds(buttonRow.removeFromRight(100));
 
     // Split remaining area: list (55%) and details (45%)
     int listWidth = bounds.getWidth() * 0.55f;
@@ -1379,13 +1636,6 @@ void NAMModelBrowserComponent::resized()
     filePathLabel->setBounds(fileRow.removeFromLeft(40));
     filePathValue->setBounds(fileRow);
     detailsArea.removeFromTop(rowGap);
-
-    // Action buttons at bottom of details panel
-    auto actionRow = detailsArea.removeFromBottom(32);
-    loadButton->setBounds(actionRow.removeFromLeft(100));
-    actionRow.removeFromLeft(8);
-    deleteButton->setBounds(actionRow.removeFromLeft(100));
-    detailsArea.removeFromBottom(8);
 
     metadataLabel->setBounds(detailsArea.removeFromTop(20));
     detailsArea.removeFromTop(4);
@@ -1558,12 +1808,14 @@ void NAMModelBrowserComponent::textEditorTextChanged(TextEditor& editor)
             listModel.setFilter(searchBox->getText());
             modelList->updateContent();
             modelList->repaint();
+            syncLocalSelectionAfterListChange();
         }
         else if (currentTab == 2)
         {
             irListModel.setFilter(searchBox->getText());
             irList->updateContent();
             irList->repaint();
+            syncIRSelectionAfterListChange();
         }
     }
 }
@@ -1576,6 +1828,7 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
     {
         listModel.setModels(models);
         modelList->updateContent();
+        syncLocalSelectionAfterListChange();
         return;
     }
 
@@ -1609,23 +1862,7 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
     modelList->updateContent();
     modelList->repaint();
 
-    // Update status bar with result
-    String statusText = currentDirectory.getFullPathName();
-    if (models.empty())
-        statusText += " - No models found";
-    else if (models.size() == 1)
-        statusText += " - 1 model";
-    else
-        statusText += " - " + String(models.size()) + " models";
-    statusLabel->setText(statusText, dontSendNotification);
-
-    // Update empty state visibility
-    bool hasModels = !models.empty();
-    modelList->setVisible(hasModels);
-    emptyStateLabel->setVisible(!hasModels);
-
-    // Clear details
-    updateDetailsPanel(nullptr);
+    syncLocalSelectionAfterListChange();
 }
 
 void NAMModelBrowserComponent::refreshModelList()
@@ -1737,6 +1974,8 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         modelTypeValue->setText(modelType, dontSendNotification);
 
         metadataDisplay->setText(formattedMetadata.trimEnd(), dontSendNotification);
+        statusLabel->setText("Selected " + String(model->name) + " - double-click or Load Model to use it.",
+                             dontSendNotification);
     }
     else
     {
@@ -1749,7 +1988,54 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         filePathValue->setText("-", dontSendNotification);
         filePathValue->setTooltip("");
         metadataDisplay->setText("", dontSendNotification);
+        updateLocalBrowserState();
     }
+}
+
+void NAMModelBrowserComponent::updateLocalBrowserState()
+{
+    if (!statusLabel || !emptyStateLabel || !modelList)
+        return;
+
+    const auto query = searchBox ? searchBox->getText() : String();
+    const int total = listModel.getTotalCount();
+    const int filtered = listModel.getFilteredCount();
+    const bool hasFilteredRows = filtered > 0;
+
+    statusLabel->setText(describeBrowserCount(currentDirectory, String(), total, filtered, "model", "models", query),
+                         dontSendNotification);
+    emptyStateLabel->setText(makeEmptyStateCopy("No NAM models found",
+                                                "Use Browse Folder to select a folder or switch to Online.", query),
+                             dontSendNotification);
+    modelList->setVisible(hasFilteredRows);
+    emptyStateLabel->setVisible(!hasFilteredRows);
+    loadButton->setEnabled(hasFilteredRows);
+    deleteButton->setEnabled(hasFilteredRows);
+    repaint();
+}
+
+void NAMModelBrowserComponent::syncLocalSelectionAfterListChange()
+{
+    updateLocalBrowserState();
+
+    if (!modelList)
+        return;
+
+    const int filtered = listModel.getFilteredCount();
+    if (filtered <= 0)
+    {
+        modelList->deselectAllRows();
+        updateDetailsPanel(nullptr);
+        return;
+    }
+
+    int row = modelList->getSelectedRow();
+    if (row < 0 || row >= filtered)
+        row = 0;
+
+    modelList->selectRow(row, dontSendNotification);
+    updateDetailsPanel(listModel.getModelAt(row));
+    modelList->repaint();
 }
 
 void NAMModelBrowserComponent::loadSelectedModel()
@@ -1922,20 +2208,7 @@ void NAMModelBrowserComponent::scanIRDirectory(const File& directory)
     irList->updateContent();
     irList->repaint();
 
-    // Update status bar
-    String statusText = irDirectory.getFullPathName();
-    if (currentDirectory != irDirectory)
-        statusText += " + " + currentDirectory.getFileName();
-    if (irFiles.empty())
-        statusText += " - No IR files found";
-    else if (irFiles.size() == 1)
-        statusText += " - 1 IR file";
-    else
-        statusText += " - " + String(irFiles.size()) + " IR files";
-    statusLabel->setText(statusText, dontSendNotification);
-
-    // Clear details
-    updateIRDetailsPanel(nullptr);
+    syncIRSelectionAfterListChange();
 }
 
 void NAMModelBrowserComponent::addIRFileInfo(const File& file)
@@ -2021,6 +2294,8 @@ void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
         File irFile(irInfo->filePath);
         irFilePathValue->setText(irFile.getFileName(), dontSendNotification);
         irFilePathValue->setTooltip(String(irInfo->filePath));
+        statusLabel->setText("Selected " + String(irInfo->name) + " - double-click or Load IR to use it.",
+                             dontSendNotification);
     }
     else
     {
@@ -2031,7 +2306,58 @@ void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
         irFileSizeValue->setText("-", dontSendNotification);
         irFilePathValue->setText("-", dontSendNotification);
         irFilePathValue->setTooltip("");
+        updateIRBrowserState();
     }
+}
+
+void NAMModelBrowserComponent::updateIRBrowserState()
+{
+    if (!statusLabel || !irList)
+        return;
+
+    const auto query = searchBox ? searchBox->getText() : String();
+    const int total = irListModel.getTotalCount();
+    const int filtered = irListModel.getFilteredCount();
+    const bool hasFilteredRows = filtered > 0;
+    const auto secondary = currentDirectory != irDirectory ? currentDirectory.getFileName() : String();
+
+    statusLabel->setText(describeBrowserCount(irDirectory, secondary, total, filtered, "IR file", "IR files", query),
+                         dontSendNotification);
+    if (irEmptyStateLabel)
+    {
+        irEmptyStateLabel->setText(
+            makeEmptyStateCopy("No impulse responses found", "Use Browse IR Folder to choose a cabinet folder.", query),
+            dontSendNotification);
+        irEmptyStateLabel->setVisible(!hasFilteredRows);
+    }
+
+    irList->setVisible(hasFilteredRows);
+    irLoadButton->setEnabled(hasFilteredRows);
+    repaint();
+}
+
+void NAMModelBrowserComponent::syncIRSelectionAfterListChange()
+{
+    updateIRBrowserState();
+
+    if (!irList)
+        return;
+
+    const int filtered = irListModel.getFilteredCount();
+    if (filtered <= 0)
+    {
+        irList->deselectAllRows();
+        updateIRDetailsPanel(nullptr);
+        return;
+    }
+
+    int row = irList->getSelectedRow();
+    if (row < 0 || row >= filtered)
+        row = 0;
+
+    irList->selectRow(row, dontSendNotification);
+    updateIRDetailsPanel(irListModel.getFileAt(row));
+    irList->repaint();
 }
 
 void NAMModelBrowserComponent::loadSelectedIR()
@@ -2170,12 +2496,19 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     // IR List with improved styling
     irList = std::make_unique<ListBox>("irList", &listModel);
-    irList->setRowHeight(36); // Taller rows for better readability
-    irList->setColour(ListBox::backgroundColourId, colours["Background"]);
-    irList->setColour(ListBox::outlineColourId, colours["Border Colour"]);
-    irList->setOutlineThickness(1);
+    irList->setRowHeight(44); // Taller rows for better readability
+    irList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
+    irList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
+    irList->setOutlineThickness(0);
     irList->addMouseListener(this, true); // Receive mouse events from children
     addAndMakeVisible(irList.get());
+
+    emptyStateLabel = std::make_unique<Label>(
+        "emptyState", makeEmptyStateCopy("No impulse responses found", "Use Folder to choose a cabinet folder.", String()));
+    emptyStateLabel->setFont(FontManager::getInstance().getBodyFont());
+    emptyStateLabel->setColour(Label::textColourId, colours["Text Colour"].withAlpha(0.4f));
+    emptyStateLabel->setJustificationType(Justification::centred);
+    addAndMakeVisible(emptyStateLabel.get());
 
     // Details panel labels with improved styling
     detailsTitle = std::make_unique<Label>("detailsTitle", "IR Details");
@@ -2229,7 +2562,10 @@ void IRBrowserComponent::paint(Graphics& g)
     auto bounds = getLocalBounds().toFloat();
 
     // Gradient background
-    g.fillAll(colours["Window Background"]);
+    ColourGradient bg(colours["Window Background"].brighter(0.04f), 0.0f, 0.0f,
+                      colours["Window Background"].darker(0.06f), 0.0f, bounds.getHeight(), false);
+    g.setGradientFill(bg);
+    g.fillAll();
 
     // Subtle dot-grid pattern on background
     {
@@ -2240,22 +2576,34 @@ void IRBrowserComponent::paint(Graphics& g)
                 g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
     }
 
-    // Header area with gradient
-    Rectangle<float> headerArea(0, 0, bounds.getWidth(), 45);
-    ColourGradient headerGradient(colours["Background Light"].brighter(0.05f), 0, 0, colours["Window Background"], 0,
-                                  45, false);
+    // Header faceplate with gradient
+    Rectangle<float> headerArea(12.0f, 10.0f, bounds.getWidth() - 24.0f, 44.0f);
+    ColourGradient headerGradient(colours["Dialog Inner Background"].brighter(0.11f), headerArea.getX(),
+                                  headerArea.getY(), colours["Dialog Inner Background"].darker(0.08f),
+                                  headerArea.getX(), headerArea.getBottom(), false);
     g.setGradientFill(headerGradient);
-    g.fillRect(headerArea);
+    g.fillRoundedRectangle(headerArea, 9.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.13f));
+    g.drawRoundedRectangle(headerArea.reduced(0.5f), 9.0f, 1.0f);
+    g.setColour(colours["Audio Connection"].withAlpha(0.7f));
+    g.drawLine(headerArea.getX() + 12.0f, headerArea.getBottom() - 7.0f, headerArea.getX() + 145.0f,
+               headerArea.getBottom() - 7.0f, 2.0f);
 
     // Header bottom separator
-    g.setColour(colours["Border Colour"]);
-    g.drawHorizontalLine(44, 0, bounds.getWidth());
+    g.setColour(colours["Border Colour"].withAlpha(0.45f));
+    g.drawHorizontalLine(62, 16, bounds.getWidth() - 16);
 
-    // Details panel
+    // Details panel and list well
     auto contentBounds = getLocalBounds();
-    contentBounds.removeFromTop(73);    // Title + search row
+    contentBounds.removeFromTop(82);    // Title + search row
     contentBounds.removeFromBottom(35); // Status bar
-    auto detailsArea = contentBounds.removeFromRight(200).reduced(5);
+    auto detailsArea = contentBounds.removeFromRight(210).reduced(5);
+    auto listArea = contentBounds.reduced(4);
+
+    g.setColour(colours["Dialog Inner Background"].darker(0.12f));
+    g.fillRoundedRectangle(listArea.toFloat(), 8.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.12f));
+    g.drawRoundedRectangle(listArea.toFloat().reduced(0.5f), 8.0f, 1.0f);
 
     // Panel shadow
     g.setColour(Colours::black.withAlpha(0.15f));
@@ -2271,6 +2619,16 @@ void IRBrowserComponent::paint(Graphics& g)
     // Panel border
     g.setColour(colours["Border Colour"].withAlpha(0.5f));
     g.drawRoundedRectangle(detailsArea.toFloat(), 8.0f, 1.0f);
+
+    drawIRGlyph(g, detailsArea.toFloat().withTrimmedBottom(detailsArea.getHeight() - 48.0f).withSizeKeepingCentre(42.0f, 42.0f),
+                colours["Audio Connection"], irList && irList->getSelectedRow() >= 0);
+
+    if (emptyStateLabel && emptyStateLabel->isVisible())
+    {
+        auto emptyBounds = emptyStateLabel->getBounds().toFloat();
+        drawIRGlyph(g, emptyBounds.withSizeKeepingCentre(42.0f, 42.0f).translated(0.0f, -52.0f),
+                    colours["Audio Connection"].withAlpha(0.8f), false);
+    }
 
     // Status bar background
     Rectangle<float> statusArea(0, bounds.getHeight() - 30, bounds.getWidth(), 30);
@@ -2353,6 +2711,8 @@ void IRBrowserComponent::resized()
 
     // IR list takes remaining space with rounded corners visual
     irList->setBounds(bounds);
+    emptyStateLabel->setBounds(bounds);
+    updateBrowserState();
 }
 
 void IRBrowserComponent::buttonClicked(Button* button)
@@ -2395,6 +2755,7 @@ void IRBrowserComponent::textEditorTextChanged(TextEditor& editor)
         listModel.setFilter(searchBox->getText());
         irList->updateContent();
         irList->repaint();
+        syncSelectionAfterListChange();
     }
 }
 
@@ -2514,19 +2875,7 @@ void IRBrowserComponent::scanDirectory(const File& directory)
     irList->updateContent();
     irList->repaint();
 
-    // Update status to show both directories being scanned
-    String statusText = currentDirectory.getFullPathName();
-    if (namModelsDirectory.isDirectory() && namModelsDirectory != currentDirectory)
-        statusText += " + " + namModelsDirectory.getFileName();
-    if (irFiles.empty())
-        statusText += " - No IR files found";
-    else if (irFiles.size() == 1)
-        statusText += " - 1 IR file";
-    else
-        statusText += " - " + String(irFiles.size()) + " IR files";
-    statusLabel->setText(statusText, dontSendNotification);
-
-    updateDetailsPanel(nullptr);
+    syncSelectionAfterListChange();
 }
 
 void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
@@ -2576,6 +2925,8 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
         {
             fileSizeValue->setText("-", dontSendNotification);
         }
+        statusLabel->setText("Selected " + String(irInfo->name) + " - double-click or Load IR to use it.",
+                             dontSendNotification);
     }
     else
     {
@@ -2584,7 +2935,56 @@ void IRBrowserComponent::updateDetailsPanel(const IRFileInfo* irInfo)
         sampleRateValue->setText("-", dontSendNotification);
         channelsValue->setText("-", dontSendNotification);
         fileSizeValue->setText("-", dontSendNotification);
+        updateBrowserState();
     }
+}
+
+void IRBrowserComponent::updateBrowserState()
+{
+    if (!statusLabel || !irList || !emptyStateLabel)
+        return;
+
+    const auto query = searchBox ? searchBox->getText() : String();
+    const int total = listModel.getTotalCount();
+    const int filtered = listModel.getFilteredCount();
+    const bool hasFilteredRows = filtered > 0;
+    const auto secondary = namModelsDirectory.isDirectory() && namModelsDirectory != currentDirectory
+                               ? namModelsDirectory.getFileName()
+                               : String();
+
+    statusLabel->setText(describeBrowserCount(currentDirectory, secondary, total, filtered, "IR file", "IR files", query),
+                         dontSendNotification);
+    emptyStateLabel->setText(
+        makeEmptyStateCopy("No impulse responses found", "Use Folder to choose a cabinet folder.", query),
+        dontSendNotification);
+    irList->setVisible(hasFilteredRows);
+    emptyStateLabel->setVisible(!hasFilteredRows);
+    loadButton->setEnabled(hasFilteredRows);
+    repaint();
+}
+
+void IRBrowserComponent::syncSelectionAfterListChange()
+{
+    updateBrowserState();
+
+    if (!irList)
+        return;
+
+    const int filtered = listModel.getFilteredCount();
+    if (filtered <= 0)
+    {
+        irList->deselectAllRows();
+        updateDetailsPanel(nullptr);
+        return;
+    }
+
+    int row = irList->getSelectedRow();
+    if (row < 0 || row >= filtered)
+        row = 0;
+
+    irList->selectRow(row, dontSendNotification);
+    updateDetailsPanel(listModel.getFileAt(row));
+    irList->repaint();
 }
 
 void IRBrowserComponent::loadSelectedIR()

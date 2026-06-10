@@ -76,6 +76,17 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - Audio and parameter pins now have distinct shapes while preserving the existing drag/connect hit targets.
   - Nodes gained mockup-informed accent strips plus hover, drag, and bypass cues without moving edit, mapping, bypass, delete, or plugin editor controls.
   - Visual QA recorded in `documentation/qa/2026-06-09-main-graph-remix-polish`.
+- Secondary Mockup Harvest first pass:
+  - Installed Playwright-based local mockup rendering support and captured `NAM Browser.html` as a visual reference in `documentation/qa/2026-06-09-mockup-reference`.
+  - Upgraded NAM browser, IR browser, plugin search, and IR loader surfaces using clean-room/pattern-only mockup lessons: faceplate headers, list cards, glyph tiles, selection glow, stronger empty states, and status feedback.
+  - Preserved existing UX functions: local/online/IR tabs, search, folder refresh/browse, model load/delete, IR load, plugin category tabs, keyboard navigation, and close/recovery paths.
+  - Fixed populated NAM/IR browsers opening with blank details by syncing selection and detail preview after scans and filters.
+  - Moved NAM Load/Delete actions into the footer action row so Load Model, Delete Model, and Close stay reachable in the 200 percent narrow dialog matrix.
+  - Final visual QA recorded in `documentation/qa/2026-06-09-secondary-mockup-harvest-final`.
+- Secondary Mockup Harvest aesthetic follow-up:
+  - Plugin search now carries the mockup's instrument-panel title signal, framed search/status header, result-count capsule, segmented category controls, row glyphs, and category-aware footer copy while preserving fuzzy search, category tabs, keyboard navigation, format badges, double-click selection, and close behavior.
+  - NAM and IR browser detail panels now use backed key-value rows with reserved glyph space, improving preview-card hierarchy without removing any model/IR metadata fields or action buttons.
+  - Final visual QA recorded in `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2`.
 - Roadmap and research:
   - Non-AI feature research recorded.
   - Scratch capture direction selected: manual, fast capture, using existing recorder backbones, capturing raw and wet simultaneously.
@@ -169,6 +180,8 @@ Done when:
 
 Goal: only after stage, graph, and scratch are solid, review the remaining mockup files for targeted polish ideas.
 
+Status: First native harvest pass complete for browser/search/loader workflow polish. The app is closer to the mockup, but not yet at the mockup's full density, proportional spacing, or premium detail treatment.
+
 Candidate areas:
 
 - NAM browser and loader polish if they improve existing browsing/loading workflows.
@@ -190,11 +203,33 @@ Minimum checks for implementation slices:
 - Confirm options/settings still expose UI scale and reset-to-default.
 - Confirm `TESTLATER.md` only receives deferred manual QA notes, not active implementation tasks.
 
+## 2026-06-09 Secondary Harvest Verification
+
+- Reference mockup rendered with Playwright/Edge from local handoff sources: `documentation/qa/2026-06-09-mockup-reference/nam-browser-mockup-msedge.png`.
+- Final visual QA: `documentation/qa/2026-06-09-secondary-mockup-harvest-final`.
+- Follow-up visual QA: `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2`.
+- Build: `cmake --build build --config Release --target Pedalboard3 -- /m:1`.
+- Tests:
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[plugin-search]"`
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"`
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"`
+- Reuse mode: pattern-only / clean-room. No prototype code, assets, or fonts were copied into the native app.
+
+## Next For Agent
+
+Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
+
+1. Run `-CaptureScaledDialogMatrix` against `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2` surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
+2. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density and hierarchy, not wholesale replacement.
+3. Revisit IR loader/browser spacing and state feedback, especially empty/folder states and selected IR preview.
+4. If plugin search gets another pass, preserve category tabs, keyboard navigation, format badges, double-click selection, and the top-level window recovery path.
+5. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
+
 ## Immediate Next Step
 
-Start with Secondary Mockup Harvest:
+Continue the Secondary Mockup Harvest aesthetic polish:
 
-1. Review the remaining mockup files for high-signal native polish candidates.
-2. Reject anything that adds surface area without a real existing workflow.
-3. Prefer small improvements to existing browser, loader, typography, spacing, and state feedback surfaces.
+1. Re-run the scaled dialog matrix for the latest browser/search polish.
+2. Inspect high-scale screenshots for clipping or hidden recovery controls.
+3. Continue only with real workflow polish: IR loader/browser state clarity, browser density, and preview hierarchy.
 4. Preserve all existing UX functions and keep implementation clean-room/pattern-only.

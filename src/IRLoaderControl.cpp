@@ -105,21 +105,22 @@ void IRLoaderLookAndFeel::drawButtonBackground(Graphics& g, Button& button, cons
     auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
     Colour baseColour = shouldDrawButtonAsDown          ? Colour(0xff252525)
-                        : shouldDrawButtonAsHighlighted ? Colour(0xff454545)
-                                                        : Colour(0xff353535);
+                        : shouldDrawButtonAsHighlighted ? Colour(0xff4b4b55)
+                                                        : Colour(0xff363642);
 
     // Button shadow
     g.setColour(Colours::black.withAlpha(0.3f));
     g.fillRoundedRectangle(bounds.translated(0, 1), 4.0f);
 
     // Button body gradient
-    ColourGradient buttonGradient(baseColour.brighter(0.1f), bounds.getX(), bounds.getY(), baseColour.darker(0.1f),
+    ColourGradient buttonGradient(baseColour.brighter(0.18f), bounds.getX(), bounds.getY(), baseColour.darker(0.12f),
                                   bounds.getX(), bounds.getBottom(), false);
     g.setGradientFill(buttonGradient);
     g.fillRoundedRectangle(bounds, 4.0f);
 
     // Border
-    g.setColour(Colour(0xff505050));
+    g.setColour(shouldDrawButtonAsHighlighted ? Colour(0xff4a90d9).withAlpha(0.7f)
+                                              : Colour(0xff595965).withAlpha(0.75f));
     g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
 }
 
@@ -281,6 +282,41 @@ void IRLoaderControl::paint(Graphics& g)
     g.setColour(Colour(0xff505050).withAlpha(0.5f));
     g.drawHorizontalLine(28, 1, bounds.getWidth() - 1);
 
+    auto drawSlotWell = [&](Rectangle<float> slotBounds, const String& label, bool loaded)
+    {
+        g.setColour(Colours::black.withAlpha(0.22f));
+        g.fillRoundedRectangle(slotBounds.translated(0.0f, 1.0f), 4.0f);
+        ColourGradient slotGrad(Colour(kPanelBackground).brighter(0.05f), slotBounds.getX(), slotBounds.getY(),
+                                Colour(kBackgroundDark).brighter(0.02f), slotBounds.getX(), slotBounds.getBottom(),
+                                false);
+        g.setGradientFill(slotGrad);
+        g.fillRoundedRectangle(slotBounds, 4.0f);
+        g.setColour(loaded ? Colour(kAccentBlue).withAlpha(0.42f) : Colour(kTextBright).withAlpha(0.1f));
+        g.drawRoundedRectangle(slotBounds.reduced(0.5f), 4.0f, 1.0f);
+
+        const auto led = Rectangle<float>(slotBounds.getX() + 6.0f, slotBounds.getCentreY() - 4.0f, 8.0f, 8.0f);
+        const auto ledColour = loaded ? Colour(kLedOn) : Colour(kLedOff);
+        if (loaded)
+        {
+            g.setColour(ledColour.withAlpha(0.22f));
+            g.fillEllipse(led.expanded(4.0f));
+        }
+        ColourGradient ledGradient(ledColour.brighter(0.35f), led.getX(), led.getY(), ledColour.darker(0.35f),
+                                   led.getRight(), led.getBottom(), false);
+        g.setGradientFill(ledGradient);
+        g.fillEllipse(led);
+        g.setColour(Colours::black.withAlpha(0.48f));
+        g.drawEllipse(led, 1.0f);
+
+        g.setFont(Font(8.5f, Font::bold));
+        g.setColour(Colour(kTextDim).withAlpha(0.82f));
+        g.drawText(label, slotBounds.withLeft(slotBounds.getX() + 18.0f).withWidth(58.0f),
+                   Justification::centredLeft, true);
+    };
+
+    drawSlotWell(Rectangle<float>(8.0f, 36.0f, bounds.getWidth() - 16.0f, 22.0f), "IR 1", irProcessor->isIRLoaded());
+    drawSlotWell(Rectangle<float>(8.0f, 62.0f, bounds.getWidth() - 16.0f, 22.0f), "IR 2", irProcessor->isIR2Loaded());
+
     // Cabinet icon (speaker cone representation)
     const float iconX = 10.0f;
     const float iconY = 6.0f;
@@ -327,7 +363,7 @@ void IRLoaderControl::paint(Graphics& g)
     g.drawEllipse(ledX, ledY, ledSize, ledSize, 1.0f);
 
     // Subtle section separator above sliders
-    float separatorY = 82.0f;
+    float separatorY = 88.0f;
     g.setColour(Colour(0xff101010));
     g.drawHorizontalLine(static_cast<int>(separatorY), 8, bounds.getWidth() - 8);
     g.setColour(Colour(0xff353535));

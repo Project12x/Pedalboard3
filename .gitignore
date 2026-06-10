@@ -4,6 +4,9 @@ build_*/
 out/
 cmake-build-*/
 
+# Node tooling for local visual QA
+node_modules/
+
 # Build artifacts
 *.obj
 *.o

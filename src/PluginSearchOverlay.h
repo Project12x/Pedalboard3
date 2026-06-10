@@ -16,6 +16,7 @@
 
 #include <JuceHeader.h>
 #include <functional>
+#include <memory>
 #include <vector>
 
 /// @brief Content component for the plugin search window.
@@ -26,7 +27,7 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
 {
   public:
     PluginSearchContent(KnownPluginList& pluginList);
-    ~PluginSearchContent() override = default;
+    ~PluginSearchContent() override;
 
     /// @brief Reset search state and grab keyboard focus.
     void activate();
@@ -39,6 +40,7 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
 
     // Component overrides
     void paint(Graphics& g) override;
+    void paintOverChildren(Graphics& g) override;
     void resized() override;
     bool keyPressed(const KeyPress& key) override;
 
@@ -70,6 +72,7 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
     void updateResults();
     void selectPlugin(int resultIndex);
     void paintFormatBadge(Graphics& g, const String& format, Rectangle<int> bounds) const;
+    String getCurrentCategoryLabel() const;
 
     // Data
     KnownPluginList& pluginList;
@@ -81,6 +84,7 @@ class PluginSearchContent : public Component, private TextEditor::Listener, priv
 
     // Category tab buttons
     OwnedArray<TextButton> categoryButtons;
+    std::unique_ptr<LookAndFeel_V4> categoryButtonLookAndFeel;
     Category currentCategory = Category::All;
 
     // Layout constants
