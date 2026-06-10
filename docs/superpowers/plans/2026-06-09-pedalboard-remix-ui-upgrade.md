@@ -256,13 +256,24 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 - Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
+## 2026-06-10 IR Loader Chassis Polish Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/nam-browser.jsx`, `nam-browser-data.jsx`, `nam-editor.jsx`, and `nam.css`.
+- Native source inspected: `src/IRLoaderControl.cpp`, `src/IRLoaderControl.h`, and `src/IRLoaderProcessor.h`.
+- Reuse mode: pattern-only / clean-room. The implementation uses the same native theme-derived palette strategy already present in `NAMModelBrowser.cpp`; no prototype source, assets, fonts, or CSS were copied.
+- Intended scope: standalone IR Loader workflow polish only. Load, Browse, Clear, Blend, Mix, Lo Cut, and Hi Cut behavior is unchanged.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 218 existing warnings and 0 errors.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 562 assertions in 14 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
+- Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
 
 1. Run `-CaptureScaledDialogMatrix` against `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2` surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
 2. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density and hierarchy, not wholesale replacement.
-3. Revisit IR loader/browser spacing and state feedback, especially empty/folder states and selected IR preview.
+3. Revisit IR browser spacing and state feedback, especially empty/folder states and selected IR preview. IR Loader has a first mockup-informed chassis pass, but still needs manual screenshot review across themes and scale.
 4. If plugin search gets another pass, preserve category tabs, keyboard navigation, format badges, double-click selection, and the top-level window recovery path.
 5. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
 
@@ -272,5 +283,5 @@ Continue the Secondary Mockup Harvest aesthetic polish:
 
 1. Re-run the scaled dialog matrix for the latest browser/search polish.
 2. Inspect high-scale screenshots for clipping or hidden recovery controls.
-3. Continue only with real workflow polish: IR loader/browser state clarity, browser density, and preview hierarchy.
+3. Continue only with real workflow polish: IR browser state clarity, browser density, selected preview hierarchy, and screenshot comparison against the actual mockup.
 4. Preserve all existing UX functions and keep implementation clean-room/pattern-only.
