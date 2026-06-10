@@ -28,6 +28,11 @@ struct Metrics
     int topBarChipHeight = 0;
     int utilityButtonWidth = 0;
     int utilityButtonHeight = 0;
+    int stageBrandWidth = 0;
+    int modeButtonWidth = 0;
+    int modeButtonGap = 0;
+    int stageThemeSwitcherWidth = 0;
+    bool showStageThemeSwitcher = false;
     int navButtonWidth = 0;
     int navButtonHeight = 0;
     int panicButtonWidth = 0;

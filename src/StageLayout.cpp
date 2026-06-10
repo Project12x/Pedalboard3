@@ -43,8 +43,13 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
 
     metrics.topBarChipWidth = juce::roundToInt(juce::jlimit(128.0f, 188.0f, safeWidth * 0.095f));
     metrics.topBarChipHeight = juce::roundToInt(juce::jlimit(34.0f, 44.0f, safeHeight * 0.043f));
-    metrics.utilityButtonWidth = juce::roundToInt(juce::jlimit(104.0f, 148.0f, safeWidth * 0.07f));
+    metrics.utilityButtonWidth = juce::roundToInt(juce::jlimit(100.0f, 148.0f, safeWidth * 0.07f));
     metrics.utilityButtonHeight = juce::roundToInt(juce::jlimit(36.0f, 48.0f, safeHeight * 0.047f));
+    metrics.stageBrandWidth = juce::roundToInt(juce::jlimit(148.0f, 210.0f, safeWidth * 0.13f));
+    metrics.modeButtonWidth = juce::roundToInt(juce::jlimit(68.0f, 104.0f, safeWidth * 0.066f));
+    metrics.modeButtonGap = juce::roundToInt(juce::jlimit(4.0f, 8.0f, safeWidth * 0.005f));
+    metrics.stageThemeSwitcherWidth = juce::roundToInt(juce::jlimit(124.0f, 158.0f, safeWidth * 0.105f));
+    metrics.showStageThemeSwitcher = safeWidth >= 1120 && safeHeight >= 620;
     metrics.navButtonWidth = juce::roundToInt(juce::jlimit(104.0f, 168.0f, safeWidth * 0.082f));
     metrics.navButtonHeight = juce::roundToInt(juce::jlimit(52.0f, 72.0f, safeHeight * 0.07f));
     metrics.panicButtonWidth = juce::roundToInt(juce::jlimit(136.0f, 192.0f, safeWidth * 0.085f));

@@ -93,3 +93,54 @@ TEST_CASE("Stage grid bank labels and visible windows are deterministic", "[ui][
     CHECK(StageLayout::collectVisibleBankIndices(0, 8, 3) == std::vector<int>{0, 1, 2});
     CHECK(StageLayout::collectVisibleBankIndices(7, 8, 3) == std::vector<int>{5, 6, 7});
 }
+
+TEST_CASE("Stage shared chrome metrics keep header and footer controls separated", "[ui][regression][stage][layout]")
+{
+    const auto compact = StageLayout::calculateMetrics(760, 540, true);
+    const auto normal = StageLayout::calculateMetrics(1280, 820, true);
+    const auto wide = StageLayout::calculateMetrics(1920, 1080, true);
+
+    auto checkHeader = [](const StageLayout::Metrics& metrics, int width)
+    {
+        const int modeButtonWidth = metrics.modeButtonWidth;
+        const int modeButtonGap = metrics.modeButtonGap;
+        const int modeGroupWidth = modeButtonWidth * 4 + modeButtonGap * 3;
+        const int modeX = (width - modeGroupWidth) / 2;
+        const int rightClusterWidth = metrics.utilityButtonWidth * 2 + metrics.margin * 2;
+
+        CHECK(modeButtonWidth >= 68);
+        CHECK(modeButtonWidth <= 112);
+        CHECK(modeButtonGap >= 4);
+        CHECK(modeGroupWidth < width - metrics.margin * 2);
+        CHECK(modeX > metrics.margin + metrics.stageBrandWidth);
+        CHECK(modeX + modeGroupWidth < width - rightClusterWidth);
+        CHECK(metrics.utilityButtonHeight < metrics.headerHeight);
+    };
+
+    checkHeader(compact, 760);
+    checkHeader(normal, 1280);
+    checkHeader(wide, 1920);
+
+    CHECK_FALSE(compact.showStageThemeSwitcher);
+    CHECK(normal.showStageThemeSwitcher);
+    CHECK(wide.showStageThemeSwitcher);
+    CHECK(normal.stageThemeSwitcherWidth >= 120);
+    CHECK(normal.stageThemeSwitcherWidth <= 170);
+
+    auto checkFooter = [](const StageLayout::Metrics& metrics, int width)
+    {
+        const float firstMeterX = metrics.meterStartX + metrics.meterLabelWidth + 6.0f;
+        const float secondMeterX = firstMeterX + metrics.meterWidth + metrics.meterSpacing + metrics.panicButtonWidth +
+                                   metrics.meterLabelWidth + 6.0f;
+        const float panicX = static_cast<float>(width - metrics.panicButtonWidth - metrics.margin);
+
+        CHECK(metrics.meterTopOffset + metrics.meterHeight * 2.0f + metrics.meterChannelGap * 2.0f <
+              metrics.sliderTopOffset);
+        CHECK(metrics.sliderTopOffset + metrics.sliderHeight <= metrics.footerHeight);
+        CHECK(secondMeterX + metrics.meterWidth < panicX);
+        CHECK(metrics.panicButtonHeight < metrics.footerHeight);
+    };
+
+    checkFooter(normal, 1280);
+    checkFooter(wide, 1920);
+}
