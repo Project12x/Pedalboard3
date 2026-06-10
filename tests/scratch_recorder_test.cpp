@@ -407,6 +407,14 @@ TEST_CASE("Scratch panel status labels expose raw wet capture context", "[scratc
     REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("RAW + WET"));
     REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status).contains("RAW + WET"));
 
+    ScratchTakeContext armedContext;
+    armedContext.rawChannelCount = 1;
+    armedContext.wetChannelCount = 2;
+    status.armedContext = armedContext;
+    REQUIRE(ScratchPanelPresentation::formatCapturePairLabel(status) == "RAW 1ch + WET 2ch");
+    REQUIRE(ScratchPanelPresentation::formatStatusLine(status).contains("RAW 1ch + WET 2ch"));
+    REQUIRE(ScratchPanelPresentation::formatFooterStatusLine(status).contains("RAW 1ch + WET 2ch"));
+
     ScratchTake activeTake;
     activeTake.sampleRate = 48000.0;
     activeTake.rawChannelCount = 1;

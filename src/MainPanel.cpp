@@ -1469,7 +1469,7 @@ void MainPanel::revealScratchTake(const ScratchTake& take)
 //------------------------------------------------------------------------------
 void MainPanel::refreshScratchControls()
 {
-    const auto status = scratchRecorder.getStatus();
+    const auto status = getScratchRecorderStatus();
     auto& colours = ColourScheme::getInstance().colours;
     const auto text = colours["Text Colour"];
     const auto accent = colours["Accent Colour"];
@@ -1523,7 +1523,9 @@ void MainPanel::refreshScratchControls()
 //------------------------------------------------------------------------------
 ScratchRecorderStatus MainPanel::getScratchRecorderStatus() const
 {
-    return scratchRecorder.getStatus();
+    auto status = scratchRecorder.getStatus();
+    status.armedContext = createScratchTakeContext();
+    return status;
 }
 
 //------------------------------------------------------------------------------

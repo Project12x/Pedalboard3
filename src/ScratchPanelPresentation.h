@@ -17,6 +17,14 @@ inline const ScratchTake* getDisplayTake(const ScratchRecorderStatus& status)
     return nullptr;
 }
 
+inline const ScratchTakeContext* getDisplayContext(const ScratchRecorderStatus& status)
+{
+    if (status.armedContext.has_value())
+        return &*status.armedContext;
+
+    return nullptr;
+}
+
 inline juce::String formatDurationLabel(uint64_t samples, double sampleRate)
 {
     int seconds = 0;
@@ -37,7 +45,16 @@ inline juce::String formatCapturePairLabel(const ScratchRecorderStatus& status)
 {
     const auto* take = getDisplayTake(status);
     if (take == nullptr)
+    {
+        const auto* context = getDisplayContext(status);
+        if (context != nullptr)
+        {
+            return "RAW " + juce::String(context->rawChannelCount) + "ch + WET "
+                   + juce::String(context->wetChannelCount) + "ch";
+        }
+
         return "RAW + WET armed";
+    }
 
     return "RAW " + juce::String(take->rawChannelCount) + "ch + WET "
            + juce::String(take->wetChannelCount) + "ch";
@@ -78,6 +95,6 @@ inline juce::String formatFooterStatusLine(const ScratchRecorderStatus& status)
         break;
     }
 
-    return "Ready  |  RAW + WET";
+    return "Ready  |  " + formatCapturePairLabel(status);
 }
 } // namespace ScratchPanelPresentation

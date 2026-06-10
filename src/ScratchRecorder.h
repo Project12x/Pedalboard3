@@ -26,6 +26,7 @@ struct ScratchRecorderStatus
     uint64_t rawSamplesWritten = 0;
     uint64_t wetSamplesWritten = 0;
     juce::File scratchRoot;
+    std::optional<ScratchTakeContext> armedContext;
     std::optional<ScratchTake> activeTake;
     std::optional<ScratchTake> lastTake;
     std::vector<ScratchTake> recentTakes;

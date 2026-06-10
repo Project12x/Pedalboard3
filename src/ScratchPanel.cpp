@@ -6,6 +6,8 @@
 #include "ScratchPanelLayout.h"
 #include "ScratchPanelPresentation.h"
 
+#include <cmath>
+
 namespace
 {
 juce::Colour getColour(const char* name, juce::Colour fallback)
@@ -183,6 +185,66 @@ void drawThumbnailTrace(juce::Graphics& g, juce::Rectangle<float> bounds, const 
     g.strokePath(trace, juce::PathStrokeType(1.6f));
 }
 
+void drawEmptyTakeState(juce::Graphics& g, juce::Rectangle<float> bounds, juce::Colour accent,
+                        juce::Colour audio, juce::Colour field, juce::Colour border, juce::Colour text)
+{
+    auto& fonts = FontManager::getInstance();
+    fillPanel(g, bounds, field.withAlpha(0.48f), border.withAlpha(0.42f), 12.0f);
+
+    auto card = bounds.withSizeKeepingCentre(juce::jmin(bounds.getWidth() - 28.0f, 520.0f),
+                                             juce::jmin(bounds.getHeight() - 22.0f, 150.0f));
+    fillPanel(g, card, field.brighter(0.04f).withAlpha(0.66f), border.withAlpha(0.52f), 14.0f);
+
+    auto content = card.reduced(18.0f, 14.0f);
+    auto waveform = content.removeFromTop(38.0f);
+    g.setColour(field.darker(0.18f).withAlpha(0.76f));
+    g.fillRoundedRectangle(waveform, 8.0f);
+
+    juce::Path rawTrace;
+    juce::Path wetTrace;
+    for (int i = 0; i < 26; ++i)
+    {
+        const auto x = waveform.getX() + 14.0f + static_cast<float>(i) / 25.0f * (waveform.getWidth() - 28.0f);
+        const auto rawY = waveform.getCentreY() - 5.0f + std::sin(static_cast<float>(i) * 0.82f) * 5.0f;
+        const auto wetY = waveform.getCentreY() + 5.0f + std::cos(static_cast<float>(i) * 0.73f) * 5.0f;
+
+        if (i == 0)
+        {
+            rawTrace.startNewSubPath(x, rawY);
+            wetTrace.startNewSubPath(x, wetY);
+        }
+        else
+        {
+            rawTrace.lineTo(x, rawY);
+            wetTrace.lineTo(x, wetY);
+        }
+    }
+
+    g.setColour(audio.withAlpha(0.58f));
+    g.strokePath(rawTrace, juce::PathStrokeType(1.3f));
+    g.setColour(accent.withAlpha(0.74f));
+    g.strokePath(wetTrace, juce::PathStrokeType(1.5f));
+
+    content.removeFromTop(12.0f);
+    g.setFont(fonts.getBodyBoldFont().withHeight(14.5f));
+    g.setColour(text.withAlpha(0.9f));
+    g.drawFittedText("Armed for first scratch take", content.removeFromTop(20.0f).toNearestInt(),
+                     juce::Justification::centred, 1);
+
+    g.setFont(fonts.getCaptionFont());
+    g.setColour(text.withAlpha(0.58f));
+    g.drawFittedText("RAW DI and WET print will appear here together",
+                     content.removeFromTop(20.0f).toNearestInt(), juce::Justification::centred, 1);
+
+    content.removeFromTop(7.0f);
+    auto chips = content.removeFromTop(24.0f).withSizeKeepingCentre(170.0f, 24.0f);
+    drawChip(g, chips.removeFromLeft(78.0f), "RAW DI", audio.withAlpha(0.12f),
+             audio.withAlpha(0.45f), text.withAlpha(0.78f));
+    chips.removeFromLeft(10.0f);
+    drawChip(g, chips.removeFromLeft(82.0f), "WET OUT", accent.withAlpha(0.12f),
+             accent.withAlpha(0.45f), text.withAlpha(0.78f));
+}
+
 juce::String stateLabel(ScratchRecorderState state)
 {
     switch (state)
@@ -340,11 +402,7 @@ void ScratchPanel::RecentTakesList::paint(juce::Graphics& g)
     if (takes.empty())
     {
         auto empty = getLocalBounds().reduced(2, 10).toFloat();
-        fillPanel(g, empty, field.withAlpha(0.48f), border.withAlpha(0.42f), 12.0f);
-        g.setFont(fonts.getBodyFont());
-        g.setColour(text.withAlpha(0.62f));
-        g.drawFittedText("No scratch takes yet - record to print RAW + WET",
-                         empty.toNearestInt().reduced(16), juce::Justification::centred, 2);
+        drawEmptyTakeState(g, empty, accent, audio, field, border, text);
         return;
     }
 
@@ -534,8 +592,11 @@ void ScratchPanel::paint(juce::Graphics& g)
     armRow.removeFromLeft(8);
     auto wetChip = armRow.removeFromLeft(116).toFloat();
     const auto* take = ScratchPanelPresentation::getDisplayTake(lastStatus);
-    const int rawChannels = take != nullptr ? take->rawChannelCount : 0;
-    const int wetChannels = take != nullptr ? take->wetChannelCount : 0;
+    const auto* armedContext = ScratchPanelPresentation::getDisplayContext(lastStatus);
+    const int rawChannels = take != nullptr ? take->rawChannelCount
+                                            : (armedContext != nullptr ? armedContext->rawChannelCount : 0);
+    const int wetChannels = take != nullptr ? take->wetChannelCount
+                                            : (armedContext != nullptr ? armedContext->wetChannelCount : 0);
     drawChip(g, rawChip, "RAW " + juce::String(rawChannels) + "ch", audio.withAlpha(0.14f),
              audio.withAlpha(0.62f), text);
     drawChip(g, wetChip, "WET " + juce::String(wetChannels) + "ch", accent.withAlpha(0.14f),
@@ -561,11 +622,25 @@ void ScratchPanel::paint(juce::Graphics& g)
     g.setColour(text.withAlpha(0.48f));
     g.drawFittedText("CAPTURED WITH EVERY TAKE", contextHeader, juce::Justification::centredLeft, 1);
     context.removeFromTop(6);
-    const auto patch = take != nullptr && take->patchName.isNotEmpty() ? take->patchName : "Untitled patch";
-    const auto device = take != nullptr && take->deviceName.isNotEmpty() ? take->deviceName : "Audio device";
-    const auto rate = take != nullptr ? formatSampleRate(take->sampleRate) : "Sample rate";
-    const auto inputGain = take != nullptr ? "IN " + formatGain(take->masterInputGainDb) : "IN";
-    const auto outputGain = take != nullptr ? "OUT " + formatGain(take->masterOutputGainDb) : "OUT";
+    const auto patch = take != nullptr && take->patchName.isNotEmpty()
+                           ? take->patchName
+                           : (armedContext != nullptr && armedContext->patchName.isNotEmpty() ? armedContext->patchName
+                                                                                               : "Untitled patch");
+    const auto device = take != nullptr && take->deviceName.isNotEmpty()
+                            ? take->deviceName
+                            : (armedContext != nullptr && armedContext->deviceName.isNotEmpty() ? armedContext->deviceName
+                                                                                                 : "Audio device");
+    const auto rate = take != nullptr ? formatSampleRate(take->sampleRate)
+                                      : (armedContext != nullptr ? formatSampleRate(armedContext->sampleRate)
+                                                                 : "Sample rate");
+    const auto inputGain = take != nullptr ? "IN " + formatGain(take->masterInputGainDb)
+                                           : (armedContext != nullptr
+                                                  ? "IN " + formatGain(armedContext->masterInputGainDb)
+                                                  : "IN");
+    const auto outputGain = take != nullptr ? "OUT " + formatGain(take->masterOutputGainDb)
+                                            : (armedContext != nullptr
+                                                   ? "OUT " + formatGain(armedContext->masterOutputGainDb)
+                                                   : "OUT");
     juce::StringArray chips;
     chips.add(patch);
     chips.add(device);
