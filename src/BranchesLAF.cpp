@@ -57,94 +57,182 @@ void BranchesLAF::drawButtonBackground(Graphics& g, Button& button, const Colour
                                        bool isMouseOverButton, bool isButtonDown)
 {
     auto& colours = ::ColourScheme::getInstance().colours;
-    // Use the per-button colour if explicitly set, otherwise fall back to theme default
-    Colour defaultButtonCol = colours["Button Colour"];
-    Colour buttonCol =
+    const auto defaultButtonCol = colours["Button Colour"];
+    auto buttonCol =
         (backgroundColour != defaultButtonCol && backgroundColour != Colour()) ? backgroundColour : defaultButtonCol;
-    Colour accentCol = colours["Audio Connection"];
+    const auto accentCol = colours["Accent Colour"];
+    const auto borderCol = colours["Plugin Border"];
+    const auto textCol = colours["Text Colour"];
 
-    float w = (float)button.getWidth();
-    float h = (float)button.getHeight();
-    float cornerRadius = 6.0f;
+    auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
+    const float cornerRadius = jmin(8.0f, jmax(4.0f, bounds.getHeight() * 0.28f));
+    const bool toggled = button.getToggleState();
+    const bool enabled = button.isEnabled();
 
-    Rectangle<float> bounds(1.0f, 1.0f, w - 2.0f, h - 2.0f);
-
-    // === Main fill ===
-    Colour fillCol;
     if (isButtonDown)
-        fillCol = buttonCol.darker(0.3f);
-    else if (isMouseOverButton)
-        fillCol = buttonCol.brighter(0.15f);
-    else
-        fillCol = buttonCol;
+        bounds = bounds.translated(0.0f, 0.8f);
 
-    // Strong top-to-bottom gradient
-    ColourGradient mainGrad(fillCol.brighter(0.25f), 0.0f, bounds.getY(), fillCol.darker(0.2f), 0.0f,
-                            bounds.getBottom(), false);
-    g.setGradientFill(mainGrad);
+    if (toggled)
+        buttonCol = buttonCol.interpolatedWith(accentCol, 0.22f);
+    if (isMouseOverButton && enabled)
+        buttonCol = buttonCol.brighter(toggled ? 0.10f : 0.07f);
+    if (!enabled)
+        buttonCol = buttonCol.withMultipliedAlpha(0.42f);
+
+    g.setColour(colours["Window Background"].darker(0.58f).withAlpha(isButtonDown ? 0.13f : 0.28f));
+    g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.6f : 1.8f), cornerRadius);
+
+    ColourGradient fill(buttonCol.brighter(0.20f), bounds.getX(), bounds.getY(), buttonCol.darker(0.18f),
+                        bounds.getX(), bounds.getBottom(), false);
+    fill.addColour(0.45, buttonCol.brighter(0.07f));
+    fill.addColour(0.78, buttonCol.darker(0.08f));
+    g.setGradientFill(fill);
     g.fillRoundedRectangle(bounds, cornerRadius);
 
-    // === Subtle top highlight (matte DAW-grade) ===
-    if (!isButtonDown)
+    auto topSheen = bounds.withHeight(jmax(3.0f, bounds.getHeight() * 0.42f)).reduced(2.0f, 1.0f);
+    ColourGradient sheen(textCol.withAlpha(enabled ? 0.13f : 0.05f), topSheen.getX(), topSheen.getY(),
+                         textCol.withAlpha(0.0f), topSheen.getX(), topSheen.getBottom(), false);
+    g.setGradientFill(sheen);
+    g.fillRoundedRectangle(topSheen, jmax(2.0f, cornerRadius - 2.0f));
+
+    if ((isMouseOverButton || toggled) && enabled)
     {
-        Rectangle<float> glossArea(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight() * 0.45f);
-        ColourGradient glossGrad(Colours::white.withAlpha(0.12f), 0.0f, glossArea.getY(),
-                                 Colours::white.withAlpha(0.0f), 0.0f, glossArea.getBottom(), false);
-        g.setGradientFill(glossGrad);
-        g.fillRoundedRectangle(glossArea.reduced(2.0f, 0.0f), cornerRadius - 1.0f);
+        Path glowShape;
+        glowShape.addRoundedRectangle(bounds.expanded(0.5f), cornerRadius + 0.5f);
+        melatonin::DropShadow buttonGlow{accentCol.withAlpha(toggled ? 0.24f : 0.16f), toggled ? 9 : 6, {0, 0}};
+        buttonGlow.render(g, glowShape);
     }
 
-    // === Border ===
-    bool isToggled = button.getToggleState();
+    const auto borderMix = toggled ? 0.58f : (isMouseOverButton && enabled ? 0.42f : 0.20f);
+    g.setColour(borderCol.interpolatedWith(accentCol, borderMix).withAlpha(enabled ? 0.95f : 0.42f));
+    g.drawRoundedRectangle(bounds, cornerRadius, toggled || isButtonDown ? 1.45f : 1.0f);
 
-    if (isMouseOverButton && !isButtonDown)
-    {
-        // Glowing accent border on hover
-        g.setColour(accentCol.withAlpha(0.8f));
-        g.drawRoundedRectangle(bounds, cornerRadius, 2.0f);
-
-        // Outer glow
-        g.setColour(accentCol.withAlpha(0.3f));
-        g.drawRoundedRectangle(bounds.expanded(1.0f), cornerRadius + 1.0f, 2.0f);
-    }
-    else if (isButtonDown || isToggled)
-    {
-        // Bright accent border when pressed or toggled on
-        g.setColour(accentCol);
-        g.drawRoundedRectangle(bounds, cornerRadius, 2.0f);
-    }
-    else
-    {
-        // Normal border
-        g.setColour(Colour(0x60000000));
-        g.drawRoundedRectangle(bounds, cornerRadius, 1.0f);
-    }
+    g.setColour(textCol.withAlpha(enabled ? 0.09f : 0.03f));
+    g.drawHorizontalLine(roundToInt(bounds.getY() + 1.0f), bounds.getX() + 3.0f, bounds.getRight() - 3.0f);
 }
 
 //------------------------------------------------------------------------------
 void BranchesLAF::drawButtonText(Graphics& g, TextButton& button, bool isMouseOverButton, bool isButtonDown)
 {
-    int inc;
+    const int inc = isButtonDown ? 1 : 0;
+    auto& colours = ::ColourScheme::getInstance().colours;
 
-    g.setFont(FontManager::getInstance().getBodyFont());
-    g.setColour(
-        ::ColourScheme::getInstance().colours["Text Colour"].withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
+    auto font = FontManager::getInstance().getBodyFont();
+    if (button.getHeight() <= 22)
+        font = font.withHeight(jmin(font.getHeight(), 12.0f));
+
+    auto textColour = colours["Text Colour"];
+    if (button.getToggleState())
+        textColour = textColour.interpolatedWith(colours["Accent Colour"], 0.20f);
+    if (isMouseOverButton && button.isEnabled())
+        textColour = textColour.brighter(0.10f);
+    if (!button.isEnabled())
+        textColour = textColour.withAlpha(0.42f);
+
+    g.setFont(font);
 
     const int yIndent = jmin(4, button.proportionOfHeight(0.3f));
     const int cornerSize = jmin(button.getHeight(), button.getWidth()) / 2;
 
-    const int fontHeight = roundFloatToInt(FontManager::getInstance().getBodyFont().getHeight() * 0.6f);
+    const int fontHeight = roundFloatToInt(font.getHeight() * 0.65f);
     const int leftIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnLeft() ? 4 : 2));
     const int rightIndent = jmin(fontHeight, 2 + cornerSize / (button.isConnectedOnRight() ? 4 : 2));
 
-    if (isButtonDown)
-        inc = 1;
-    else
-        inc = 0;
+    g.setColour(Colours::black.withAlpha(button.isEnabled() ? 0.32f : 0.10f));
+    g.drawFittedText(button.getButtonText(), leftIndent + inc, yIndent + inc + 1,
+                     button.getWidth() - leftIndent - rightIndent, button.getHeight() - yIndent * 2,
+                     Justification::centred, 2);
 
+    g.setColour(textColour);
     g.drawFittedText(button.getButtonText(), leftIndent + inc, yIndent + inc,
                      button.getWidth() - leftIndent - rightIndent, button.getHeight() - yIndent * 2,
                      Justification::centred, 2);
+}
+
+//------------------------------------------------------------------------------
+void BranchesLAF::drawLinearSlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
+                                   float minSliderPos, float maxSliderPos, Slider::SliderStyle style, Slider& slider)
+{
+    if (style != Slider::LinearBar && style != Slider::LinearBarVertical && style != Slider::LinearHorizontal &&
+        style != Slider::LinearVertical)
+    {
+        LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
+        return;
+    }
+
+    auto& colours = ::ColourScheme::getInstance().colours;
+    const bool vertical = style == Slider::LinearVertical || style == Slider::LinearBarVertical;
+    const bool barOnly = style == Slider::LinearBar || style == Slider::LinearBarVertical;
+    auto bounds = Rectangle<float>((float)x, (float)y, (float)width, (float)height).reduced(1.0f);
+    const auto trackThickness = vertical ? jmin(8.0f, bounds.getWidth() * 0.45f) : jmin(8.0f, bounds.getHeight() * 0.45f);
+    auto track = vertical
+                     ? Rectangle<float>(bounds.getCentreX() - trackThickness * 0.5f, bounds.getY(), trackThickness,
+                                        bounds.getHeight())
+                     : Rectangle<float>(bounds.getX(), bounds.getCentreY() - trackThickness * 0.5f, bounds.getWidth(),
+                                        trackThickness);
+    const float radius = trackThickness * 0.5f;
+    const bool enabled = slider.isEnabled();
+
+    auto trackBase = colours["Window Background"].darker(0.25f);
+    auto accent = colours["Accent Colour"];
+    if (slider.isColourSpecified(Slider::trackColourId))
+        accent = slider.findColour(Slider::trackColourId);
+
+    g.setColour(Colours::black.withAlpha(enabled ? 0.28f : 0.12f));
+    g.fillRoundedRectangle(track.translated(0.0f, 1.0f), radius);
+
+    ColourGradient trough(trackBase.darker(0.18f), track.getX(), track.getY(), trackBase.brighter(0.10f),
+                          track.getX(), track.getBottom(), false);
+    g.setGradientFill(trough);
+    g.fillRoundedRectangle(track, radius);
+
+    const auto clampedPos = vertical ? jlimit(track.getY(), track.getBottom(), sliderPos)
+                                     : jlimit(track.getX(), track.getRight(), sliderPos);
+    Rectangle<float> fill = vertical ? Rectangle<float>(track.getX(), clampedPos, track.getWidth(),
+                                                        track.getBottom() - clampedPos)
+                                     : Rectangle<float>(track.getX(), track.getY(), clampedPos - track.getX(),
+                                                        track.getHeight());
+
+    if (!fill.isEmpty())
+    {
+        ColourGradient fillGrad(accent.brighter(0.32f), fill.getX(), fill.getY(), accent.darker(0.14f),
+                                vertical ? fill.getX() : fill.getRight(),
+                                vertical ? fill.getBottom() : fill.getY(), false);
+        fillGrad.addColour(0.52, accent);
+        g.setGradientFill(fillGrad);
+        g.fillRoundedRectangle(fill, radius);
+
+        g.setColour(accent.withAlpha(enabled ? 0.38f : 0.14f));
+        if (vertical)
+            g.drawHorizontalLine(roundToInt(fill.getY()), fill.getX() + 1.0f, fill.getRight() - 1.0f);
+        else
+            g.drawVerticalLine(roundToInt(fill.getRight()) - 1, fill.getY() + 1.0f, fill.getBottom() - 1.0f);
+    }
+
+    g.setColour(colours["Plugin Border"].interpolatedWith(accent, slider.isMouseOverOrDragging() ? 0.34f : 0.14f)
+                    .withAlpha(enabled ? 0.85f : 0.34f));
+    g.drawRoundedRectangle(track, radius, 1.0f);
+
+    if (!barOnly)
+    {
+        const float thumbSize = vertical ? jmin(bounds.getWidth(), 14.0f) : jmin(bounds.getHeight(), 14.0f);
+        Rectangle<float> thumb = vertical
+                                     ? Rectangle<float>(bounds.getCentreX() - thumbSize * 0.5f,
+                                                        clampedPos - thumbSize * 0.5f, thumbSize, thumbSize)
+                                     : Rectangle<float>(clampedPos - thumbSize * 0.5f,
+                                                        bounds.getCentreY() - thumbSize * 0.5f, thumbSize, thumbSize);
+
+        g.setColour(accent.withAlpha(slider.isMouseOverOrDragging() ? 0.18f : 0.10f));
+        g.fillEllipse(thumb.expanded(3.0f));
+
+        ColourGradient thumbGrad(colours["Button Colour"].brighter(0.25f), thumb.getX(), thumb.getY(),
+                                 colours["Button Colour"].darker(0.18f), thumb.getRight(), thumb.getBottom(), true);
+        g.setGradientFill(thumbGrad);
+        g.fillEllipse(thumb);
+
+        g.setColour(accent.withAlpha(enabled ? 0.75f : 0.28f));
+        g.drawEllipse(thumb, 1.0f);
+    }
 }
 
 //------------------------------------------------------------------------------

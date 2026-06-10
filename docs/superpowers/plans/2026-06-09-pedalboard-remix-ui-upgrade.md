@@ -87,6 +87,10 @@ The mockup is an upgrade reference, not a new product shell. Existing controls, 
   - Plugin search now carries the mockup's instrument-panel title signal, framed search/status header, result-count capsule, segmented category controls, row glyphs, and category-aware footer copy while preserving fuzzy search, category tabs, keyboard navigation, format badges, double-click selection, and close behavior.
   - NAM and IR browser detail panels now use backed key-value rows with reserved glyph space, improving preview-card hierarchy without removing any model/IR metadata fields or action buttons.
   - Final visual QA recorded in `documentation/qa/2026-06-09-secondary-mockup-polish-final-v2`.
+- Main graph/control polish follow-up:
+  - Shared `BranchesLAF` TextButtons and linear sliders now carry mockup-informed depth, sheen, hover/pressed/disabled states, and theme-aware accent handling while preserving existing command targets and layouts.
+  - The main graph canvas now has a persisted `Options > Graph Grid` selector for `Dots`, `Lines`, and `Off`, matching the useful mockup grid primitive without replacing graph behavior.
+  - Deferred manual visual QA for grid/control polish is recorded in `TESTLATER.md`.
 - Roadmap and research:
   - Non-AI feature research recorded.
   - Scratch capture direction selected: manual, fast capture, using existing recorder backbones, capturing raw and wet simultaneously.
@@ -214,6 +218,16 @@ Minimum checks for implementation slices:
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"`
   - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"`
 - Reuse mode: pattern-only / clean-room. No prototype code, assets, or fonts were copied into the native app.
+
+## 2026-06-10 Main Graph Control Polish Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/mw2.css`, `mw-app.jsx`, and `tweaks-panel.jsx`.
+- Reuse mode: pattern-only / clean-room. No prototype code, assets, or fonts were copied into the native app.
+- Build: `cmake --build build --config Release --target Pedalboard3 -- /m:1`.
+- Tests:
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"`
+  - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"`
+- Deferred manual visual QA: `TESTLATER.md` > `Mockup Polish Visual QA`.
 
 ## Next For Agent
 

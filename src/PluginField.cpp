@@ -39,8 +39,22 @@
 #include <set>
 #include <spdlog/spdlog.h>
 #include <tuple>
+#include <cmath>
 
 using namespace std;
+
+namespace
+{
+constexpr const char* kGraphGridStyleSettingsKey = "GraphGridStyle";
+
+String getGraphGridStyle()
+{
+    auto style = SettingsManager::getInstance().getString(kGraphGridStyleSettingsKey, "Lines").toLowerCase();
+    if (style != "dots" && style != "lines" && style != "off")
+        style = "lines";
+    return style;
+}
+} // namespace
 
 //------------------------------------------------------------------------------
 PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, ApplicationCommandManager* appManager)
@@ -200,31 +214,54 @@ void PluginField::paint(Graphics& g)
     g.fillRect(bounds);
 
     // === Grid pattern ===
-    const float gridSize = 30.0f;
-    const float majorGridSize = gridSize * 4.0f;
-    Colour gridCol = colours["Plugin Border"].withAlpha(0.10f);
-    Colour majorGridCol = colours["Accent Colour"].interpolatedWith(colours["Plugin Border"], 0.65f).withAlpha(0.13f);
-
-    g.setColour(gridCol);
-    for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
+    const auto gridStyle = getGraphGridStyle();
+    if (gridStyle != "off")
     {
-        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
-    }
+        const float gridSize = 30.0f;
+        const float majorGridSize = gridSize * 4.0f;
+        auto clip = g.getClipBounds().toFloat().getIntersection(bounds);
+        Colour gridCol = colours["Plugin Border"].withAlpha(gridStyle == "dots" ? 0.13f : 0.10f);
+        Colour majorGridCol =
+            colours["Accent Colour"].interpolatedWith(colours["Plugin Border"], 0.65f).withAlpha(0.13f);
 
-    for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
-    {
-        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
-    }
+        auto firstX = std::floor(clip.getX() / gridSize) * gridSize;
+        auto firstY = std::floor(clip.getY() / gridSize) * gridSize;
 
-    g.setColour(majorGridCol);
-    for (float x = 0.0f; x < bounds.getWidth(); x += majorGridSize)
-    {
-        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
-    }
+        if (gridStyle == "dots")
+        {
+            for (float y = firstY; y < clip.getBottom(); y += gridSize)
+            {
+                const int yStep = roundToInt(y / gridSize);
+                const bool yMajor = (yStep % 4) == 0;
+                for (float x = firstX; x < clip.getRight(); x += gridSize)
+                {
+                    const int xStep = roundToInt(x / gridSize);
+                    const bool major = yMajor && (xStep % 4) == 0;
+                    const auto dotSize = major ? 2.3f : 1.25f;
+                    g.setColour(major ? majorGridCol.withMultipliedAlpha(1.2f) : gridCol);
+                    g.fillEllipse(x - dotSize * 0.5f, y - dotSize * 0.5f, dotSize, dotSize);
+                }
+            }
+        }
+        else
+        {
+            g.setColour(gridCol);
+            for (float x = firstX; x < clip.getRight(); x += gridSize)
+                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
 
-    for (float y = 0.0f; y < bounds.getHeight(); y += majorGridSize)
-    {
-        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+            for (float y = firstY; y < clip.getBottom(); y += gridSize)
+                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+
+            g.setColour(majorGridCol);
+            auto firstMajorX = std::floor(clip.getX() / majorGridSize) * majorGridSize;
+            auto firstMajorY = std::floor(clip.getY() / majorGridSize) * majorGridSize;
+
+            for (float x = firstMajorX; x < clip.getRight(); x += majorGridSize)
+                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
+
+            for (float y = firstMajorY; y < clip.getBottom(); y += majorGridSize)
+                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+        }
     }
 
     if (displayDoubleClickMessage)

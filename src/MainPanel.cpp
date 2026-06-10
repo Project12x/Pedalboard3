@@ -84,6 +84,18 @@ namespace
 {
 constexpr const char* kScratchRootSettingsKey = "scratchRootDirectory";
 constexpr const char* kVirtualKeyboardCollapsedSettingsKey = "VirtualKeyboardCollapsed";
+constexpr const char* kGraphGridStyleSettingsKey = "GraphGridStyle";
+constexpr int kGraphGridDotsMenuId = 910001;
+constexpr int kGraphGridLinesMenuId = 910002;
+constexpr int kGraphGridOffMenuId = 910003;
+
+String normaliseGraphGridStyle(String style)
+{
+    style = style.toLowerCase();
+    if (style != "dots" && style != "lines" && style != "off")
+        return "lines";
+    return style;
+}
 
 class KeyboardDeckButtonLookAndFeel : public LookAndFeel_V4
 {
@@ -1924,6 +1936,13 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsColourSchemes);
         retval.addSeparator();
         retval.addCommandItem(commandManager, OptionsSnapToGrid);
+        PopupMenu graphGridMenu;
+        const auto currentGridStyle =
+            normaliseGraphGridStyle(SettingsManager::getInstance().getString(kGraphGridStyleSettingsKey, "Lines"));
+        graphGridMenu.addItem(kGraphGridDotsMenuId, "Dots", true, currentGridStyle == "dots");
+        graphGridMenu.addItem(kGraphGridLinesMenuId, "Lines", true, currentGridStyle == "lines");
+        graphGridMenu.addItem(kGraphGridOffMenuId, "Off", true, currentGridStyle == "off");
+        retval.addSubMenu("Graph Grid", graphGridMenu);
         retval.addCommandItem(commandManager, OptionsKeyMappings);
         retval.addSeparator();
         retval.addCommandItem(commandManager, ToggleStageMode);
@@ -1974,6 +1993,21 @@ void MainPanel::menuItemSelected(int menuItemID, int topLevelMenuIndex)
         setUiScalePercent(UiScale::defaultPercent);
         showToast("UI Scale reset");
         break;
+    case kGraphGridDotsMenuId:
+    case kGraphGridLinesMenuId:
+    case kGraphGridOffMenuId:
+    {
+        const auto style = menuItemID == kGraphGridDotsMenuId ? String("Dots")
+                         : menuItemID == kGraphGridLinesMenuId
+                             ? String("Lines")
+                             : String("Off");
+        SettingsManager::getInstance().setValue(kGraphGridStyleSettingsKey, style);
+        if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
+            field->repaint();
+        showToast("Graph grid: " + style);
+        menuItemsChanged();
+    }
+    break;
     default:
         break;
     }

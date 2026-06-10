@@ -56,3 +56,23 @@ Manual spot check:
 1. Set Pedalboard UI Scale to 150%, then 200%.
 2. Narrow the window.
 3. Confirm patch controls, transport, tempo, Scratch `REC`/`Takes`, input/output gain, `FX`, `Manage`, `Fit`, CPU, and UI Scale remain visible/recoverable.
+
+## Mockup Polish Visual QA
+
+Status: deferred manual/visual pass after the next native build.
+
+Scope:
+
+- Branch: `codex/secondary-mockup-polish`
+- Source reference: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/Pedalboard 3 Demo.html`
+- Reference screenshot: `documentation\qa\2026-06-09-mockup-reference\nam-browser-mockup-msedge.png`
+
+Steps:
+
+1. Launch Pedalboard3 and open a patch with several plugin nodes and visible cables.
+2. In `Options > Graph Grid`, switch between `Dots`, `Lines`, and `Off`.
+3. Confirm the grid mode changes immediately, persists after app restart, and does not affect node dragging, cable hit testing, or double-click add-plugin.
+4. Check shared TextButton polish in the footer, plugin search, NAM browser, IR browser, Scratch panel, and dialog action rows.
+5. Check shared linear slider polish on CPU, master input/output gain, and Audio I/O per-channel gain sliders.
+6. Repeat the visual pass in dark, light/daylight, and synthwave themes.
+7. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.

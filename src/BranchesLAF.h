@@ -43,6 +43,10 @@ class BranchesLAF : public LookAndFeel_V4
     ///	Draws button text.
     void drawButtonText(Graphics& g, TextButton& button, bool isMouseOverButton, bool isButtonDown) override;
 
+    /// Draws linear sliders with the app's current mockup-derived control treatment.
+    void drawLinearSlider(Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos,
+                          float maxSliderPos, Slider::SliderStyle style, Slider& slider) override;
+
     ///	Draws the scrollbar buttons.
     void drawScrollbarButton(Graphics& g, ScrollBar& scrollbar, int width, int height, int buttonDirection,
                              bool isScrollbarVertical, bool isMouseOverButton, bool isButtonDown) override;
