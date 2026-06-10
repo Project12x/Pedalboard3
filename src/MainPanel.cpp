@@ -1470,6 +1470,17 @@ void MainPanel::revealScratchTake(const ScratchTake& take)
 void MainPanel::refreshScratchControls()
 {
     const auto status = scratchRecorder.getStatus();
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto text = colours["Text Colour"];
+    const auto accent = colours["Accent Colour"];
+    const auto border = colours["Plugin Border"];
+    const auto stateColour = status.state == ScratchRecorderState::Recording
+                                 ? colours["Danger Colour"]
+                             : status.state == ScratchRecorderState::Saving
+                                 ? colours["Warning Colour"]
+                             : status.state == ScratchRecorderState::Failed
+                                 ? colours["Danger Colour"]
+                                 : accent;
 
     if (scratchRecordButton != nullptr)
     {
@@ -1484,6 +1495,18 @@ void MainPanel::refreshScratchControls()
         scratchRecordButton->setTooltip(status.state == ScratchRecorderState::Recording
                                             ? "Stop scratch capture and save raw plus wet takes"
                                             : "Record a scratch idea as raw input plus wet output");
+        scratchRecordButton->setColour(TextButton::buttonColourId, stateColour.withAlpha(0.28f));
+        scratchRecordButton->setColour(TextButton::buttonOnColourId, stateColour.withAlpha(0.38f));
+        scratchRecordButton->setColour(TextButton::textColourOffId, text.withAlpha(0.95f));
+        scratchRecordButton->setColour(TextButton::textColourOnId, text);
+    }
+
+    if (scratchPanelButton != nullptr)
+    {
+        scratchPanelButton->setColour(TextButton::buttonColourId, border.withAlpha(0.46f));
+        scratchPanelButton->setColour(TextButton::buttonOnColourId, accent.withAlpha(0.18f));
+        scratchPanelButton->setColour(TextButton::textColourOffId, text.withAlpha(0.86f));
+        scratchPanelButton->setColour(TextButton::textColourOnId, text);
     }
 
     if (scratchStatusLabel != nullptr)
@@ -1491,6 +1514,9 @@ void MainPanel::refreshScratchControls()
         const auto statusText = ScratchPanelPresentation::formatFooterStatusLine(status);
         scratchStatusLabel->setText(statusText, dontSendNotification);
         scratchStatusLabel->setTooltip(statusText);
+        scratchStatusLabel->setColour(Label::textColourId,
+                                      (status.state == ScratchRecorderState::Ready ? text.withAlpha(0.82f)
+                                                                                   : stateColour.withAlpha(0.94f)));
     }
 }
 
@@ -2850,6 +2876,7 @@ void MainPanel::updateStageView()
     if (stageView != nullptr)
     {
         String currentName = getCurrentPatchName();
+        String previousName = "";
         String nextName = "";
 
         // Safety check for patching index
@@ -2858,6 +2885,9 @@ void MainPanel::updateStageView()
             // Get current name from array to be sure
             currentName = patches[currentPatch]->getStringAttribute("name");
 
+            if (currentPatch > 0)
+                previousName = patches[currentPatch - 1]->getStringAttribute("name");
+
             // Get next patch if available
             if (currentPatch + 1 < patches.size())
             {
@@ -2865,7 +2895,7 @@ void MainPanel::updateStageView()
             }
         }
 
-        stageView->updatePatchInfo(currentName, nextName, currentPatch, patches.size());
+        stageView->updatePatchInfo(currentName, previousName, nextName, currentPatch, patches.size());
     }
 }
 

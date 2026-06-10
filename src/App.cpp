@@ -233,12 +233,14 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
         const bool visualQaPreferences = commandLine.contains("--visual-qa-preferences");
         const bool visualQaNamBrowser = commandLine.contains("--visual-qa-nam-browser");
         const bool visualQaIrBrowser = commandLine.contains("--visual-qa-ir-browser");
+        const bool visualQaScratchPanel = commandLine.contains("--visual-qa-scratch-panel");
         if (visualQaNextPatch || visualQaStage || visualQaPluginSearch || visualQaPreferences || visualQaNamBrowser ||
-            visualQaIrBrowser)
+            visualQaIrBrowser || visualQaScratchPanel)
         {
             Component::SafePointer<StupidWindow> safeThis(this);
             MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage, visualQaPluginSearch,
-                                       visualQaPreferences, visualQaNamBrowser, visualQaIrBrowser]()
+                                       visualQaPreferences, visualQaNamBrowser, visualQaIrBrowser,
+                                       visualQaScratchPanel]()
                                       {
                                           if (safeThis == nullptr || safeThis->mainPanel == nullptr)
                                               return;
@@ -257,6 +259,9 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 
                                           if (visualQaIrBrowser)
                                               IRBrowser::showWindow([](const File&) {});
+
+                                          if (visualQaScratchPanel)
+                                              safeThis->mainPanel->openScratchPanel();
 
                                           if (visualQaPreferences)
                                               safeThis->commandManager.invokeDirectly(MainPanel::OptionsPreferences, true);

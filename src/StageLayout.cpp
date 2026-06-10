@@ -38,6 +38,8 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
     metrics.tunerNoteFontHeight = juce::jlimit(42.0f, 72.0f, shortEdge * 0.095f);
     metrics.tunerCentsFontHeight = juce::jlimit(20.0f, 32.0f, shortEdge * 0.045f);
     metrics.tunerWaitingFontHeight = juce::jlimit(24.0f, 36.0f, shortEdge * 0.045f);
+    metrics.queueLabelFontHeight = juce::jlimit(11.0f, 14.0f, shortEdge * 0.018f);
+    metrics.queueTitleFontHeight = juce::jlimit(12.0f, 15.0f, shortEdge * 0.019f);
 
     metrics.topBarChipWidth = juce::roundToInt(juce::jlimit(128.0f, 188.0f, safeWidth * 0.095f));
     metrics.topBarChipHeight = juce::roundToInt(juce::jlimit(34.0f, 44.0f, safeHeight * 0.043f));
@@ -51,6 +53,12 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
         juce::roundToInt(juce::jlimit(170.0f, 360.0f, safeWidth * 0.17f));
     metrics.heroEyebrowHeight = juce::roundToInt(juce::jlimit(30.0f, 42.0f, safeHeight * 0.04f));
     metrics.heroNextCueHeight = juce::roundToInt(juce::jlimit(42.0f, 58.0f, safeHeight * 0.055f));
+    if (safeWidth >= 1120 && safeHeight >= 640)
+    {
+        metrics.liveQueueRailWidth = juce::roundToInt(juce::jlimit(210.0f, 318.0f, safeWidth * 0.155f));
+        metrics.liveQueueHeaderHeight = juce::roundToInt(juce::jlimit(36.0f, 46.0f, safeHeight * 0.045f));
+        metrics.liveQueueRowHeight = juce::roundToInt(juce::jlimit(64.0f, 82.0f, safeHeight * 0.074f));
+    }
 
     metrics.meterLabelWidth = juce::jlimit(34.0f, 44.0f, safeWidth * 0.025f);
     metrics.meterWidth = juce::jlimit(128.0f, 210.0f, safeWidth * 0.084f);

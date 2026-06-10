@@ -251,6 +251,18 @@ TEST_CASE("Scratch destination actions reserve non-overlapping controls", "[scra
     REQUIRE(layout.reveal.getRight() <= layout.rowRight);
 }
 
+TEST_CASE("Scratch panel content bounds cap oversized dialogs without shrinking compact panels", "[scratch]")
+{
+    const auto compact = ScratchPanelLayout::calculateContentBounds({0, 0, 600, 560});
+    REQUIRE(compact.getX() == 0);
+    REQUIRE(compact.getWidth() == 600);
+
+    const auto wide = ScratchPanelLayout::calculateContentBounds({0, 0, 1800, 900});
+    REQUIRE(wide.getWidth() == ScratchPanelLayout::maxContentWidth);
+    REQUIRE(wide.getHeight() == 900);
+    REQUIRE(wide.getCentreX() == 900);
+}
+
 TEST_CASE("Scratch destination display compacts long paths", "[scratch]")
 {
     const juce::String longPath("C:\\Users\\estee\\Documents\\Pedalboard\\Very Long Folder Name\\Scratch Ideas");

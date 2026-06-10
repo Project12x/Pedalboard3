@@ -1,0 +1,200 @@
+﻿{
+    "app":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\build\\Pedalboard3_artefacts\\Release\\Pedalboard3.exe",
+    "patch":  "C:\\Users\\estee\\AppData\\Local\\Temp\\Pedalboard3VisualQa\\visual-qa.pdl",
+    "output":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final",
+    "uiScalePercent":  100,
+    "scaledFooterMatrixEnabled":  false,
+    "scaledFooterRequiredScales":  [
+                                       125,
+                                       150,
+                                       175,
+                                       200
+                                   ],
+    "scaledFooterCaptureSizes":  [
+                                     {
+                                         "Name":  "normal",
+                                         "Width":  1280,
+                                         "Height":  820
+                                     },
+                                     {
+                                         "Name":  "narrow",
+                                         "Width":  960,
+                                         "Height":  820
+                                     }
+                                 ],
+    "scaledFooterControls":  [
+                                 "ui-scale",
+                                 "patch",
+                                 "transport",
+                                 "tempo",
+                                 "gain-fx",
+                                 "fit-manage",
+                                 "cpu"
+                             ],
+    "scaledDialogMatrixEnabled":  false,
+    "scaledDialogRequiredScales":  [
+                                       150,
+                                       200
+                                   ],
+    "scaledDialogCaptureSizes":  [
+                                     {
+                                         "Name":  "normal",
+                                         "Width":  980,
+                                         "Height":  740
+                                     },
+                                     {
+                                         "Name":  "narrow",
+                                         "Width":  760,
+                                         "Height":  680
+                                     }
+                                 ],
+    "scaledDialogSurfaces":  [
+                                 "plugin-search",
+                                 "preferences",
+                                 "nam-browser",
+                                 "ir-browser"
+                             ],
+    "dpi":  168,
+    "osScalePercent":  175,
+    "scalePercent":  175,
+    "expectedOsScalePercent":  null,
+    "expectedScalePercent":  null,
+    "captures":  [
+                     {
+                         "Name":  "theme-midnight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\theme-midnight-main.png"
+                     },
+                     {
+                         "Name":  "workflow-dense-graph",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\workflow-dense-graph.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-before-switch",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\workflow-stage-mode-before-switch.png"
+                     },
+                     {
+                         "Name":  "workflow-stage-mode-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\workflow-stage-mode-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "workflow-main-after-patch-next",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\workflow-main-after-patch-next.png"
+                     },
+                     {
+                         "Name":  "theme-daylight-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\theme-daylight-main.png"
+                     },
+                     {
+                         "Name":  "theme-synthwave-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\theme-synthwave-main.png"
+                     },
+                     {
+                         "Name":  "theme-deep-ocean-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\theme-deep-ocean-main.png"
+                     },
+                     {
+                         "Name":  "theme-forest-main",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\theme-forest-main.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-plugin-search-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-preferences-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-nam-browser-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-ir-browser-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-scratch-panel-midnight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-scratch-panel-midnight.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-plugin-search-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-preferences-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-nam-browser-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-ir-browser-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-scratch-panel-daylight",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-scratch-panel-daylight.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-plugin-search-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-preferences-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-nam-browser-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-ir-browser-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-scratch-panel-synthwave",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-scratch-panel-synthwave.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-plugin-search-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-preferences-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-nam-browser-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-ir-browser-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-scratch-panel-deep-ocean",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-scratch-panel-deep-ocean.png"
+                     },
+                     {
+                         "Name":  "dialog-plugin-search-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-plugin-search-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-preferences-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-preferences-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-nam-browser-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-nam-browser-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-ir-browser-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-ir-browser-forest.png"
+                     },
+                     {
+                         "Name":  "dialog-scratch-panel-forest",
+                         "Path":  "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-09-stage-scratch-mockup-polish-final\\dialog-scratch-panel-forest.png"
+                     }
+                 ]
+}

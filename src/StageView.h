@@ -35,7 +35,8 @@ class StageView : public Component, public Button::Listener, public Slider::List
 
     //==========================================================================
     // Update methods (called by MainPanel)
-    void updatePatchInfo(const String& patchName, const String& nextPatchName, int currentIndex, int totalPatches);
+    void updatePatchInfo(const String& patchName, const String& previousPatchNameToUse,
+                         const String& nextPatchNameToUse, int currentIndex, int totalPatches);
     void setTunerProcessor(TunerProcessor* tuner);
 
     //==========================================================================
@@ -57,6 +58,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     // Current state
     // Current state
     String currentPatchName = "No Patch";
+    String previousPatchName = "";
     String nextPatchName = "";
     int currentPatchIndex = 0;
     int totalPatchCount = 0;
@@ -96,6 +98,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void drawStatusBar(Graphics& g, Rectangle<float> bounds);
     void drawSafetyBar(Graphics& g, Rectangle<float> bounds);
     void drawPatchProgress(Graphics& g, Rectangle<float> bounds);
+    void drawLiveQueue(Graphics& g, Rectangle<float> bounds);
     String getNoteName(int midiNote) const;
     Colour getTuningColour(float cents) const;
     void updateAfterPatchChange();

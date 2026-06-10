@@ -49,9 +49,13 @@ TEST_CASE("Stage chrome and safety bar metrics preserve reachable controls", "[u
           compact.sliderTopOffset);
 
     CHECK(compact.heroHorizontalInset * 2 < 760);
+    CHECK(compact.liveQueueRailWidth == 0);
     CHECK(compact.progressActiveWidth > compact.progressDotSize);
     CHECK(compact.maxProgressDots >= 6);
 
+    CHECK(wide.liveQueueRailWidth >= 210);
+    CHECK(wide.liveQueueRowHeight > 0);
+    CHECK(wide.liveQueueHeaderHeight > 0);
     CHECK(wide.topBarChipWidth > compact.topBarChipWidth);
     CHECK(wide.meterWidth > compact.meterWidth);
     CHECK(wide.maxProgressDots >= compact.maxProgressDots);

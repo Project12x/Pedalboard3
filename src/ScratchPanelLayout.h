@@ -15,6 +15,7 @@ constexpr int destinationActionGap = 8;
 constexpr int destinationChooseWidth = 82;
 constexpr int destinationResetWidth = 70;
 constexpr int destinationRevealWidth = 70;
+constexpr int maxContentWidth = 980;
 
 struct TakeRowActions
 {
@@ -32,6 +33,14 @@ struct DestinationLayout
     juce::Rectangle<int> reveal;
     int rowRight = 0;
 };
+
+inline juce::Rectangle<int> calculateContentBounds(juce::Rectangle<int> bounds)
+{
+    if (bounds.getWidth() <= maxContentWidth)
+        return bounds;
+
+    return bounds.withSizeKeepingCentre(maxContentWidth, bounds.getHeight());
+}
 
 inline TakeRowActions calculateTakeRowActions(juce::Rectangle<int> row)
 {

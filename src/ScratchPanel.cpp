@@ -113,6 +113,14 @@ void drawActionButton(juce::Graphics& g, juce::Rectangle<int> bounds, const juce
     g.drawFittedText(label, bounds.reduced(6, 1), juce::Justification::centred, 1);
 }
 
+void styleScratchTextButton(juce::TextButton& button, juce::Colour accent, juce::Colour text, bool primary)
+{
+    button.setColour(juce::TextButton::buttonColourId, accent.withAlpha(primary ? 0.28f : 0.12f));
+    button.setColour(juce::TextButton::buttonOnColourId, accent.withAlpha(primary ? 0.38f : 0.18f));
+    button.setColour(juce::TextButton::textColourOffId, text.withAlpha(primary ? 0.96f : 0.84f));
+    button.setColour(juce::TextButton::textColourOnId, text);
+}
+
 void drawLane(juce::Graphics& g, juce::Rectangle<float> bounds, const juce::String& label,
               int channels, juce::Colour accent, juce::Colour text, juce::Colour field)
 {
@@ -335,7 +343,8 @@ void ScratchPanel::RecentTakesList::paint(juce::Graphics& g)
         fillPanel(g, empty, field.withAlpha(0.48f), border.withAlpha(0.42f), 12.0f);
         g.setFont(fonts.getBodyFont());
         g.setColour(text.withAlpha(0.62f));
-        g.drawFittedText("No scratch takes yet", empty.toNearestInt().reduced(16), juce::Justification::centred, 1);
+        g.drawFittedText("No scratch takes yet - record to print RAW + WET",
+                         empty.toNearestInt().reduced(16), juce::Justification::centred, 2);
         return;
     }
 
@@ -419,6 +428,10 @@ void ScratchPanel::RecentTakesList::mouseDown(const juce::MouseEvent& event)
 
 ScratchPanel::ScratchPanel(MainPanel& ownerToUse) : owner(&ownerToUse), recentTakesList(ownerToUse)
 {
+    const auto text = getColour("Text Colour", juce::Colours::white);
+    const auto accent = getColour("Accent Colour", juce::Colour(0xff00d9ff));
+    const auto border = getColour("Plugin Border", juce::Colour(0xff3a4264));
+
     addAndMakeVisible(recordButton);
     recordButton.setTooltip("Start or stop scratch capture");
     recordButton.addListener(this);
@@ -437,6 +450,10 @@ ScratchPanel::ScratchPanel(MainPanel& ownerToUse) : owner(&ownerToUse), recentTa
     revealButton.setButtonText("Reveal");
     revealButton.addListener(this);
     revealButton.setTooltip("Reveal scratch ideas folder");
+
+    styleScratchTextButton(chooseButton, accent, text, false);
+    styleScratchTextButton(resetButton, border.brighter(0.24f), text, false);
+    styleScratchTextButton(revealButton, accent, text, false);
 
     for (auto* label : {&statusLabel, &elapsedLabel})
     {
@@ -528,7 +545,7 @@ void ScratchPanel::paint(juce::Graphics& g)
     auto scopeTag = layout.scope.reduced(12, 6);
     g.setFont(fonts.getBadgeFont());
     g.setColour(text.withAlpha(0.46f));
-    g.drawFittedText("sample-locked", scopeTag.removeFromTop(14).removeFromRight(94),
+    g.drawFittedText("RAW + WET sample-locked", scopeTag.removeFromTop(14).removeFromRight(156),
                      juce::Justification::centredRight, 1);
     auto scopeContent = layout.scope.reduced(14, 10).withTrimmedTop(12).toFloat();
     auto rawLane = scopeContent.removeFromTop(24.0f);
@@ -538,7 +555,12 @@ void ScratchPanel::paint(juce::Graphics& g)
     drawLane(g, wetLane, "WET", wetChannels, accent, text, window);
 
     fillPanel(g, layout.context.toFloat(), panel.withAlpha(0.62f), border.withAlpha(0.55f), 13.0f);
-    auto context = layout.context.reduced(12, 12);
+    auto context = layout.context.reduced(12, 10);
+    auto contextHeader = context.removeFromTop(14);
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(text.withAlpha(0.48f));
+    g.drawFittedText("CAPTURED WITH EVERY TAKE", contextHeader, juce::Justification::centredLeft, 1);
+    context.removeFromTop(6);
     const auto patch = take != nullptr && take->patchName.isNotEmpty() ? take->patchName : "Untitled patch";
     const auto device = take != nullptr && take->deviceName.isNotEmpty() ? take->deviceName : "Audio device";
     const auto rate = take != nullptr ? formatSampleRate(take->sampleRate) : "Sample rate";
@@ -566,7 +588,7 @@ void ScratchPanel::paint(juce::Graphics& g)
     auto destinationText = layout.destinationText;
     g.setFont(fonts.getCaptionFont());
     g.setColour(text.withAlpha(0.58f));
-    g.drawFittedText("Destination", destinationText.removeFromTop(16), juce::Justification::centredLeft, 1);
+    g.drawFittedText("Destination  |  day folder", destinationText.removeFromTop(16), juce::Justification::centredLeft, 1);
     g.setFont(fonts.getLabelFont());
     g.setColour(text.withAlpha(0.86f));
     const auto root = lastStatus.scratchRoot;
@@ -678,7 +700,7 @@ void ScratchPanel::updateRecentTakesList()
 ScratchPanel::Layout ScratchPanel::calculateLayout() const
 {
     Layout layout;
-    auto bounds = getLocalBounds().reduced(18);
+    auto bounds = ScratchPanelLayout::calculateContentBounds(getLocalBounds()).reduced(18);
 
     layout.header = bounds.removeFromTop(50);
     bounds.removeFromTop(6);
@@ -692,7 +714,7 @@ ScratchPanel::Layout ScratchPanel::calculateLayout() const
     bounds.removeFromTop(12);
     layout.scope = bounds.removeFromTop(86);
     bounds.removeFromTop(12);
-    layout.context = bounds.removeFromTop(56);
+    layout.context = bounds.removeFromTop(68);
     bounds.removeFromTop(12);
     layout.destination = bounds.removeFromTop(54);
     const auto destinationLayout = ScratchPanelLayout::calculateDestinationLayout(layout.destination);

@@ -398,7 +398,8 @@ $dialogSpecs = @(
     @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
     @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
     @{ Name = "nam-browser"; Title = "NAM Model Browser"; Arguments = @("--visual-qa-nam-browser") },
-    @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") }
+    @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") },
+    @{ Name = "scratch-panel"; Title = "Scratch Capture"; Arguments = @("--visual-qa-scratch-panel") }
 )
 
 try {

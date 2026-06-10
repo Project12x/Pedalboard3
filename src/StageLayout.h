@@ -33,11 +33,16 @@ struct Metrics
     int heroHorizontalInset = 0;
     int heroEyebrowHeight = 0;
     int heroNextCueHeight = 0;
+    int liveQueueRailWidth = 0;
+    int liveQueueHeaderHeight = 0;
+    int liveQueueRowHeight = 0;
 
     float patchNameFontHeight = 0.0f;
     float nextPatchFontHeight = 0.0f;
     float positionFontHeight = 0.0f;
     float statusFontHeight = 0.0f;
+    float queueLabelFontHeight = 0.0f;
+    float queueTitleFontHeight = 0.0f;
     float timeFontHeight = 0.0f;
     float modeChipFontHeight = 0.0f;
     float eyebrowFontHeight = 0.0f;
