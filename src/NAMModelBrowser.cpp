@@ -736,9 +736,9 @@ int NAMModelListModel::getNumRows()
 
 void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, int height, bool rowIsSelected)
 {
-    auto& colours = ColourScheme::getInstance().colours;
     const auto palette = makeBrowserPalette();
     const int margin = 6;
+    const bool compact = width < 330 || height <= 50;
     const float cornerRadius = 8.0f;
     Rectangle<float> itemBounds(static_cast<float>(margin), 3.0f, static_cast<float>(width - margin * 2),
                                 static_cast<float>(height - 6));
@@ -778,7 +778,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
     if (rowNumber >= 0 && rowNumber < static_cast<int>(filteredIndices.size()))
     {
         const auto& model = allModels[filteredIndices[rowNumber]];
-        const int textX = margin + 58;
+        const int glyphSize = compact ? 30 : 38;
+        const int textX = margin + (compact ? 46 : 58);
 
         // Extract rig type and model type from metadata
         String rigType;
@@ -834,49 +835,54 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         const auto archColour = colourForNAMArchitecture(archShort, palette);
 
         drawModelGlyph(g,
-                       Rectangle<float>((float)(margin + 12), (height - 38.0f) * 0.5f, 38.0f, 38.0f),
+                       Rectangle<float>((float)(margin + 12), (height - static_cast<float>(glyphSize)) * 0.5f,
+                                        static_cast<float>(glyphSize), static_cast<float>(glyphSize)),
                        archColour, rowIsSelected);
 
-        Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
-                                         static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
-        drawBrowserChip(g, archBadgeBounds, archShort, archColour, rowIsSelected);
-
-        // Model type badge (left of architecture badge, if we have type info)
-        if (modelType.isNotEmpty())
+        if (!compact)
         {
-            badgeX -= badgeSpacing;
+            Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                             static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
+            drawBrowserChip(g, archBadgeBounds, archShort, archColour, rowIsSelected);
 
-            const auto typeDisplay = normaliseNAMModelType(modelType);
-            const auto typeColour = colourForNAMModelType(modelType, palette);
+            // Model type badge (left of architecture badge, if we have type info)
+            if (modelType.isNotEmpty())
+            {
+                badgeX -= badgeSpacing;
 
-            int typeBadgeWidth =
-                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) + 12;
-            badgeX -= typeBadgeWidth;
+                const auto typeDisplay = normaliseNAMModelType(modelType);
+                const auto typeColour = colourForNAMModelType(modelType, palette);
 
-            Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
-                                             static_cast<float>(typeBadgeWidth), static_cast<float>(badgeHeight));
-            drawBrowserChip(g, typeBadgeBounds, typeDisplay, typeColour, rowIsSelected);
-        }
+                int typeBadgeWidth =
+                    static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) + 12;
+                badgeX -= typeBadgeWidth;
 
-        const auto toneTag = inferToneTag(String(model.name) + " " + rigType + " " + modelType);
-        if (toneTag.isNotEmpty())
-        {
-            badgeX -= badgeSpacing;
-            const auto toneColour = toneColourForTag(toneTag);
-            const int toneBadgeWidth =
-                static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag)) + 14;
-            badgeX -= toneBadgeWidth;
-            Rectangle<float> toneBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
-                                             static_cast<float>(toneBadgeWidth), static_cast<float>(badgeHeight));
-            drawBrowserChip(g, toneBadgeBounds, toneTag, toneColour, rowIsSelected);
+                Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                                 static_cast<float>(typeBadgeWidth), static_cast<float>(badgeHeight));
+                drawBrowserChip(g, typeBadgeBounds, typeDisplay, typeColour, rowIsSelected);
+            }
+
+            const auto toneTag = inferToneTag(String(model.name) + " " + rigType + " " + modelType);
+            if (toneTag.isNotEmpty())
+            {
+                badgeX -= badgeSpacing;
+                const auto toneColour = toneColourForTag(toneTag);
+                const int toneBadgeWidth =
+                    static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag)) + 14;
+                badgeX -= toneBadgeWidth;
+                Rectangle<float> toneBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+                                                 static_cast<float>(toneBadgeWidth), static_cast<float>(badgeHeight));
+                drawBrowserChip(g, toneBadgeBounds, toneTag, toneColour, rowIsSelected);
+            }
         }
 
         // Model name (top line) - adjust width to not overlap badges
-        const int textEndX = jmax(textX + 80, badgeX - 8);
-        const int topPad = 10;
-        const int nameH = 20;
+        const int textEndX = compact ? width - margin - 10 : jmax(textX + 80, badgeX - 8);
+        const int topPad = compact ? 7 : 10;
+        const int nameH = compact ? 17 : 20;
         g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
-        g.setFont(FontManager::getInstance().getSubheadingFont());
+        g.setFont(compact ? FontManager::getInstance().getBodyBoldFont()
+                          : FontManager::getInstance().getSubheadingFont());
         g.drawText(String(model.name).replace("_", " "), textX, topPad, textEndX - textX, nameH,
                    Justification::centredLeft, true);
 
@@ -899,8 +905,9 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         if (infoLine.isNotEmpty())
         {
             g.setColour(palette.text.withAlpha(0.45f));
-            g.setFont(FontManager::getInstance().getLabelFont());
-            g.drawText(infoLine, textX, topPad + nameH + 2, textEndX - textX, 16, Justification::centredLeft, true);
+            g.setFont(compact ? FontManager::getInstance().getCaptionFont() : FontManager::getInstance().getLabelFont());
+            g.drawText(infoLine, textX, topPad + nameH + 1, textEndX - textX, compact ? 15 : 16,
+                       Justification::centredLeft, true);
         }
     }
 
@@ -1682,20 +1689,24 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.strokePath(headerPath, PathStrokeType(1.0f));
 
         g.setColour(palette.accent.withAlpha(0.75f));
-        g.drawLine(headerBounds.getX() + 14.0f, headerBounds.getBottom() - 7.0f,
-                   headerBounds.getX() + 205.0f, headerBounds.getBottom() - 7.0f, 2.0f);
+        const auto accentRight = jmin(headerBounds.getRight() - 18.0f, headerBounds.getX() + 205.0f);
+        g.drawLine(headerBounds.getX() + 14.0f, headerBounds.getBottom() - 7.0f, accentRight,
+                   headerBounds.getBottom() - 7.0f, 2.0f);
 
-        auto statusPill = Rectangle<float>(headerBounds.getRight() - 116.0f, headerBounds.getCentreY() - 13.0f,
-                                           88.0f, 26.0f);
-        g.setColour(palette.inset);
-        g.fillRoundedRectangle(statusPill, 8.0f);
-        g.setColour(palette.edge);
-        g.drawRoundedRectangle(statusPill.reduced(0.5f), 8.0f, 1.0f);
-        drawStatusLed(g, statusPill.removeFromLeft(24.0f), currentTab == 1 ? palette.led : palette.accent2,
-                      currentTab == 1);
-        g.setFont(FontManager::getInstance().getBadgeFont());
-        g.setColour(currentTab == 1 ? palette.led : palette.text.withAlpha(0.55f));
-        g.drawText(currentTab == 1 ? "ONLINE" : "LOCAL", statusPill, Justification::centredLeft, true);
+        if (headerBounds.getWidth() >= 560.0f)
+        {
+            auto statusPill = Rectangle<float>(headerBounds.getRight() - 116.0f, headerBounds.getCentreY() - 13.0f,
+                                               88.0f, 26.0f);
+            g.setColour(palette.inset);
+            g.fillRoundedRectangle(statusPill, 8.0f);
+            g.setColour(palette.edge);
+            g.drawRoundedRectangle(statusPill.reduced(0.5f), 8.0f, 1.0f);
+            drawStatusLed(g, statusPill.removeFromLeft(24.0f), currentTab == 1 ? palette.led : palette.accent2,
+                          currentTab == 1);
+            g.setFont(FontManager::getInstance().getBadgeFont());
+            g.setColour(currentTab == 1 ? palette.led : palette.text.withAlpha(0.55f));
+            g.drawText(currentTab == 1 ? "ONLINE" : "LOCAL", statusPill, Justification::centredLeft, true);
+        }
 
         for (auto corner : {headerBounds.getTopLeft(), headerBounds.getTopRight(), headerBounds.getBottomLeft(),
                             headerBounds.getBottomRight()})
@@ -1792,10 +1803,16 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                           : palette.edge.withAlpha(0.42f));
                 g.drawRoundedRectangle(previewCard.reduced(0.5f), 9.0f, 1.0f);
 
-                auto glyph = Rectangle<float>(previewCard.getRight() - 58.0f, previewCard.getY() + 10.0f, 44.0f, 44.0f);
-                const auto archColour =
-                    selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette) : palette.accent2;
-                drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"], selectedModel != nullptr);
+                const bool showPreviewGlyph = detailsBounds.getWidth() >= 330.0f;
+                if (showPreviewGlyph)
+                {
+                    auto glyph =
+                        Rectangle<float>(previewCard.getRight() - 58.0f, previewCard.getY() + 10.0f, 44.0f, 44.0f);
+                    const auto archColour = selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette)
+                                                          : palette.accent2;
+                    drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"],
+                                   selectedModel != nullptr);
+                }
 
                 auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(22.0f);
                 const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
@@ -1940,23 +1957,38 @@ void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
 
 void NAMModelBrowserComponent::resized()
 {
-    auto bounds = getLocalBounds().reduced(16);
+    const bool compactLayout = getWidth() < 620 || getHeight() < 460;
+    const int outerPadding = compactLayout ? 10 : 16;
+    auto bounds = getLocalBounds().reduced(outerPadding);
     libraryRailBounds = {};
     detailsPanelBounds = {};
 
+    auto& fonts = FontManager::getInstance();
+    titleLabel->setFont(compactLayout ? fonts.getSubheadingFont() : fonts.getHeadingFont());
+    searchBox->setFont(compactLayout ? fonts.getBodyBoldFont() : fonts.getSubheadingFont());
+    detailsTitle->setFont(compactLayout ? fonts.getBodyBoldFont() : fonts.getSubheadingFont());
+    nameValue->setFont(compactLayout ? fonts.getBodyBoldFont() : fonts.getSubheadingFont());
+    modelList->setRowHeight(compactLayout ? 46 : 58);
+
     // Title row with tab buttons
-    auto titleRow = bounds.removeFromTop(34);
-    titleLabel->setBounds(titleRow.removeFromLeft(200));
+    auto titleRow = bounds.removeFromTop(compactLayout ? 28 : 34);
+    const int titleGap = compactLayout ? 8 : 16;
+    const int localTabWidth = compactLayout ? 58 : 70;
+    const int onlineTabWidth = compactLayout ? 64 : 70;
+    const int irTabWidth = compactLayout ? 44 : 55;
+    const int availableTitleWidth = titleRow.getWidth() - titleGap - localTabWidth - 2 - onlineTabWidth - 2 - irTabWidth;
+    const int titleWidth = jlimit(compactLayout ? 112 : 160, compactLayout ? 190 : 220, availableTitleWidth);
+    titleLabel->setBounds(titleRow.removeFromLeft(titleWidth));
 
     // Tab buttons on the right side of title — wider for pill capsule style
-    titleRow.removeFromLeft(16);
-    localTabButton->setBounds(titleRow.removeFromLeft(70));
+    titleRow.removeFromLeft(titleGap);
+    localTabButton->setBounds(titleRow.removeFromLeft(localTabWidth));
     titleRow.removeFromLeft(2);
-    onlineTabButton->setBounds(titleRow.removeFromLeft(70));
+    onlineTabButton->setBounds(titleRow.removeFromLeft(onlineTabWidth));
     titleRow.removeFromLeft(2);
-    irTabButton->setBounds(titleRow.removeFromLeft(55));
+    irTabButton->setBounds(titleRow.removeFromLeft(irTabWidth));
 
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(compactLayout ? 6 : 8);
 
     // Hide all IR components by default
     auto hideIRComponents = [this]()
@@ -2148,31 +2180,32 @@ void NAMModelBrowserComponent::resized()
     updateLocalBrowserState();
 
     // Search and refresh row
-    auto searchRow = bounds.removeFromTop(32);
-    refreshButton->setBounds(searchRow.removeFromRight(70));
-    searchRow.removeFromRight(8);
-    browseFolderButton->setBounds(searchRow.removeFromRight(110));
-    searchRow.removeFromRight(8);
+    const int rowGap = compactLayout ? 6 : 8;
+    auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 32);
+    refreshButton->setBounds(searchRow.removeFromRight(compactLayout ? 62 : 70));
+    searchRow.removeFromRight(rowGap);
+    browseFolderButton->setBounds(searchRow.removeFromRight(compactLayout ? 96 : 110));
+    searchRow.removeFromRight(rowGap);
     searchBox->setBounds(searchRow);
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(compactLayout ? 6 : 8);
 
     // Status bar at bottom
-    auto statusRow = bounds.removeFromBottom(20);
+    auto statusRow = bounds.removeFromBottom(compactLayout ? 18 : 20);
     statusLabel->setBounds(statusRow);
-    bounds.removeFromBottom(4);
+    bounds.removeFromBottom(compactLayout ? 3 : 4);
 
     // Button row at bottom
-    auto buttonRow = bounds.removeFromBottom(36);
-    bounds.removeFromBottom(8);
+    auto buttonRow = bounds.removeFromBottom(compactLayout ? 34 : 36);
+    bounds.removeFromBottom(compactLayout ? 6 : 8);
 
-    closeButton->setBounds(buttonRow.removeFromRight(70));
-    buttonRow.removeFromRight(8);
-    deleteButton->setBounds(buttonRow.removeFromRight(100));
-    buttonRow.removeFromRight(8);
-    loadButton->setBounds(buttonRow.removeFromRight(100));
+    closeButton->setBounds(buttonRow.removeFromRight(compactLayout ? 64 : 70));
+    buttonRow.removeFromRight(rowGap);
+    deleteButton->setBounds(buttonRow.removeFromRight(compactLayout ? 92 : 100));
+    buttonRow.removeFromRight(rowGap);
+    loadButton->setBounds(buttonRow.removeFromRight(compactLayout ? 92 : 100));
 
     // Split remaining area: library rail, list, and focused inspector card.
-    const bool showRail = bounds.getWidth() >= 720;
+    const bool showRail = !compactLayout && bounds.getWidth() >= 720;
     if (showRail)
     {
         const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
@@ -2180,10 +2213,15 @@ void NAMModelBrowserComponent::resized()
         bounds.removeFromLeft(12);
     }
 
-    const int detailsWidth = jlimit(250, 350, juce::roundToInt(bounds.getWidth() * 0.34f));
+    const int splitGap = compactLayout ? 8 : 12;
+    const int minimumListWidth = compactLayout ? 150 : 220;
+    const int desiredDetailsWidth = compactLayout ? jlimit(170, 230, juce::roundToInt(bounds.getWidth() * 0.44f))
+                                                  : jlimit(250, 350, juce::roundToInt(bounds.getWidth() * 0.34f));
+    const int maxDetailsWidth = jmax(120, bounds.getWidth() - splitGap - minimumListWidth);
+    const int detailsWidth = jmin(desiredDetailsWidth, maxDetailsWidth);
     auto detailsArea = bounds.removeFromRight(detailsWidth);
     detailsPanelBounds = detailsArea;
-    bounds.removeFromRight(12);
+    bounds.removeFromRight(splitGap);
     auto listArea = bounds;
 
     // Model list or empty state
@@ -2191,38 +2229,46 @@ void NAMModelBrowserComponent::resized()
     emptyStateLabel->setBounds(listArea);
 
     // Details panel with section grouping
-    detailsArea.reduce(14, 12);
-    const int labelWidth = 90;
-    const int sectionGap = 10;
-    const int rowH = 22;
-    const int rowGap = 4;
+    detailsArea.reduce(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
+    const int labelWidth = compactLayout ? 72 : 90;
+    const int sectionGap = compactLayout ? 6 : 10;
+    const int rowH = compactLayout ? 19 : 22;
+    const int detailRowGap = compactLayout ? 2 : 4;
+    const bool showFullTechnicalDetails = !compactLayout;
 
-    detailsTitle->setBounds(detailsArea.removeFromTop(22));
-    detailsArea.removeFromTop(8);
+    sampleRateLabel->setVisible(showFullTechnicalDetails);
+    sampleRateValue->setVisible(showFullTechnicalDetails);
+    loudnessLabel->setVisible(showFullTechnicalDetails);
+    loudnessValue->setVisible(showFullTechnicalDetails);
+    metadataLabel->setVisible(showFullTechnicalDetails);
+    metadataDisplay->setVisible(showFullTechnicalDetails);
+
+    detailsTitle->setBounds(detailsArea.removeFromTop(compactLayout ? 20 : 22));
+    detailsArea.removeFromTop(compactLayout ? 5 : 8);
 
     // Store separator positions for paint()
     detailsSeparatorPositions.clear();
 
-    auto layoutLabelValue = [&detailsArea, labelWidth, rowH, rowGap](Label* label, Label* value)
+    auto layoutLabelValue = [&detailsArea, labelWidth, rowH, detailRowGap](Label* label, Label* value)
     {
         auto row = detailsArea.removeFromTop(rowH);
         label->setBounds(row.removeFromLeft(labelWidth));
         value->setBounds(row);
-        detailsArea.removeFromTop(rowGap);
+        detailsArea.removeFromTop(detailRowGap);
     };
 
     // -- Identity / preview section --
-    auto heroArea = detailsArea.removeFromTop(104);
+    auto heroArea = detailsArea.removeFromTop(compactLayout ? 70 : 104);
     auto heroText = heroArea;
-    if (heroText.getWidth() >= 230)
+    if (!compactLayout && detailsPanelBounds.getWidth() >= 330)
         heroText.removeFromRight(78);
-    nameLabel->setBounds(heroText.removeFromTop(18));
-    nameValue->setBounds(heroText.removeFromTop(34));
-    heroText.removeFromTop(2);
-    auto authorRow = heroText.removeFromTop(22);
+    nameLabel->setBounds(heroText.removeFromTop(compactLayout ? 15 : 18));
+    nameValue->setBounds(heroText.removeFromTop(compactLayout ? 23 : 34));
+    heroText.removeFromTop(compactLayout ? 1 : 2);
+    auto authorRow = heroText.removeFromTop(compactLayout ? 19 : 22);
     authorLabel->setBounds(authorRow.removeFromLeft(labelWidth));
     authorValue->setBounds(authorRow);
-    detailsArea.removeFromTop(8);
+    detailsArea.removeFromTop(compactLayout ? 4 : 8);
 
     // Separator after Identity
     detailsSeparatorPositions.push_back(detailsArea.getY());
@@ -2231,8 +2277,11 @@ void NAMModelBrowserComponent::resized()
     // -- Technical section --
     layoutLabelValue(modelTypeLabel.get(), modelTypeValue.get());
     layoutLabelValue(architectureLabel.get(), architectureValue.get());
-    layoutLabelValue(sampleRateLabel.get(), sampleRateValue.get());
-    layoutLabelValue(loudnessLabel.get(), loudnessValue.get());
+    if (showFullTechnicalDetails)
+    {
+        layoutLabelValue(sampleRateLabel.get(), sampleRateValue.get());
+        layoutLabelValue(loudnessLabel.get(), loudnessValue.get());
+    }
 
     // Separator after Technical
     detailsSeparatorPositions.push_back(detailsArea.getY());
@@ -2242,11 +2291,14 @@ void NAMModelBrowserComponent::resized()
     auto fileRow = detailsArea.removeFromTop(rowH);
     filePathLabel->setBounds(fileRow.removeFromLeft(40));
     filePathValue->setBounds(fileRow);
-    detailsArea.removeFromTop(rowGap);
+    detailsArea.removeFromTop(detailRowGap);
 
-    metadataLabel->setBounds(detailsArea.removeFromTop(20));
-    detailsArea.removeFromTop(4);
-    metadataDisplay->setBounds(detailsArea);
+    if (showFullTechnicalDetails)
+    {
+        metadataLabel->setBounds(detailsArea.removeFromTop(20));
+        detailsArea.removeFromTop(4);
+        metadataDisplay->setBounds(detailsArea);
+    }
 }
 
 void NAMModelBrowserComponent::buttonClicked(Button* button)
