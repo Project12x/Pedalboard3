@@ -82,6 +82,129 @@ using namespace std;
 namespace
 {
 constexpr const char* kScratchRootSettingsKey = "scratchRootDirectory";
+constexpr const char* kVirtualKeyboardCollapsedSettingsKey = "VirtualKeyboardCollapsed";
+
+class KeyboardDeckButtonLookAndFeel : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& /*backgroundColour*/, bool isMouseOverButton,
+                              bool isButtonDown) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat().reduced(1.0f, 1.0f);
+        const auto active = button.getToggleState();
+        auto accent = palette["Accent Colour"];
+        auto base = active ? accent.withAlpha(0.44f) : palette["Button Colour"].withAlpha(0.88f);
+
+        if (isButtonDown)
+            bounds = bounds.translated(0.0f, 0.8f);
+        if (isMouseOverButton)
+            base = base.brighter(active ? 0.12f : 0.08f);
+
+        g.setColour(palette["Window Background"].darker(0.55f).withAlpha(isButtonDown ? 0.12f : 0.26f));
+        g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.6f : 1.8f), 7.0f);
+
+        ColourGradient fill(base.brighter(0.16f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
+                            bounds.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bounds, 7.0f);
+
+        g.setColour(palette["Text Colour"].withAlpha(active ? 0.18f : 0.08f));
+        g.drawLine(bounds.getX() + 4.0f, bounds.getY() + 1.5f, bounds.getRight() - 4.0f, bounds.getY() + 1.5f, 1.0f);
+        g.setColour((active ? accent : palette["Text Colour"]).withAlpha(active ? 0.78f : 0.22f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, active ? 1.2f : 1.0f);
+    }
+
+    void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        g.setFont(::FontManager::getInstance().getBadgeFont());
+        g.setColour(palette["Text Colour"].withAlpha(button.isEnabled() ? 0.96f : 0.35f));
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(4, 1), Justification::centred, 1);
+    }
+};
+
+class PedalboardMidiKeyboardComponent : public MidiKeyboardComponent
+{
+  public:
+    PedalboardMidiKeyboardComponent(MidiKeyboardState& state, Orientation orientation)
+        : MidiKeyboardComponent(state, orientation)
+    {
+        setBlackNoteLengthProportion(0.68f);
+    }
+
+    void drawWhiteNote(int midiNoteNumber, Graphics& g, Rectangle<float> area, bool isDown, bool isOver,
+                       Colour /*lineColour*/, Colour /*textColour*/) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        auto key = area.reduced(0.5f, 0.0f);
+        auto top = palette["Dialog Inner Background"].brighter(0.74f);
+        auto bottom = palette["Dialog Inner Background"].brighter(0.38f);
+
+        if (isDown)
+        {
+            top = palette["Accent Colour"].withAlpha(0.82f);
+            bottom = palette["Accent Colour"].darker(0.18f);
+        }
+        else if (isOver)
+        {
+            top = top.overlaidWith(palette["Accent Colour"].withAlpha(0.12f));
+            bottom = bottom.overlaidWith(palette["Accent Colour"].withAlpha(0.08f));
+        }
+
+        ColourGradient fill(top, key.getX(), key.getY(), bottom, key.getX(), key.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(key.withTrimmedTop(1.0f), 2.5f);
+
+        g.setColour(palette["Window Background"].darker(0.55f).withAlpha(0.18f));
+        g.drawLine(key.getX(), key.getY() + 1.0f, key.getX(), key.getBottom(), 1.0f);
+        g.setColour(palette["Text Colour"].withAlpha(isDown ? 0.18f : 0.28f));
+        g.drawLine(key.getX() + 1.5f, key.getY() + 2.0f, key.getRight() - 1.5f, key.getY() + 2.0f, 1.0f);
+
+        if (midiNoteNumber % 12 == 0)
+        {
+            const auto octave = midiNoteNumber / 12 - 1;
+            g.setColour((isDown ? palette["Text Colour"] : palette["Window Background"]).withAlpha(isDown ? 0.74f : 0.62f));
+            g.setFont(::FontManager::getInstance().getCaptionFont());
+            g.drawText("C" + String(octave), key.reduced(1.0f, 2.0f), Justification::centredBottom, true);
+        }
+    }
+
+    void drawBlackNote(int /*midiNoteNumber*/, Graphics& g, Rectangle<float> area, bool isDown, bool isOver,
+                       Colour /*noteFillColour*/) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        auto key = area.reduced(1.0f, 0.0f).withTrimmedBottom(3.0f);
+        auto top = palette["Window Background"].brighter(0.2f);
+        auto bottom = palette["Window Background"].darker(0.28f);
+
+        if (isDown)
+        {
+            top = palette["Accent Colour"].darker(0.04f);
+            bottom = palette["Accent Colour"].darker(0.46f);
+            key = key.translated(0.0f, 1.0f);
+        }
+        else if (isOver)
+        {
+            top = top.overlaidWith(palette["Accent Colour"].withAlpha(0.18f));
+            bottom = bottom.overlaidWith(palette["Accent Colour"].withAlpha(0.1f));
+        }
+
+        g.setColour(palette["Window Background"].darker(0.7f).withAlpha(0.34f));
+        g.fillRoundedRectangle(key.translated(0.0f, 1.8f), 3.0f);
+
+        ColourGradient fill(top, key.getX(), key.getY(), bottom, key.getX(), key.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(key, 3.0f);
+
+        g.setColour(palette["Text Colour"].withAlpha(isDown ? 0.16f : 0.08f));
+        g.drawLine(key.getX() + 2.0f, key.getY() + 1.5f, key.getRight() - 2.0f, key.getY() + 1.5f, 1.0f);
+        g.setColour((isDown ? palette["Accent Colour"] : palette["Text Colour"]).withAlpha(isDown ? 0.72f : 0.18f));
+        g.drawRoundedRectangle(key.reduced(0.5f), 3.0f, 1.0f);
+    }
+};
+
+KeyboardDeckButtonLookAndFeel keyboardDeckButtonLookAndFeel;
 }
 
 //------------------------------------------------------------------------------
@@ -494,18 +617,30 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     }
 
     // Setup virtual MIDI keyboard
-    virtualKeyboard = std::make_unique<MidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
+    virtualKeyboardCollapsed = SettingsManager::getInstance().getBool(kVirtualKeyboardCollapsedSettingsKey, false);
+    virtualKeyboard =
+        std::make_unique<PedalboardMidiKeyboardComponent>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
     virtualKeyboard->setKeyWidth(40.0f);
     virtualKeyboard->setAvailableRange(36, 96); // C2 to C7
     addAndMakeVisible(virtualKeyboard.get());
     keyboardState.addListener(this);
 
     // Keyboard control strip
+    keyboardToggleButton = std::make_unique<TextButton>("KEYS");
+    keyboardToggleButton->setTooltip("Show or hide the virtual MIDI keyboard");
+    keyboardToggleButton->setClickingTogglesState(true);
+    keyboardToggleButton->setToggleState(!virtualKeyboardCollapsed, dontSendNotification);
+    keyboardToggleButton->setLookAndFeel(&keyboardDeckButtonLookAndFeel);
+    keyboardToggleButton->addListener(this);
+    addAndMakeVisible(keyboardToggleButton.get());
+
     octaveDownButton = std::make_unique<TextButton>("-");
+    octaveDownButton->setLookAndFeel(&keyboardDeckButtonLookAndFeel);
     octaveDownButton->addListener(this);
     addAndMakeVisible(octaveDownButton.get());
 
     octaveUpButton = std::make_unique<TextButton>("+");
+    octaveUpButton->setLookAndFeel(&keyboardDeckButtonLookAndFeel);
     octaveUpButton->addListener(this);
     addAndMakeVisible(octaveUpButton.get());
 
@@ -530,6 +665,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
 
     sustainButton = std::make_unique<TextButton>("Sus");
     sustainButton->setClickingTogglesState(true);
+    sustainButton->setLookAndFeel(&keyboardDeckButtonLookAndFeel);
     sustainButton->addListener(this);
     addAndMakeVisible(sustainButton.get());
 
@@ -642,6 +778,14 @@ MainPanel::~MainPanel()
 
     // Remove keyboard listener before destruction
     keyboardState.removeListener(this);
+    if (keyboardToggleButton)
+        keyboardToggleButton->setLookAndFeel(nullptr);
+    if (octaveDownButton)
+        octaveDownButton->setLookAndFeel(nullptr);
+    if (octaveUpButton)
+        octaveUpButton->setLookAndFeel(nullptr);
+    if (sustainButton)
+        sustainButton->setLookAndFeel(nullptr);
 
     int i;
 
@@ -745,13 +889,16 @@ void MainPanel::paint(Graphics& g)
     g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
     //[/UserPaint]
+
+    paintVirtualKeyboardDeck(g);
 }
 
 void MainPanel::resized()
 {
     const auto uiScalePercent = getUiScalePercent();
     const int toolbarHeight = UiScale::footerHeight(getWidth(), uiScalePercent);
-    const int viewportHeight = jmax(0, getHeight() - toolbarHeight - keyboardHeight);
+    const int keyboardDeckHeight = getVirtualKeyboardDeckHeight();
+    const int viewportHeight = jmax(0, getHeight() - toolbarHeight - keyboardDeckHeight);
     const int footerTop = getHeight() - toolbarHeight;
     const int footerLayoutW = UiScale::footerLayoutWidth(getWidth(), uiScalePercent);
     const int footerW = getWidth();
@@ -763,25 +910,42 @@ void MainPanel::resized()
     // Virtual MIDI keyboard control strip + keys
     if (virtualKeyboard != nullptr)
     {
-        const int controlStripHeight = 20;
-        const int keysHeight = keyboardHeight - controlStripHeight;
+        const int controlStripHeight = 26;
+        const int keysHeight = keyboardDeckHeight - controlStripHeight;
         const int stripY = viewportHeight;
+        const int buttonY = stripY + 3;
+        const int buttonH = 20;
 
-        // Control strip: [Oct- Oct:0 Oct+] [Vel: ====slider====] [Sus]
-        int cx = 4;
-        octaveDownButton->setBounds(cx, stripY, 24, controlStripHeight);
-        cx += 26;
-        octaveLabel->setBounds(cx, stripY, 44, controlStripHeight);
-        cx += 46;
-        octaveUpButton->setBounds(cx, stripY, 24, controlStripHeight);
-        cx += 32;
-        velocityLabel->setBounds(cx, stripY, 28, controlStripHeight);
-        cx += 30;
-        velocitySlider->setBounds(cx, stripY, 140, controlStripHeight);
-        cx = getWidth() - 44;
-        sustainButton->setBounds(cx, stripY, 40, controlStripHeight);
+        keyboardToggleButton->setVisible(true);
+        keyboardToggleButton->setToggleState(!virtualKeyboardCollapsed, dontSendNotification);
+        keyboardToggleButton->setBounds(8, buttonY, 54, buttonH);
 
-        virtualKeyboard->setBounds(0, stripY + controlStripHeight, getWidth(), keysHeight);
+        const bool showKeyboardControls = !virtualKeyboardCollapsed;
+        octaveDownButton->setVisible(showKeyboardControls);
+        octaveUpButton->setVisible(showKeyboardControls);
+        octaveLabel->setVisible(showKeyboardControls);
+        velocitySlider->setVisible(showKeyboardControls);
+        velocityLabel->setVisible(showKeyboardControls);
+        sustainButton->setVisible(showKeyboardControls);
+        virtualKeyboard->setVisible(showKeyboardControls);
+
+        if (showKeyboardControls)
+        {
+            // Control strip: [Keys] [Oct- Oct:0 Oct+] [Vel: ====slider====] [Sus]
+            int cx = 70;
+            octaveDownButton->setBounds(cx, buttonY, 24, buttonH);
+            cx += 28;
+            octaveLabel->setBounds(cx, buttonY, 48, buttonH);
+            cx += 52;
+            octaveUpButton->setBounds(cx, buttonY, 24, buttonH);
+            cx += 36;
+            velocityLabel->setBounds(cx, buttonY, 30, buttonH);
+            cx += 32;
+            velocitySlider->setBounds(cx, stripY + 2, jmin(170, jmax(92, getWidth() / 9)), controlStripHeight - 4);
+            sustainButton->setBounds(getWidth() - 50, buttonY, 42, buttonH);
+
+            virtualKeyboard->setBounds(0, stripY + controlStripHeight, getWidth(), keysHeight);
+        }
     }
 
     //[UserResized] Add your own custom resize handling here..
@@ -1106,6 +1270,13 @@ void MainPanel::buttonClicked(Button* buttonThatWasClicked)
         commandManager->invokeDirectly(ScratchCaptureToggle, true);
     else if (buttonThatWasClicked == scratchPanelButton)
         commandManager->invokeDirectly(ScratchPanelOpen, true);
+    else if (buttonThatWasClicked == keyboardToggleButton.get())
+    {
+        virtualKeyboardCollapsed = !keyboardToggleButton->getToggleState();
+        SettingsManager::getInstance().setValue(kVirtualKeyboardCollapsedSettingsKey, virtualKeyboardCollapsed);
+        resized();
+        repaint();
+    }
     else if (buttonThatWasClicked == octaveDownButton.get())
     {
         if (auto* proc = VirtualMidiInputProcessor::getInstance())
@@ -1262,6 +1433,63 @@ void MainPanel::handleNoteOff(MidiKeyboardState* source, int midiChannel, int mi
         auto msg = MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity);
         msg.setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
         processor->addMidiMessage(msg);
+    }
+}
+
+//------------------------------------------------------------------------------
+int MainPanel::getVirtualKeyboardDeckHeight() const
+{
+    return virtualKeyboardCollapsed ? keyboardCollapsedHeight : keyboardHeight;
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::paintVirtualKeyboardDeck(Graphics& g)
+{
+    const auto uiScalePercent = getUiScalePercent();
+    const int toolbarHeight = UiScale::footerHeight(getWidth(), uiScalePercent);
+    const int deckHeight = getVirtualKeyboardDeckHeight();
+    const int deckTop = getHeight() - toolbarHeight - deckHeight;
+    if (deckTop < 0 || deckHeight <= 0)
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    auto deck = Rectangle<float>(0.0f, (float)deckTop, (float)getWidth(), (float)deckHeight);
+
+    ColourGradient back(colours["Window Background"].brighter(0.05f), deck.getX(), deck.getY(),
+                        colours["Window Background"].darker(0.12f), deck.getX(), deck.getBottom(), false);
+    g.setGradientFill(back);
+    g.fillRect(deck);
+
+    g.setColour(colours["Plugin Border"].withAlpha(0.42f));
+    g.drawHorizontalLine(deckTop, 0.0f, (float)getWidth());
+    g.setColour(colours["Text Colour"].withAlpha(0.05f));
+    g.drawHorizontalLine(deckTop + 1, 0.0f, (float)getWidth());
+
+    if (virtualKeyboardCollapsed)
+    {
+        auto labelArea = deck.reduced(70.0f, 0.0f);
+        g.setFont(FontManager::getInstance().getCaptionFont());
+        g.setColour(colours["Text Colour"].withAlpha(0.52f));
+        g.drawText("VIRTUAL PIANO  HIDDEN", labelArea.withWidth(220.0f), Justification::centredLeft, true);
+
+        const auto miniKeyW = 9.0f;
+        auto mini = Rectangle<float>(deck.getRight() - 170.0f, deck.getCentreY() - 5.0f, 148.0f, 10.0f);
+        for (int i = 0; i < 14; ++i)
+        {
+            auto key = Rectangle<float>(mini.getX() + (float)i * miniKeyW, mini.getY(), miniKeyW - 1.0f,
+                                        mini.getHeight());
+            g.setColour(colours["Text Colour"].withAlpha(i % 7 == 1 || i % 7 == 3 || i % 7 == 5 ? 0.22f : 0.42f));
+            g.fillRoundedRectangle(key, 1.5f);
+        }
+    }
+    else
+    {
+        auto strip = deck.removeFromTop(26.0f);
+        g.setColour(colours["Dialog Inner Background"].withAlpha(0.62f));
+        g.fillRect(strip);
+        g.setColour(colours["Accent Colour"].withAlpha(0.36f));
+        g.drawLine(8.0f, strip.getBottom() - 1.0f, jmin(360.0f, (float)getWidth() - 8.0f), strip.getBottom() - 1.0f,
+                   1.0f);
     }
 }
 
@@ -1701,6 +1929,23 @@ void MainPanel::showPluginSearchWindowForVisualQa()
 {
     if (auto* field = dynamic_cast<PluginField*>(viewport->getViewedComponent()))
         field->showPluginSearchWindowForVisualQa();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::setStageViewModeForVisualQa(int modeIndex)
+{
+    if (stageView != nullptr)
+        stageView->setViewModeForVisualQa(modeIndex);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::setVirtualKeyboardCollapsedForVisualQa(bool shouldCollapse)
+{
+    virtualKeyboardCollapsed = shouldCollapse;
+    if (keyboardToggleButton != nullptr)
+        keyboardToggleButton->setToggleState(!virtualKeyboardCollapsed, dontSendNotification);
+    resized();
+    repaint();
 }
 
 //------------------------------------------------------------------------------

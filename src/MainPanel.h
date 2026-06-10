@@ -347,6 +347,10 @@ class MainPanel : public Component,
     ApplicationCommandManager* getApplicationCommandManager() const { return commandManager; };
     /// Shows the plugin search window for deterministic visual QA captures.
     void showPluginSearchWindowForVisualQa();
+    /// Sets Stage Mode subview for deterministic visual QA captures.
+    void setStageViewModeForVisualQa(int modeIndex);
+    /// Sets the virtual keyboard deck state for deterministic visual QA captures.
+    void setVirtualKeyboardCollapsedForVisualQa(bool shouldCollapse);
 
     ///	Returns the PluginField's MidiMappingManager.
     MidiMappingManager* getMidiMappingManager()
@@ -555,15 +559,20 @@ class MainPanel : public Component,
     /// Virtual MIDI keyboard state and component
     MidiKeyboardState keyboardState;
     std::unique_ptr<MidiKeyboardComponent> virtualKeyboard;
-    static constexpr int keyboardHeight = 80; // 20px control strip + 60px keys
+    static constexpr int keyboardHeight = 86;          // control strip + keys
+    static constexpr int keyboardCollapsedHeight = 28; // slim restore strip
+    bool virtualKeyboardCollapsed = false;
 
     // Keyboard control strip
+    std::unique_ptr<TextButton> keyboardToggleButton;
     std::unique_ptr<TextButton> octaveDownButton;
     std::unique_ptr<TextButton> octaveUpButton;
     std::unique_ptr<Label> octaveLabel;
     std::unique_ptr<Slider> velocitySlider;
     std::unique_ptr<Label> velocityLabel;
     std::unique_ptr<TextButton> sustainButton;
+    int getVirtualKeyboardDeckHeight() const;
+    void paintVirtualKeyboardDeck(Graphics& g);
     void updateOctaveDisplay();
 
     /// MidiKeyboardState::Listener callbacks

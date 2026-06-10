@@ -433,6 +433,22 @@ try {
                 Stop-QaApp -Process $session.Process
                 $session = $null
 
+                $stageQueuePath = Join-Path $outputDir "workflow-stage-mode-queue.png"
+                $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-queue")
+                Capture-Window -Handle $session.Handle -Path $stageQueuePath -CaptureWidth 1280 -CaptureHeight 820
+                $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-queue"; Path = $stageQueuePath }) | Out-Null
+
+                Stop-QaApp -Process $session.Process
+                $session = $null
+
+                $stageTunerPath = Join-Path $outputDir "workflow-stage-mode-tuner.png"
+                $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage-tuner")
+                Capture-Window -Handle $session.Handle -Path $stageTunerPath -CaptureWidth 1280 -CaptureHeight 820
+                $captures.Add([pscustomobject]@{ Name = "workflow-stage-mode-tuner"; Path = $stageTunerPath }) | Out-Null
+
+                Stop-QaApp -Process $session.Process
+                $session = $null
+
                 $stageAfterSwitchPath = Join-Path $outputDir "workflow-stage-mode-after-patch-next.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch", "--visual-qa-stage")
                 Capture-Window -Handle $session.Handle -Path $stageAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
@@ -445,6 +461,14 @@ try {
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch")
                 Capture-Window -Handle $session.Handle -Path $mainAfterSwitchPath -CaptureWidth 1280 -CaptureHeight 820
                 $captures.Add([pscustomobject]@{ Name = "workflow-main-after-patch-next"; Path = $mainAfterSwitchPath }) | Out-Null
+
+                Stop-QaApp -Process $session.Process
+                $session = $null
+
+                $collapsedKeyboardPath = Join-Path $outputDir "workflow-main-keyboard-collapsed.png"
+                $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-next-patch", "--visual-qa-keyboard-collapsed")
+                Capture-Window -Handle $session.Handle -Path $collapsedKeyboardPath -CaptureWidth 1280 -CaptureHeight 820
+                $captures.Add([pscustomobject]@{ Name = "workflow-main-keyboard-collapsed"; Path = $collapsedKeyboardPath }) | Out-Null
             }
         }
         finally {

@@ -263,7 +263,7 @@ class IRBrowserComponent : public Component, public Button::Listener, public Tex
 {
   public:
     IRBrowserComponent(std::function<void(const File&)> onIRSelected);
-    ~IRBrowserComponent() override = default;
+    ~IRBrowserComponent() override;
 
     void paint(Graphics& g) override;
     void paintOverChildren(Graphics& g) override;

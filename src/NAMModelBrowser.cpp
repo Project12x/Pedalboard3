@@ -745,6 +745,62 @@ class PillTabLookAndFeel : public LookAndFeel_V4
 
 static PillTabLookAndFeel pillTabLookAndFeel;
 
+class BrowserActionButtonLookAndFeel : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour, bool isMouseOverButton,
+                              bool isButtonDown) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
+        const bool primary = button.findColour(TextButton::textColourOffId).getBrightness() > 0.82f &&
+                             backgroundColour.getBrightness() > colours["Button Colour"].getBrightness();
+        const bool danger = button.findColour(TextButton::textColourOffId).getHue() > 0.95f ||
+                            button.getButtonText().containsIgnoreCase("delete");
+        auto base = danger ? colours["Danger Colour"].withAlpha(0.25f)
+                           : (primary ? backgroundColour : colours["Button Colour"].withAlpha(0.9f));
+
+        if (!button.isEnabled())
+            base = base.withMultipliedSaturation(0.35f).withAlpha(0.34f);
+        else if (isButtonDown)
+            base = base.darker(0.12f);
+        else if (isMouseOverButton)
+            base = base.brighter(0.1f);
+
+        const auto radius = juce::jmin(9.0f, bounds.getHeight() * 0.28f);
+        if (button.isEnabled())
+        {
+            g.setColour(Colours::black.withAlpha(isButtonDown ? 0.12f : 0.26f));
+            g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.8f : 2.0f), radius);
+        }
+
+        ColourGradient fill(base.brighter(primary ? 0.16f : 0.1f), bounds.getX(), bounds.getY(),
+                            base.darker(primary ? 0.18f : 0.12f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bounds, radius);
+
+        g.setColour(Colours::white.withAlpha(primary ? 0.16f : 0.07f));
+        g.drawLine(bounds.getX() + 5.0f, bounds.getY() + 1.5f, bounds.getRight() - 5.0f, bounds.getY() + 1.5f, 1.0f);
+        g.setColour((danger ? colours["Danger Colour"] : (primary ? colours["Accent Colour"] : colours["Text Colour"]))
+                        .withAlpha(primary ? 0.62f : 0.22f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, primary ? 1.4f : 1.0f);
+    }
+
+    void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
+    {
+        auto& colours = ::ColourScheme::getInstance().colours;
+        auto text = button.findColour(button.getToggleState() ? TextButton::textColourOnId : TextButton::textColourOffId);
+        if (!button.isEnabled())
+            text = colours["Text Colour"].withAlpha(0.32f);
+
+        g.setFont(FontManager::getInstance().getBodyBoldFont());
+        g.setColour(text);
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(7, 2), Justification::centred, 1);
+    }
+};
+
+static BrowserActionButtonLookAndFeel browserActionButtonLookAndFeel;
+
 //==============================================================================
 // NAMModelBrowserComponent
 //==============================================================================
@@ -803,6 +859,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Buttons with styled colors
     auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
     {
+        btn->setLookAndFeel(&browserActionButtonLookAndFeel);
         if (isPrimary)
         {
             // Primary action button (accent color)
@@ -843,7 +900,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // Model list - transparent background for custom rounded painting
     modelList = std::make_unique<ListBox>("models", &listModel);
-    modelList->setRowHeight(72);
+    modelList->setRowHeight(64);
     modelList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     modelList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     modelList->setOutlineThickness(0);
@@ -899,6 +956,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Delete button
     deleteButton = std::make_unique<TextButton>("Delete Model");
     deleteButton->addListener(this);
+    deleteButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     // Delete button — secondary style (outline, not filled)
     deleteButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
     deleteButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
@@ -925,7 +983,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // IR browser components
     irList = std::make_unique<ListBox>("irs", &irListModel);
-    irList->setRowHeight(40);
+    irList->setRowHeight(52);
     irList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     irList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     irList->setOutlineThickness(0);
@@ -945,6 +1003,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     irBrowseFolderButton = std::make_unique<TextButton>("Browse IR Folder...");
     irBrowseFolderButton->addListener(this);
+    irBrowseFolderButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     irBrowseFolderButton->setColour(TextButton::buttonColourId, colours["Button Colour"]);
     irBrowseFolderButton->setColour(TextButton::buttonOnColourId, colours["Button Highlight"]);
     irBrowseFolderButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
@@ -954,6 +1013,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     irLoadButton = std::make_unique<TextButton>("Load IR");
     irLoadButton->addListener(this);
+    irLoadButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     irLoadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
     irLoadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
     irLoadButton->setColour(TextButton::textColourOffId, Colours::white);
@@ -1019,6 +1079,13 @@ NAMModelBrowserComponent::~NAMModelBrowserComponent()
     localTabButton->setLookAndFeel(nullptr);
     onlineTabButton->setLookAndFeel(nullptr);
     irTabButton->setLookAndFeel(nullptr);
+    refreshButton->setLookAndFeel(nullptr);
+    browseFolderButton->setLookAndFeel(nullptr);
+    loadButton->setLookAndFeel(nullptr);
+    closeButton->setLookAndFeel(nullptr);
+    deleteButton->setLookAndFeel(nullptr);
+    irBrowseFolderButton->setLookAndFeel(nullptr);
+    irLoadButton->setLookAndFeel(nullptr);
 }
 
 void NAMModelBrowserComponent::refreshColours()
@@ -1036,6 +1103,7 @@ void NAMModelBrowserComponent::refreshColours()
     // Style helper (mirrors constructor logic)
     auto styleButton = [&colours](TextButton* btn, bool isPrimary = false)
     {
+        btn->setLookAndFeel(&browserActionButtonLookAndFeel);
         if (isPrimary)
         {
             btn->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
@@ -1222,7 +1290,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         bounds.removeFromTop(34 + 8 + 28 + 8);    // Title + tabs + search row spacing
         bounds.removeFromBottom(20 + 4 + 36 + 8); // Status + button row
 
-        int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
+        int listWidth = static_cast<int>(bounds.getWidth() * 0.62f);
         auto listArea = bounds.removeFromLeft(listWidth);
         bounds.removeFromLeft(16); // Gap
 
@@ -1481,8 +1549,8 @@ void NAMModelBrowserComponent::resized()
         irLoadButton->setBounds(buttonRow.removeFromRight(80));
         irLoadButton->setVisible(true);
 
-        // Split remaining area: list (55%) and details (45%)
-        int listWidth = bounds.getWidth() * 0.55f;
+        // Split remaining area: list-forward browser plus focused inspector card
+        int listWidth = bounds.getWidth() * 0.62f;
         auto listArea = bounds.removeFromLeft(listWidth);
         bounds.removeFromLeft(16);
 
@@ -1583,8 +1651,8 @@ void NAMModelBrowserComponent::resized()
     buttonRow.removeFromRight(8);
     loadButton->setBounds(buttonRow.removeFromRight(100));
 
-    // Split remaining area: list (55%) and details (45%)
-    int listWidth = bounds.getWidth() * 0.55f;
+    // Split remaining area: list-forward browser plus focused inspector card
+    int listWidth = bounds.getWidth() * 0.62f;
     auto listArea = bounds.removeFromLeft(listWidth);
     bounds.removeFromLeft(16); // Gap
 
@@ -2472,17 +2540,20 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Buttons with consistent styling
     refreshButton = std::make_unique<TextButton>("Refresh");
     refreshButton->setTooltip("Rescan IR folders");
+    refreshButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     refreshButton->addListener(this);
     addAndMakeVisible(refreshButton.get());
 
     browseFolderButton = std::make_unique<TextButton>("Folder...");
     browseFolderButton->setTooltip("Select IR folder to scan");
+    browseFolderButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     browseFolderButton->addListener(this);
     addAndMakeVisible(browseFolderButton.get());
 
     // Load button with accent color (prominent action button)
     loadButton = std::make_unique<TextButton>("Load IR");
     loadButton->setTooltip("Load selected IR");
+    loadButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     loadButton->setColour(TextButton::buttonColourId, colours["Slider Colour"]);
     loadButton->setColour(TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
     loadButton->setColour(TextButton::textColourOffId, Colours::white);
@@ -2491,12 +2562,13 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     addAndMakeVisible(loadButton.get());
 
     closeButton = std::make_unique<TextButton>("Close");
+    closeButton->setLookAndFeel(&browserActionButtonLookAndFeel);
     closeButton->addListener(this);
     addAndMakeVisible(closeButton.get());
 
     // IR List with improved styling
     irList = std::make_unique<ListBox>("irList", &listModel);
-    irList->setRowHeight(44); // Taller rows for better readability
+    irList->setRowHeight(52); // Taller rows for better readability
     irList->setColour(ListBox::backgroundColourId, Colours::transparentBlack);
     irList->setColour(ListBox::outlineColourId, Colours::transparentBlack);
     irList->setOutlineThickness(0);
@@ -2554,6 +2626,14 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
         currentDirectory = File::getSpecialLocation(File::userDocumentsDirectory);
 
     scanDirectory(currentDirectory);
+}
+
+IRBrowserComponent::~IRBrowserComponent()
+{
+    refreshButton->setLookAndFeel(nullptr);
+    browseFolderButton->setLookAndFeel(nullptr);
+    loadButton->setLookAndFeel(nullptr);
+    closeButton->setLookAndFeel(nullptr);
 }
 
 void IRBrowserComponent::paint(Graphics& g)

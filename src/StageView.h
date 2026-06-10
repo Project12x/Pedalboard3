@@ -50,8 +50,16 @@ class StageView : public Component, public Button::Listener, public Slider::List
     //==========================================================================
     // Timer for tuner updates
     void timerCallback() override;
+    void setViewModeForVisualQa(int modeIndex);
 
   private:
+    enum class ViewMode
+    {
+        Patch,
+        Queue,
+        Tuner
+    };
+
     MainPanel* mainPanel = nullptr;
     TunerProcessor* tunerProcessor = nullptr;
 
@@ -62,6 +70,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     String nextPatchName = "";
     int currentPatchIndex = 0;
     int totalPatchCount = 0;
+    ViewMode viewMode = ViewMode::Patch;
 
     // Tuner state
     float displayedCents = 0.0f;
@@ -75,6 +84,9 @@ class StageView : public Component, public Button::Listener, public Slider::List
     std::unique_ptr<TextButton> panicButton;
     std::unique_ptr<TextButton> exitButton;
     std::unique_ptr<TextButton> tunerToggleButton;
+    std::unique_ptr<TextButton> patchViewButton;
+    std::unique_ptr<TextButton> queueViewButton;
+    std::unique_ptr<TextButton> tunerViewButton;
 
     // Master gain sliders
     std::unique_ptr<Slider> inputGainSlider;
@@ -99,8 +111,11 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void drawSafetyBar(Graphics& g, Rectangle<float> bounds);
     void drawPatchProgress(Graphics& g, Rectangle<float> bounds);
     void drawLiveQueue(Graphics& g, Rectangle<float> bounds);
+    void drawQueueFocus(Graphics& g, Rectangle<float> bounds);
     String getNoteName(int midiNote) const;
     Colour getTuningColour(float cents) const;
+    void setViewMode(ViewMode mode);
+    void syncViewButtons();
     void updateAfterPatchChange();
 
     // Smoothing constants

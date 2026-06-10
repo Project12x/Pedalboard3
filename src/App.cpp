@@ -234,13 +234,18 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
         const bool visualQaNamBrowser = commandLine.contains("--visual-qa-nam-browser");
         const bool visualQaIrBrowser = commandLine.contains("--visual-qa-ir-browser");
         const bool visualQaScratchPanel = commandLine.contains("--visual-qa-scratch-panel");
+        const bool visualQaKeyboardCollapsed = commandLine.contains("--visual-qa-keyboard-collapsed");
+        const bool visualQaStageQueue = commandLine.contains("--visual-qa-stage-queue");
+        const bool visualQaStageTuner = commandLine.contains("--visual-qa-stage-tuner");
         if (visualQaNextPatch || visualQaStage || visualQaPluginSearch || visualQaPreferences || visualQaNamBrowser ||
-            visualQaIrBrowser || visualQaScratchPanel)
+            visualQaIrBrowser || visualQaScratchPanel || visualQaKeyboardCollapsed || visualQaStageQueue ||
+            visualQaStageTuner)
         {
             Component::SafePointer<StupidWindow> safeThis(this);
             MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage, visualQaPluginSearch,
                                        visualQaPreferences, visualQaNamBrowser, visualQaIrBrowser,
-                                       visualQaScratchPanel]()
+                                       visualQaScratchPanel, visualQaKeyboardCollapsed, visualQaStageQueue,
+                                       visualQaStageTuner]()
                                       {
                                           if (safeThis == nullptr || safeThis->mainPanel == nullptr)
                                               return;
@@ -248,8 +253,17 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
                                           if (visualQaNextPatch)
                                               safeThis->commandManager.invokeDirectly(MainPanel::PatchNextPatch, true);
 
-                                          if (visualQaStage)
+                                          if (visualQaKeyboardCollapsed)
+                                              safeThis->mainPanel->setVirtualKeyboardCollapsedForVisualQa(true);
+
+                                          if (visualQaStage || visualQaStageQueue || visualQaStageTuner)
                                               safeThis->mainPanel->toggleStageMode();
+
+                                          if (visualQaStageQueue)
+                                              safeThis->mainPanel->setStageViewModeForVisualQa(1);
+
+                                          if (visualQaStageTuner)
+                                              safeThis->mainPanel->setStageViewModeForVisualQa(2);
 
                                           if (visualQaPluginSearch)
                                               safeThis->mainPanel->showPluginSearchWindowForVisualQa();

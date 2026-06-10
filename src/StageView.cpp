@@ -17,6 +17,59 @@
 #include "StageLayout.h"
 #include "TunerProcessor.h"
 
+namespace
+{
+class StageButtonLookAndFeel : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour, bool isMouseOverButton,
+                              bool isButtonDown) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat().reduced(2.0f);
+        const bool active = button.getToggleState();
+        const bool panic = button.getName().containsIgnoreCase("panic");
+        auto base = panic ? palette["Danger Colour"].darker(0.08f)
+                          : (active ? backgroundColour.brighter(0.12f) : backgroundColour);
+
+        if (isMouseOverButton)
+            base = base.brighter(0.12f);
+        if (isButtonDown)
+            bounds = bounds.translated(0.0f, 1.0f);
+
+        const auto radius = juce::jlimit(8.0f, 16.0f, bounds.getHeight() * 0.22f);
+        g.setColour(palette["Window Background"].darker(0.7f).withAlpha(isButtonDown ? 0.14f : 0.34f));
+        g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.8f : 2.8f), radius);
+
+        if (active && !panic)
+        {
+            g.setColour(palette["Accent Colour"].withAlpha(0.16f));
+            g.fillRoundedRectangle(bounds.expanded(2.0f), radius + 2.0f);
+        }
+
+        ColourGradient body(base.brighter(active ? 0.28f : 0.18f), bounds.getX(), bounds.getY(),
+                            base.darker(panic ? 0.28f : 0.18f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill(body);
+        g.fillRoundedRectangle(bounds, radius);
+
+        g.setColour(palette["Text Colour"].withAlpha(active ? 0.18f : 0.09f));
+        g.drawLine(bounds.getX() + 6.0f, bounds.getY() + 2.0f, bounds.getRight() - 6.0f, bounds.getY() + 2.0f, 1.0f);
+        g.setColour((active ? palette["Accent Colour"] : palette["Plugin Border"]).withAlpha(active ? 0.85f : 0.48f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, active ? 1.6f : 1.0f);
+    }
+
+    void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
+    {
+        auto& palette = ::ColourScheme::getInstance().colours;
+        g.setFont(::FontManager::getInstance().getDisplayFont(juce::jlimit(12.0f, 17.0f, button.getHeight() * 0.32f)));
+        g.setColour(palette["Text Colour"].withAlpha(button.isEnabled() ? 0.98f : 0.36f));
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(8, 2), Justification::centred, 1);
+    }
+};
+
+StageButtonLookAndFeel stageButtonLookAndFeel;
+} // namespace
+
 //==============================================================================
 StageView::StageView(MainPanel* panel) : mainPanel(panel)
 {
@@ -28,12 +81,14 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     // Navigation buttons - using ASCII-safe labels
     prevButton = std::make_unique<TextButton>("<< PREV");
     prevButton->addListener(this);
+    prevButton->setLookAndFeel(&stageButtonLookAndFeel);
     prevButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
     prevButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(prevButton.get());
 
     nextButton = std::make_unique<TextButton>("NEXT >>");
     nextButton->addListener(this);
+    nextButton->setLookAndFeel(&stageButtonLookAndFeel);
     nextButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
     nextButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(nextButton.get());
@@ -41,6 +96,7 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     // Panic button
     panicButton = std::make_unique<TextButton>("PANIC");
     panicButton->addListener(this);
+    panicButton->setLookAndFeel(&stageButtonLookAndFeel);
     panicButton->setColour(TextButton::buttonColourId, colours["Danger Colour"].darker(0.2f));
     panicButton->setColour(TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(panicButton.get());
@@ -48,6 +104,7 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     // Exit button
     exitButton = std::make_unique<TextButton>("EXIT");
     exitButton->addListener(this);
+    exitButton->setLookAndFeel(&stageButtonLookAndFeel);
     exitButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.3f));
     exitButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));
     addAndMakeVisible(exitButton.get());
@@ -57,11 +114,32 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     tunerToggleButton->addListener(this);
     tunerToggleButton->setClickingTogglesState(true);
     tunerToggleButton->setToggleState(true, dontSendNotification);
+    tunerToggleButton->setLookAndFeel(&stageButtonLookAndFeel);
     tunerToggleButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.2f));
     tunerToggleButton->setColour(TextButton::buttonOnColourId, colours["Tuner Active Colour"]);
     tunerToggleButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.7f));
     tunerToggleButton->setColour(TextButton::textColourOnId, colours["Text Colour"]);
     addAndMakeVisible(tunerToggleButton.get());
+
+    auto makeViewButton = [&](const String& text)
+    {
+        auto button = std::make_unique<TextButton>(text);
+        button->setClickingTogglesState(true);
+        button->setRadioGroupId(37);
+        button->setLookAndFeel(&stageButtonLookAndFeel);
+        button->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.24f));
+        button->setColour(TextButton::buttonOnColourId, colours["Accent Colour"].withAlpha(0.82f));
+        button->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.72f));
+        button->setColour(TextButton::textColourOnId, colours["Text Colour"]);
+        button->addListener(this);
+        addAndMakeVisible(button.get());
+        return button;
+    };
+
+    patchViewButton = makeViewButton("PATCH");
+    queueViewButton = makeViewButton("QUEUE");
+    tunerViewButton = makeViewButton("TUNE");
+    syncViewButtons();
 
     // Master gain sliders (larger for live use)
     inputGainSlider = std::make_unique<Slider>("stageInputGain");
@@ -101,6 +179,14 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
 StageView::~StageView()
 {
     stopTimer();
+    prevButton->setLookAndFeel(nullptr);
+    nextButton->setLookAndFeel(nullptr);
+    panicButton->setLookAndFeel(nullptr);
+    exitButton->setLookAndFeel(nullptr);
+    tunerToggleButton->setLookAndFeel(nullptr);
+    patchViewButton->setLookAndFeel(nullptr);
+    queueViewButton->setLookAndFeel(nullptr);
+    tunerViewButton->setLookAndFeel(nullptr);
 }
 
 //==============================================================================
@@ -225,7 +311,9 @@ void StageView::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
-    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
+    const bool tunerFocus = viewMode == ViewMode::Tuner;
+    const bool reserveTunerStrip = showTuner && !tunerFocus;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), reserveTunerStrip);
 
     // Dark background with subtle gradient
     g.setGradientFill(ColourGradient(colours["Stage Background Top"], 0, 0, colours["Stage Background Bottom"], 0,
@@ -241,15 +329,28 @@ void StageView::paint(Graphics& g)
     // Layout areas
     auto headerArea = bounds.removeFromTop((float)metrics.headerHeight);
     auto footerArea = bounds.removeFromBottom((float)metrics.footerHeight);
-    auto tunerArea = bounds.removeFromBottom((float)metrics.tunerHeight);
-    auto patchArea = bounds;
+    auto mainArea = bounds;
 
     // Draw sections
     drawStatusBar(g, headerArea);
-    drawPatchDisplay(g, patchArea);
+    if (tunerFocus)
+    {
+        drawTunerDisplay(g, mainArea);
+    }
+    else
+    {
+        Rectangle<float> tunerArea;
+        if (reserveTunerStrip)
+            tunerArea = mainArea.removeFromBottom((float)metrics.tunerHeight);
 
-    if (showTuner)
-        drawTunerDisplay(g, tunerArea);
+        if (viewMode == ViewMode::Queue)
+            drawQueueFocus(g, mainArea);
+        else
+            drawPatchDisplay(g, mainArea);
+
+        if (reserveTunerStrip)
+            drawTunerDisplay(g, tunerArea);
+    }
 
     drawSafetyBar(g, footerArea);
 
@@ -372,17 +473,20 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
     g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
     g.drawText("STAGE MODE", leftArea.withTrimmedLeft(dotSize + 12.0f), Justification::centredLeft);
 
-    const auto chipBounds =
-        Rectangle<float>((bounds.getCentreX() - metrics.topBarChipWidth * 0.5f),
-                         bounds.getCentreY() - metrics.topBarChipHeight * 0.5f, (float)metrics.topBarChipWidth,
-                         (float)metrics.topBarChipHeight);
-    g.setColour(colours["Accent Colour"].withAlpha(0.12f));
-    g.fillRoundedRectangle(chipBounds, 10.0f);
-    g.setColour(colours["Accent Colour"].withAlpha(0.68f));
-    g.drawRoundedRectangle(chipBounds, 10.0f, 1.2f);
-    g.setColour(colours["Accent Colour"]);
-    g.setFont(fonts.getDisplayFont(metrics.modeChipFontHeight));
-    g.drawText("LIVE PATCH", chipBounds, Justification::centred);
+    if (patchViewButton != nullptr && queueViewButton != nullptr && tunerViewButton != nullptr)
+    {
+        auto modeRail = patchViewButton->getBounds()
+                            .getUnion(queueViewButton->getBounds())
+                            .getUnion(tunerViewButton->getBounds())
+                            .expanded(4, 3)
+                            .toFloat();
+        g.setColour(colours["Stage Panel Background"].withAlpha(0.42f));
+        g.fillRoundedRectangle(modeRail, 12.0f);
+        g.setColour(colours["Window Background"].darker(0.55f).withAlpha(0.18f));
+        g.drawRoundedRectangle(modeRail.reduced(1.0f), 11.0f, 1.0f);
+        g.setColour(colours["Plugin Border"].withAlpha(0.44f));
+        g.drawRoundedRectangle(modeRail.reduced(0.5f), 12.0f, 1.0f);
+    }
 
     Time now = Time::getCurrentTime();
     String timeStr = now.formatted("%H:%M");
@@ -600,6 +704,80 @@ void StageView::drawLiveQueue(Graphics& g, Rectangle<float> bounds)
             nextPatchName.isEmpty());
 }
 
+void StageView::drawQueueFocus(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
+
+    auto content = bounds.reduced((float)metrics.margin * 2.0f, (float)metrics.margin * 0.9f);
+    const auto maxPanelWidth = juce::jmin(content.getWidth(), 980.0f);
+    auto panel = content.withSizeKeepingCentre(maxPanelWidth, content.getHeight());
+
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.38f));
+    g.fillRoundedRectangle(panel, 20.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.38f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 20.0f, 1.2f);
+
+    auto inner = panel.reduced(22.0f, 18.0f);
+    auto header = inner.removeFromTop(48.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.5f));
+    g.setFont(fonts.getDisplayFont(18.0f));
+    g.drawText("LIVE QUEUE", header, Justification::centredLeft);
+
+    const auto positionText = totalPatchCount > 0 ? String(currentPatchIndex + 1) + " / " + String(totalPatchCount)
+                                                  : String("0 / 0");
+    g.setColour(colours["Accent Colour"].withAlpha(0.86f));
+    g.setFont(fonts.getMonoDisplayFont(18.0f));
+    g.drawText(positionText, header, Justification::centredRight);
+
+    auto drawFocusedRow = [&](Rectangle<float> row, const String& tag, const String& name, const String& fallback,
+                              Colour accent, bool active, bool muted)
+    {
+        row = row.reduced(0.0f, 6.0f);
+        const auto radius = active ? 18.0f : 15.0f;
+
+        ColourGradient fill(active ? accent.withAlpha(0.22f) : colours["Text Colour"].withAlpha(0.065f), row.getX(),
+                            row.getY(),
+                            active ? colours["Stage Panel Background"].withAlpha(0.52f)
+                                   : colours["Stage Panel Background"].withAlpha(0.34f),
+                            row.getX(), row.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(row, radius);
+        g.setColour((active ? accent : colours["Plugin Border"]).withAlpha(active ? 0.72f : 0.34f));
+        g.drawRoundedRectangle(row.reduced(0.5f), radius, active ? 1.7f : 1.0f);
+
+        auto body = row.reduced(22.0f, 10.0f);
+        auto tagArea = body.removeFromLeft(122.0f);
+        body.removeFromLeft(16.0f);
+        auto dot = Rectangle<float>(active ? 18.0f : 11.0f, active ? 18.0f : 11.0f)
+                       .withCentre({tagArea.getX() + 12.0f, tagArea.getCentreY()});
+        g.setColour(accent.withAlpha(muted ? 0.26f : 0.9f));
+        if (active)
+            g.fillEllipse(dot.expanded(9.0f));
+        g.fillEllipse(dot);
+
+        g.setColour((active ? accent : colours["Text Colour"]).withAlpha(muted ? 0.36f : 0.8f));
+        g.setFont(fonts.getDisplayFont(active ? 19.0f : 16.0f));
+        g.drawText(tag, tagArea.withTrimmedLeft(34.0f), Justification::centredLeft);
+
+        const auto displayName = name.isNotEmpty() ? name : fallback;
+        const auto maxChars = juce::jlimit(18, 58, juce::roundToInt(body.getWidth() / 13.0f));
+        g.setColour(colours["Text Colour"].withAlpha(muted ? 0.42f : 0.94f));
+        g.setFont(fonts.getDisplayFont(active ? 30.0f : 22.0f));
+        g.drawFittedText(StageLayout::elideLabel(displayName, maxChars), body.toNearestInt(),
+                         Justification::centredLeft, 1);
+    };
+
+    const auto rowHeight = juce::jlimit(74.0f, 120.0f, inner.getHeight() / 3.15f);
+    drawFocusedRow(inner.removeFromTop(rowHeight), "PREV", previousPatchName, "Start of set",
+                   colours["Text Colour"].withAlpha(0.64f), false, previousPatchName.isEmpty());
+    drawFocusedRow(inner.removeFromTop(rowHeight), "LIVE", currentPatchName, "No Patch", colours["Accent Colour"],
+                   true, false);
+    drawFocusedRow(inner.removeFromTop(rowHeight), "NEXT", nextPatchName, "End of set", colours["Warning Colour"],
+                   false, nextPatchName.isEmpty());
+}
+
 void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
 {
     auto& fonts = FontManager::getInstance();
@@ -710,6 +888,15 @@ void StageView::resized()
     tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, headerButtonY,
                                  utilityButtonWidth, utilityButtonHeight);
 
+    const int modeButtonW = juce::jlimit(72, 98, bounds.getWidth() / 18);
+    const int modeButtonGap = 6;
+    const int modeGroupW = modeButtonW * 3 + modeButtonGap * 2;
+    const int modeX = (bounds.getWidth() - modeGroupW) / 2;
+    patchViewButton->setBounds(modeX, headerButtonY, modeButtonW, utilityButtonHeight);
+    queueViewButton->setBounds(modeX + modeButtonW + modeButtonGap, headerButtonY, modeButtonW, utilityButtonHeight);
+    tunerViewButton->setBounds(modeX + (modeButtonW + modeButtonGap) * 2, headerButtonY, modeButtonW,
+                               utilityButtonHeight);
+
     auto performanceArea = bounds;
     performanceArea.removeFromTop(metrics.headerHeight);
     performanceArea.removeFromBottom(metrics.footerHeight);
@@ -718,8 +905,8 @@ void StageView::resized()
     // Navigation buttons (sides of the live patch area)
     const int navY = performanceArea.getCentreY() - metrics.navButtonHeight / 2;
     prevButton->setBounds(margin, navY, metrics.navButtonWidth, metrics.navButtonHeight);
-    const int nextRightInset =
-        metrics.liveQueueRailWidth > 0 ? metrics.liveQueueRailWidth + margin * 3 : margin;
+    const bool reserveLiveQueueRail = viewMode == ViewMode::Patch && metrics.liveQueueRailWidth > 0;
+    const int nextRightInset = reserveLiveQueueRail ? metrics.liveQueueRailWidth + margin * 3 : margin;
     nextButton->setBounds(bounds.getWidth() - metrics.navButtonWidth - nextRightInset, navY, metrics.navButtonWidth,
                           metrics.navButtonHeight);
 
@@ -774,8 +961,22 @@ void StageView::buttonClicked(Button* button)
     else if (button == tunerToggleButton.get())
     {
         showTuner = tunerToggleButton->getToggleState();
+        if (!showTuner && viewMode == ViewMode::Tuner)
+            setViewMode(ViewMode::Patch);
         resized();
         repaint();
+    }
+    else if (button == patchViewButton.get())
+    {
+        setViewMode(ViewMode::Patch);
+    }
+    else if (button == queueViewButton.get())
+    {
+        setViewMode(ViewMode::Queue);
+    }
+    else if (button == tunerViewButton.get())
+    {
+        setViewMode(ViewMode::Tuner);
     }
 }
 
@@ -831,6 +1032,21 @@ bool StageView::keyPressed(const KeyPress& key)
         tunerToggleButton->setToggleState(!tunerToggleButton->getToggleState(), sendNotification);
         return true;
     }
+    else if (key == KeyPress(L'1'))
+    {
+        setViewMode(ViewMode::Patch);
+        return true;
+    }
+    else if (key == KeyPress(L'2'))
+    {
+        setViewMode(ViewMode::Queue);
+        return true;
+    }
+    else if (key == KeyPress(L'3'))
+    {
+        setViewMode(ViewMode::Tuner);
+        return true;
+    }
 
     return false;
 }
@@ -859,6 +1075,46 @@ Colour StageView::getTuningColour(float cents) const
         return colours["VU Meter Upper Colour"].withAlpha(1.0f);
     else
         return colours["VU Meter Over Colour"].withAlpha(1.0f);
+}
+
+void StageView::setViewMode(ViewMode mode)
+{
+    viewMode = mode;
+    if (viewMode == ViewMode::Tuner)
+    {
+        showTuner = true;
+        tunerToggleButton->setToggleState(true, dontSendNotification);
+    }
+
+    syncViewButtons();
+    resized();
+    repaint();
+}
+
+void StageView::setViewModeForVisualQa(int modeIndex)
+{
+    switch (modeIndex)
+    {
+    case 1:
+        setViewMode(ViewMode::Queue);
+        break;
+    case 2:
+        setViewMode(ViewMode::Tuner);
+        break;
+    default:
+        setViewMode(ViewMode::Patch);
+        break;
+    }
+}
+
+void StageView::syncViewButtons()
+{
+    if (patchViewButton)
+        patchViewButton->setToggleState(viewMode == ViewMode::Patch, dontSendNotification);
+    if (queueViewButton)
+        queueViewButton->setToggleState(viewMode == ViewMode::Queue, dontSendNotification);
+    if (tunerViewButton)
+        tunerViewButton->setToggleState(viewMode == ViewMode::Tuner, dontSendNotification);
 }
 
 void StageView::updateAfterPatchChange()
