@@ -280,15 +280,28 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 - Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
+## 2026-06-10 Local NAM Browser Preview Polish Verification
+
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/nam-browser.jsx` and `nam-browser.css`.
+- Native source inspected: `src/NAMModelBrowser.cpp`.
+- Reuse mode: pattern-only / clean-room. No prototype source, assets, fonts, CSS, or React code were copied.
+- Intended scope: local NAM Browser workflow polish only. Folder browse, refresh, search, row selection, double-click load, Load Model, Delete Model, Close, online/community tabs, status text, and empty-state behavior are preserved.
+- Implementation notes: local model search now includes metadata and file path text; selected preview state uses READY/MISSING/EMPTY chips; Load/Delete are disabled when the selected `.nam` file no longer exists.
+- `git diff --check` passed.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 219 existing warnings and 0 errors.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 562 assertions in 14 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
+- Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
 
-1. After the currently launched visual-evaluation app is closed, rerun the Release app target so `Pedalboard3.exe` can relink.
-2. Run `-CaptureScaledDialogMatrix` against the latest browser/search polish surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
-3. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density and hierarchy, not wholesale replacement.
-4. Continue with real workflow polish: NAM browser density and preview hierarchy, plugin search button/state finish, Stage view mode polish, and IR browser empty/folder states.
-5. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
+1. Run `-CaptureScaledDialogMatrix` against the latest browser/search polish surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
+2. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density, hierarchy, state chips, and button finish, not wholesale replacement.
+3. Continue with real workflow polish: NAM browser density and preview hierarchy, plugin search button/state finish, Stage view mode polish, and IR browser empty/folder states.
+4. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
+5. Preserve all existing UX functions; the mockup remains an upgrade reference, not a replacement spec.
 
 ## Immediate Next Step
 

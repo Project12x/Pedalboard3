@@ -49,6 +49,34 @@ String makeEmptyStateCopy(const String& title, const String& action, const Strin
     return title + "\n\n" + action;
 }
 
+String formatNAMSampleRate(double sampleRate)
+{
+    if (sampleRate <= 0.0)
+        return "Unknown";
+
+    if (sampleRate >= 1000.0)
+        return String(sampleRate / 1000.0, sampleRate >= 10000.0 ? 1 : 2) + " kHz";
+
+    return String(static_cast<int>(sampleRate)) + " Hz";
+}
+
+String formatNAMLoudness(const NAMModelInfo& model)
+{
+    return model.hasLoudness ? String(model.loudness, 1) + " dB" : "N/A";
+}
+
+String formatNAMFileSize(const NAMModelInfo& model)
+{
+    const auto size = File(String(model.filePath)).getSize();
+    if (size <= 0)
+        return "-";
+
+    if (size >= 1024 * 1024)
+        return String(size / (1024.0 * 1024.0), 2) + " MB";
+
+    return String((size + 1023) / 1024) + " KB";
+}
+
 String formatIRDuration(double durationSeconds)
 {
     if (durationSeconds <= 0.0)
@@ -111,6 +139,11 @@ String makeIRPreviewSummary(const IRFileInfo& ir)
 bool isReadableIRFile(const IRFileInfo& ir)
 {
     return File(String(ir.filePath)).existsAsFile();
+}
+
+bool isReadableNAMModel(const NAMModelInfo& model)
+{
+    return File(String(model.filePath)).existsAsFile();
 }
 
 void drawMagnifierGlyph(Graphics& g, Rectangle<float> area, Colour colour, float thickness)
@@ -250,6 +283,171 @@ Colour toneColourForTag(const String& tone)
         return Colour(0xFFC084FC);
 
     return makeBrowserPalette().text.withAlpha(0.5f);
+}
+
+Colour colourForNAMArchitecture(const String& architecture, const BrowserPalette& palette)
+{
+    if (architecture.containsIgnoreCase("LSTM"))
+        return Colour(0xFFE8A838);
+    if (architecture.containsIgnoreCase("WaveNet"))
+        return Colour(0xFF38C8E8);
+    if (architecture.containsIgnoreCase("ConvNet"))
+        return Colour(0xFF58D868);
+    if (architecture.containsIgnoreCase("Linear"))
+        return Colour(0xFFB088E8);
+
+    return palette.text.withAlpha(0.48f);
+}
+
+String normaliseNAMModelType(String modelType)
+{
+    modelType = modelType.trim();
+    if (modelType.isEmpty() || modelType == "-")
+        return "Model";
+
+    const auto lower = modelType.toLowerCase();
+    if (lower.contains("preamp") || lower.contains("pre-amp"))
+        return "Preamp";
+    if (lower.contains("full") || lower.contains("chain") || lower.contains("rig"))
+        return "Full Rig";
+    if (lower.contains("pedal"))
+        return "Pedal";
+    if (lower.contains("amp"))
+        return "Amp";
+    if (lower.contains("cab"))
+        return "Cab";
+
+    return modelType.length() > 12 ? modelType.substring(0, 12) : modelType;
+}
+
+Colour colourForNAMModelType(const String& modelType, const BrowserPalette& palette)
+{
+    const auto lower = modelType.toLowerCase();
+    if (lower.contains("preamp") || lower.contains("pre-amp") || lower.contains("amp"))
+        return Colour(0xFFE8A838);
+    if (lower.contains("full") || lower.contains("chain") || lower.contains("rig"))
+        return Colour(0xFF58D868);
+    if (lower.contains("pedal"))
+        return Colour(0xFF38C8E8);
+    if (lower.contains("cab"))
+        return palette.accent2;
+
+    return palette.text.withAlpha(0.58f);
+}
+
+String getJsonStringField(const nlohmann::json& meta, const char* key)
+{
+    if (!meta.contains(key) || meta[key].is_null())
+        return {};
+
+    if (meta[key].is_string())
+        return String(meta[key].get<std::string>());
+    if (meta[key].is_number_integer())
+        return String(static_cast<int64>(meta[key].get<int64_t>()));
+    if (meta[key].is_number_float())
+        return String(meta[key].get<double>(), 2);
+    if (meta[key].is_boolean())
+        return meta[key].get<bool>() ? "Yes" : "No";
+
+    return {};
+}
+
+String getGearStringField(const nlohmann::json& meta, const char* key)
+{
+    if (!meta.contains("gear") || !meta["gear"].is_object())
+        return {};
+
+    const auto& gear = meta["gear"];
+    return getJsonStringField(gear, key);
+}
+
+struct NAMPreviewFields
+{
+    String author = "-";
+    String modelType = "-";
+    String rig;
+    String cabinet;
+    String microphone;
+    String note;
+};
+
+NAMPreviewFields extractNAMPreviewFields(const NAMModelInfo& model)
+{
+    NAMPreviewFields fields;
+
+    if (model.metadata.empty())
+        return fields;
+
+    try
+    {
+        const auto meta = nlohmann::json::parse(model.metadata);
+
+        fields.author = getJsonStringField(meta, "author");
+        if (fields.author.isEmpty())
+            fields.author = getJsonStringField(meta, "modeled_by");
+        if (fields.author.isEmpty())
+            fields.author = "-";
+
+        fields.modelType = getJsonStringField(meta, "model_type");
+        if (fields.modelType.isEmpty())
+            fields.modelType = getJsonStringField(meta, "type");
+        if (fields.modelType.isEmpty())
+            fields.modelType = getJsonStringField(meta, "category");
+        if (fields.modelType.isEmpty())
+            fields.modelType = getJsonStringField(meta, "capture");
+        if (fields.modelType.isEmpty())
+            fields.modelType = getJsonStringField(meta, "gear_type");
+        if (fields.modelType.isEmpty())
+            fields.modelType = "-";
+
+        fields.rig = getGearStringField(meta, "amp");
+        if (fields.rig.isEmpty())
+            fields.rig = getJsonStringField(meta, "amp");
+        if (fields.rig.isEmpty())
+            fields.rig = getJsonStringField(meta, "gear");
+        if (fields.rig.isEmpty())
+            fields.rig = getJsonStringField(meta, "name");
+
+        fields.cabinet = getGearStringField(meta, "cabinet");
+        if (fields.cabinet.isEmpty())
+            fields.cabinet = getJsonStringField(meta, "cab");
+
+        fields.microphone = getGearStringField(meta, "mic");
+        if (fields.microphone.isEmpty())
+            fields.microphone = getJsonStringField(meta, "mic");
+
+        fields.note = getJsonStringField(meta, "description");
+        if (fields.note.isEmpty())
+            fields.note = getJsonStringField(meta, "notes");
+    }
+    catch (const std::exception&)
+    {
+        // Keep defaults when metadata is absent or not JSON.
+    }
+
+    return fields;
+}
+
+String makeNAMPreviewSummary(const NAMModelInfo& model, const NAMPreviewFields& fields)
+{
+    StringArray parts;
+    if (fields.rig.isNotEmpty())
+        parts.add(fields.rig);
+    else if (fields.modelType != "-")
+        parts.add(normaliseNAMModelType(fields.modelType));
+
+    if (model.architecture.empty())
+        parts.add("NAM");
+    else
+        parts.add(String(model.architecture));
+
+    if (model.expectedSampleRate > 0.0)
+        parts.add(formatNAMSampleRate(model.expectedSampleRate));
+    const auto fileSize = formatNAMFileSize(model);
+    if (fileSize != "-")
+        parts.add(fileSize);
+
+    return parts.joinIntoString("  |  ");
 }
 
 String inferToneTag(const String& text)
@@ -632,18 +830,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         const int archBadgeWidth = 50;
         badgeX -= archBadgeWidth;
 
-        Colour archColour;
         String archShort(model.architecture);
-        if (archShort.containsIgnoreCase("LSTM"))
-            archColour = Colour(0xFFE8A838); // warm orange-gold
-        else if (archShort.containsIgnoreCase("WaveNet"))
-            archColour = Colour(0xFF38C8E8); // bright cyan
-        else if (archShort.containsIgnoreCase("ConvNet"))
-            archColour = Colour(0xFF58D868); // bright green
-        else if (archShort.containsIgnoreCase("Linear"))
-            archColour = Colour(0xFFB088E8); // lavender
-        else
-            archColour = palette.text.withAlpha(0.4f);
+        const auto archColour = colourForNAMArchitecture(archShort, palette);
 
         drawModelGlyph(g,
                        Rectangle<float>((float)(margin + 12), (height - 38.0f) * 0.5f, 38.0f, 38.0f),
@@ -658,34 +846,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         {
             badgeX -= badgeSpacing;
 
-            // Normalize model type display text
-            String typeDisplay = modelType.toLowerCase();
-            Colour typeColour;
-            if (typeDisplay.contains("preamp") || typeDisplay.contains("pre-amp"))
-            {
-                typeDisplay = "Preamp";
-                typeColour = Colour(0xFFE8A838); // warm orange-gold
-            }
-            else if (typeDisplay.contains("full") || typeDisplay.contains("chain") || typeDisplay.contains("rig"))
-            {
-                typeDisplay = "Full Rig";
-                typeColour = Colour(0xFF58D868); // bright green
-            }
-            else if (typeDisplay.contains("pedal"))
-            {
-                typeDisplay = "Pedal";
-                typeColour = Colour(0xFF38C8E8); // bright cyan
-            }
-            else if (typeDisplay.contains("amp"))
-            {
-                typeDisplay = "Amp";
-                typeColour = Colour(0xFFE8A838); // warm orange-gold
-            }
-            else
-            {
-                typeDisplay = modelType.substring(0, 10); // Truncate unknown types
-                typeColour = palette.text.withAlpha(0.5f);
-            }
+            const auto typeDisplay = normaliseNAMModelType(modelType);
+            const auto typeColour = colourForNAMModelType(modelType, palette);
 
             int typeBadgeWidth =
                 static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) + 12;
@@ -731,7 +893,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         {
             if (infoLine.isNotEmpty())
                 infoLine += "  |  ";
-            infoLine += String(static_cast<int>(model.expectedSampleRate)) + " Hz";
+            infoLine += formatNAMSampleRate(model.expectedSampleRate);
         }
 
         if (infoLine.isNotEmpty())
@@ -774,8 +936,11 @@ void NAMModelListModel::rebuildFilteredList()
         {
             String name = String(allModels[i].name).toLowerCase();
             String arch = String(allModels[i].architecture).toLowerCase();
+            String metadata = String(allModels[i].metadata).toLowerCase();
+            String filePath = String(allModels[i].filePath).toLowerCase();
 
-            if (name.contains(currentFilter) || arch.contains(currentFilter))
+            if (name.contains(currentFilter) || arch.contains(currentFilter) || metadata.contains(currentFilter) ||
+                filePath.contains(currentFilter))
             {
                 filteredIndices.push_back(i);
             }
@@ -1604,14 +1769,79 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
         if (detailsBounds.getWidth() >= 250.0f)
         {
-            auto glyph = Rectangle<float>(detailsBounds.getRight() - 82.0f, detailsBounds.getY() + 20.0f, 58.0f, 58.0f);
             if (currentTab == 0)
-                drawModelGlyph(g, glyph, palette.accent2, modelList && modelList->getSelectedRow() >= 0);
+            {
+                const auto* selectedModel = modelList ? listModel.getModelAt(modelList->getSelectedRow()) : nullptr;
+                const bool selectedReady = selectedModel != nullptr && isReadableNAMModel(*selectedModel);
+                const auto fields = selectedModel != nullptr ? extractNAMPreviewFields(*selectedModel) : NAMPreviewFields{};
+
+                auto previewCard = nameLabel->getBounds()
+                                       .getUnion(nameValue->getBounds())
+                                       .getUnion(authorLabel->getBounds())
+                                       .getUnion(authorValue->getBounds())
+                                       .toFloat()
+                                       .expanded(10.0f, 5.0f);
+                previewCard.setLeft(detailsBounds.getX() + 14.0f);
+                previewCard.setRight(detailsBounds.getRight() - 14.0f);
+                previewCard.setBottom(previewCard.getBottom() + 20.0f);
+
+                g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
+                                          : palette.text.withAlpha(0.045f));
+                g.fillRoundedRectangle(previewCard, 9.0f);
+                g.setColour(selectedModel ? (selectedReady ? palette.accent : colours["Warning Colour"]).withAlpha(0.5f)
+                                          : palette.edge.withAlpha(0.42f));
+                g.drawRoundedRectangle(previewCard.reduced(0.5f), 9.0f, 1.0f);
+
+                auto glyph = Rectangle<float>(previewCard.getRight() - 58.0f, previewCard.getY() + 10.0f, 44.0f, 44.0f);
+                const auto archColour =
+                    selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette) : palette.accent2;
+                drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"], selectedModel != nullptr);
+
+                auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(22.0f);
+                const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
+                if (chipRow.getWidth() >= stateChipWidth)
+                    drawBrowserChip(g, chipRow.removeFromLeft(stateChipWidth),
+                                    selectedModel ? (selectedReady ? "READY" : "MISSING") : "EMPTY",
+                                    selectedModel ? (selectedReady ? palette.led : colours["Warning Colour"])
+                                                  : palette.text.withAlpha(0.45f),
+                                    selectedModel != nullptr);
+
+                if (selectedModel != nullptr)
+                {
+                    if (chipRow.getWidth() > 56.0f)
+                    {
+                        chipRow.removeFromLeft(6.0f);
+                        const auto typeChip = normaliseNAMModelType(fields.modelType);
+                        const auto typeChipWidth = jmin(chipRow.getWidth(),
+                                                        jlimit(48.0f, 82.0f,
+                                                               FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeChip) +
+                                                                   16.0f));
+                        drawBrowserChip(g, chipRow.removeFromLeft(typeChipWidth), typeChip,
+                                        colourForNAMModelType(fields.modelType, palette), true);
+                    }
+
+                    const auto toneTag = inferToneTag(String(selectedModel->name) + " " + fields.rig + " " + fields.modelType);
+                    if (toneTag.isNotEmpty() && chipRow.getWidth() > 48.0f)
+                    {
+                        chipRow.removeFromLeft(6.0f);
+                        const auto toneChipWidth = jmin(chipRow.getWidth(),
+                                                        FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag) + 18.0f);
+                        drawBrowserChip(g, chipRow.removeFromLeft(toneChipWidth), toneTag, toneColourForTag(toneTag),
+                                        true);
+                    }
+                }
+
+            }
             else
+            {
+                auto glyph =
+                    Rectangle<float>(detailsBounds.getRight() - 82.0f, detailsBounds.getY() + 20.0f, 58.0f, 58.0f);
                 drawIRGlyph(g, glyph, palette.accent2, irList && irList->getSelectedRow() >= 0);
 
-            g.setColour((currentTab == 0 ? palette.accent : palette.accent2).withAlpha(0.7f));
-            g.fillRoundedRectangle(detailsBounds.withTrimmedTop(96.0f).withHeight(2.0f).reduced(16.0f, 0.0f), 1.0f);
+                g.setColour(palette.accent2.withAlpha(0.7f));
+                g.fillRoundedRectangle(detailsBounds.withTrimmedTop(96.0f).withHeight(2.0f).reduced(16.0f, 0.0f),
+                                       1.0f);
+            }
         }
 
         auto drawDetailRowBacking = [&](Label* label, Component* value, int rowIndex)
@@ -1631,8 +1861,6 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
         if (currentTab == 0)
         {
-            drawDetailRowBacking(nameLabel.get(), nameValue.get(), 0);
-            drawDetailRowBacking(authorLabel.get(), authorValue.get(), 1);
             drawDetailRowBacking(modelTypeLabel.get(), modelTypeValue.get(), 2);
             drawDetailRowBacking(architectureLabel.get(), architectureValue.get(), 3);
             drawDetailRowBacking(sampleRateLabel.get(), sampleRateValue.get(), 4);
@@ -1984,7 +2212,7 @@ void NAMModelBrowserComponent::resized()
     };
 
     // -- Identity / preview section --
-    auto heroArea = detailsArea.removeFromTop(82);
+    auto heroArea = detailsArea.removeFromTop(104);
     auto heroText = heroArea;
     if (heroText.getWidth() >= 230)
         heroText.removeFromRight(78);
@@ -2253,18 +2481,12 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
 {
     if (model)
     {
+        const auto fields = extractNAMPreviewFields(*model);
         nameValue->setText(String(model->name), dontSendNotification);
         architectureValue->setText(String(model->architecture), dontSendNotification);
 
-        if (model->expectedSampleRate > 0)
-            sampleRateValue->setText(String(static_cast<int>(model->expectedSampleRate)) + " Hz", dontSendNotification);
-        else
-            sampleRateValue->setText("Unknown", dontSendNotification);
-
-        if (model->hasLoudness)
-            loudnessValue->setText(String(model->loudness, 1) + " dB", dontSendNotification);
-        else
-            loudnessValue->setText("N/A", dontSendNotification);
+        sampleRateValue->setText(formatNAMSampleRate(model->expectedSampleRate), dontSendNotification);
+        loudnessValue->setText(formatNAMLoudness(*model), dontSendNotification);
 
         // Show file path (just the filename, with tooltip for full path)
         File modelFile(model->filePath);
@@ -2272,8 +2494,6 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         filePathValue->setTooltip(String(model->filePath));
 
         // Extract author and model type from metadata, format remaining metadata
-        String author = "-";
-        String modelType = "-";
         String formattedMetadata;
 
         if (!model->metadata.empty())
@@ -2281,24 +2501,6 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
             try
             {
                 auto meta = nlohmann::json::parse(model->metadata);
-
-                // Extract author
-                if (meta.contains("author") && meta["author"].is_string())
-                    author = String(meta["author"].get<std::string>());
-                else if (meta.contains("modeled_by") && meta["modeled_by"].is_string())
-                    author = String(meta["modeled_by"].get<std::string>());
-
-                // Extract model type
-                if (meta.contains("model_type") && meta["model_type"].is_string())
-                    modelType = String(meta["model_type"].get<std::string>());
-                else if (meta.contains("type") && meta["type"].is_string())
-                    modelType = String(meta["type"].get<std::string>());
-                else if (meta.contains("category") && meta["category"].is_string())
-                    modelType = String(meta["category"].get<std::string>());
-                else if (meta.contains("capture") && meta["capture"].is_string())
-                    modelType = String(meta["capture"].get<std::string>());
-                else if (meta.contains("gear_type") && meta["gear_type"].is_string())
-                    modelType = String(meta["gear_type"].get<std::string>());
 
                 // Extract and format remaining fields
                 auto addField = [&](const char* label, const char* key)
@@ -2349,12 +2551,17 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
             }
         }
 
-        authorValue->setText(author, dontSendNotification);
-        modelTypeValue->setText(modelType, dontSendNotification);
+        authorValue->setText(fields.author, dontSendNotification);
+        modelTypeValue->setText(fields.modelType, dontSendNotification);
 
         metadataDisplay->setText(formattedMetadata.trimEnd(), dontSendNotification);
-        statusLabel->setText("Selected " + String(model->name) + " - double-click or Load Model to use it.",
+        statusLabel->setText("Selected " + String(model->name) + " - " + makeNAMPreviewSummary(*model, fields) +
+                                 " - double-click or Load Model to use it.",
                              dontSendNotification);
+        if (loadButton)
+            loadButton->setEnabled(isReadableNAMModel(*model));
+        if (deleteButton)
+            deleteButton->setEnabled(isReadableNAMModel(*model));
     }
     else
     {
@@ -2367,6 +2574,10 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         filePathValue->setText("-", dontSendNotification);
         filePathValue->setTooltip("");
         metadataDisplay->setText("", dontSendNotification);
+        if (loadButton)
+            loadButton->setEnabled(false);
+        if (deleteButton)
+            deleteButton->setEnabled(false);
         updateLocalBrowserState();
     }
 }
@@ -2388,8 +2599,11 @@ void NAMModelBrowserComponent::updateLocalBrowserState()
                              dontSendNotification);
     modelList->setVisible(hasFilteredRows);
     emptyStateLabel->setVisible(!hasFilteredRows);
-    loadButton->setEnabled(hasFilteredRows);
-    deleteButton->setEnabled(hasFilteredRows);
+    const int selectedRow = modelList->getSelectedRow();
+    const auto* selectedModel = selectedRow >= 0 ? listModel.getModelAt(selectedRow) : nullptr;
+    const bool canUseSelectedModel = hasFilteredRows && selectedModel != nullptr && isReadableNAMModel(*selectedModel);
+    loadButton->setEnabled(canUseSelectedModel);
+    deleteButton->setEnabled(canUseSelectedModel);
     repaint();
 }
 
@@ -2426,6 +2640,14 @@ void NAMModelBrowserComponent::loadSelectedModel()
         if (model && namProcessor)
         {
             File modelFile(model->filePath);
+            if (!modelFile.existsAsFile())
+            {
+                updateLocalBrowserState();
+                statusLabel->setText("Selected model file is missing. Refresh or choose another folder.",
+                                     dontSendNotification);
+                return;
+            }
+
             if (namProcessor->loadModel(modelFile))
             {
                 spdlog::info("[NAMModelBrowser] Loaded model: {}", model->name);

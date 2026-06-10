@@ -80,5 +80,8 @@ Steps:
 9. Add or open a standalone IR Loader node, then confirm empty IR slots, loaded IR slots, the footer status, Load/Browse/Clear buttons, Blend/Mix sliders, and Lo/Hi Cut sliders remain readable and functional.
 10. Open the standalone IR Browser, select an IR, and confirm the right preview card shows the cabinet glyph, selected name, READY chip, local source chip, duration, sample rate, channel count, and file size without clipping.
 11. If a listed IR file has been moved or deleted, confirm the preview shows MISSING and `Load IR` stays disabled.
-12. Repeat the visual pass in dark, light/daylight, and synthwave themes.
-13. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
+12. Open the local NAM browser, select a `.nam` model, and confirm the right preview card shows the architecture glyph, selected model name, author, READY chip, model-type chip, tone chip, architecture, sample rate, loudness, file size/path, and footer status without clipping.
+13. Search the local NAM browser by file name, model type, metadata author/maker, and folder path, confirming matching rows remain selectable and double-click/load behavior is unchanged.
+14. If a listed local NAM file has been moved or deleted, confirm the preview shows MISSING and `Load Model` / `Delete Model` stay disabled.
+15. Repeat the visual pass in dark, light/daylight, and synthwave themes.
+16. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
