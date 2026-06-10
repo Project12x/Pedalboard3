@@ -346,7 +346,8 @@ void StageView::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
     const bool tunerFocus = viewMode == ViewMode::Tuner;
-    const bool reserveTunerStrip = showTuner && !tunerFocus;
+    const bool reserveTunerStrip =
+        StageLayout::shouldReserveTunerStrip(showTuner, tunerFocus, viewMode == ViewMode::Patch);
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), reserveTunerStrip);
 
     // Dark background with subtle gradient
@@ -1247,7 +1248,10 @@ void StageView::drawSafetyBar(Graphics& g, Rectangle<float> bounds)
 void StageView::resized()
 {
     auto bounds = getLocalBounds();
-    const auto metrics = StageLayout::calculateMetrics(bounds.getWidth(), bounds.getHeight(), showTuner);
+    const bool tunerFocus = viewMode == ViewMode::Tuner;
+    const bool reserveTunerStrip =
+        StageLayout::shouldReserveTunerStrip(showTuner, tunerFocus, viewMode == ViewMode::Patch);
+    const auto metrics = StageLayout::calculateMetrics(bounds.getWidth(), bounds.getHeight(), reserveTunerStrip);
     const int margin = metrics.margin;
     const int utilityButtonHeight = metrics.utilityButtonHeight;
     const int utilityButtonWidth = metrics.utilityButtonWidth;
@@ -1282,7 +1286,8 @@ void StageView::resized()
     auto performanceArea = bounds;
     performanceArea.removeFromTop(metrics.headerHeight);
     performanceArea.removeFromBottom(metrics.footerHeight);
-    performanceArea.removeFromBottom(metrics.tunerHeight);
+    if (reserveTunerStrip)
+        performanceArea.removeFromBottom(metrics.tunerHeight);
 
     // Navigation buttons
     const int navY = performanceArea.getCentreY() - metrics.navButtonHeight / 2;
@@ -1298,7 +1303,8 @@ void StageView::resized()
         auto queueContent = bounds;
         queueContent.removeFromTop(metrics.headerHeight);
         queueContent.removeFromBottom(metrics.footerHeight);
-        queueContent.removeFromBottom(metrics.tunerHeight);
+        if (reserveTunerStrip)
+            queueContent.removeFromBottom(metrics.tunerHeight);
         queueContent = queueContent.reduced(juce::roundToInt((float)margin * 1.25f),
                                             juce::roundToInt((float)margin * 0.9f));
 

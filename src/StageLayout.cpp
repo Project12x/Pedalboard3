@@ -84,6 +84,11 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
     return metrics;
 }
 
+bool shouldReserveTunerStrip(bool showTuner, bool tunerFocus, bool patchView)
+{
+    return showTuner && !tunerFocus && patchView;
+}
+
 juce::String elideLabel(const juce::String& text, int maxChars)
 {
     if (maxChars <= 0)

@@ -293,15 +293,31 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 - Manual visual QA deferred to `TESTLATER.md` > `Mockup Polish Visual QA`.
 
+## 2026-06-10 Stage Grid Tuner Strip Polish Verification
+
+- Superpowers flow: used the existing approved mockup-harvest spec/plan as the design gate, then executed this bounded Stage view slice with fresh verification before commit.
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/StageMode.jsx`, `StageGrid.jsx`, and `stage.css`.
+- Native source inspected: `src/StageView.cpp`, `src/StageLayout.cpp`, `src/StageLayout.h`, and `tests/stage_layout_test.cpp`.
+- Reuse mode: pattern-only / clean-room. No prototype source, assets, fonts, CSS, or React code were copied.
+- Intended scope: Stage view schema polish only. Grid and Setlist no longer reserve the large tuner content strip; Hero/Patch still can, and the full tuner remains available through the dedicated Tune view and existing tuner button.
+- Visual QA: `documentation/qa/2026-06-10-stage-grid-tuner-strip-polish/workflow-stage-mode-grid.png` confirms the Stage Grid tiles now use the main content area instead of clipping above a large tuner strip. The capture script was timeboxed because the existing full visual-QA flow still hangs later around the Scratch panel capture.
+- `git diff --check` passed.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3_Tests /p:Configuration=Release /m:1"` passed with 20 existing warnings and 0 errors.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 219 existing warnings and 0 errors.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[stage][layout]"` passed: 47 assertions in 6 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 566 assertions in 15 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
 
-1. Run `-CaptureScaledDialogMatrix` against the latest browser/search polish surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
-2. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density, hierarchy, state chips, and button finish, not wholesale replacement.
-3. Continue with real workflow polish: NAM browser density and preview hierarchy, plugin search button/state finish, Stage view mode polish, and IR browser empty/folder states.
-4. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
-5. Preserve all existing UX functions; the mockup remains an upgrade reference, not a replacement spec.
+1. Fix or bypass the visual-QA Scratch-panel hang so `-CaptureScaledDialogMatrix` can complete and produce `capture-summary.json` again.
+2. Run `-CaptureScaledDialogMatrix` against the latest browser/search polish surfaces and check plugin search, NAM browser, IR browser, and Preferences at 150 and 200 percent app scale.
+3. Compare the new final NAM/plugin-search screenshots against `nam-browser-mockup-msedge.png`; focus on density, hierarchy, state chips, and button finish, not wholesale replacement.
+4. Continue with real workflow polish: plugin search button/state finish, remaining NAM browser density, IR browser empty/folder states, and Stage safety-bar/tuner compactness.
+5. Keep Load/Close/Delete/Folders reachable at high scale before making any further aesthetic changes.
+6. Preserve all existing UX functions; the mockup remains an upgrade reference, not a replacement spec.
 
 ## Immediate Next Step
 

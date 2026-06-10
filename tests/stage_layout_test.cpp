@@ -36,6 +36,14 @@ TEST_CASE("Stage layout reserves non-overlapping live performance regions", "[ui
     CHECK(withoutTuner.patchAreaMinHeight > withTuner.patchAreaMinHeight);
 }
 
+TEST_CASE("Stage tuner strip is reserved only for hero patch view", "[ui][regression][stage][layout]")
+{
+    CHECK(StageLayout::shouldReserveTunerStrip(true, false, true));
+    CHECK_FALSE(StageLayout::shouldReserveTunerStrip(false, false, true));
+    CHECK_FALSE(StageLayout::shouldReserveTunerStrip(true, true, true));
+    CHECK_FALSE(StageLayout::shouldReserveTunerStrip(true, false, false));
+}
+
 TEST_CASE("Stage chrome and safety bar metrics preserve reachable controls", "[ui][regression][stage][layout]")
 {
     const auto compact = StageLayout::calculateMetrics(760, 540, true);
