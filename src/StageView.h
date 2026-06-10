@@ -95,6 +95,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
     std::unique_ptr<TextButton> queueViewButton;
     std::unique_ptr<TextButton> gridViewButton;
     std::unique_ptr<TextButton> tunerViewButton;
+    std::unique_ptr<Component> themeSwitcher;
 
     // Master gain sliders
     std::unique_ptr<Slider> inputGainSlider;

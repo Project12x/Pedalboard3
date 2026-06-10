@@ -327,6 +327,10 @@ class MainPanel : public Component,
     void setUiScalePercent(int percent);
     /// Syncs the footer UI scale selector from persisted settings.
     void syncUiScaleComboBoxFromSettings();
+    /// Applies a built-in colour scheme immediately from lightweight theme swatches.
+    void applyColourSchemePreset(const String& presetName, bool showToastMessage = true);
+    /// Refreshes theme-dependent surfaces after the active colour map changes.
+    void refreshThemeDependentSurfaces();
     ScratchTakeContext createScratchTakeContext() const;
     void toggleScratchCapture();
     void openScratchPanel();
@@ -571,6 +575,7 @@ class MainPanel : public Component,
     std::unique_ptr<Slider> velocitySlider;
     std::unique_ptr<Label> velocityLabel;
     std::unique_ptr<TextButton> sustainButton;
+    std::unique_ptr<Component> themeSwitcher;
     int getVirtualKeyboardDeckHeight() const;
     void paintVirtualKeyboardDeck(Graphics& g);
     void updateOctaveDisplay();

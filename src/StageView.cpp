@@ -15,6 +15,7 @@
 #include "MasterGainState.h"
 #include "SafetyLimiter.h"
 #include "StageLayout.h"
+#include "ThemeSwitcherComponent.h"
 #include "TunerProcessor.h"
 
 namespace
@@ -141,6 +142,14 @@ StageView::StageView(MainPanel* panel) : mainPanel(panel)
     gridViewButton = makeViewButton("GRID");
     tunerViewButton = makeViewButton("TUNE");
     syncViewButtons();
+
+    themeSwitcher = std::make_unique<ThemeSwitcherComponent>(
+        [this](const String& presetName)
+        {
+            if (mainPanel != nullptr)
+                mainPanel->applyColourSchemePreset(presetName);
+        });
+    addAndMakeVisible(themeSwitcher.get());
 
     // Master gain sliders (larger for live use)
     inputGainSlider = std::make_unique<Slider>("stageInputGain");
@@ -1039,6 +1048,15 @@ void StageView::resized()
 
     // Header buttons (top right)
     const int headerButtonY = (metrics.headerHeight - utilityButtonHeight) / 2;
+    if (themeSwitcher != nullptr)
+    {
+        constexpr int switcherW = 136;
+        themeSwitcher->setBounds(margin + 176, headerButtonY + juce::roundToInt((utilityButtonHeight - 32) * 0.5f),
+                                 switcherW, 32);
+        themeSwitcher->setVisible(bounds.getWidth() >= 1120);
+        themeSwitcher->toFront(false);
+    }
+
     exitButton->setBounds(bounds.getWidth() - utilityButtonWidth - margin, headerButtonY, utilityButtonWidth,
                           utilityButtonHeight);
     tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, headerButtonY,

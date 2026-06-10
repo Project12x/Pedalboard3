@@ -157,6 +157,8 @@ target_sources(Pedalboard3 PRIVATE
     src/App.h
     src/UiScale.cpp
     src/UiScale.h
+    src/ThemeSwitcherComponent.cpp
+    src/ThemeSwitcherComponent.h
     src/MainPanel.cpp
     src/MainPanel.h
     src/ScratchPanel.cpp

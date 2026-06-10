@@ -61,6 +61,7 @@
 #include "StageView.h"
 #include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
+#include "ThemeSwitcherComponent.h"
 #include "ToastOverlay.h"
 #include "ToneGeneratorProcessor.h"
 #include "TunerProcessor.h"
@@ -407,6 +408,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     scratchPanelButton->setButtonText("Takes");
     scratchPanelButton->setTooltip("Open scratch takes");
     scratchPanelButton->addListener(this);
+
+    themeSwitcher = std::make_unique<ThemeSwitcherComponent>(
+        [this](const String& presetName) { applyColourSchemePreset(presetName); });
+    addAndMakeVisible(themeSwitcher.get());
 
     const auto savedScratchRoot = SettingsManager::getInstance().getString(kScratchRootSettingsKey);
     if (savedScratchRoot.isNotEmpty())
@@ -968,6 +973,14 @@ void MainPanel::resized()
     if (stageView != nullptr)
         stageView->setBounds(getLocalBounds());
 
+    if (themeSwitcher != nullptr)
+    {
+        constexpr int switcherW = 136;
+        themeSwitcher->setBounds(jmax(8, getWidth() - switcherW - 12), 10, switcherW, 32);
+        themeSwitcher->setVisible(stageView == nullptr && getWidth() >= 760 && viewportHeight >= 120);
+        themeSwitcher->toFront(false);
+    }
+
     const int controlH = 24;
     const int gap = 4;
     const int rightMargin = 6;
@@ -1526,6 +1539,54 @@ void MainPanel::syncUiScaleComboBoxFromSettings()
 {
     if (uiScaleFooterComboBox != nullptr)
         uiScaleFooterComboBox->setSelectedId(getUiScalePercent(), dontSendNotification);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::applyColourSchemePreset(const String& presetName, bool showToastMessage)
+{
+    if (!ColourScheme::getBuiltInPresets().contains(presetName))
+        return;
+
+    ColourScheme::getInstance().loadPreset(presetName);
+    SettingsManager::getInstance().setValue("colourScheme", presetName);
+    refreshThemeDependentSurfaces();
+
+    if (showToastMessage)
+        showToast("Theme: " + presetName);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::refreshThemeDependentSurfaces()
+{
+    if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
+        laf->refreshColours();
+
+    std::function<void(Component*)> refreshNAMTree;
+    refreshNAMTree = [&refreshNAMTree](Component* comp)
+    {
+        if (!comp)
+            return;
+        if (auto* namCtrl = dynamic_cast<NAMControl*>(comp))
+            namCtrl->refreshColours();
+        if (auto* namBrowser = dynamic_cast<NAMModelBrowserComponent*>(comp))
+            namBrowser->refreshColours();
+        for (int i = 0; i < comp->getNumChildComponents(); ++i)
+            refreshNAMTree(comp->getChildComponent(i));
+    };
+    for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
+        refreshNAMTree(Desktop::getInstance().getComponent(i));
+
+    menuItemsChanged();
+    resized();
+
+    if (auto* topLevel = getTopLevelComponent())
+        topLevel->repaint();
+    else
+        repaint();
+
+    for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
+        if (auto* comp = Desktop::getInstance().getComponent(i))
+            comp->repaint();
 }
 
 //------------------------------------------------------------------------------
@@ -2694,39 +2755,7 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
         changed();
     else if (ed) // The colour scheme editor's updated our colour scheme.
     {
-        // Refresh LookAndFeel colors
-        if (auto* laf = dynamic_cast<BranchesLAF*>(&LookAndFeel::getDefaultLookAndFeel()))
-            laf->refreshColours();
-
-        // Refresh NAM-specific colours (LookAndFeel + any visible controls)
-        {
-            // Walk desktop components to find NAMControl and NAMModelBrowserComponent
-            std::function<void(Component*)> refreshNAMTree;
-            refreshNAMTree = [&refreshNAMTree](Component* comp)
-            {
-                if (!comp)
-                    return;
-                if (auto* namCtrl = dynamic_cast<NAMControl*>(comp))
-                    namCtrl->refreshColours();
-                if (auto* namBrowser = dynamic_cast<NAMModelBrowserComponent*>(comp))
-                    namBrowser->refreshColours();
-                for (int i = 0; i < comp->getNumChildComponents(); ++i)
-                    refreshNAMTree(comp->getChildComponent(i));
-            };
-            for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
-                refreshNAMTree(Desktop::getInstance().getComponent(i));
-        }
-
-        // Repaint the entire component tree
-        if (auto* topLevel = getTopLevelComponent())
-            topLevel->repaint();
-        else
-            repaint();
-
-        // Also update any visible windows (plugin editors, dialogs, etc.)
-        for (int i = Desktop::getInstance().getNumComponents(); --i >= 0;)
-            if (auto* comp = Desktop::getInstance().getComponent(i))
-                comp->repaint();
+        refreshThemeDependentSurfaces();
     }
     else
     {
