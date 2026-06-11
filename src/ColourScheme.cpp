@@ -97,6 +97,12 @@ void ColourScheme::loadPreset(const String& name)
     String filename;
     File settingsDir = getColourSchemeAppDataFolder();
 
+    if (getBuiltInPresets().contains(name))
+    {
+        loadBuiltInPreset(name);
+        return;
+    }
+
     filename << name << ".colourscheme";
 
     File presetFile = settingsDir.getChildFile(filename);
