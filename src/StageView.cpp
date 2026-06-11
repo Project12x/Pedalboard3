@@ -30,41 +30,68 @@ class StageButtonLookAndFeel : public LookAndFeel_V4
         auto bounds = button.getLocalBounds().toFloat().reduced(2.0f);
         const bool active = button.getToggleState();
         const bool panic = button.getName().containsIgnoreCase("panic");
-        auto base = panic ? palette["Danger Colour"].darker(0.08f)
-                          : (active ? backgroundColour.brighter(0.12f) : backgroundColour);
+        const bool nav = button.getButtonText().contains("PREV") || button.getButtonText().contains("NEXT");
+        const bool utility = button.getButtonText().equalsIgnoreCase("EXIT") ||
+                             button.getButtonText().equalsIgnoreCase("TUNER");
 
-        if (isMouseOverButton)
-            base = base.brighter(0.12f);
         if (isButtonDown)
             bounds = bounds.translated(0.0f, 1.0f);
 
-        const auto radius = juce::jlimit(8.0f, 16.0f, bounds.getHeight() * 0.22f);
-        g.setColour(palette["Window Background"].darker(0.7f).withAlpha(isButtonDown ? 0.14f : 0.34f));
-        g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.8f : 2.8f), radius);
+        const auto radius = juce::jlimit(9.0f, 15.0f, bounds.getHeight() * 0.28f);
+        const auto shadow = palette["Window Background"].darker(0.72f).withAlpha(isButtonDown ? 0.10f : 0.30f);
+        g.setColour(shadow);
+        g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 1.0f : 2.5f), radius);
 
         if (active && !panic)
         {
-            g.setColour(palette["Accent Colour"].withAlpha(0.16f));
+            g.setColour(palette["Accent Colour"].withAlpha(0.14f));
             g.fillRoundedRectangle(bounds.expanded(2.0f), radius + 2.0f);
         }
 
-        ColourGradient body(base.brighter(active ? 0.28f : 0.18f), bounds.getX(), bounds.getY(),
-                            base.darker(panic ? 0.28f : 0.18f), bounds.getX(), bounds.getBottom(), false);
-        g.setGradientFill(body);
+        if (panic)
+        {
+            ColourGradient panicFill(palette["Danger Colour"].brighter(isMouseOverButton ? 0.18f : 0.08f),
+                                     bounds.getX(), bounds.getY(), palette["Danger Colour"].darker(0.18f),
+                                     bounds.getX(), bounds.getBottom(), false);
+            g.setGradientFill(panicFill);
+            g.fillRoundedRectangle(bounds, radius);
+            g.setColour(palette["Danger Colour"].brighter(0.35f).withAlpha(0.78f));
+            g.drawRoundedRectangle(bounds.reduced(0.5f), radius, 1.4f);
+            g.setColour(juce::Colours::white.withAlpha(0.20f));
+            g.drawLine(bounds.getX() + 8.0f, bounds.getY() + 3.0f, bounds.getRight() - 8.0f,
+                       bounds.getY() + 3.0f, 1.0f);
+            return;
+        }
+
+        auto base = active ? palette["Accent Colour"].withAlpha(0.22f)
+                           : palette["Stage Panel Background"].withAlpha(utility ? 0.58f : 0.48f);
+        if (nav)
+            base = palette["Plugin Border"].withAlpha(active ? 0.52f : 0.42f);
+        if (isMouseOverButton)
+            base = base.brighter(0.10f);
+
+        ColourGradient fill(base.brighter(active ? 0.18f : 0.10f), bounds.getX(), bounds.getY(),
+                            base.darker(0.16f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill(fill);
         g.fillRoundedRectangle(bounds, radius);
 
-        g.setColour(palette["Text Colour"].withAlpha(active ? 0.18f : 0.09f));
-        g.drawLine(bounds.getX() + 6.0f, bounds.getY() + 2.0f, bounds.getRight() - 6.0f, bounds.getY() + 2.0f, 1.0f);
-        g.setColour((active ? palette["Accent Colour"] : palette["Plugin Border"]).withAlpha(active ? 0.85f : 0.48f));
-        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, active ? 1.6f : 1.0f);
+        g.setColour(palette["Text Colour"].withAlpha(0.10f));
+        g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 2.0f, bounds.getRight() - 7.0f, bounds.getY() + 2.0f, 1.0f);
+        g.setColour((active ? palette["Accent Colour"] : palette["Plugin Border"]).withAlpha(active ? 0.82f : 0.46f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, active ? 1.5f : 1.0f);
     }
 
     void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
     {
-        auto& palette = ::ColourScheme::getInstance().colours;
-        g.setFont(::FontManager::getInstance().getDisplayFont(juce::jlimit(12.0f, 17.0f, button.getHeight() * 0.32f)));
-        g.setColour(palette["Text Colour"].withAlpha(button.isEnabled() ? 0.98f : 0.36f));
-        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(8, 2), Justification::centred, 1);
+        const bool active = button.getToggleState();
+        const bool panic = button.getName().containsIgnoreCase("panic");
+        const float fontHeight = juce::jlimit(11.0f, 16.5f, button.getHeight() * 0.31f);
+        auto textColour = panic ? juce::Colours::white
+                                : button.findColour(active ? TextButton::textColourOnId : TextButton::textColourOffId);
+
+        g.setFont(::FontManager::getInstance().getDisplayFont(fontHeight));
+        g.setColour(textColour.withAlpha(button.isEnabled() ? (active || panic ? 0.96f : 0.78f) : 0.36f));
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(9, 2), Justification::centred, 1);
     }
 };
 
