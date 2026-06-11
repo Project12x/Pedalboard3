@@ -493,37 +493,37 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
     else if (name == "Forest")
     {
         // Natural green and earth tones
-        colours["Window Background"] = Colour(0xFF1A2F1A);
-        colours["Field Background"] = Colour(0xFF0F1F0F);
-        colours["Text Colour"] = Colour(0xFFDCECD2);
-        colours["Plugin Border"] = Colour(0xFF3A5A3A);
-        colours["Plugin Background"] = Colour(0xFF244024);
-        colours["Audio Connection"] = Colour(0xFF66CC66);
-        colours["Parameter Connection"] = Colour(0xFFCCAA44);
-        colours["Button Colour"] = Colour(0xFF2A4A2A);
-        colours["Button Highlight"] = Colour(0xFF3A6A3A);
-        colours["Text Editor Colour"] = Colour(0xFF0A150A);
-        colours["Menu Selection Colour"] = Colour(0xFF66CC66);
-        colours["Accent Colour"] = Colour(0xFF66CC66);
-        colours["CPU Meter Colour"] = Colour(0xFF88EE88);
-        colours["Dialog Inner Background"] = Colour(0xFF1A2F1A);
-        colours["Slider Colour"] = Colour(0xFF4ADE80);
-        colours["List Selected Colour"] = Colour(0xFF2A5A2A);
-        colours["VU Meter Lower Colour"] = Colour(0x7F22BB22);
-        colours["VU Meter Upper Colour"] = Colour(0x7FAADD22);
-        colours["VU Meter Over Colour"] = Colour(0x7FDD4444);
-        colours["Vector Colour"] = Colour(0x8066CC66);
-        colours["Waveform Colour"] = Colour(0xFF86EFAC);
-        colours["Level Dial Colour"] = Colour(0xFF22C55E);
-        colours["Tick Box Colour"] = Colour(0x804ADE80);
-        colours["Stage Background Top"] = Colour(0xFF1A2F1A);
-        colours["Stage Background Bottom"] = Colour(0xFF0F1F0F);
-        colours["Stage Panel Background"] = Colour(0xFF244024);
-        colours["Dialog Background"] = Colour(0xFF1A2F1A);
-        colours["Tuner Active Colour"] = Colour(0xFF66CC66);
-        colours["Danger Colour"] = Colour(0xFFDD4444);
-        colours["Warning Colour"] = Colour(0xFFCCAA44);
-        colours["Success Colour"] = Colour(0xFF44BB44);
+        colours["Window Background"] = Colour(0xFF172514);
+        colours["Field Background"] = Colour(0xFF0B1710);
+        colours["Text Colour"] = Colour(0xFFE2EBD8);
+        colours["Plugin Border"] = Colour(0xFF496345);
+        colours["Plugin Background"] = Colour(0xFF243823);
+        colours["Audio Connection"] = Colour(0xFF7EDB7A);
+        colours["Parameter Connection"] = Colour(0xFFD2A94B);
+        colours["Button Colour"] = Colour(0xFF2D452A);
+        colours["Button Highlight"] = Colour(0xFF3E5F38);
+        colours["Text Editor Colour"] = Colour(0xFF102016);
+        colours["Menu Selection Colour"] = Colour(0xFF7EDB7A);
+        colours["Accent Colour"] = Colour(0xFF7EDB7A);
+        colours["CPU Meter Colour"] = Colour(0xFF9BEF8F);
+        colours["Dialog Inner Background"] = Colour(0xFF1E321D);
+        colours["Slider Colour"] = Colour(0xFF7EDB7A);
+        colours["List Selected Colour"] = Colour(0xFF355B31);
+        colours["VU Meter Lower Colour"] = Colour(0x7F42C86B);
+        colours["VU Meter Upper Colour"] = Colour(0x7FD2A94B);
+        colours["VU Meter Over Colour"] = Colour(0x7FDE5E4B);
+        colours["Vector Colour"] = Colour(0x807EDB7A);
+        colours["Waveform Colour"] = Colour(0xFF9BEF8F);
+        colours["Level Dial Colour"] = Colour(0xFF55C96A);
+        colours["Tick Box Colour"] = Colour(0x807EDB7A);
+        colours["Stage Background Top"] = Colour(0xFF172514);
+        colours["Stage Background Bottom"] = Colour(0xFF0B1710);
+        colours["Stage Panel Background"] = Colour(0xFF243823);
+        colours["Dialog Background"] = Colour(0xFF182A17);
+        colours["Tuner Active Colour"] = Colour(0xFF7EDB7A);
+        colours["Danger Colour"] = Colour(0xFFDE5E4B);
+        colours["Warning Colour"] = Colour(0xFFD2A94B);
+        colours["Success Colour"] = Colour(0xFF64C968);
     }
     else
     {
