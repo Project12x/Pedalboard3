@@ -324,6 +324,23 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 43 assertions in 5 test cases.
 - Final fix: replaced hardcoded panic white with a `Danger Colour` contrast-derived label and highlight after the token audit caught forbidden `Colours::` usage and final review caught weak `Text Colour` contrast in Synthwave.
 
+## 2026-06-10 Theme And NAM Polish Verification
+
+- Superpowers flow: executed `docs/superpowers/plans/2026-06-10-theme-nam-polish.md` after approval, with focused commits for theme tokens, NAM Loader, NAM Online, and this verification record.
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/main.css`, `mw2.css`, `mw2-nodes.jsx`, and `mw2-data.jsx`.
+- Native source modified: `src/ColourScheme.cpp`, `src/ThemeSwitcherComponent.cpp`, `src/NAMControl.cpp`, and `src/NAMOnlineBrowser.cpp`.
+- Reuse mode: pattern-only / clean-room. No prototype source, assets, fonts, CSS, or React code were copied.
+- Intended scope: Daylight, Synthwave, and Forest token alignment plus NAM Loader and TONE3000 Online browser surface polish. Existing model load, IR load, online search, auth, download, cached load, paging, selection, and collapse behavior were preserved.
+- `git diff --check -- src/NAMOnlineBrowser.cpp` passed; the only note was Git's normal LF-to-CRLF working-copy warning.
+- `git diff --check` passed after the verification note edit; the only note was Git's normal LF-to-CRLF working-copy warning.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 218 existing warnings and 0 errors.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3_Tests /p:Configuration=Release /m:1"` passed with 20 existing warnings and 0 errors.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression][theme]"` passed earlier in the slice: 482 assertions in 5 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[nam]"` passed: 207 assertions in 32 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 610 assertions in 17 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 43 assertions in 5 test cases.
+- Visual QA: no new broad screenshot run in this final slice; the known Scratch-panel hang remains the blocker for a full scaled dialog matrix. Manual visual follow-up should compare Daylight, Synthwave, Forest, NAM Loader, and TONE3000 Online against the mockup once that capture path is stable.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
