@@ -29,32 +29,34 @@ void NAMLookAndFeel::refreshColours()
 
     // Derive amp palette from theme tokens
     Colour pluginBg = cs.colours["Plugin Background"];
-    Colour windowBg = cs.colours["Window Background"];
+    Colour pluginBorder = cs.colours["Plugin Border"];
     Colour textCol = cs.colours["Text Colour"];
-    Colour sliderCol = cs.colours["Slider Colour"];
+    Colour paramCol = cs.colours["Parameter Connection"];
     Colour warnCol = cs.colours["Warning Colour"];
     Colour buttonCol = cs.colours["Button Colour"];
     Colour buttonHi = cs.colours["Button Highlight"];
     Colour fieldBg = cs.colours["Field Background"];
     Colour successCol = cs.colours["Success Colour"];
+    auto ampRole = cs.colours.find("Graph Category Amp");
+    Colour ampCategory = (ampRole != cs.colours.end()) ? ampRole->second : warnCol;
 
-    // Build the amp palette: darker and warmer than the base theme
-    ampBackground = pluginBg.darker(0.6f);
-    ampSurface = pluginBg.darker(0.25f);
-    ampBorder = pluginBg.darker(0.85f).interpolatedWith(Colour(0xff606060), 0.15f);
-    ampHeaderBg = pluginBg.darker(0.5f);
-    ampAccent = warnCol;            // Warm orange/amber
-    ampAccentSecondary = sliderCol; // Theme slider colour
+    // Build the amp palette from theme and graph-category roles.
+    ampBackground = pluginBg.darker(0.35f);
+    ampSurface = pluginBg.interpolatedWith(fieldBg, 0.22f);
+    ampBorder = pluginBorder.interpolatedWith(ampCategory, 0.16f);
+    ampHeaderBg = pluginBg.interpolatedWith(ampCategory, 0.16f);
+    ampAccent = ampCategory;
+    ampAccentSecondary = paramCol;
     ampTextBright = textCol;
     ampTextDim = textCol.withAlpha(0.6f);
     ampLedOn = successCol.brighter(0.4f);
-    ampLedOff = pluginBg.darker(0.5f);
+    ampLedOff = fieldBg.interpolatedWith(pluginBg, 0.55f).darker(0.25f);
     ampKnobBody = pluginBg.darker(0.15f);
-    ampKnobRing = pluginBg.interpolatedWith(Colour(0xffa0a0a0), 0.35f);
+    ampKnobRing = pluginBorder.interpolatedWith(textCol, 0.28f);
     ampTrackBg = ampBackground.darker(0.4f);
-    ampButtonBg = buttonCol.darker(0.35f);
-    ampButtonHover = buttonHi.darker(0.15f);
-    ampInsetBg = ampBackground.darker(0.5f);
+    ampButtonBg = buttonCol;
+    ampButtonHover = buttonHi;
+    ampInsetBg = fieldBg.interpolatedWith(pluginBg, 0.35f);
 
     // Apply to JUCE colour IDs
     setColour(Slider::backgroundColourId, ampTrackBg);
@@ -283,7 +285,7 @@ void NAMLookAndFeel::drawToggleButton(Graphics& g, ToggleButton& button, bool sh
     // LED specular highlight
     if (button.getToggleState())
     {
-        g.setColour(Colours::white.withAlpha(0.2f));
+        g.setColour(ledColour.contrasting(0.96f).withAlpha(0.2f));
         g.fillEllipse(ledX + 2, ledY + 1, ledSize * 0.4f, ledSize * 0.3f);
     }
 
@@ -311,6 +313,7 @@ void NAMLookAndFeel::drawButtonBackground(Graphics& g, Button& button, const Col
     Colour baseColour = shouldDrawButtonAsDown          ? btnCol.darker(0.3f)
                         : shouldDrawButtonAsHighlighted ? btnCol.brighter(0.15f)
                                                         : btnCol;
+    const auto sheenColour = baseColour.contrasting(0.96f);
 
     // Drop shadow (deeper)
     g.setColour(Colours::black.withAlpha(0.15f));
@@ -325,7 +328,7 @@ void NAMLookAndFeel::drawButtonBackground(Graphics& g, Button& button, const Col
     g.fillRoundedRectangle(bounds, 4.0f);
 
     // Top highlight bevel (stronger)
-    g.setColour(Colours::white.withAlpha(0.09f));
+    g.setColour(sheenColour.withAlpha(0.09f));
     g.fillRoundedRectangle(bounds.removeFromTop(bounds.getHeight() * 0.42f), 4.0f);
 
     // Inner shadow at bottom (embossed inset effect)
@@ -695,15 +698,20 @@ void NAMControl::refreshColours()
     auto& laf = namLookAndFeel;
 
     // Apply to model/IR display labels
-    modelNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
-    modelNameLabel->setColour(Label::outlineColourId, laf.ampBorder);
-    irNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
-    irNameLabel->setColour(Label::outlineColourId, laf.ampBorder);
-    ir2NameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
-    ir2NameLabel->setColour(Label::outlineColourId, laf.ampBorder);
+    const auto loadedChipBg = laf.ampInsetBg.interpolatedWith(laf.ampAccent, 0.06f);
+    const auto loadedChipOutline = laf.ampAccent.withAlpha(0.32f);
+    const auto emptyChipOutline = laf.ampBorder.withAlpha(0.75f);
+
+    modelNameLabel->setColour(Label::backgroundColourId, namProcessor->isModelLoaded() ? loadedChipBg : laf.ampInsetBg);
+    modelNameLabel->setColour(Label::outlineColourId, namProcessor->isModelLoaded() ? loadedChipOutline : emptyChipOutline);
+    irNameLabel->setColour(Label::backgroundColourId, namProcessor->isIRLoaded() ? loadedChipBg : laf.ampInsetBg);
+    irNameLabel->setColour(Label::outlineColourId, namProcessor->isIRLoaded() ? loadedChipOutline : emptyChipOutline);
+    ir2NameLabel->setColour(Label::backgroundColourId, namProcessor->isIR2Loaded() ? loadedChipBg : laf.ampInsetBg);
+    ir2NameLabel->setColour(Label::outlineColourId, namProcessor->isIR2Loaded() ? loadedChipOutline : emptyChipOutline);
 
     // Architecture badge
-    modelArchLabel->setColour(Label::backgroundColourId, laf.ampAccent.withAlpha(0.15f));
+    modelArchLabel->setColour(Label::backgroundColourId, laf.ampAccent.withAlpha(0.18f));
+    modelArchLabel->setColour(Label::outlineColourId, laf.ampAccent.withAlpha(0.42f));
     modelArchLabel->setColour(Label::textColourId, laf.ampAccent);
 
     // Dim labels
@@ -782,7 +790,7 @@ void NAMControl::paint(Graphics& g)
     // Procedural noise texture (subtle grain for premium feel)
     {
         Random rng(42); // deterministic seed for consistency
-        g.setColour(Colours::white.withAlpha(0.012f));
+        g.setColour(laf.ampTextBright.withAlpha(0.012f));
         const int step = 4;
         for (int ny = 0; ny < getHeight(); ny += step)
         {
@@ -800,24 +808,34 @@ void NAMControl::paint(Graphics& g)
     g.setColour(laf.ampBorder.brighter(0.15f));
     g.drawRoundedRectangle(bounds.toFloat().reduced(2.0f), 3.0f, 0.5f);
 
-    // Header bar -- shows current model name
+    // Header bar -- shows current model state with amp-category identity
     Rectangle<int> headerBounds(2, 2, getWidth() - 4, headerH);
-    ColourGradient headerGradient(laf.ampHeaderBg.brighter(0.08f), 0, 2, laf.ampHeaderBg.darker(0.15f), 0,
+    ColourGradient headerGradient(laf.ampHeaderBg.brighter(0.12f), 0, 2, laf.ampHeaderBg.darker(0.20f), 0,
                                   (float)headerH, false);
     g.setGradientFill(headerGradient);
     g.fillRoundedRectangle(headerBounds.toFloat(), 3.0f);
 
-    // Header accent underline
-    g.setColour(laf.ampAccent.withAlpha(0.7f));
+    // Header accent rail and top sheen
+    g.setColour(laf.ampAccent.withAlpha(0.82f));
     g.fillRect(2, headerH + 2, getWidth() - 4, 2);
+    g.setColour(laf.ampTextBright.withAlpha(0.07f));
+    g.drawLine(8.0f, 4.0f, (float)getWidth() - 10.0f, 4.0f, 1.0f);
     g.setColour(laf.ampBorder.darker(0.2f));
     g.fillRect(2, headerH + 4, getWidth() - 4, 1);
 
-    // Model name in header
     String headerText = namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No Model";
+    auto headerTextArea = headerBounds.reduced(12, 0).withTrimmedRight(56);
+
+    g.setColour(laf.ampAccent.withAlpha(namProcessor->isModelLoaded() ? 0.95f : 0.55f));
+    g.fillRoundedRectangle((float)headerTextArea.getX(), (float)headerTextArea.getCentreY() - 4.0f, 8.0f, 8.0f, 2.5f);
+
+    g.setColour(laf.ampTextDim.withAlpha(0.78f));
+    g.setFont(fm.getCaptionFont());
+    g.drawText("NAM LOADER", headerTextArea.withTrimmedLeft(16).withHeight(12), Justification::centredLeft, true);
+
     g.setColour(namProcessor->isModelLoaded() ? laf.ampTextBright : laf.ampTextDim);
-    g.setFont(fm.getSubheadingFont());
-    g.drawText(headerText, headerBounds.reduced(12, 0).withTrimmedRight(30), Justification::centredLeft, true);
+    g.setFont(fm.getLabelFont());
+    g.drawText(headerText, headerTextArea.withTrimmedLeft(16).withTrimmedTop(12), Justification::centredLeft, true);
 
     // Status LED in header (right side)
     const float ledSize = 12.0f;
@@ -842,7 +860,7 @@ void NAMControl::paint(Graphics& g)
 
     if (namProcessor->isModelLoaded())
     {
-        g.setColour(Colours::white.withAlpha(0.2f));
+        g.setColour(ledColour.contrasting(0.96f).withAlpha(0.2f));
         g.fillEllipse(ledX + 2, ledY + 1, ledSize * 0.35f, ledSize * 0.25f);
     }
 
@@ -1244,11 +1262,16 @@ void NAMControl::sliderValueChanged(Slider* slider)
 void NAMControl::updateModelDisplay()
 {
     auto& laf = namLookAndFeel;
+    const auto loadedChipBg = laf.ampInsetBg.interpolatedWith(laf.ampAccent, 0.06f);
+    const auto loadedChipOutline = laf.ampAccent.withAlpha(0.32f);
+    const auto emptyChipOutline = laf.ampBorder.withAlpha(0.75f);
 
     if (namProcessor->isModelLoaded())
     {
         modelNameLabel->setText(namProcessor->getModelName(), dontSendNotification);
         modelNameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        modelNameLabel->setColour(Label::backgroundColourId, loadedChipBg);
+        modelNameLabel->setColour(Label::outlineColourId, loadedChipOutline);
 
         // Show architecture badge
         modelArchLabel->setText("NAM", dontSendNotification);
@@ -1257,6 +1280,8 @@ void NAMControl::updateModelDisplay()
     {
         modelNameLabel->setText("No Model Loaded", dontSendNotification);
         modelNameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        modelNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
+        modelNameLabel->setColour(Label::outlineColourId, emptyChipOutline);
         modelArchLabel->setText("", dontSendNotification);
     }
 
@@ -1267,27 +1292,38 @@ void NAMControl::updateModelDisplay()
 void NAMControl::updateIRDisplay()
 {
     auto& laf = namLookAndFeel;
+    const auto loadedChipBg = laf.ampInsetBg.interpolatedWith(laf.ampAccent, 0.06f);
+    const auto loadedChipOutline = laf.ampAccent.withAlpha(0.32f);
+    const auto emptyChipOutline = laf.ampBorder.withAlpha(0.75f);
 
     if (namProcessor->isIRLoaded())
     {
         irNameLabel->setText(namProcessor->getIRName(), dontSendNotification);
         irNameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        irNameLabel->setColour(Label::backgroundColourId, loadedChipBg);
+        irNameLabel->setColour(Label::outlineColourId, loadedChipOutline);
     }
     else
     {
         irNameLabel->setText("No IR Loaded", dontSendNotification);
         irNameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        irNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
+        irNameLabel->setColour(Label::outlineColourId, emptyChipOutline);
     }
 
     if (namProcessor->isIR2Loaded())
     {
         ir2NameLabel->setText(namProcessor->getIR2Name(), dontSendNotification);
         ir2NameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        ir2NameLabel->setColour(Label::backgroundColourId, loadedChipBg);
+        ir2NameLabel->setColour(Label::outlineColourId, loadedChipOutline);
     }
     else
     {
         ir2NameLabel->setText("No IR2 Loaded", dontSendNotification);
         ir2NameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        ir2NameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
+        ir2NameLabel->setColour(Label::outlineColourId, emptyChipOutline);
     }
 }
 
@@ -1296,9 +1332,13 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
     auto& laf = namLookAndFeel;
     auto& fm = FontManager::getInstance();
 
-    // Panel background (more visible contrast)
-    g.setColour(laf.ampBackground.brighter(0.06f));
-    g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
+    auto panel = bounds.toFloat();
+    const float radius = 6.0f;
+
+    ColourGradient panelFill(laf.ampSurface.brighter(0.07f), panel.getX(), panel.getY(),
+                             laf.ampSurface.darker(0.12f), panel.getX(), panel.getBottom(), false);
+    g.setGradientFill(panelFill);
+    g.fillRoundedRectangle(panel, radius);
 
     // Brushed-metal texture (subtle horizontal lines)
     {
@@ -1307,7 +1347,7 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
         for (int ly = bounds.getY(); ly < bounds.getBottom(); ly += 2)
         {
             float alpha = ((ly % 4) == 0) ? 0.025f : 0.012f;
-            g.setColour(Colours::white.withAlpha(alpha));
+            g.setColour(laf.ampTextBright.withAlpha(alpha));
             g.drawHorizontalLine(ly, static_cast<float>(bounds.getX()), static_cast<float>(bounds.getRight()));
         }
         g.restoreState();
@@ -1321,14 +1361,20 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
 
     // Bottom highlight (convex bevel)
     ColourGradient bottomHighlight(Colours::transparentBlack, (float)bounds.getX(), bounds.getBottom() - 10.0f,
-                                   Colours::white.withAlpha(0.03f), (float)bounds.getX(), (float)bounds.getBottom(),
-                                   false);
+                                   laf.ampTextBright.withAlpha(0.03f), (float)bounds.getX(),
+                                   (float)bounds.getBottom(), false);
     g.setGradientFill(bottomHighlight);
-    g.fillRoundedRectangle(bounds.toFloat(), 5.0f);
+    g.fillRoundedRectangle(panel, radius);
 
-    // Panel border (stronger, more visible)
-    g.setColour(laf.ampBorder.brighter(0.2f));
-    g.drawRoundedRectangle(bounds.toFloat(), 5.0f, 1.25f);
+    g.setColour(laf.ampTextBright.withAlpha(0.055f));
+    g.drawLine(panel.getX() + 7.0f, panel.getY() + 2.0f, panel.getRight() - 7.0f, panel.getY() + 2.0f, 1.0f);
+
+    g.setColour(laf.ampAccent.withAlpha(0.55f));
+    g.fillRoundedRectangle(panel.getX() + 1.0f, panel.getY() + 7.0f, 3.0f, jmax(12.0f, panel.getHeight() - 14.0f),
+                           1.5f);
+
+    g.setColour(laf.ampBorder.brighter(0.14f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), radius, 1.15f);
 
     // Section title with accent dot glow
     if (title.isNotEmpty())
@@ -1348,7 +1394,7 @@ void NAMControl::drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, con
         g.fillEllipse(dotX, dotY, dotSize, dotSize);
 
         // Title text
-        g.setColour(laf.ampTextDim.brighter(0.15f));
+        g.setColour(laf.ampTextDim.withAlpha(0.82f));
         g.setFont(fm.getCaptionFont());
         g.drawText(title, bounds.getX() + 14, bounds.getY() + 2, 100, 16, Justification::centredLeft);
     }
