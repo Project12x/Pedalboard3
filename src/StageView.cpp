@@ -1255,28 +1255,39 @@ void StageView::drawSafetyBar(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    g.setColour(colours["Stage Panel Background"].withAlpha(0.42f));
+    g.setColour(colours["Window Background"].darker(0.12f).withAlpha(0.78f));
     g.fillRect(bounds);
-    g.setColour(colours["Plugin Border"].withAlpha(0.45f));
+    g.setColour(colours["Plugin Border"].withAlpha(0.50f));
     g.drawHorizontalLine(juce::roundToInt(bounds.getY()), bounds.getX(), bounds.getRight());
 
     auto labelArea = bounds.reduced((float)metrics.margin, 0.0f).removeFromTop(metrics.meterTopOffset - 2.0f);
     g.setFont(fonts.getDisplayFont(metrics.safetyFontHeight));
-    g.setColour(colours["Text Colour"].withAlpha(0.46f));
-    g.drawText("SAFETY BAR", labelArea.withWidth(86.0f), Justification::centredLeft);
+    g.setColour(colours["Text Colour"].withAlpha(0.50f));
+    g.drawText("SAFETY", labelArea.withWidth(70.0f), Justification::centredLeft);
 
     const auto meterGroupX = metrics.meterStartX + metrics.meterLabelWidth + 6.0f;
     auto meterLabelArea = Rectangle<float>(meterGroupX + 72.0f, labelArea.getY(),
                                            metrics.meterWidth * 2.0f + metrics.meterSpacing, labelArea.getHeight());
-    g.setColour(colours["Text Colour"].withAlpha(0.34f));
+    g.setColour(colours["Accent Colour"].withAlpha(0.48f));
     g.drawText("MASTER BUS", meterLabelArea, Justification::centredLeft);
 
-    auto panicGlow = panicButton != nullptr ? panicButton->getBounds().toFloat().expanded(4.0f)
+    auto meterBack = Rectangle<float>(metrics.meterStartX - 8.0f, bounds.getY() + metrics.meterTopOffset - 7.0f,
+                                      metrics.meterLabelWidth * 2.0f + metrics.meterWidth * 2.0f +
+                                          metrics.meterSpacing + metrics.panicButtonWidth + 28.0f,
+                                      metrics.sliderTopOffset + metrics.sliderHeight - metrics.meterTopOffset + 16.0f);
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.26f));
+    g.fillRoundedRectangle(meterBack, 12.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.24f));
+    g.drawRoundedRectangle(meterBack.reduced(0.5f), 12.0f, 1.0f);
+
+    auto panicGlow = panicButton != nullptr ? panicButton->getBounds().toFloat().expanded(5.0f)
                                             : Rectangle<float>();
     if (!panicGlow.isEmpty())
     {
-        g.setColour(colours["Danger Colour"].withAlpha(0.13f));
-        g.fillRoundedRectangle(panicGlow, 14.0f);
+        g.setColour(colours["Danger Colour"].withAlpha(0.16f));
+        g.fillRoundedRectangle(panicGlow, 15.0f);
+        g.setColour(colours["Danger Colour"].withAlpha(0.28f));
+        g.drawRoundedRectangle(panicGlow.reduced(0.5f), 15.0f, 1.0f);
     }
 }
 
