@@ -516,26 +516,35 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    g.setColour(colours["Stage Panel Background"].withAlpha(0.34f));
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.40f));
     g.fillRect(bounds);
 
-    g.setColour(colours["Plugin Border"].withAlpha(0.45f));
+    g.setColour(colours["Plugin Border"].withAlpha(0.48f));
     g.drawHorizontalLine(juce::roundToInt(bounds.getBottom()) - 1, bounds.getX(), bounds.getRight());
 
-    auto leftArea = bounds.reduced((float)metrics.margin, 0.0f)
-                        .withWidth(juce::jmax(220.0f, bounds.getWidth() * 0.24f));
+    auto leftArea = bounds.reduced((float)metrics.margin, 0.0f).withWidth((float)metrics.stageBrandWidth);
     const auto dotSize = metrics.liveDotSize;
     const auto dotArea =
         Rectangle<float>(leftArea.getX(), leftArea.getCentreY() - dotSize * 0.5f, dotSize, dotSize);
 
-    g.setColour(colours["Accent Colour"].withAlpha(0.18f));
-    g.fillEllipse(dotArea.expanded(dotSize * 0.65f));
+    g.setColour(colours["Accent Colour"].withAlpha(0.15f));
+    g.fillEllipse(dotArea.expanded(dotSize * 0.85f));
     g.setColour(colours["Accent Colour"]);
     g.fillEllipse(dotArea);
 
-    g.setColour(colours["Text Colour"].withAlpha(0.58f));
+    auto brandText = leftArea.withTrimmedLeft(dotSize + 12.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.62f));
     g.setFont(fonts.getDisplayFont(metrics.statusFontHeight));
-    g.drawText("STAGE MODE", leftArea.withTrimmedLeft(dotSize + 12.0f), Justification::centredLeft);
+    g.drawText("STAGE MODE", brandText, Justification::centredLeft);
+
+    if (themeSwitcher != nullptr && themeSwitcher->isVisible())
+    {
+        auto switcherRail = themeSwitcher->getBounds().toFloat().expanded(5.0f, 4.0f);
+        g.setColour(colours["Stage Panel Background"].withAlpha(0.46f));
+        g.fillRoundedRectangle(switcherRail, 11.0f);
+        g.setColour(colours["Plugin Border"].withAlpha(0.34f));
+        g.drawRoundedRectangle(switcherRail.reduced(0.5f), 11.0f, 1.0f);
+    }
 
     if (patchViewButton != nullptr && queueViewButton != nullptr && gridViewButton != nullptr &&
         tunerViewButton != nullptr)
@@ -544,14 +553,14 @@ void StageView::drawStatusBar(Graphics& g, Rectangle<float> bounds)
                             .getUnion(queueViewButton->getBounds())
                             .getUnion(gridViewButton->getBounds())
                             .getUnion(tunerViewButton->getBounds())
-                            .expanded(4, 3)
+                            .expanded(5, 4)
                             .toFloat();
-        g.setColour(colours["Stage Panel Background"].withAlpha(0.42f));
-        g.fillRoundedRectangle(modeRail, 12.0f);
-        g.setColour(colours["Window Background"].darker(0.55f).withAlpha(0.18f));
-        g.drawRoundedRectangle(modeRail.reduced(1.0f), 11.0f, 1.0f);
-        g.setColour(colours["Plugin Border"].withAlpha(0.44f));
-        g.drawRoundedRectangle(modeRail.reduced(0.5f), 12.0f, 1.0f);
+        g.setColour(colours["Window Background"].darker(0.36f).withAlpha(0.34f));
+        g.fillRoundedRectangle(modeRail, 13.0f);
+        g.setColour(colours["Stage Panel Background"].withAlpha(0.52f));
+        g.fillRoundedRectangle(modeRail.reduced(1.0f), 12.0f);
+        g.setColour(colours["Plugin Border"].withAlpha(0.52f));
+        g.drawRoundedRectangle(modeRail.reduced(0.5f), 13.0f, 1.0f);
     }
 
     Time now = Time::getCurrentTime();
@@ -1287,10 +1296,11 @@ void StageView::resized()
     const int headerButtonY = (metrics.headerHeight - utilityButtonHeight) / 2;
     if (themeSwitcher != nullptr)
     {
-        constexpr int switcherW = 136;
-        themeSwitcher->setBounds(margin + 176, headerButtonY + juce::roundToInt((utilityButtonHeight - 32) * 0.5f),
-                                 switcherW, 32);
-        themeSwitcher->setVisible(bounds.getWidth() >= 1120);
+        const int switcherH = juce::jmin(32, utilityButtonHeight);
+        const int switcherX = margin + metrics.stageBrandWidth + margin;
+        themeSwitcher->setBounds(switcherX, headerButtonY + juce::roundToInt((utilityButtonHeight - switcherH) * 0.5f),
+                                 metrics.stageThemeSwitcherWidth, switcherH);
+        themeSwitcher->setVisible(metrics.showStageThemeSwitcher);
         themeSwitcher->toFront(false);
     }
 
@@ -1299,8 +1309,8 @@ void StageView::resized()
     tunerToggleButton->setBounds(bounds.getWidth() - utilityButtonWidth * 2 - margin * 2, headerButtonY,
                                  utilityButtonWidth, utilityButtonHeight);
 
-    const int modeButtonW = juce::jlimit(72, 96, bounds.getWidth() / 24);
-    const int modeButtonGap = 6;
+    const int modeButtonW = metrics.modeButtonWidth;
+    const int modeButtonGap = metrics.modeButtonGap;
     const int modeGroupW = modeButtonW * 4 + modeButtonGap * 3;
     const int modeX = (bounds.getWidth() - modeGroupW) / 2;
     patchViewButton->setBounds(modeX, headerButtonY, modeButtonW, utilityButtonHeight);
