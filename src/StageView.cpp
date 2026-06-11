@@ -50,6 +50,7 @@ class StageButtonLookAndFeel : public LookAndFeel_V4
 
         if (panic)
         {
+            const auto panicTextColour = palette["Danger Colour"].contrasting(0.96f);
             ColourGradient panicFill(palette["Danger Colour"].brighter(isMouseOverButton ? 0.18f : 0.08f),
                                      bounds.getX(), bounds.getY(), palette["Danger Colour"].darker(0.18f),
                                      bounds.getX(), bounds.getBottom(), false);
@@ -57,7 +58,7 @@ class StageButtonLookAndFeel : public LookAndFeel_V4
             g.fillRoundedRectangle(bounds, radius);
             g.setColour(palette["Danger Colour"].brighter(0.35f).withAlpha(0.78f));
             g.drawRoundedRectangle(bounds.reduced(0.5f), radius, 1.4f);
-            g.setColour(juce::Colours::white.withAlpha(0.20f));
+            g.setColour(panicTextColour.withAlpha(0.20f));
             g.drawLine(bounds.getX() + 8.0f, bounds.getY() + 3.0f, bounds.getRight() - 8.0f,
                        bounds.getY() + 3.0f, 1.0f);
             return;
@@ -83,10 +84,11 @@ class StageButtonLookAndFeel : public LookAndFeel_V4
 
     void drawButtonText(Graphics& g, TextButton& button, bool /*isMouseOverButton*/, bool /*isButtonDown*/) override
     {
+        auto& palette = ::ColourScheme::getInstance().colours;
         const bool active = button.getToggleState();
         const bool panic = button.getName().containsIgnoreCase("panic");
         const float fontHeight = juce::jlimit(11.0f, 16.5f, button.getHeight() * 0.31f);
-        auto textColour = panic ? juce::Colours::white
+        auto textColour = panic ? palette["Danger Colour"].contrasting(0.96f)
                                 : button.findColour(active ? TextButton::textColourOnId : TextButton::textColourOffId);
 
         g.setFont(::FontManager::getInstance().getDisplayFont(fontHeight));

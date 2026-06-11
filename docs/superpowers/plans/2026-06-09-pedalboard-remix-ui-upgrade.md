@@ -308,6 +308,22 @@ Minimum checks for implementation slices:
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 566 assertions in 15 test cases.
 - `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 33 assertions in 4 test cases.
 
+## 2026-06-10 Stage Shared Chrome Polish Verification
+
+- Superpowers flow: implemented the approved Stage shared chrome slice from `docs/superpowers/specs/2026-06-10-stage-mode-shared-chrome-polish.md` with subagent-driven workers and spec/quality reviews for metrics, buttons, header chrome, and safety bar polish.
+- Mockup source inspected: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/StageMode.jsx`, `StageGrid.jsx`, and `stage.css`.
+- Native source modified: `src/StageView.cpp`, `src/StageLayout.h`, `src/StageLayout.cpp`, and `tests/stage_layout_test.cpp`.
+- Reuse mode: pattern-only / clean-room. No prototype source, assets, fonts, CSS, or React code were copied.
+- Intended scope: shared Stage chrome only. Hero, Setlist, Grid, and Tuner view bodies keep existing behavior.
+- Visual QA: broad `scripts/run_d2_visual_qa.ps1 -OutputName 2026-06-10-stage-shared-chrome-polish` produced captures but timed out later, and desktop `CopyFromScreen` captures were contaminated by an unrelated `LoopDeLoop_Tests.exe` error dialog. Clean Stage evidence was captured with targeted `PrintWindow` runs in `documentation/qa/2026-06-10-stage-shared-chrome-polish-targeted-printwindow-wide/` for Hero, Setlist, Grid, and Tuner.
+- `git diff --check` passed.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3_Tests /p:Configuration=Release /m:1"` passed with 20 existing warnings and 0 errors.
+- `cmd /d /c "set Path=& call ""C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"" build\Pedalboard3.sln /t:Pedalboard3 /p:Configuration=Release /m:1"` passed with 217 existing warnings and 0 errors.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[stage][layout]"` passed: 81 assertions in 7 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][regression]"` passed: 610 assertions in 17 test cases.
+- `.\build\tests\Release\Pedalboard3_Tests.exe "[ui][visual]"` passed: 43 assertions in 5 test cases.
+- Final fix: replaced hardcoded panic white with a `Danger Colour` contrast-derived label and highlight after the token audit caught forbidden `Colours::` usage and final review caught weak `Text Colour` contrast in Synthwave.
+
 ## Next For Agent
 
 Continue with aesthetic polish from the actual mockup, but only where it improves existing workflows:
