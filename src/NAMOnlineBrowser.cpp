@@ -18,6 +18,50 @@
 #include <melatonin_blur/melatonin_blur.h>
 #include <spdlog/spdlog.h>
 
+namespace
+{
+juce::Colour getBrowserRoleColour(const juce::String& role, juce::Colour fallback)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto found = colours.find(role);
+    return found != colours.end() ? found->second : fallback;
+}
+
+juce::Colour getGearAccentColour(const std::string& gearType)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    if (gearType == "amp")
+        return getBrowserRoleColour("Graph Category Amp", colours["Warning Colour"]);
+    if (gearType == "pedal")
+        return getBrowserRoleColour("Graph Category Modulation", colours["Audio Connection"]);
+    if (gearType == "full_rig")
+        return colours["Success Colour"];
+    return colours["Parameter Connection"];
+}
+
+juce::String getGearDisplayText(const std::string& gearType)
+{
+    if (gearType == "amp")
+        return "Amp";
+    if (gearType == "pedal")
+        return "Pedal";
+    if (gearType == "full_rig")
+        return "Full Rig";
+    return juce::String(gearType);
+}
+
+juce::String formatToneFileSize(juce::int64 fileSize)
+{
+    if (fileSize <= 0)
+        return {};
+    if (fileSize > 1024 * 1024)
+        return juce::String(fileSize / (1024 * 1024)) + " MB";
+    if (fileSize > 1024)
+        return juce::String(fileSize / 1024) + " KB";
+    return juce::String(fileSize) + " B";
+}
+} // namespace
+
 //==============================================================================
 // Tone3000ResultsListModel
 //==============================================================================
@@ -60,141 +104,135 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     auto& colours = ColourScheme::getInstance().colours;
     const auto& tone = tones[rowNumber];
 
-    const int margin = 6;
-    const float cornerRadius = 6.0f;
+    const int margin = 7;
+    const float cornerRadius = 8.0f;
     juce::Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
                                       static_cast<float>(height - 4));
+    const auto gearAccent = getGearAccentColour(tone.gearType);
+    const auto surface = colours["Dialog Inner Background"].interpolatedWith(colours["Plugin Background"], 0.26f);
 
-    // Background: selection > hover > none
+    // Background: selection > hover > base card
     if (rowIsSelected)
     {
-        g.setColour(colours["Accent Colour"].withAlpha(0.18f));
+        juce::ColourGradient selectedFill(surface.interpolatedWith(colours["Accent Colour"], 0.18f), itemBounds.getX(),
+                                          itemBounds.getY(), surface.interpolatedWith(colours["Accent Colour"], 0.08f),
+                                          itemBounds.getX(), itemBounds.getBottom(), false);
+        g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.5f));
-        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
-
-        // Left-edge accent stripe (DAW-style selection indicator)
-        juce::Rectangle<float> stripe(itemBounds.getX(), itemBounds.getY() + 2.0f, 3.0f, itemBounds.getHeight() - 4.0f);
-        g.setColour(colours["Accent Colour"]);
-        g.fillRoundedRectangle(stripe, 1.5f);
+        g.setColour(colours["Accent Colour"].withAlpha(0.62f));
+        g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.25f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(surface.brighter(0.06f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.2f));
-        g.drawRoundedRectangle(itemBounds, cornerRadius, 1.0f);
-    }
-
-    const int textX = margin + 10;
-
-    // Badge layout - rightmost side
-    const int badgeHeight = 16;
-    int badgeX = width - margin - 6;
-
-    // Gear type badge with bright fixed colors visible on dark backgrounds
-    juce::String gearText;
-    juce::Colour badgeCol;
-    if (tone.gearType == "amp")
-    {
-        gearText = "Amp";
-        badgeCol = juce::Colour(0xFFE8A838); // warm orange-gold
-    }
-    else if (tone.gearType == "pedal")
-    {
-        gearText = "Pedal";
-        badgeCol = juce::Colour(0xFF38C8E8); // bright cyan
-    }
-    else if (tone.gearType == "full_rig")
-    {
-        gearText = "Full Rig";
-        badgeCol = juce::Colour(0xFF58D868); // bright green
+        g.setColour(colours["Accent Colour"].withAlpha(0.28f));
+        g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.0f);
     }
     else
     {
-        gearText = juce::String(tone.gearType);
-        badgeCol = juce::Colour(0xFFB088E8); // lavender
+        g.setColour(surface.withAlpha(0.88f));
+        g.fillRoundedRectangle(itemBounds, cornerRadius);
+        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.0f);
     }
 
+    // Left-edge gear/category rail.
+    g.setColour(gearAccent.withAlpha(rowIsSelected ? 0.95f : 0.68f));
+    g.fillRoundedRectangle(itemBounds.getX() + 1.0f, itemBounds.getY() + 5.0f, 3.0f, itemBounds.getHeight() - 10.0f,
+                           1.5f);
+
+    int rightEdge = width - margin - 10;
+    const int badgeHeight = 17;
+    auto& fm = FontManager::getInstance();
+
+    // Gear type badge.
+    auto gearText = getGearDisplayText(tone.gearType);
     if (gearText.isNotEmpty())
     {
-        auto& fm = FontManager::getInstance();
         g.setFont(fm.getBadgeFont());
-        int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(gearText)) + 12;
-        badgeX -= badgeW;
+        const int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(gearText)) + 13;
+        rightEdge -= badgeW;
 
-        juce::Rectangle<float> badgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
+        juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
                                            static_cast<float>(badgeW), static_cast<float>(badgeHeight));
-        g.setColour(badgeCol.withAlpha(0.15f));
-        g.fillRoundedRectangle(badgeBounds, badgeHeight / 2.0f);
-        g.setColour(badgeCol.withAlpha(0.6f));
-        g.drawRoundedRectangle(badgeBounds, badgeHeight / 2.0f, 1.0f);
-        g.setColour(badgeCol.withAlpha(0.8f));
+        g.setColour(gearAccent.withAlpha(0.16f));
+        g.fillRoundedRectangle(badgeBounds, 5.0f);
+        g.setColour(gearAccent.withAlpha(0.50f));
+        g.drawRoundedRectangle(badgeBounds.reduced(0.5f), 5.0f, 1.0f);
+        g.setColour(gearAccent.withAlpha(0.92f));
         g.drawText(gearText, badgeBounds, juce::Justification::centred, true);
 
-        badgeX -= 4; // spacing
+        rightEdge -= 6;
     }
-
-    // Status indicator on right side
-    juce::Rectangle<int> statusArea(badgeX - 55, 4, 50, height - 8);
 
     auto progressIt = downloadProgress.find(tone.id);
     float progress = progressIt != downloadProgress.end() ? progressIt->second : -1.0f;
+    juce::String statusText;
+    juce::Colour statusColour = colours["Text Colour"].withAlpha(0.40f);
 
     if (tone.isCached())
     {
-        g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
-        g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Cached", statusArea, juce::Justification::centredRight);
+        statusText = "Cached";
+        statusColour = colours["Success Colour"];
     }
     else if (progress >= 0.0f && progress <= 1.0f)
     {
-        auto barBounds = statusArea.toFloat();
-        g.setColour(colours["Dialog Inner Background"]);
-        g.fillRoundedRectangle(barBounds, 3.0f);
-        g.setColour(colours["Accent Colour"]);
-        g.fillRoundedRectangle(barBounds.getX(), barBounds.getY(), barBounds.getWidth() * progress,
-                               barBounds.getHeight(), 3.0f);
-        g.setColour(colours["Text Colour"]);
-        g.setFont(FontManager::getInstance().getMonoFont(9.0f));
-        g.drawText(juce::String(static_cast<int>(progress * 100)) + "%", statusArea, juce::Justification::centred);
+        statusText = juce::String(static_cast<int>(progress * 100)) + "%";
+        statusColour = colours["Accent Colour"];
     }
     else if (progress > 1.5f)
     {
-        g.setColour(ColourScheme::getInstance().colours["Success Colour"]);
-        g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Done", statusArea, juce::Justification::centredRight);
+        statusText = "Done";
+        statusColour = colours["Success Colour"];
     }
     else if (progress < -1.5f)
     {
-        g.setColour(ColourScheme::getInstance().colours["Danger Colour"]);
-        g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Failed", statusArea, juce::Justification::centredRight);
+        statusText = "Failed";
+        statusColour = colours["Danger Colour"];
     }
     else if (tone.fileSize > 0)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.4f));
-        g.setFont(FontManager::getInstance().getMonoFont(9.0f));
-        juce::String sizeText;
-        if (tone.fileSize > 1024 * 1024)
-            sizeText = juce::String(tone.fileSize / (1024 * 1024)) + " MB";
-        else if (tone.fileSize > 1024)
-            sizeText = juce::String(tone.fileSize / 1024) + " KB";
-        else
-            sizeText = juce::String(tone.fileSize) + " B";
-        g.drawText(sizeText, statusArea, juce::Justification::centredRight);
+        statusText = formatToneFileSize(tone.fileSize);
+        statusColour = colours["Text Colour"].withAlpha(0.46f);
+    }
+
+    if (statusText.isNotEmpty())
+    {
+        g.setFont(progress >= 0.0f && progress <= 1.0f ? fm.getMonoFont(9.0f) : fm.getCaptionFont());
+        const int statusW = static_cast<int>(g.getCurrentFont().getStringWidthFloat(statusText)) + 14;
+        rightEdge -= statusW;
+        juce::Rectangle<float> statusBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
+                                            static_cast<float>(statusW), static_cast<float>(badgeHeight));
+        g.setColour(statusColour.withAlpha(statusColour.getFloatAlpha() >= 0.99f ? 0.18f : 0.12f));
+        g.fillRoundedRectangle(statusBounds, 5.0f);
+
+        if (progress >= 0.0f && progress <= 1.0f)
+        {
+            g.setColour(statusColour.withAlpha(0.38f));
+            g.fillRoundedRectangle(statusBounds.getX(), statusBounds.getY(), statusBounds.getWidth() * progress,
+                                   statusBounds.getHeight(), 5.0f);
+        }
+
+        g.setColour(statusColour.withAlpha(0.62f));
+        g.drawRoundedRectangle(statusBounds.reduced(0.5f), 5.0f, 1.0f);
+        g.setColour(statusColour.withAlpha(0.96f));
+        g.drawText(statusText, statusBounds, juce::Justification::centred, true);
+        rightEdge -= 6;
     }
 
     // Name (primary text)
-    int textRight = statusArea.getX() - 4;
+    const int textX = margin + 14;
+    int textRight = rightEdge - 4;
+    textRight = juce::jmax(textX + 48, textRight);
     g.setColour(colours["Text Colour"]);
-    g.setFont(FontManager::getInstance().getBodyBoldFont());
+    g.setFont(fm.getBodyBoldFont());
     g.drawText(juce::String(tone.name), textX, 2, textRight - textX, height / 2, juce::Justification::centredLeft,
                true);
 
     // Author (secondary text)
-    g.setFont(FontManager::getInstance().getCaptionFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.5f));
+    g.setFont(fm.getCaptionFont());
+    g.setColour(colours["Text Colour"].withAlpha(rowIsSelected ? 0.62f : 0.48f));
     g.drawText("by " + juce::String(tone.authorName), textX, height / 2, textRight - textX, height / 2 - 2,
                juce::Justification::centredLeft, true);
 }
@@ -257,10 +295,11 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     searchButton = std::make_unique<juce::TextButton>("Search");
     searchButton->addListener(this);
-    searchButton->setColour(juce::TextButton::buttonColourId, colours["Accent Colour"]);
-    searchButton->setColour(juce::TextButton::buttonOnColourId, colours["Accent Colour"].brighter(0.15f));
-    searchButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    searchButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    const auto searchFill = colours["Accent Colour"];
+    searchButton->setColour(juce::TextButton::buttonColourId, searchFill);
+    searchButton->setColour(juce::TextButton::buttonOnColourId, searchFill.brighter(0.15f));
+    searchButton->setColour(juce::TextButton::textColourOffId, searchFill.contrasting(0.96f));
+    searchButton->setColour(juce::TextButton::textColourOnId, searchFill.contrasting(0.96f));
     addAndMakeVisible(searchButton.get());
 
     // Filter controls
@@ -364,19 +403,21 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     downloadButton = std::make_unique<juce::TextButton>("Download");
     downloadButton->addListener(this);
     downloadButton->setEnabled(false);
-    downloadButton->setColour(juce::TextButton::buttonColourId, colours["Accent Colour"]);
-    downloadButton->setColour(juce::TextButton::buttonOnColourId, colours["Accent Colour"].brighter(0.15f));
-    downloadButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    downloadButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    const auto downloadFill = colours["Accent Colour"];
+    downloadButton->setColour(juce::TextButton::buttonColourId, downloadFill);
+    downloadButton->setColour(juce::TextButton::buttonOnColourId, downloadFill.brighter(0.15f));
+    downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill.contrasting(0.96f));
+    downloadButton->setColour(juce::TextButton::textColourOnId, downloadFill.contrasting(0.96f));
     addAndMakeVisible(downloadButton.get());
 
     loadButton = std::make_unique<juce::TextButton>("Load");
     loadButton->addListener(this);
     loadButton->setEnabled(false);
-    loadButton->setColour(juce::TextButton::buttonColourId, colours["Slider Colour"]);
-    loadButton->setColour(juce::TextButton::buttonOnColourId, colours["Slider Colour"].brighter(0.2f));
-    loadButton->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    loadButton->setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    const auto loadFill = colours["Parameter Connection"];
+    loadButton->setColour(juce::TextButton::buttonColourId, loadFill);
+    loadButton->setColour(juce::TextButton::buttonOnColourId, loadFill.brighter(0.2f));
+    loadButton->setColour(juce::TextButton::textColourOffId, loadFill.contrasting(0.96f));
+    loadButton->setColour(juce::TextButton::textColourOnId, loadFill.contrasting(0.96f));
     addAndMakeVisible(loadButton.get());
 
     // Status bar
@@ -387,11 +428,17 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     loginButton = std::make_unique<juce::TextButton>("Login");
     loginButton->addListener(this);
+    loginButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
+    loginButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
+    loginButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(loginButton.get());
 
     logoutButton = std::make_unique<juce::TextButton>("Logout");
     logoutButton->addListener(this);
     logoutButton->setVisible(false);
+    logoutButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
+    logoutButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
+    logoutButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
     addAndMakeVisible(logoutButton.get());
 
     prevPageButton = std::make_unique<juce::TextButton>("<");
@@ -453,6 +500,42 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
                 g.fillEllipse((float)gx, (float)gy, 2.0f, 2.0f);
     }
 
+    auto outer = getLocalBounds().reduced(8);
+    auto toolbarBounds = outer.removeFromTop(68).toFloat();
+    auto footerArea = getLocalBounds().reduced(8);
+    auto footerBounds = footerArea.removeFromBottom(28).toFloat();
+
+    juce::ColourGradient toolbarFill(colours["Plugin Background"].brighter(0.04f), toolbarBounds.getX(),
+                                     toolbarBounds.getY(), colours["Dialog Inner Background"].darker(0.05f),
+                                     toolbarBounds.getX(), toolbarBounds.getBottom(), false);
+    g.setGradientFill(toolbarFill);
+    g.fillRoundedRectangle(toolbarBounds, 8.0f);
+    g.setColour(colours["Accent Colour"].withAlpha(0.26f));
+    g.fillRoundedRectangle(toolbarBounds.getX() + 1.0f, toolbarBounds.getY() + 6.0f, 3.0f,
+                           toolbarBounds.getHeight() - 12.0f, 1.5f);
+    g.setColour(colours["Text Colour"].withAlpha(0.10f));
+    g.drawRoundedRectangle(toolbarBounds.reduced(0.5f), 8.0f, 1.0f);
+
+    if (searchBox != nullptr)
+    {
+        auto searchPill = searchBox->getBounds().toFloat();
+        juce::ColourGradient searchFill(colours["Field Background"].brighter(0.03f), searchPill.getX(),
+                                        searchPill.getY(), colours["Field Background"].darker(0.06f),
+                                        searchPill.getX(), searchPill.getBottom(), false);
+        g.setGradientFill(searchFill);
+        g.fillRoundedRectangle(searchPill, 7.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.10f));
+        g.drawRoundedRectangle(searchPill.reduced(0.5f), 7.0f, 1.0f);
+        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.drawLine(searchPill.getX() + 8.0f, searchPill.getY() + 2.0f, searchPill.getRight() - 8.0f,
+                   searchPill.getY() + 2.0f, 1.0f);
+    }
+
+    g.setColour(colours["Dialog Inner Background"].withAlpha(0.74f));
+    g.fillRoundedRectangle(footerBounds, 7.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.10f));
+    g.drawRoundedRectangle(footerBounds.reduced(0.5f), 7.0f, 1.0f);
+
     // Calculate panel areas
     auto bounds = getLocalBounds().reduced(8);
     bounds.removeFromTop(70);    // Search + filters
@@ -464,9 +547,15 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 
     // Draw rounded list background
     auto listBounds = listArea.toFloat();
-    g.setColour(colours["Dialog Inner Background"]);
+    juce::ColourGradient listFill(colours["Dialog Inner Background"].brighter(0.03f), listBounds.getX(),
+                                  listBounds.getY(), colours["Dialog Inner Background"].darker(0.05f),
+                                  listBounds.getX(), listBounds.getBottom(), false);
+    g.setGradientFill(listFill);
     g.fillRoundedRectangle(listBounds, 8.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.2f));
+    g.setColour(colours["Accent Colour"].withAlpha(0.12f));
+    g.drawLine(listBounds.getX() + 9.0f, listBounds.getY() + 2.0f, listBounds.getRight() - 9.0f,
+               listBounds.getY() + 2.0f, 1.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.14f));
     g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
     // Draw card-style details panel with shadow
@@ -475,19 +564,23 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
     // Drop shadow
-    melatonin::DropShadow shadow(juce::Colours::black.withAlpha(0.2f), 8, {2, 2});
+    melatonin::DropShadow shadow(juce::Colours::black.withAlpha(0.22f), 10, {2, 3});
     shadow.render(g, detailsPath);
 
     // Card fill with subtle gradient
-    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.04f), detailsBounds.getX(),
-                                  detailsBounds.getY(), colours["Dialog Inner Background"].darker(0.04f),
+    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f), detailsBounds.getX(),
+                                  detailsBounds.getY(), colours["Plugin Background"].interpolatedWith(
+                                                                 colours["Dialog Inner Background"], 0.52f),
                                   detailsBounds.getX(), detailsBounds.getBottom(), false);
     g.setGradientFill(cardGrad);
     g.fillPath(detailsPath);
 
     // Card border
-    g.setColour(colours["Text Colour"].withAlpha(0.15f));
+    g.setColour(colours["Text Colour"].withAlpha(0.14f));
     g.strokePath(detailsPath, juce::PathStrokeType(1.0f));
+    g.setColour(colours["Accent Colour"].withAlpha(0.32f));
+    g.fillRoundedRectangle(detailsBounds.getX() + 1.0f, detailsBounds.getY() + 8.0f, 3.0f,
+                           detailsBounds.getHeight() - 16.0f, 1.5f);
 
     // Detail panel section separators
     if (nameLabel && nameValue)
@@ -513,17 +606,17 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     // Empty state — subtle text only, no oversized icon
     if (selectedTone == nullptr && listModel.getNumRows() == 0)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.20f));
-        g.setFont(FontManager::getInstance().getCaptionFont());
-        g.drawText("Search to browse models", detailsBounds, juce::Justification::centred, true);
+        g.setColour(colours["Text Colour"].withAlpha(0.30f));
+        g.setFont(FontManager::getInstance().getLabelFont());
+        g.drawText("Search TONE3000 to browse NAM models", detailsBounds.reduced(16), juce::Justification::centred,
+                   true);
     }
     else if (selectedTone == nullptr)
     {
         // Have results but nothing selected
-        g.setColour(colours["Text Colour"].withAlpha(0.25f));
+        g.setColour(colours["Text Colour"].withAlpha(0.32f));
         g.setFont(FontManager::getInstance().getLabelFont());
-        g.drawText("Select a model", detailsBounds.withHeight(detailsBounds.getHeight()), juce::Justification::centred,
-                   true);
+        g.drawText("Select a model for details", detailsBounds.reduced(16), juce::Justification::centred, true);
     }
 }
 
