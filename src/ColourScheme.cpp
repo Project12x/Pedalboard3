@@ -382,15 +382,15 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
     else if (name == "Daylight")
     {
         // Light theme for bright environments
-        colours["Window Background"] = Colour(0xFFF5F5F5);
+        colours["Window Background"] = Colour(0xFFEEF0F2);
         colours["Field Background"] = Colour(0xFFFFFFFF);
-        colours["Text Colour"] = Colour(0xFF1A1A1A);
-        colours["Plugin Border"] = Colour(0xFFCCCCCC);
-        colours["Plugin Background"] = Colour(0xFFE8E8E8);
+        colours["Text Colour"] = Colour(0xFF1A1F24);
+        colours["Plugin Border"] = Colour(0xFFC2C6CC);
+        colours["Plugin Background"] = Colour(0xFFEAECEE);
         colours["Audio Connection"] = Colour(0xFF0077CC);
         colours["Parameter Connection"] = Colour(0xFFCC6600);
-        colours["Button Colour"] = Colour(0xFFDDDDDD);
-        colours["Button Highlight"] = Colour(0xFFBBBBBB);
+        colours["Button Colour"] = Colour(0xFFE4E6E9);
+        colours["Button Highlight"] = Colour(0xFFF3F4F6);
         colours["Text Editor Colour"] = Colour(0xFFFFFFFF);
         colours["Menu Selection Colour"] = Colour(0xFF0077CC);
         colours["Accent Colour"] = Colour(0xFF0077CC);
@@ -405,11 +405,11 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF0077CC);
         colours["Level Dial Colour"] = Colour(0xFF005599);
         colours["Tick Box Colour"] = Colour(0x800077CC);
-        colours["Stage Background Top"] = Colour(0xFFE8E8E8);
-        colours["Stage Background Bottom"] = Colour(0xFFD0D0D0);
-        colours["Stage Panel Background"] = Colour(0xFFCCCCCC);
+        colours["Stage Background Top"] = Colour(0xFFEEF0F2);
+        colours["Stage Background Bottom"] = Colour(0xFFDADDE1);
+        colours["Stage Panel Background"] = Colour(0xFFCFD3D8);
         colours["Dialog Background"] = Colour(0xFFF0F0F0);
-        colours["Tuner Active Colour"] = Colour(0xFF00AA00);
+        colours["Tuner Active Colour"] = Colour(0xFF0A8F5A);
         colours["Danger Colour"] = Colour(0xFFDC2626);
         colours["Warning Colour"] = Colour(0xFFD97706);
         colours["Success Colour"] = Colour(0xFF16A34A);
@@ -419,19 +419,19 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         // Retro neon 80s aesthetic
         colours["Window Background"] = Colour(0xFF0D0221);
         colours["Field Background"] = Colour(0xFF1A0533);
-        colours["Text Colour"] = Colour(0xFFFF00FF);
-        colours["Plugin Border"] = Colour(0xFFFF00AA);
+        colours["Text Colour"] = Colour(0xFFF4E6FF);
+        colours["Plugin Border"] = Colour(0xFF5A2D82);
         colours["Plugin Background"] = Colour(0xFF2D0A4E);
         colours["Audio Connection"] = Colour(0xFF00FFFF);
         colours["Parameter Connection"] = Colour(0xFFFF6B00);
         colours["Button Colour"] = Colour(0xFF3D1A6D);
         colours["Button Highlight"] = Colour(0xFF5A2D82);
         colours["Text Editor Colour"] = Colour(0xFF0A0015);
-        colours["Menu Selection Colour"] = Colour(0xFFFF00FF);
-        colours["Accent Colour"] = Colour(0xFFFF00FF);
-        colours["CPU Meter Colour"] = Colour(0xFF00FF00);
+        colours["Menu Selection Colour"] = Colour(0xFFFF2BFF);
+        colours["Accent Colour"] = Colour(0xFFFF2BFF);
+        colours["CPU Meter Colour"] = Colour(0xFF00FF88);
         colours["Dialog Inner Background"] = Colour(0xFF1A0533);
-        colours["Slider Colour"] = Colour(0xFFFF00FF);
+        colours["Slider Colour"] = Colour(0xFFFF2BFF);
         colours["List Selected Colour"] = Colour(0xFF5A2D82);
         colours["VU Meter Lower Colour"] = Colour(0x7F00FFFF);
         colours["VU Meter Upper Colour"] = Colour(0x7FFF00FF);
@@ -489,7 +489,7 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         // Natural green and earth tones
         colours["Window Background"] = Colour(0xFF1A2F1A);
         colours["Field Background"] = Colour(0xFF0F1F0F);
-        colours["Text Colour"] = Colour(0xFFD4E8C8);
+        colours["Text Colour"] = Colour(0xFFDCECD2);
         colours["Plugin Border"] = Colour(0xFF3A5A3A);
         colours["Plugin Background"] = Colour(0xFF244024);
         colours["Audio Connection"] = Colour(0xFF66CC66);
