@@ -388,20 +388,20 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
     else if (name == "Daylight")
     {
         // Light theme for bright environments
-        colours["Window Background"] = Colour(0xFFEEF0F2);
-        colours["Field Background"] = Colour(0xFFFFFFFF);
+        colours["Window Background"] = Colour(0xFFE8EBEF);
+        colours["Field Background"] = Colour(0xFFF4F6F8);
         colours["Text Colour"] = Colour(0xFF1A1F24);
-        colours["Plugin Border"] = Colour(0xFFC2C6CC);
-        colours["Plugin Background"] = Colour(0xFFEAECEE);
+        colours["Plugin Border"] = Colour(0xFFB7BDC5);
+        colours["Plugin Background"] = Colour(0xFFE2E6EA);
         colours["Audio Connection"] = Colour(0xFF0077CC);
         colours["Parameter Connection"] = Colour(0xFFCC6600);
-        colours["Button Colour"] = Colour(0xFFE4E6E9);
-        colours["Button Highlight"] = Colour(0xFFF3F4F6);
-        colours["Text Editor Colour"] = Colour(0xFFFFFFFF);
+        colours["Button Colour"] = Colour(0xFFDDE2E7);
+        colours["Button Highlight"] = Colour(0xFFECEFF3);
+        colours["Text Editor Colour"] = Colour(0xFFF7F8FA);
         colours["Menu Selection Colour"] = Colour(0xFF0077CC);
         colours["Accent Colour"] = Colour(0xFF0077CC);
         colours["CPU Meter Colour"] = Colour(0xFF00AA00);
-        colours["Dialog Inner Background"] = Colour(0xFFFFFFFF);
+        colours["Dialog Inner Background"] = Colour(0xFFEFF2F5);
         colours["Slider Colour"] = Colour(0xFF0077CC);
         colours["List Selected Colour"] = Colour(0xFFCCE5FF);
         colours["VU Meter Lower Colour"] = Colour(0x7F00AA00);
@@ -411,10 +411,10 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF0077CC);
         colours["Level Dial Colour"] = Colour(0xFF005599);
         colours["Tick Box Colour"] = Colour(0x800077CC);
-        colours["Stage Background Top"] = Colour(0xFFEEF0F2);
-        colours["Stage Background Bottom"] = Colour(0xFFDADDE1);
-        colours["Stage Panel Background"] = Colour(0xFFCFD3D8);
-        colours["Dialog Background"] = Colour(0xFFF0F0F0);
+        colours["Stage Background Top"] = Colour(0xFFE8EBEF);
+        colours["Stage Background Bottom"] = Colour(0xFFD3D8DE);
+        colours["Stage Panel Background"] = Colour(0xFFC8CED6);
+        colours["Dialog Background"] = Colour(0xFFE6EAEE);
         colours["Tuner Active Colour"] = Colour(0xFF0A8F5A);
         colours["Danger Colour"] = Colour(0xFFDC2626);
         colours["Warning Colour"] = Colour(0xFFD97706);
