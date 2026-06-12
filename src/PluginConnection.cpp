@@ -22,9 +22,6 @@
 #include "PluginField.h"
 #include "SubGraphEditorComponent.h"
 
-#include <melatonin_blur/melatonin_blur.h>
-
-
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 PluginConnection::PluginConnection(PluginPinComponent* s, PluginPinComponent* d, bool allOutputs)
@@ -117,16 +114,14 @@ void PluginConnection::paint(Graphics& g)
     */
 
     // === Cable bed, glow, and wire ===
-    const float softGlowWidth = selected ? 22.0f : 17.0f;
-    const float softGlowAlpha = selected ? 0.32f : 0.18f;
-    g.setColour(cableColour.withAlpha(softGlowAlpha));
-    g.strokePath(glowPath, PathStrokeType(softGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+    const float outerGlowWidth = selected ? 14.0f : 10.0f;
+    const float innerGlowWidth = selected ? 8.0f : 6.0f;
 
-    melatonin::DropShadow cableGlow{cableColour.withAlpha(selected ? 0.42f : 0.22f), selected ? 10 : 6, {0, 0}};
-    cableGlow.render(g, glowPath);
+    g.setColour(cableColour.withAlpha(selected ? 0.16f : 0.075f));
+    g.strokePath(glowPath, PathStrokeType(outerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
 
-    g.setColour(cableColour.darker(0.58f).withAlpha(selected ? 0.42f : 0.28f));
-    g.strokePath(glowPath, PathStrokeType(selected ? 10.0f : 8.0f, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.setColour(cableColour.withAlpha(selected ? 0.22f : 0.11f));
+    g.strokePath(glowPath, PathStrokeType(innerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
 
     // === Gradient fill from source to destination (bidirectional) ===
     Colour startCol = paramCon ? colours["Parameter Connection"].brighter(selected ? 0.55f : 0.24f)
@@ -134,11 +129,7 @@ void PluginConnection::paint(Graphics& g)
     Colour endCol = paramCon ? colours["Parameter Connection"].darker(selected ? 0.0f : 0.08f)
                              : destAccent.brighter(selected ? 0.30f : 0.06f);
 
-    // Use actual start/end points from the bezier curve for proper bidirectional gradient
-    Point<float> gradStart = glowPath.getBounds().getTopLeft();
-    Point<float> gradEnd = glowPath.getBounds().getBottomRight();
-
-    ColourGradient wireGrad(startCol, gradStart.x, gradStart.y, endCol, gradEnd.x, gradEnd.y, false);
+    ColourGradient wireGrad(startCol, gradientStart.x, gradientStart.y, endCol, gradientEnd.x, gradientEnd.y, false);
     g.setGradientFill(wireGrad);
     g.fillPath(drawnCurve);
 
@@ -260,10 +251,7 @@ void PluginConnection::setDestination(PluginPinComponent* d)
         sourcePoint = parentCanvas->getLocalPoint(source->getParentComponent(), sourcePoint);
         destPoint = parentCanvas->getLocalPoint(destination->getParentComponent(), destPoint);
 
-        if (destPoint.getX() > sourcePoint.getX())
-            updateBounds(sourcePoint.getX(), sourcePoint.getY(), destPoint.getX(), destPoint.getY());
-        else
-            updateBounds(destPoint.getX(), destPoint.getY(), sourcePoint.getX(), sourcePoint.getY());
+        updateBounds(sourcePoint.getX(), sourcePoint.getY(), destPoint.getX(), destPoint.getY());
     }
 }
 
@@ -361,6 +349,8 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     auto pos = getPosition().toFloat();
     p1 -= pos;
     p2 -= pos;
+    gradientStart = p1;
+    gradientEnd = p2;
 
     // Build the bezier curve in local coordinates
     // Using JUCE's vertical curve style: control points at 0.33 and 0.66 of height

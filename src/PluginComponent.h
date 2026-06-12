@@ -394,6 +394,9 @@ class PluginConnection : public Component, public ChangeListener, public Settabl
     Path hitCurve;
     ///	The original bezier curve for glow rendering.
     Path glowPath;
+    ///	Local endpoints used for source-to-destination cable gradients.
+    Point<float> gradientStart;
+    Point<float> gradientEnd;
 
     ///	Whether the connection is selected or not.
     bool selected;

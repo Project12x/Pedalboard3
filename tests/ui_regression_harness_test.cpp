@@ -13,6 +13,7 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include <string>
 #include <string_view>
 
 #include "../src/ColourScheme.h"
@@ -284,6 +285,50 @@ TEST_CASE("Token-audited core UI files avoid hardcoded colour and font literals"
             CHECK(source->find(pattern) == std::string::npos);
         }
     }
+}
+
+TEST_CASE("Graph source polish keeps cable rendering and grid defaults stable",
+          "[ui][regression][visual][source][graph]")
+{
+    const auto pluginHeader = loadSourceFile("src/PluginComponent.h");
+    const auto connectionSource = loadSourceFile("src/PluginConnection.cpp");
+    const auto fieldSource = loadSourceFile("src/PluginField.cpp");
+    const auto mainPanelSource = loadSourceFile("src/MainPanel.cpp");
+
+    REQUIRE(pluginHeader.has_value());
+    REQUIRE(connectionSource.has_value());
+    REQUIRE(fieldSource.has_value());
+    REQUIRE(mainPanelSource.has_value());
+
+    CHECK(pluginHeader->find("Point<float> gradientStart;") != std::string::npos);
+    CHECK(pluginHeader->find("Point<float> gradientEnd;") != std::string::npos);
+
+    CHECK(connectionSource->find("gradientStart = p1;") != std::string::npos);
+    CHECK(connectionSource->find("gradientEnd = p2;") != std::string::npos);
+    CHECK(connectionSource->find("if (destPoint.getX() > sourcePoint.getX())") == std::string::npos);
+    CHECK(connectionSource->find(
+              "updateBounds(destPoint.getX(), destPoint.getY(), sourcePoint.getX(), sourcePoint.getY())") ==
+          std::string::npos);
+    CHECK(connectionSource->find(
+              "updateBounds(sourcePoint.getX(), sourcePoint.getY(), destPoint.getX(), destPoint.getY())") !=
+          std::string::npos);
+    CHECK(connectionSource->find("cableGlow.render(g, glowPath)") == std::string::npos);
+    CHECK(connectionSource->find("glowPath.getBounds().getTopLeft()") == std::string::npos);
+    CHECK(connectionSource->find("glowPath.getBounds().getBottomRight()") == std::string::npos);
+    CHECK(connectionSource->find("PathStrokeType(outerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded)") !=
+          std::string::npos);
+    CHECK(connectionSource->find("PathStrokeType(innerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded)") !=
+          std::string::npos);
+    CHECK(connectionSource->find(
+              "ColourGradient wireGrad(startCol, gradientStart.x, gradientStart.y, endCol, gradientEnd.x, "
+              "gradientEnd.y, false)") != std::string::npos);
+
+    CHECK(fieldSource->find("getString(kGraphGridStyleSettingsKey, \"Lines\")") != std::string::npos);
+    CHECK(mainPanelSource->find("getString(kGraphGridStyleSettingsKey, \"Lines\")") != std::string::npos);
+    CHECK(fieldSource->find("getString(kGraphGridStyleSettingsKey, \"Dots\")") == std::string::npos);
+    CHECK(mainPanelSource->find("getString(kGraphGridStyleSettingsKey, \"Dots\")") == std::string::npos);
+    CHECK(fieldSource->find("getString(kGraphGridStyleSettingsKey, \"Off\")") == std::string::npos);
+    CHECK(mainPanelSource->find("getString(kGraphGridStyleSettingsKey, \"Off\")") == std::string::npos);
 }
 
 TEST_CASE("LookAndFeel colour contract maps shared controls to semantic roles", "[ui][regression][theme][laf]")

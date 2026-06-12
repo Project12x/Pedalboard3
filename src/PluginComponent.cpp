@@ -641,9 +641,9 @@ void PluginComponent::paint(Graphics& g)
     Colour accentColour = visualAccentColour;
 
     // === MAIN FILL (gradient for premium feel) ===
-    Colour bgBase = colours["Plugin Background"].interpolatedWith(accentColour, isAudioIONode() ? 0.08f : 0.045f);
-    Colour bgTop = bgBase.brighter(0.08f);
-    Colour bgBottom = bgBase.darker(0.08f);
+    Colour bgBase = colours["Plugin Background"].interpolatedWith(accentColour, isAudioIONode() ? 0.10f : 0.065f);
+    Colour bgTop = bgBase.brighter(0.11f);
+    Colour bgBottom = bgBase.darker(0.13f);
     g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBottom, 0, h, false));
     g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
 
@@ -655,11 +655,11 @@ void PluginComponent::paint(Graphics& g)
     const float headerHeight = 23.0f;
     {
         Colour headerTop, headerBottom;
-        Colour base = colours["Plugin Border"].interpolatedWith(accentColour, isAudioIONode() ? 0.42f : 0.30f);
+        Colour base = colours["Plugin Background"].interpolatedWith(accentColour, isAudioIONode() ? 0.34f : 0.24f);
         if (bypassed)
             base = base.interpolatedWith(colours["Warning Colour"], 0.22f);
-        headerTop = base.brighter(0.14f);
-        headerBottom = base.darker(0.10f);
+        headerTop = base.brighter(0.16f);
+        headerBottom = base.darker(0.08f);
         g.setGradientFill(ColourGradient(headerTop, 0, 2.0f, headerBottom, 0, headerHeight + 2.0f, false));
     }
     {
@@ -2113,9 +2113,22 @@ void PluginPinComponent::paint(Graphics& g)
         else
             pinShape.addEllipse(0.0f, 0.0f, (float)getWidth(), (float)getHeight());
 
-        melatonin::DropShadow pinGlow{baseColour.withAlpha(0.6f), 6, {0, 0}};
+        melatonin::DropShadow pinGlow{baseColour.withAlpha(0.32f), 6, {0, 0}};
         pinGlow.render(g, pinShape);
     }
+
+    auto socketBounds = pinBounds.expanded(1.0f);
+    g.setColour(colours["Window Background"].withAlpha(0.58f));
+    if (audioPin)
+        g.fillRoundedRectangle(socketBounds, pinCorner + 1.0f);
+    else
+        g.fillEllipse(socketBounds);
+
+    g.setColour(colours["Plugin Border"].interpolatedWith(baseColour, 0.22f).withAlpha(0.72f));
+    if (audioPin)
+        g.drawRoundedRectangle(socketBounds.reduced(0.5f), pinCorner + 1.0f, 1.0f);
+    else
+        g.drawEllipse(socketBounds.reduced(0.5f), 1.0f);
 
     // === 3D Gradient body ===
     ColourGradient sphereGrad(baseColour.brighter(0.4f), cx - radius * 0.3f, cy - radius * 0.3f,
