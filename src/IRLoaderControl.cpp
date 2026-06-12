@@ -12,10 +12,9 @@
 
 #include "ColourScheme.h"
 #include "FontManager.h"
+#include "IconManager.h"
 #include "IRLoaderProcessor.h"
 #include "NAMModelBrowser.h"
-
-#include <array>
 
 namespace
 {
@@ -113,26 +112,8 @@ void drawIRLoaderLed(Graphics& g, Rectangle<float> dot, Colour colour, bool acti
 
 void drawIRLoaderCabinetGlyph(Graphics& g, Rectangle<float> area, const IRLoaderPalette& palette, bool active)
 {
-    g.setColour(palette.accent2.withAlpha(active ? 0.16f : 0.08f));
-    g.fillRoundedRectangle(area, 5.0f);
-    g.setColour(palette.edgeHi.withAlpha(0.54f));
-    g.drawRoundedRectangle(area.reduced(0.5f), 5.0f, 1.0f);
-
-    const auto coneSize = jmin(area.getWidth(), area.getHeight()) * 0.28f;
-    const std::array<Point<float>, 4> centres = {
-        Point<float>{area.getX() + area.getWidth() * 0.33f, area.getY() + area.getHeight() * 0.34f},
-        Point<float>{area.getX() + area.getWidth() * 0.67f, area.getY() + area.getHeight() * 0.34f},
-        Point<float>{area.getX() + area.getWidth() * 0.33f, area.getY() + area.getHeight() * 0.70f},
-        Point<float>{area.getX() + area.getWidth() * 0.67f, area.getY() + area.getHeight() * 0.70f}};
-
-    for (const auto& centre : centres)
-    {
-        const auto cone = Rectangle<float>(coneSize, coneSize).withCentre(centre);
-        g.setColour(palette.accent2.withAlpha(active ? 0.84f : 0.54f));
-        g.drawEllipse(cone, 1.1f);
-        g.setColour(palette.accent2.withAlpha(active ? 0.18f : 0.08f));
-        g.fillEllipse(cone.reduced(coneSize * 0.28f));
-    }
+    IconManager::getInstance().drawDomainGlyphTile(g, area, IconManager::DomainGlyph::Cabinet, palette.accent2, active,
+                                                   5.0f);
 }
 } // namespace
 
