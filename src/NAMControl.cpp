@@ -412,6 +412,9 @@ void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
 {
     // Check if this label belongs to a slider (value display)
     bool isSliderTextBox = (dynamic_cast<Slider*>(label.getParentComponent()) != nullptr);
+    const bool isModelChip = label.getName() == "modelName" || label.getName() == "irName" ||
+                             label.getName() == "ir2Name";
+    const bool isArchChip = label.getName() == "modelArch";
 
     if (isSliderTextBox)
     {
@@ -442,6 +445,39 @@ void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
             g.setColour(textColour);
             g.setFont(label.getFont());
             g.drawText(label.getText(), bounds.reduced(2, 0), label.getJustificationType(), false);
+        }
+    }
+    else if (isModelChip || isArchChip)
+    {
+        auto bounds = label.getLocalBounds().toFloat().reduced(0.5f);
+        const bool loaded = !label.getText().startsWithIgnoreCase("No ") && label.getText().isNotEmpty();
+        const auto accent = isArchChip ? ampAccent : (loaded ? ampAccent : ampBorder);
+        const auto bg = loaded ? ampInsetBg.interpolatedWith(ampAccent, 0.08f) : ampInsetBg;
+
+        ColourGradient chipFill(bg.brighter(0.05f), bounds.getX(), bounds.getY(), bg.darker(0.12f), bounds.getX(),
+                                bounds.getBottom(), false);
+        g.setGradientFill(chipFill);
+        g.fillRoundedRectangle(bounds, 5.0f);
+
+        g.setColour(Colours::black.withAlpha(0.14f));
+        g.drawLine(bounds.getX() + 5.0f, bounds.getY() + 1.0f, bounds.getRight() - 5.0f, bounds.getY() + 1.0f, 1.0f);
+
+        if (loaded)
+        {
+            g.setColour(accent.withAlpha(0.20f));
+            g.fillRoundedRectangle(bounds.getX() + 1.5f, bounds.getY() + 4.0f, 3.0f, bounds.getHeight() - 8.0f,
+                                   1.5f);
+        }
+
+        g.setColour(accent.withAlpha(loaded || isArchChip ? 0.58f : 0.28f));
+        g.drawRoundedRectangle(bounds, 5.0f, loaded || isArchChip ? 1.1f : 0.8f);
+
+        if (!label.isBeingEdited())
+        {
+            auto textArea = label.getLocalBounds().reduced(isArchChip ? 2 : 8, 0);
+            g.setColour(loaded || isArchChip ? ampTextBright : ampTextDim);
+            g.setFont(label.getFont());
+            g.drawText(label.getText(), textArea, label.getJustificationType(), true);
         }
     }
     else
