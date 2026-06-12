@@ -1994,7 +1994,7 @@ void NAMModelBrowserComponent::paintOverChildren(Graphics& g)
 
 void NAMModelBrowserComponent::resized()
 {
-    const bool compactLayout = getWidth() < 620 || getHeight() < 460;
+    const bool compactLayout = getWidth() < 780 || getHeight() < 620;
     const int outerPadding = compactLayout ? 10 : 16;
     auto bounds = getLocalBounds().reduced(outerPadding);
     libraryRailBounds = {};
