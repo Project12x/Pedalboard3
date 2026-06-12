@@ -450,6 +450,25 @@ String makeNAMPreviewSummary(const NAMModelInfo& model, const NAMPreviewFields& 
     return parts.joinIntoString("  |  ");
 }
 
+String makeNAMDetailDescription(const NAMModelInfo& model, const NAMPreviewFields& fields)
+{
+    if (fields.note.isNotEmpty())
+        return fields.note.replaceCharacter('\n', ' ').trim();
+
+    StringArray parts;
+    if (fields.rig.isNotEmpty())
+        parts.add(fields.rig);
+    if (fields.cabinet.isNotEmpty())
+        parts.add(fields.cabinet);
+    if (fields.microphone.isNotEmpty())
+        parts.add(fields.microphone);
+
+    if (parts.isEmpty())
+        return makeNAMPreviewSummary(model, fields);
+
+    return parts.joinIntoString("  |  ");
+}
+
 String inferToneTag(const String& text)
 {
     const auto haystack = text.toLowerCase();
@@ -1388,6 +1407,12 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     createLabelPair(sampleRateLabel, sampleRateValue, "Sample Rate:", "-");
     createLabelPair(loudnessLabel, loudnessValue, "Loudness:", "-");
 
+    modelDescriptionLabel = std::make_unique<Label>("modelDescription", "Select a model to preview its capture notes.");
+    modelDescriptionLabel->setFont(FontManager::getInstance().getLabelFont());
+    modelDescriptionLabel->setColour(Label::textColourId, palette.text.withAlpha(0.66f));
+    modelDescriptionLabel->setJustificationType(Justification::centred);
+    addAndMakeVisible(modelDescriptionLabel.get());
+
     metadataLabel = std::make_unique<Label>("", "Metadata:");
     metadataLabel->setFont(FontManager::getInstance().getLabelFont());
     metadataLabel->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
@@ -1593,6 +1618,11 @@ void NAMModelBrowserComponent::refreshColours()
     refreshLabelPair(sampleRateLabel.get(), sampleRateValue.get());
     refreshLabelPair(loudnessLabel.get(), loudnessValue.get());
     refreshLabelPair(filePathLabel.get(), filePathValue.get());
+    if (modelDescriptionLabel)
+    {
+        modelDescriptionLabel->setFont(FontManager::getInstance().getLabelFont());
+        modelDescriptionLabel->setColour(Label::textColourId, palette.text.withAlpha(0.64f));
+    }
 
     metadataLabel->setColour(Label::textColourId, palette.text.withAlpha(0.62f));
     metadataDisplay->setColour(TextEditor::backgroundColourId, palette.inset);
@@ -1793,15 +1823,15 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 const bool selectedReady = selectedModel != nullptr && isReadableNAMModel(*selectedModel);
                 const auto fields = selectedModel != nullptr ? extractNAMPreviewFields(*selectedModel) : NAMPreviewFields{};
 
-                auto previewCard = nameLabel->getBounds()
-                                       .getUnion(nameValue->getBounds())
+                auto previewCard = nameValue->getBounds()
                                        .getUnion(authorLabel->getBounds())
                                        .getUnion(authorValue->getBounds())
+                                       .getUnion(modelDescriptionLabel->getBounds())
                                        .toFloat()
                                        .expanded(10.0f, 5.0f);
                 previewCard.setLeft(detailsBounds.getX() + 14.0f);
                 previewCard.setRight(detailsBounds.getRight() - 14.0f);
-                previewCard.setBottom(previewCard.getBottom() + 20.0f);
+                previewCard.setBottom(previewCard.getBottom() + 24.0f);
 
                 g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
                                           : palette.text.withAlpha(0.045f));
@@ -1814,14 +1844,14 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 if (showPreviewGlyph)
                 {
                     auto glyph =
-                        Rectangle<float>(previewCard.getRight() - 58.0f, previewCard.getY() + 10.0f, 44.0f, 44.0f);
+                        Rectangle<float>(previewCard.getRight() - 60.0f, previewCard.getY() + 12.0f, 44.0f, 44.0f);
                     const auto archColour = selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette)
                                                           : palette.accent2;
                     drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"],
                                    selectedModel != nullptr);
                 }
 
-                auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(22.0f);
+                auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(24.0f);
                 const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
                 if (chipRow.getWidth() >= stateChipWidth)
                     drawBrowserChip(g, chipRow.removeFromLeft(stateChipWidth),
@@ -1874,7 +1904,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 return;
 
             auto row = label->getBounds().getUnion(value->getBounds()).expanded(7, 3).toFloat();
-            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 250.0f && row.getY() < detailsBounds.getY() + 104.0f ? 96.0f : 16.0f));
+            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 250.0f && row.getY() < detailsBounds.getY() + 124.0f ? 96.0f : 16.0f));
             row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
 
             g.setColour((rowIndex % 2 == 0 ? palette.inset : palette.face).withAlpha(0.72f));
@@ -1983,12 +2013,18 @@ void NAMModelBrowserComponent::resized()
     const int localTabWidth = compactLayout ? 58 : 70;
     const int onlineTabWidth = compactLayout ? 64 : 70;
     const int irTabWidth = compactLayout ? 44 : 55;
-    const int availableTitleWidth = titleRow.getWidth() - titleGap - localTabWidth - 2 - onlineTabWidth - 2 - irTabWidth;
-    const int titleWidth = jlimit(compactLayout ? 112 : 160, compactLayout ? 190 : 220, availableTitleWidth);
+    const int tabStripWidth = localTabWidth + 2 + onlineTabWidth + 2 + irTabWidth;
+    const int reservedTabWidth = tabStripWidth + titleGap;
+    const int availableTitleWidth = titleRow.getWidth() - reservedTabWidth;
+    const int titleWidth = availableTitleWidth >= (compactLayout ? 96 : 150)
+                               ? jlimit(compactLayout ? 96 : 150, compactLayout ? 190 : 220, availableTitleWidth)
+                               : 0;
     titleLabel->setBounds(titleRow.removeFromLeft(titleWidth));
+    titleLabel->setVisible(titleWidth > 0);
 
-    // Tab buttons on the right side of title — wider for pill capsule style
-    titleRow.removeFromLeft(titleGap);
+    // The tabs are primary navigation and must remain visible at high app scale.
+    if (titleWidth > 0)
+        titleRow.removeFromLeft(titleGap);
     localTabButton->setBounds(titleRow.removeFromLeft(localTabWidth));
     titleRow.removeFromLeft(2);
     onlineTabButton->setBounds(titleRow.removeFromLeft(onlineTabWidth));
@@ -2041,6 +2077,7 @@ void NAMModelBrowserComponent::resized()
         sampleRateValue->setVisible(false);
         loudnessLabel->setVisible(false);
         loudnessValue->setVisible(false);
+        modelDescriptionLabel->setVisible(false);
         metadataLabel->setVisible(false);
         metadataDisplay->setVisible(false);
         filePathLabel->setVisible(false);
@@ -2176,6 +2213,7 @@ void NAMModelBrowserComponent::resized()
     sampleRateValue->setVisible(true);
     loudnessLabel->setVisible(true);
     loudnessValue->setVisible(true);
+    modelDescriptionLabel->setVisible(true);
     metadataLabel->setVisible(true);
     metadataDisplay->setVisible(true);
     filePathLabel->setVisible(true);
@@ -2265,16 +2303,18 @@ void NAMModelBrowserComponent::resized()
     };
 
     // -- Identity / preview section --
-    auto heroArea = detailsArea.removeFromTop(compactLayout ? 70 : 104);
+    auto heroArea = detailsArea.removeFromTop(compactLayout ? 84 : 118);
     auto heroText = heroArea;
     if (!compactLayout && detailsPanelBounds.getWidth() >= 330)
         heroText.removeFromRight(78);
-    nameLabel->setBounds(heroText.removeFromTop(compactLayout ? 15 : 18));
-    nameValue->setBounds(heroText.removeFromTop(compactLayout ? 23 : 34));
-    heroText.removeFromTop(compactLayout ? 1 : 2);
+    nameLabel->setVisible(false);
+    nameLabel->setBounds({});
+    nameValue->setBounds(heroText.removeFromTop(compactLayout ? 24 : 34));
     auto authorRow = heroText.removeFromTop(compactLayout ? 19 : 22);
     authorLabel->setBounds(authorRow.removeFromLeft(labelWidth));
     authorValue->setBounds(authorRow);
+    heroText.removeFromTop(compactLayout ? 2 : 4);
+    modelDescriptionLabel->setBounds(heroText.removeFromTop(compactLayout ? 31 : 34));
     detailsArea.removeFromTop(compactLayout ? 4 : 8);
 
     // Separator after Identity
@@ -2543,6 +2583,7 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         const auto fields = extractNAMPreviewFields(*model);
         nameValue->setText(String(model->name), dontSendNotification);
         architectureValue->setText(String(model->architecture), dontSendNotification);
+        modelDescriptionLabel->setText(makeNAMDetailDescription(*model, fields), dontSendNotification);
 
         sampleRateValue->setText(formatNAMSampleRate(model->expectedSampleRate), dontSendNotification);
         loudnessValue->setText(formatNAMLoudness(*model), dontSendNotification);
@@ -2632,6 +2673,7 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
         loudnessValue->setText("-", dontSendNotification);
         filePathValue->setText("-", dontSendNotification);
         filePathValue->setTooltip("");
+        modelDescriptionLabel->setText("Select a model to preview its capture notes.", dontSendNotification);
         metadataDisplay->setText("", dontSendNotification);
         if (loadButton)
             loadButton->setEnabled(false);

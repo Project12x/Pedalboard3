@@ -175,6 +175,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     std::unique_ptr<Label> sampleRateValue;
     std::unique_ptr<Label> loudnessLabel;
     std::unique_ptr<Label> loudnessValue;
+    std::unique_ptr<Label> modelDescriptionLabel;
     std::unique_ptr<Label> metadataLabel;
     std::unique_ptr<TextEditor> metadataDisplay;
     std::unique_ptr<Label> filePathLabel;
