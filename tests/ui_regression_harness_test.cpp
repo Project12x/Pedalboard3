@@ -498,3 +498,73 @@ TEST_CASE("Visual QA script keeps scaled dialog matrix scoped to documented surf
           std::string::npos);
     CHECK(source->find("foreach ($dialog in $scaledDialogSpecs)") != std::string::npos);
 }
+
+TEST_CASE("NAM and IR library polish source contract covers favorites and IR folder setting",
+          "[ui][regression][visual][source][library]")
+{
+    const auto browserHeader = loadSourceFile("src/NAMModelBrowser.h");
+    const auto browserSource = loadSourceFile("src/NAMModelBrowser.cpp");
+    const auto preferencesHeader = loadSourceFile("src/PreferencesDialog.h");
+    const auto preferencesSource = loadSourceFile("src/PreferencesDialog.cpp");
+
+    REQUIRE(browserHeader.has_value());
+    REQUIRE(browserSource.has_value());
+    REQUIRE(preferencesHeader.has_value());
+    REQUIRE(preferencesSource.has_value());
+
+    CHECK(browserSource->find("kNamFavoritesSettingsKey = \"NAMModelFavorites\"") != std::string::npos);
+    CHECK(browserSource->find("kIrFavoritesSettingsKey = \"IRFavorites\"") != std::string::npos);
+    CHECK(browserSource->find("kIrLibraryDirectorySettingsKey = \"IRLibraryDirectory\"") != std::string::npos);
+    CHECK(browserSource->find("getStringArray(kNamFavoritesSettingsKey)") != std::string::npos);
+    CHECK(browserSource->find("setStringArray(kNamFavoritesSettingsKey, favouriteModelPaths)") != std::string::npos);
+    CHECK(browserSource->find("getStringArray(kIrFavoritesSettingsKey)") != std::string::npos);
+    CHECK(browserSource->find("setStringArray(kIrFavoritesSettingsKey, favouriteIRPaths)") != std::string::npos);
+
+    CHECK(browserHeader->find("StringArray favouriteModelPaths;") != std::string::npos);
+    CHECK(browserHeader->find("StringArray favouriteIRPaths;") != std::string::npos);
+    CHECK(browserHeader->find("std::unique_ptr<TextButton> favoriteButton;") != std::string::npos);
+    CHECK(browserHeader->find("std::unique_ptr<TextButton> irFavoriteButton;") != std::string::npos);
+    CHECK(browserHeader->find("bool isFavouriteModel(const NAMModelInfo& model) const;") != std::string::npos);
+    CHECK(browserHeader->find("bool isFavouriteIR(const IRFileInfo& ir) const;") != std::string::npos);
+    CHECK(browserHeader->find("bool syncIRDirectoryFromSettingsIfAllowed();") != std::string::npos);
+    CHECK(browserHeader->find("bool irDirectoryManuallySelected = false;") != std::string::npos);
+
+    CHECK(browserSource->find("setMinimumHorizontalScale(0.72f)") != std::string::npos);
+    CHECK(browserSource->find("setJustificationType(Justification::centredLeft)") != std::string::npos);
+    CHECK(browserSource->find("const auto separatorBounds = detailsPanelBounds.toFloat().reduced(18.0f, 0.0f);") !=
+          std::string::npos);
+    CHECK(browserSource->find("bounds.removeFromTop(compactLayout ? 8 : 12);") != std::string::npos);
+    CHECK(browserSource->find("const bool showRail = !compactLayout && bounds.getWidth() >= 720;") !=
+          std::string::npos);
+    CHECK(browserSource->find("jlimit(170, 230, roundToInt(bounds.getWidth() * 0.44f))") != std::string::npos);
+    CHECK(browserSource->find("bool NAMModelBrowserComponent::syncIRDirectoryFromSettingsIfAllowed()") !=
+          std::string::npos);
+    CHECK(browserSource->find("if (irDirectoryManuallySelected)") != std::string::npos);
+    CHECK(browserSource->find("irDirectoryManuallySelected = true;") != std::string::npos);
+
+    const auto switchToTabBlockStart = browserSource->find("void NAMModelBrowserComponent::switchToTab");
+    REQUIRE(switchToTabBlockStart != std::string::npos);
+    const auto switchToTabBlockEnd = browserSource->find("void NAMModelBrowserComponent::textEditorTextChanged",
+                                                         switchToTabBlockStart);
+    REQUIRE(switchToTabBlockEnd != std::string::npos);
+    const auto switchToTabBlock =
+        browserSource->substr(switchToTabBlockStart, switchToTabBlockEnd - switchToTabBlockStart);
+    CHECK(switchToTabBlock.find("syncIRDirectoryFromSettingsIfAllowed()") != std::string::npos);
+    CHECK(switchToTabBlock.find("scanIRDirectory(irDirectory)") != std::string::npos);
+
+    const auto showWindowBlockStart = browserSource->find("void NAMModelBrowser::showWindow");
+    REQUIRE(showWindowBlockStart != std::string::npos);
+    const auto showWindowBlockEnd = browserSource->find("//==============================================================================",
+                                                        showWindowBlockStart);
+    REQUIRE(showWindowBlockEnd != std::string::npos);
+    const auto showWindowBlock = browserSource->substr(showWindowBlockStart, showWindowBlockEnd - showWindowBlockStart);
+    CHECK(showWindowBlock.find("syncIRDirectoryFromSettingsIfAllowed()") != std::string::npos);
+
+    CHECK(preferencesHeader->find("Label* irDirLabel;") != std::string::npos);
+    CHECK(preferencesHeader->find("Label* irDirValue;") != std::string::npos);
+    CHECK(preferencesHeader->find("TextButton* irDirBrowseButton;") != std::string::npos);
+    CHECK(preferencesSource->find("kIrLibraryDirectorySettingsKey = \"IRLibraryDirectory\"") != std::string::npos);
+    CHECK(preferencesSource->find("getString(kIrLibraryDirectorySettingsKey, \"\")") != std::string::npos);
+    CHECK(preferencesSource->find("setValue(kIrLibraryDirectorySettingsKey, selectedDir.getFullPathName())") !=
+          std::string::npos);
+}

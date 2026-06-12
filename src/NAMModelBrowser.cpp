@@ -14,6 +14,7 @@
 #include "IconManager.h"
 #include "NAMOnlineBrowser.h"
 #include "NAMProcessor.h"
+#include "SettingsManager.h"
 
 #include <melatonin_blur/melatonin_blur.h>
 #include <nlohmann/json.hpp>
@@ -23,6 +24,10 @@
 
 namespace
 {
+constexpr const char* kNamFavoritesSettingsKey = "NAMModelFavorites";
+constexpr const char* kIrFavoritesSettingsKey = "IRFavorites";
+constexpr const char* kIrLibraryDirectorySettingsKey = "IRLibraryDirectory";
+
 String describeBrowserCount(const File& primaryDirectory, const String& secondarySource, int totalCount,
                             int filteredCount, const String& singular, const String& plural, const String& query)
 {
@@ -47,6 +52,28 @@ String makeEmptyStateCopy(const String& title, const String& action, const Strin
         return "No matches for \"" + query.trim() + "\"\n\nTry a broader search or clear the search field.";
 
     return title + "\n\n" + action;
+}
+
+File getDefaultIRLibraryDirectory()
+{
+    return File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3").getChildFile("IR");
+}
+
+File getConfiguredIRLibraryDirectory()
+{
+    const auto savedDirectory = SettingsManager::getInstance().getString(kIrLibraryDirectorySettingsKey, "");
+    if (savedDirectory.isNotEmpty())
+    {
+        File configuredDirectory(savedDirectory);
+        if (configuredDirectory.isDirectory() || configuredDirectory.createDirectory())
+            return configuredDirectory;
+    }
+
+    auto defaultDirectory = getDefaultIRLibraryDirectory();
+    if (!defaultDirectory.isDirectory())
+        defaultDirectory.createDirectory();
+
+    return defaultDirectory.isDirectory() ? defaultDirectory : File::getSpecialLocation(File::userDocumentsDirectory);
 }
 
 String formatNAMSampleRate(double sampleRate)
@@ -1250,6 +1277,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 {
     auto& colours = ColourScheme::getInstance().colours;
     const auto palette = makeBrowserPalette();
+    favouriteModelPaths = SettingsManager::getInstance().getStringArray(kNamFavoritesSettingsKey);
+    favouriteIRPaths = SettingsManager::getInstance().getStringArray(kIrFavoritesSettingsKey);
 
     // Title
     titleLabel = std::make_unique<Label>("title", "NAM Library");
@@ -1334,6 +1363,12 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     styleButton(loadButton.get(), true); // Primary action
     addAndMakeVisible(loadButton.get());
 
+    favoriteButton = std::make_unique<TextButton>("Star");
+    favoriteButton->addListener(this);
+    favoriteButton->setTooltip("Toggle selected model favorite");
+    styleButton(favoriteButton.get());
+    addAndMakeVisible(favoriteButton.get());
+
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->addListener(this);
     styleButton(closeButton.get());
@@ -1372,6 +1407,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     createLabelPair(nameLabel, nameValue, "Name:", "-");
     nameLabel->setText("Selected:", dontSendNotification);
     nameValue->setFont(FontManager::getInstance().getSubheadingFont());
+    nameValue->setMinimumHorizontalScale(0.72f);
+    nameValue->setJustificationType(Justification::centredLeft);
     createLabelPair(authorLabel, authorValue, "Author:", "-");
     createLabelPair(modelTypeLabel, modelTypeValue, "Type:", "-");
     createLabelPair(architectureLabel, architectureValue, "Architecture:", "-");
@@ -1400,7 +1437,8 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     // File path in details
     createLabelPair(filePathLabel, filePathValue, "File:", "-");
-    filePathValue->setMinimumHorizontalScale(0.5f);
+    filePathValue->setMinimumHorizontalScale(0.72f);
+    filePathValue->setJustificationType(Justification::centredLeft);
 
     // Delete button
     deleteButton = std::make_unique<TextButton>("Delete Model");
@@ -1470,6 +1508,13 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     irLoadButton->setVisible(false);
     addAndMakeVisible(irLoadButton.get());
 
+    irFavoriteButton = std::make_unique<TextButton>("Star");
+    irFavoriteButton->addListener(this);
+    irFavoriteButton->setTooltip("Toggle selected IR favorite");
+    styleButton(irFavoriteButton.get());
+    irFavoriteButton->setVisible(false);
+    addAndMakeVisible(irFavoriteButton.get());
+
     // IR details panel
     irDetailsTitle = std::make_unique<Label>("irDetailsTitle", "IR Details");
     irDetailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
@@ -1494,12 +1539,15 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     };
 
     createIRLabelPair(irNameLabel, irNameValue, "Name:", "-");
+    irNameValue->setMinimumHorizontalScale(0.72f);
+    irNameValue->setJustificationType(Justification::centredLeft);
     createIRLabelPair(irDurationLabel, irDurationValue, "Duration:", "-");
     createIRLabelPair(irSampleRateLabel, irSampleRateValue, "Sample Rate:", "-");
     createIRLabelPair(irChannelsLabel, irChannelsValue, "Channels:", "-");
     createIRLabelPair(irFileSizeLabel, irFileSizeValue, "File Size:", "-");
     createIRLabelPair(irFilePathLabel, irFilePathValue, "File:", "-");
-    irFilePathValue->setMinimumHorizontalScale(0.5f);
+    irFilePathValue->setMinimumHorizontalScale(0.72f);
+    irFilePathValue->setJustificationType(Justification::centredLeft);
 
     // Start with NAM download directory (same as Tone3000DownloadManager uses)
     currentDirectory =
@@ -1510,13 +1558,10 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
         currentDirectory.createDirectory();
 
     // IR directory (separate from NAM models)
-    irDirectory = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3").getChildFile("IR");
-
-    // Create IR directory if it doesn't exist
-    if (!irDirectory.isDirectory())
-        irDirectory.createDirectory();
+    irDirectory = getConfiguredIRLibraryDirectory();
 
     setSize(700, 500);
+    refreshFavouriteButtons();
 
     // Auto-scan on creation
     scanDirectory(currentDirectory);
@@ -1531,10 +1576,12 @@ NAMModelBrowserComponent::~NAMModelBrowserComponent()
     refreshButton->setLookAndFeel(nullptr);
     browseFolderButton->setLookAndFeel(nullptr);
     loadButton->setLookAndFeel(nullptr);
+    favoriteButton->setLookAndFeel(nullptr);
     closeButton->setLookAndFeel(nullptr);
     deleteButton->setLookAndFeel(nullptr);
     irBrowseFolderButton->setLookAndFeel(nullptr);
     irLoadButton->setLookAndFeel(nullptr);
+    irFavoriteButton->setLookAndFeel(nullptr);
 }
 
 void NAMModelBrowserComponent::refreshColours()
@@ -1573,6 +1620,7 @@ void NAMModelBrowserComponent::refreshColours()
     styleButton(refreshButton.get());
     styleButton(browseFolderButton.get());
     styleButton(loadButton.get(), true);
+    styleButton(favoriteButton.get());
     styleButton(closeButton.get());
 
     // Details panel labels
@@ -1608,6 +1656,7 @@ void NAMModelBrowserComponent::refreshColours()
 
     // IR browser buttons
     styleButton(irBrowseFolderButton.get());
+    styleButton(irFavoriteButton.get());
     irLoadButton->setColour(TextButton::buttonColourId, palette.accent);
     irLoadButton->setColour(TextButton::buttonOnColourId, palette.accent.brighter(0.2f));
     irLoadButton->setColour(TextButton::textColourOffId, palette.accent);
@@ -1920,14 +1969,12 @@ void NAMModelBrowserComponent::paint(Graphics& g)
     // Draw section separators in details panel
     if ((currentTab == 0 || currentTab == 2) && !detailsSeparatorPositions.empty())
     {
-        auto detailsX = nameLabel ? nameLabel->getX() : 0;
-        auto detailsRight = nameValue ? nameValue->getRight() : getWidth();
-
-        g.setColour(palette.edge.withAlpha(0.5f));
+        const auto separatorBounds = detailsPanelBounds.toFloat().reduced(18.0f, 0.0f);
         for (auto y : detailsSeparatorPositions)
         {
-            float yf = static_cast<float>(y) + 4.0f;
-            g.drawLine(static_cast<float>(detailsX), yf, static_cast<float>(detailsRight), yf, 1.0f);
+            const auto yf = static_cast<float>(y);
+            g.setColour(palette.edge.withAlpha(0.46f));
+            g.drawLine(separatorBounds.getX(), yf, separatorBounds.getRight(), yf, 1.0f);
         }
     }
 
@@ -1984,6 +2031,7 @@ void NAMModelBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(outerPadding);
     libraryRailBounds = {};
     detailsPanelBounds = {};
+    detailsSeparatorPositions.clear();
 
     auto& fonts = FontManager::getInstance();
     titleLabel->setFont(compactLayout ? fonts.getSubheadingFont() : fonts.getHeadingFont());
@@ -2016,7 +2064,7 @@ void NAMModelBrowserComponent::resized()
     titleRow.removeFromLeft(2);
     irTabButton->setBounds(titleRow.removeFromLeft(irTabWidth));
 
-    bounds.removeFromTop(compactLayout ? 6 : 8);
+    bounds.removeFromTop(compactLayout ? 8 : 12);
 
     // Hide all IR components by default
     auto hideIRComponents = [this]()
@@ -2026,6 +2074,7 @@ void NAMModelBrowserComponent::resized()
             irEmptyStateLabel->setVisible(false);
         irBrowseFolderButton->setVisible(false);
         irLoadButton->setVisible(false);
+        irFavoriteButton->setVisible(false);
         irDetailsTitle->setVisible(false);
         irNameLabel->setVisible(false);
         irNameValue->setVisible(false);
@@ -2048,6 +2097,7 @@ void NAMModelBrowserComponent::resized()
         refreshButton->setVisible(false);
         browseFolderButton->setVisible(false);
         loadButton->setVisible(false);
+        favoriteButton->setVisible(false);
         modelList->setVisible(false);
         detailsTitle->setVisible(false);
         nameLabel->setVisible(false);
@@ -2095,33 +2145,37 @@ void NAMModelBrowserComponent::resized()
         onlineBrowser->setVisible(false);
 
         // Search row with IR-specific browse button
-        auto searchRow = bounds.removeFromTop(32);
-        refreshButton->setBounds(searchRow.removeFromRight(70));
+        const int rowGap = compactLayout ? 6 : 8;
+        auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 32);
+        refreshButton->setBounds(searchRow.removeFromRight(compactLayout ? 62 : 70));
         refreshButton->setVisible(true);
-        searchRow.removeFromRight(8);
-        irBrowseFolderButton->setBounds(searchRow.removeFromRight(120));
+        searchRow.removeFromRight(rowGap);
+        irBrowseFolderButton->setBounds(searchRow.removeFromRight(compactLayout ? 112 : 124));
         irBrowseFolderButton->setVisible(true);
-        searchRow.removeFromRight(8);
+        searchRow.removeFromRight(rowGap);
         searchBox->setBounds(searchRow);
         searchBox->setVisible(true);
-        bounds.removeFromTop(8);
+        bounds.removeFromTop(compactLayout ? 6 : 8);
 
         // Status bar at bottom
-        auto statusRow = bounds.removeFromBottom(20);
+        auto statusRow = bounds.removeFromBottom(compactLayout ? 18 : 20);
         statusLabel->setBounds(statusRow);
         statusLabel->setVisible(true);
-        bounds.removeFromBottom(4);
+        bounds.removeFromBottom(compactLayout ? 3 : 4);
 
         // Button row at bottom
-        auto buttonRow = bounds.removeFromBottom(36);
-        bounds.removeFromBottom(8);
-        closeButton->setBounds(buttonRow.removeFromRight(70));
-        buttonRow.removeFromRight(8);
-        irLoadButton->setBounds(buttonRow.removeFromRight(80));
+        auto buttonRow = bounds.removeFromBottom(compactLayout ? 34 : 36);
+        bounds.removeFromBottom(compactLayout ? 6 : 8);
+        closeButton->setBounds(buttonRow.removeFromRight(compactLayout ? 64 : 70));
+        buttonRow.removeFromRight(rowGap);
+        irFavoriteButton->setBounds(buttonRow.removeFromRight(compactLayout ? 72 : 84));
+        irFavoriteButton->setVisible(true);
+        buttonRow.removeFromRight(rowGap);
+        irLoadButton->setBounds(buttonRow.removeFromRight(compactLayout ? 80 : 86));
         irLoadButton->setVisible(true);
 
         // Split remaining area: library rail, list, and focused inspector card.
-        const bool showRail = bounds.getWidth() >= 720;
+        const bool showRail = !compactLayout && bounds.getWidth() >= 720;
         if (showRail)
         {
             const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
@@ -2129,10 +2183,15 @@ void NAMModelBrowserComponent::resized()
             bounds.removeFromLeft(12);
         }
 
-        const int detailsWidth = jlimit(240, 330, juce::roundToInt(bounds.getWidth() * 0.33f));
+        const int splitGap = compactLayout ? 8 : 12;
+        const int minimumListWidth = compactLayout ? 150 : 220;
+        const int desiredDetailsWidth = compactLayout ? jlimit(170, 230, roundToInt(bounds.getWidth() * 0.44f))
+                                                      : jlimit(250, 350, roundToInt(bounds.getWidth() * 0.34f));
+        const int maxDetailsWidth = jmax(120, bounds.getWidth() - splitGap - minimumListWidth);
+        const int detailsWidth = jmin(desiredDetailsWidth, maxDetailsWidth);
         auto detailsArea = bounds.removeFromRight(detailsWidth);
         detailsPanelBounds = detailsArea;
-        bounds.removeFromRight(12);
+        bounds.removeFromRight(splitGap);
         auto listArea = bounds;
 
         // IR list
@@ -2142,20 +2201,26 @@ void NAMModelBrowserComponent::resized()
         updateIRBrowserState();
 
         // IR details panel
-        detailsArea.reduce(14, 12);
+        detailsArea.reduce(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
+        const int labelWidth = compactLayout ? 72 : 90;
+        const int rowH = compactLayout ? 19 : 22;
+        const int detailRowGap = compactLayout ? 2 : 4;
+        const int sectionGap = compactLayout ? 6 : 10;
 
-        irDetailsTitle->setBounds(detailsArea.removeFromTop(22));
+        irDetailsTitle->setBounds(detailsArea.removeFromTop(compactLayout ? 20 : 22));
         irDetailsTitle->setVisible(true);
-        detailsArea.removeFromTop(82);
+        detailsArea.removeFromTop(compactLayout ? 64 : 82);
+        detailsSeparatorPositions.push_back(detailsArea.getY());
+        detailsArea.removeFromTop(sectionGap);
 
-        auto layoutIRLabelValue = [&detailsArea](Label* label, Label* value)
+        auto layoutIRLabelValue = [&detailsArea, labelWidth, rowH, detailRowGap](Label* label, Label* value)
         {
-            auto row = detailsArea.removeFromTop(22);
-            label->setBounds(row.removeFromLeft(90));
+            auto row = detailsArea.removeFromTop(rowH);
+            label->setBounds(row.removeFromLeft(labelWidth));
             label->setVisible(true);
             value->setBounds(row);
             value->setVisible(true);
-            detailsArea.removeFromTop(4);
+            detailsArea.removeFromTop(detailRowGap);
         };
 
         layoutIRLabelValue(irNameLabel.get(), irNameValue.get());
@@ -2164,10 +2229,11 @@ void NAMModelBrowserComponent::resized()
         layoutIRLabelValue(irChannelsLabel.get(), irChannelsValue.get());
         layoutIRLabelValue(irFileSizeLabel.get(), irFileSizeValue.get());
 
-        detailsArea.removeFromTop(8);
+        detailsSeparatorPositions.push_back(detailsArea.getY());
+        detailsArea.removeFromTop(sectionGap);
 
         // File path row
-        auto fileRow = detailsArea.removeFromTop(22);
+        auto fileRow = detailsArea.removeFromTop(rowH);
         irFilePathLabel->setBounds(fileRow.removeFromLeft(40));
         irFilePathLabel->setVisible(true);
         irFilePathValue->setBounds(fileRow);
@@ -2185,6 +2251,7 @@ void NAMModelBrowserComponent::resized()
     refreshButton->setVisible(true);
     browseFolderButton->setVisible(true);
     loadButton->setVisible(true);
+    favoriteButton->setVisible(true);
     detailsTitle->setVisible(true);
     nameLabel->setVisible(true);
     nameValue->setVisible(true);
@@ -2232,6 +2299,8 @@ void NAMModelBrowserComponent::resized()
     buttonRow.removeFromRight(rowGap);
     deleteButton->setBounds(buttonRow.removeFromRight(compactLayout ? 92 : 100));
     buttonRow.removeFromRight(rowGap);
+    favoriteButton->setBounds(buttonRow.removeFromRight(compactLayout ? 72 : 84));
+    buttonRow.removeFromRight(rowGap);
     loadButton->setBounds(buttonRow.removeFromRight(compactLayout ? 92 : 100));
 
     // Split remaining area: library rail, list, and focused inspector card.
@@ -2276,9 +2345,6 @@ void NAMModelBrowserComponent::resized()
     detailsTitle->setBounds(detailsArea.removeFromTop(compactLayout ? 20 : 22));
     detailsArea.removeFromTop(compactLayout ? 5 : 8);
 
-    // Store separator positions for paint()
-    detailsSeparatorPositions.clear();
-
     auto layoutLabelValue = [&detailsArea, labelWidth, rowH, detailRowGap](Label* label, Label* value)
     {
         auto row = detailsArea.removeFromTop(rowH);
@@ -2295,7 +2361,7 @@ void NAMModelBrowserComponent::resized()
     authorLabel->setVisible(false);
     authorLabel->setBounds({});
     heroText.removeFromTop(compactLayout ? 48 : 64);
-    nameValue->setJustificationType(Justification::centred);
+    nameValue->setJustificationType(Justification::centredLeft);
     authorValue->setJustificationType(Justification::centred);
     nameValue->setBounds(heroText.removeFromTop(compactLayout ? 22 : 30));
     auto authorRow = heroText.removeFromTop(compactLayout ? 19 : 22);
@@ -2354,7 +2420,10 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
         if (currentTab == 0)
             scanDirectory(currentDirectory);
         else if (currentTab == 2)
-            scanIRDirectory(irDirectory);
+        {
+            if (!syncIRDirectoryFromSettingsIfAllowed())
+                scanIRDirectory(irDirectory);
+        }
     }
     else if (button == browseFolderButton.get())
     {
@@ -2386,6 +2455,9 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
                                          if (result.isDirectory())
                                          {
                                              irDirectory = result;
+                                             irDirectoryManuallySelected = true;
+                                             SettingsManager::getInstance().setValue(kIrLibraryDirectorySettingsKey,
+                                                                                     irDirectory.getFullPathName());
                                              scanIRDirectory(irDirectory);
                                          }
                                      });
@@ -2394,9 +2466,17 @@ void NAMModelBrowserComponent::buttonClicked(Button* button)
     {
         loadSelectedModel();
     }
+    else if (button == favoriteButton.get())
+    {
+        toggleFavouriteModel();
+    }
     else if (button == irLoadButton.get())
     {
         loadSelectedIR();
+    }
+    else if (button == irFavoriteButton.get())
+    {
+        toggleFavouriteIR();
     }
     else if (button == closeButton.get())
     {
@@ -2482,7 +2562,10 @@ void NAMModelBrowserComponent::switchToTab(int tabIndex)
     if (tabIndex == 0)
         scanDirectory(currentDirectory);
     else if (tabIndex == 2)
-        scanIRDirectory(irDirectory);
+    {
+        if (!syncIRDirectoryFromSettingsIfAllowed())
+            scanIRDirectory(irDirectory);
+    }
 
     // Trigger layout update
     resized();
@@ -2561,6 +2644,97 @@ void NAMModelBrowserComponent::scanDirectory(const File& directory)
 void NAMModelBrowserComponent::refreshModelList()
 {
     scanDirectory(currentDirectory);
+}
+
+bool NAMModelBrowserComponent::syncIRDirectoryFromSettingsIfAllowed()
+{
+    if (irDirectoryManuallySelected)
+        return false;
+
+    const auto configuredDirectory = getConfiguredIRLibraryDirectory();
+    if (configuredDirectory == irDirectory)
+        return false;
+
+    irDirectory = configuredDirectory;
+    if (currentTab == 2)
+        scanIRDirectory(irDirectory);
+
+    return true;
+}
+
+const NAMModelInfo* NAMModelBrowserComponent::getSelectedModel() const
+{
+    return modelList != nullptr && modelList->getSelectedRow() >= 0 ? listModel.getModelAt(modelList->getSelectedRow())
+                                                                    : nullptr;
+}
+
+const IRFileInfo* NAMModelBrowserComponent::getSelectedIR() const
+{
+    return irList != nullptr && irList->getSelectedRow() >= 0 ? irListModel.getFileAt(irList->getSelectedRow())
+                                                              : nullptr;
+}
+
+bool NAMModelBrowserComponent::isFavouriteModel(const NAMModelInfo& model) const
+{
+    return favouriteModelPaths.contains(String(model.filePath));
+}
+
+bool NAMModelBrowserComponent::isFavouriteIR(const IRFileInfo& ir) const
+{
+    return favouriteIRPaths.contains(String(ir.filePath));
+}
+
+void NAMModelBrowserComponent::toggleFavouriteModel()
+{
+    if (const auto* model = getSelectedModel())
+    {
+        const String path(model->filePath);
+        if (favouriteModelPaths.contains(path))
+            favouriteModelPaths.removeString(path);
+        else
+            favouriteModelPaths.add(path);
+
+        SettingsManager::getInstance().setStringArray(kNamFavoritesSettingsKey, favouriteModelPaths);
+        refreshFavouriteButtons();
+        modelList->repaint();
+    }
+}
+
+void NAMModelBrowserComponent::toggleFavouriteIR()
+{
+    if (const auto* ir = getSelectedIR())
+    {
+        const String path(ir->filePath);
+        if (favouriteIRPaths.contains(path))
+            favouriteIRPaths.removeString(path);
+        else
+            favouriteIRPaths.add(path);
+
+        SettingsManager::getInstance().setStringArray(kIrFavoritesSettingsKey, favouriteIRPaths);
+        refreshFavouriteButtons();
+        irList->repaint();
+    }
+}
+
+void NAMModelBrowserComponent::refreshFavouriteButtons()
+{
+    if (favoriteButton)
+    {
+        const auto* model = getSelectedModel();
+        const bool isStarred = model != nullptr && isFavouriteModel(*model);
+        favoriteButton->setButtonText(isStarred ? "Starred" : "Star");
+        favoriteButton->setToggleState(isStarred, dontSendNotification);
+        favoriteButton->setEnabled(model != nullptr);
+    }
+
+    if (irFavoriteButton)
+    {
+        const auto* ir = getSelectedIR();
+        const bool isStarred = ir != nullptr && isFavouriteIR(*ir);
+        irFavoriteButton->setButtonText(isStarred ? "Starred" : "Star");
+        irFavoriteButton->setToggleState(isStarred, dontSendNotification);
+        irFavoriteButton->setEnabled(ir != nullptr);
+    }
 }
 
 void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
@@ -2668,6 +2842,8 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
             deleteButton->setEnabled(false);
         updateLocalBrowserState();
     }
+
+    refreshFavouriteButtons();
 }
 
 void NAMModelBrowserComponent::updateLocalBrowserState()
@@ -2692,6 +2868,7 @@ void NAMModelBrowserComponent::updateLocalBrowserState()
     const bool canUseSelectedModel = hasFilteredRows && selectedModel != nullptr && isReadableNAMModel(*selectedModel);
     loadButton->setEnabled(canUseSelectedModel);
     deleteButton->setEnabled(canUseSelectedModel);
+    refreshFavouriteButtons();
     repaint();
 }
 
@@ -2997,6 +3174,8 @@ void NAMModelBrowserComponent::updateIRDetailsPanel(const IRFileInfo* irInfo)
         irFilePathValue->setTooltip("");
         updateIRBrowserState();
     }
+
+    refreshFavouriteButtons();
 }
 
 void NAMModelBrowserComponent::updateIRBrowserState()
@@ -3021,7 +3200,10 @@ void NAMModelBrowserComponent::updateIRBrowserState()
     }
 
     irList->setVisible(hasFilteredRows);
-    irLoadButton->setEnabled(hasFilteredRows);
+    const int selectedRow = irList->getSelectedRow();
+    const auto* selectedIR = selectedRow >= 0 ? irListModel.getFileAt(selectedRow) : nullptr;
+    irLoadButton->setEnabled(hasFilteredRows && selectedIR != nullptr && isReadableIRFile(*selectedIR));
+    refreshFavouriteButtons();
     repaint();
 }
 
@@ -3126,6 +3308,9 @@ void NAMModelBrowser::showWindow(NAMProcessor* processor, std::function<void()> 
         currentCallback = std::move(onModelLoaded);
         instance = std::make_unique<NAMModelBrowser>(processor, currentCallback);
     }
+
+    if (auto* browser = dynamic_cast<NAMModelBrowserComponent*>(instance->getContentComponent()))
+        browser->syncIRDirectoryFromSettingsIfAllowed();
 
     instance->setVisible(true);
     instance->toFront(true);
@@ -3238,6 +3423,8 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     };
 
     addDetailRow(nameLabel, nameValue, "Name:");
+    nameValue->setMinimumHorizontalScale(0.72f);
+    nameValue->setJustificationType(Justification::centredLeft);
     addDetailRow(durationLabel, durationValue, "Duration:");
     addDetailRow(sampleRateLabel, sampleRateValue, "Rate:");
     addDetailRow(channelsLabel, channelsValue, "Channels:");
@@ -3253,7 +3440,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Set default directories
     auto pedalboard3Dir = File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3");
 
-    currentDirectory = pedalboard3Dir.getChildFile("IR");
+    currentDirectory = getConfiguredIRLibraryDirectory();
     namModelsDirectory = pedalboard3Dir.getChildFile("NAM Models");
 
     if (!currentDirectory.isDirectory())
@@ -3579,6 +3766,8 @@ void IRBrowserComponent::buttonClicked(Button* button)
                                        if (result.isDirectory())
                                        {
                                            currentDirectory = result;
+                                           SettingsManager::getInstance().setValue(kIrLibraryDirectorySettingsKey,
+                                                                                   currentDirectory.getFullPathName());
                                            scanDirectory(currentDirectory);
                                        }
                                    });

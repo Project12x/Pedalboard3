@@ -37,7 +37,7 @@
 namespace
 {
 constexpr int preferencesContentMinWidth = 560;
-constexpr int preferencesContentMinHeight = 704;
+constexpr int preferencesContentMinHeight = 734;
 constexpr int interfacePanelY = 128;
 constexpr int interfacePanelHeight = 42;
 constexpr int ioOptionsPanelY = 204;
@@ -47,7 +47,8 @@ constexpr int midiPanelHeight = 58;
 constexpr int otherPanelY = 438;
 constexpr int otherPanelHeight = 198;
 constexpr int namPanelY = 662;
-constexpr int namPanelHeight = 38;
+constexpr int namPanelHeight = 68;
+constexpr const char* kIrLibraryDirectorySettingsKey = "IRLibraryDirectory";
 
 void paintSectionPanel(Graphics& g, Rectangle<int> bounds)
 {
@@ -124,7 +125,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
       windowsOnTopButton(0), ignorePinNamesButton(0), midiLabel(0), midiProgramChangeButton(0),
       mmcTransportButton(0), useTrayIconButton(0), startInTrayButton(0), fixedSizeButton(0),
       pdlAudioSettingsButton(0), interfaceLabel(0), uiScaleLabel(0), uiScaleComboBox(0), namLabel(0), namDirLabel(0),
-      namDirValue(0), namDirBrowseButton(0)
+      namDirValue(0), namDirBrowseButton(0), irDirLabel(0), irDirValue(0), irDirBrowseButton(0)
 {
     addAndMakeVisible(viewport = new Viewport("preferencesViewport"));
     contentComponent = new PreferencesContentComponent();
@@ -276,8 +277,8 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
         uiScaleComboBox->addItem(String(percent) + "%", percent);
     uiScaleComboBox->addListener(this);
 
-    // NAM Options
-    contentComponent->addAndMakeVisible(namLabel = new Label("namLabel", "NAM Options"));
+    // Library folder options
+    contentComponent->addAndMakeVisible(namLabel = new Label("namLabel", "Library Folders"));
     namLabel->setFont(FontManager::getInstance().getSubheadingFont());
     namLabel->setJustificationType(Justification::centredLeft);
     namLabel->setEditable(false, false, false);
@@ -299,17 +300,39 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     namDirBrowseButton->setButtonText("Browse...");
     namDirBrowseButton->addListener(this);
 
+    contentComponent->addAndMakeVisible(irDirLabel = new Label("irDirLabel", "IR Library Directory:"));
+    irDirLabel->setFont(FontManager::getInstance().getBodyFont());
+    irDirLabel->setJustificationType(Justification::centredLeft);
+    irDirLabel->setEditable(false, false, false);
+
+    contentComponent->addAndMakeVisible(irDirValue = new Label("irDirValue", ""));
+    irDirValue->setFont(FontManager::getInstance().getBodyFont());
+    irDirValue->setJustificationType(Justification::centredLeft);
+    irDirValue->setEditable(false, false, false);
+    irDirValue->setMinimumHorizontalScale(0.72f);
+    irDirValue->setColour(Label::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
+    irDirValue->setColour(Label::outlineColourId,
+                          ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
+
+    contentComponent->addAndMakeVisible(irDirBrowseButton = new TextButton("irDirBrowseButton"));
+    irDirBrowseButton->setButtonText("Browse...");
+    irDirBrowseButton->addListener(this);
+
     for (auto* label : {oscLabel, interfaceLabel, ioOptionsLabel, midiLabel, otherLabel, namLabel})
         styleLabel(*label, FontManager::getInstance().getSubheadingFont());
 
-    for (auto* label : {oscPortLabel, oscMulticastLabel, uiScaleLabel, namDirLabel})
+    for (auto* label : {oscPortLabel, oscMulticastLabel, uiScaleLabel, namDirLabel, irDirLabel})
         styleLabel(*label, FontManager::getInstance().getBodyFont(), 0.86f);
 
     styleLabel(*multicastHintLabel, FontManager::getInstance().getBodyFont(), 0.52f);
     styleLabel(*namDirValue, FontManager::getInstance().getBodyFont(), 0.78f);
+    styleLabel(*irDirValue, FontManager::getInstance().getBodyFont(), 0.78f);
     namDirValue->setColour(Label::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
     namDirValue->setColour(Label::outlineColourId,
                            ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.38f));
+    irDirValue->setColour(Label::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
+    irDirValue->setColour(Label::outlineColourId,
+                          ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.38f));
 
     for (auto* editor : {oscPortEditor, oscMulticastEditor})
         styleTextEditor(*editor);
@@ -321,6 +344,7 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
         styleToggle(*button);
 
     styleTextButton(*namDirBrowseButton);
+    styleTextButton(*irDirBrowseButton);
     uiScaleComboBox->setColour(ComboBox::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
     uiScaleComboBox->setColour(ComboBox::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
     uiScaleComboBox->setColour(ComboBox::outlineColourId,
@@ -364,6 +388,8 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     // Set NAM directory value from download manager
     namDirValue->setText(Tone3000DownloadManager::getInstance().getCacheDirectory().getFullPathName(),
                          dontSendNotification);
+    irDirValue->setText(SettingsManager::getInstance().getString(kIrLibraryDirectorySettingsKey, ""),
+                        dontSendNotification);
 
 #ifndef __APPLE__
     useTrayIcon = SettingsManager::getInstance().getBool("useTrayIcon", false);
@@ -453,6 +479,12 @@ PreferencesDialog::~PreferencesDialog()
     namDirValue = nullptr;
     delete namDirBrowseButton;
     namDirBrowseButton = nullptr;
+    delete irDirLabel;
+    irDirLabel = nullptr;
+    delete irDirValue;
+    irDirValue = nullptr;
+    delete irDirBrowseButton;
+    irDirBrowseButton = nullptr;
     delete viewport;
     viewport = nullptr;
     contentComponent = nullptr;
@@ -517,6 +549,9 @@ void PreferencesDialog::resized()
     namDirLabel->setBounds(16, 668, 150, 24);
     namDirBrowseButton->setBounds(contentWidth - 88, 668, 78, 24);
     namDirValue->setBounds(166, 668, jmax(80, contentWidth - 264), 24);
+    irDirLabel->setBounds(16, 696, 150, 24);
+    irDirBrowseButton->setBounds(contentWidth - 88, 696, 78, 24);
+    irDirValue->setBounds(166, 696, jmax(80, contentWidth - 264), 24);
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
@@ -653,6 +688,16 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
             File selectedDir = chooser.getResult();
             Tone3000DownloadManager::getInstance().setCacheDirectory(selectedDir);
             namDirValue->setText(selectedDir.getFullPathName(), dontSendNotification);
+        }
+    }
+    else if (buttonThatWasClicked == irDirBrowseButton)
+    {
+        FileChooser chooser("Select IR Library Folder", File(irDirValue->getText()), "", true);
+        if (chooser.browseForDirectory())
+        {
+            auto selectedDir = chooser.getResult();
+            SettingsManager::getInstance().setValue(kIrLibraryDirectorySettingsKey, selectedDir.getFullPathName());
+            irDirValue->setText(selectedDir.getFullPathName(), dontSendNotification);
         }
     }
 

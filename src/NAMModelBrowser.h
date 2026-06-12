@@ -120,6 +120,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     void scanDirectory(const File& directory);
     void refreshModelList();
     void refreshColours();
+    bool syncIRDirectoryFromSettingsIfAllowed();
 
   private:
     void updateDetailsPanel(const NAMModelInfo* model);
@@ -129,6 +130,9 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     void switchToTab(int tabIndex);
     void updateLocalBrowserState();
     void syncLocalSelectionAfterListChange();
+    bool isFavouriteModel(const NAMModelInfo& model) const;
+    void toggleFavouriteModel();
+    const NAMModelInfo* getSelectedModel() const;
 
     // IR browser methods
     void scanIRDirectory(const File& directory);
@@ -138,6 +142,10 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     void onIRListSelectionChanged();
     void updateIRBrowserState();
     void syncIRSelectionAfterListChange();
+    bool isFavouriteIR(const IRFileInfo& ir) const;
+    void toggleFavouriteIR();
+    void refreshFavouriteButtons();
+    const IRFileInfo* getSelectedIR() const;
 
     NAMProcessor* namProcessor;
     std::function<void()> onModelLoadedCallback;
@@ -158,6 +166,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     std::unique_ptr<TextButton> refreshButton;
     std::unique_ptr<TextButton> browseFolderButton;
     std::unique_ptr<TextButton> loadButton;
+    std::unique_ptr<TextButton> favoriteButton;
     std::unique_ptr<TextButton> closeButton;
     std::unique_ptr<ListBox> modelList;
 
@@ -191,6 +200,8 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
 
     File currentDirectory;
     std::vector<NAMModelInfo> models;
+    StringArray favouriteModelPaths;
+    StringArray favouriteIRPaths;
 
     std::unique_ptr<FileChooser> folderChooser;
 
@@ -199,6 +210,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     std::unique_ptr<ListBox> irList;
     std::unique_ptr<TextButton> irBrowseFolderButton;
     std::unique_ptr<TextButton> irLoadButton;
+    std::unique_ptr<TextButton> irFavoriteButton;
 
     // IR details labels
     std::unique_ptr<Label> irDetailsTitle;
@@ -219,6 +231,7 @@ class NAMModelBrowserComponent : public Component, public Button::Listener, publ
     File irDirectory;
     std::vector<IRFileInfo> irFiles;
     std::unique_ptr<FileChooser> irFolderChooser;
+    bool irDirectoryManuallySelected = false;
 
     // Scanning state
     bool isScanning = false;

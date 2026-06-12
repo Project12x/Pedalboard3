@@ -117,6 +117,9 @@ class PreferencesDialog : public Component,
     Label* namDirLabel;
     Label* namDirValue;
     TextButton* namDirBrowseButton;
+    Label* irDirLabel;
+    Label* irDirValue;
+    TextButton* irDirBrowseButton;
 
     //==============================================================================
     // (prevent copy constructor and operator= being generated..)
