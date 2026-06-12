@@ -130,6 +130,31 @@ bool containsAnyToken(const String& text, std::initializer_list<const char*> tok
     return false;
 }
 
+bool containsTokenWord(const String& text, StringRef token)
+{
+    const auto lowerText = text.toLowerCase();
+    const auto lowerToken = String(token).toLowerCase();
+    int start = lowerText.indexOf(lowerToken);
+
+    while (start >= 0)
+    {
+        const int before = start - 1;
+        const int after = start + lowerToken.length();
+        const auto beforeChar = before >= 0 ? lowerText[before] : juce_wchar();
+        const auto afterChar = after < lowerText.length() ? lowerText[after] : juce_wchar();
+        const bool startsClean = before < 0 || (!CharacterFunctions::isLetterOrDigit(beforeChar) && beforeChar != '_');
+        const bool endsClean =
+            after >= lowerText.length() || (!CharacterFunctions::isLetterOrDigit(afterChar) && afterChar != '_');
+
+        if (startsClean && endsClean)
+            return true;
+
+        start = lowerText.indexOf(start + 1, lowerToken);
+    }
+
+    return false;
+}
+
 bool isLabelNodeName(const String& name)
 {
     return name.equalsIgnoreCase("Label") || name.equalsIgnoreCase("Label Node");
@@ -183,6 +208,9 @@ NodeVisualStyle getNodeVisualStyle(AudioProcessor* processor, const String& disp
 
     if (containsAnyToken(text, {"reverb", "room", "plate", "hall", "shimmer"}))
         return {"reverb", graphCategoryColour("Graph Category Reverb")};
+
+    if (containsAnyToken(text, {"effect rack", "subgraph"}) || containsTokenWord(text, "rack"))
+        return {"rack", graphCategoryColour("Graph Category Modulation")};
 
     if (desc.isInstrument)
         return {"source", graphCategoryColour("Graph Category Source")};

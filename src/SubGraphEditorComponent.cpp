@@ -3,8 +3,7 @@
 
     SubGraphEditorComponent.cpp
 
-    Implementation of the SubGraph editor, mirroring PluginField's architecture
-    but with a different color hue for visual differentiation.
+    Implementation of the SubGraph editor, mirroring PluginField's architecture.
 
   ==============================================================================
 */
@@ -19,10 +18,24 @@
 #include "SettingsManager.h"
 #include "SubGraphProcessor.h"
 
+#include <cmath>
 #include <map>
 #include <spdlog/spdlog.h>
 
 using namespace juce;
+
+namespace
+{
+constexpr const char* kSubGraphGridStyleSettingsKey = "GraphGridStyle";
+
+String getSubGraphGridStyle()
+{
+    auto style = SettingsManager::getInstance().getString(kSubGraphGridStyleSettingsKey, "Lines").toLowerCase();
+    if (style != "dots" && style != "lines" && style != "off")
+        style = "lines";
+    return style;
+}
+} // namespace
 
 //==============================================================================
 // SubGraphCanvas - mirrors PluginField but for subgraphs
@@ -53,24 +66,62 @@ void SubGraphCanvas::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
 
-    // === SubGraph uses cyan/teal hue instead of purple ===
-    Colour bgBase = colours["Field Background"];
-    // Shift hue towards cyan (approximately 180 degrees from purple)
-    Colour bgCol = bgBase.withHue(0.5f); // Cyan hue
-
+    // === Gradient background ===
+    Colour bgCol = colours["Field Background"];
     ColourGradient bgGrad(bgCol.brighter(0.08f), 0.0f, 0.0f, bgCol.darker(0.15f), 0.0f, bounds.getHeight(), false);
     g.setGradientFill(bgGrad);
     g.fillRect(bounds);
 
     // === Grid pattern ===
-    float gridSize = 30.0f;
-    Colour gridCol = Colour(0xFF00AAAA).withAlpha(0.15f); // Cyan grid
-    g.setColour(gridCol);
+    const auto gridStyle = getSubGraphGridStyle();
+    if (gridStyle != "off")
+    {
+        const float gridSize = 30.0f;
+        const float majorGridSize = gridSize * 4.0f;
+        auto clip = g.getClipBounds().toFloat().getIntersection(bounds);
+        Colour gridCol = colours["Plugin Border"].withAlpha(gridStyle == "dots" ? 0.13f : 0.10f);
+        Colour majorGridCol =
+            colours["Accent Colour"].interpolatedWith(colours["Plugin Border"], 0.65f).withAlpha(0.13f);
 
-    for (float x = 0.0f; x < bounds.getWidth(); x += gridSize)
-        g.drawVerticalLine((int)x, 0.0f, bounds.getHeight());
-    for (float y = 0.0f; y < bounds.getHeight(); y += gridSize)
-        g.drawHorizontalLine((int)y, 0.0f, bounds.getWidth());
+        auto firstX = std::floor(clip.getX() / gridSize) * gridSize;
+        auto firstY = std::floor(clip.getY() / gridSize) * gridSize;
+
+        if (gridStyle == "dots")
+        {
+            for (float y = firstY; y < clip.getBottom(); y += gridSize)
+            {
+                const int yStep = roundToInt(y / gridSize);
+                const bool yMajor = (yStep % 4) == 0;
+                for (float x = firstX; x < clip.getRight(); x += gridSize)
+                {
+                    const int xStep = roundToInt(x / gridSize);
+                    const bool major = yMajor && (xStep % 4) == 0;
+                    const auto dotSize = major ? 2.3f : 1.25f;
+                    g.setColour(major ? majorGridCol.withMultipliedAlpha(1.2f) : gridCol);
+                    g.fillEllipse(x - dotSize * 0.5f, y - dotSize * 0.5f, dotSize, dotSize);
+                }
+            }
+        }
+        else
+        {
+            g.setColour(gridCol);
+            for (float x = firstX; x < clip.getRight(); x += gridSize)
+                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
+
+            for (float y = firstY; y < clip.getBottom(); y += gridSize)
+                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+
+            g.setColour(majorGridCol);
+            auto firstMajorX = std::floor(clip.getX() / majorGridSize) * majorGridSize;
+            auto firstMajorY = std::floor(clip.getY() / majorGridSize) * majorGridSize;
+
+            for (float x = firstMajorX; x < clip.getRight(); x += majorGridSize)
+                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
+
+            for (float y = firstMajorY; y < clip.getBottom(); y += majorGridSize)
+                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+        }
+    }
 
     if (displayDoubleClickMessage)
     {
@@ -89,7 +140,7 @@ void SubGraphCanvas::paint(Graphics& g)
         }
 
         g.setFont(FontManager::getInstance().getHeadingFont());
-        g.setColour(Colour(0xFF00CCCC).withAlpha(0.6f)); // Cyan text
+        g.setColour(colours["Text Colour"].withAlpha(0.60f));
 
         String hintText = "Double-click to add a plugin";
         auto textWidth = g.getCurrentFont().getStringWidth(hintText);
@@ -97,7 +148,7 @@ void SubGraphCanvas::paint(Graphics& g)
                    Justification::centred, false);
 
         g.setFont(FontManager::getInstance().getBodyFont());
-        g.setColour(Colour(0xFF00AAAA).withAlpha(0.35f));
+        g.setColour(colours["Accent Colour"].interpolatedWith(colours["Text Colour"], 0.35f).withAlpha(0.38f));
 
         String subHint = "This is an Effect Rack sub-graph";
         auto subWidth = g.getCurrentFont().getStringWidth(subHint);
@@ -780,7 +831,9 @@ SubGraphEditorComponent::SubGraphEditorComponent(SubGraphProcessor& processor)
     // Title label
     titleLabel = std::make_unique<Label>("title", "Effect Rack: " + processor.getName());
     titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
-    titleLabel->setColour(Label::textColourId, Colour(0xFF00DDDD)); // Cyan title
+    auto& colours = ColourScheme::getInstance().colours;
+    titleLabel->setColour(Label::textColourId,
+                          colours["Text Colour"].interpolatedWith(colours["Accent Colour"], 0.22f));
     addAndMakeVisible(titleLabel.get());
 
     // Canvas in viewport
@@ -800,14 +853,30 @@ SubGraphEditorComponent::~SubGraphEditorComponent() {}
 
 void SubGraphEditorComponent::paint(Graphics& g)
 {
-    // Toolbar background with cyan accent
-    auto toolbar = getLocalBounds().removeFromTop(TOOLBAR_HEIGHT);
-    g.setColour(Colour(0xFF1A2A2A)); // Dark teal
-    g.fillRect(toolbar);
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat();
+    const auto accent = colours["Accent Colour"];
 
-    // Subtle bottom border
-    g.setColour(Colour(0xFF00AAAA).withAlpha(0.3f));
-    g.drawLine(0, TOOLBAR_HEIGHT - 1, getWidth(), TOOLBAR_HEIGHT - 1, 1.0f);
+    g.fillAll(colours["Window Background"].darker(0.16f));
+
+    ColourGradient bg(colours["Window Background"].brighter(0.05f), bounds.getX(), bounds.getY(),
+                      colours["Window Background"].darker(0.12f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill(bg);
+    g.fillRoundedRectangle(bounds.reduced(1.0f), 8.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.70f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.0f);
+
+    auto toolbar = bounds.withHeight(static_cast<float>(TOOLBAR_HEIGHT)).reduced(1.0f, 1.0f);
+    const auto toolbarBase = colours["Window Background"].interpolatedWith(accent, 0.055f);
+    ColourGradient toolbarGrad(toolbarBase.brighter(0.06f), toolbar.getX(), toolbar.getY(),
+                               toolbarBase.darker(0.08f), toolbar.getX(), toolbar.getBottom(), false);
+    g.setGradientFill(toolbarGrad);
+    g.fillRoundedRectangle(toolbar, 7.0f);
+
+    g.setColour(colours["Plugin Border"].interpolatedWith(accent, 0.16f).withAlpha(0.58f));
+    g.drawRoundedRectangle(toolbar.reduced(0.5f), 7.0f, 0.9f);
+    g.setColour(colours["Plugin Border"].interpolatedWith(accent, 0.28f).withAlpha(0.42f));
+    g.drawLine(toolbar.getX() + 8.0f, toolbar.getBottom(), toolbar.getRight() - 8.0f, toolbar.getBottom(), 1.0f);
 }
 
 void SubGraphEditorComponent::resized()

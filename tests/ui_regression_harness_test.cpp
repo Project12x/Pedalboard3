@@ -392,6 +392,63 @@ TEST_CASE("Built-in node polish source contract covers label, tuner, NAM, mixer,
     }
 }
 
+TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph chrome",
+          "[ui][regression][visual][source][subgraph]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto subGraphSource = loadSourceFile("src/SubGraphEditorComponent.cpp");
+
+    REQUIRE(pluginSource.has_value());
+    REQUIRE(subGraphSource.has_value());
+
+    CHECK(pluginSource->find("bool containsTokenWord(const String& text, StringRef token)") != std::string::npos);
+    CHECK(pluginSource->find("!CharacterFunctions::isLetterOrDigit(beforeChar)") != std::string::npos);
+    CHECK(pluginSource->find("!CharacterFunctions::isLetterOrDigit(afterChar)") != std::string::npos);
+
+    const auto rackTokenCheck = pluginSource->find(
+        "if (containsAnyToken(text, {\"effect rack\", \"subgraph\"}) || containsTokenWord(text, \"rack\"))");
+    REQUIRE(rackTokenCheck != std::string::npos);
+    CHECK(pluginSource->find("return {\"rack\", graphCategoryColour(\"Graph Category Modulation\")};",
+                             rackTokenCheck) != std::string::npos);
+
+    const auto instrumentFallback = pluginSource->find("if (desc.isInstrument)");
+    const auto moduleFallback = pluginSource->find("return {\"module\", graphCategoryColour(\"Graph Category Delay\")};");
+    REQUIRE(instrumentFallback != std::string::npos);
+    REQUIRE(moduleFallback != std::string::npos);
+    CHECK(rackTokenCheck < instrumentFallback);
+    CHECK(rackTokenCheck < moduleFallback);
+
+    CHECK(subGraphSource->find("String getSubGraphGridStyle()") != std::string::npos);
+    CHECK(subGraphSource->find("getString(kSubGraphGridStyleSettingsKey, \"Lines\")") != std::string::npos);
+    CHECK(subGraphSource->find("style != \"dots\" && style != \"lines\" && style != \"off\"") !=
+          std::string::npos);
+    CHECK(subGraphSource->find("Colour bgCol = colours[\"Field Background\"];") != std::string::npos);
+    CHECK(subGraphSource->find("const auto gridStyle = getSubGraphGridStyle();") != std::string::npos);
+    CHECK(subGraphSource->find("colours[\"Plugin Border\"].withAlpha(gridStyle == \"dots\" ? 0.13f : 0.10f)") !=
+          std::string::npos);
+    CHECK(subGraphSource->find(
+              "colours[\"Accent Colour\"].interpolatedWith(colours[\"Plugin Border\"], 0.65f).withAlpha(0.13f)") !=
+          std::string::npos);
+    CHECK(subGraphSource->find("const float majorGridSize = gridSize * 4.0f;") != std::string::npos);
+    CHECK(subGraphSource->find("if (gridStyle == \"dots\")") != std::string::npos);
+    CHECK(subGraphSource->find("if (gridStyle != \"off\")") != std::string::npos);
+
+    CHECK(subGraphSource->find("0xFF00AAAA") == std::string::npos);
+    CHECK(subGraphSource->find("0xFF00CCCC") == std::string::npos);
+    CHECK(subGraphSource->find("0xFF00DDDD") == std::string::npos);
+    CHECK(subGraphSource->find("0xFF1A2A2A") == std::string::npos);
+
+    const auto editorPaintStart = subGraphSource->find("void SubGraphEditorComponent::paint(Graphics& g)");
+    REQUIRE(editorPaintStart != std::string::npos);
+    const auto editorPaintEnd = subGraphSource->find("void SubGraphEditorComponent::resized()", editorPaintStart);
+    REQUIRE(editorPaintEnd != std::string::npos);
+    const auto editorPaint = subGraphSource->substr(editorPaintStart, editorPaintEnd - editorPaintStart);
+    CHECK(editorPaint.find("colours[\"Window Background\"") != std::string::npos);
+    CHECK(editorPaint.find("colours[\"Plugin Border\"") != std::string::npos);
+    CHECK(editorPaint.find("ColourGradient") != std::string::npos);
+    CHECK(editorPaint.find("fillRoundedRectangle") != std::string::npos);
+}
+
 TEST_CASE("Scratch footer source contract keeps panel affordance reachable",
           "[ui][regression][visual][source][scratch]")
 {
