@@ -107,6 +107,7 @@ class NAMOnlineBrowserComponent : public juce::Component,
     void showLoginDialog();
     void logout();
     void goToPage(int page);
+    bool isCompactLayout() const;
 
     NAMProcessor* namProcessor;
     std::function<void()> onModelLoadedCallback;

@@ -568,3 +568,37 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
     CHECK(preferencesSource->find("setValue(kIrLibraryDirectorySettingsKey, selectedDir.getFullPathName())") !=
           std::string::npos);
 }
+
+TEST_CASE("NAM online browser polish source contract matches library visual structure",
+          "[ui][regression][visual][source][library]")
+{
+    const auto onlineSource = loadSourceFile("src/NAMOnlineBrowser.cpp");
+    REQUIRE(onlineSource.has_value());
+
+    CHECK(onlineSource->find("BrowserPalette makeOnlineBrowserPalette()") != std::string::npos);
+    CHECK(onlineSource->find("0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57, 0xFF5B4C6E") !=
+          std::string::npos);
+    CHECK(onlineSource->find("const auto palette = makeOnlineBrowserPalette();") != std::string::npos);
+    CHECK(onlineSource->find("visual sync with makeBrowserPalette() in NAMModelBrowser.cpp") != std::string::npos);
+    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 8 : 12);") != std::string::npos);
+    CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 34);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 68 : 70;") != std::string::npos);
+    CHECK(onlineSource->find("const int searchButtonGap = compactLayout ? 8 : 10;") != std::string::npos);
+    const auto searchButtonLayout = onlineSource->find("searchButton->setBounds(searchRow.removeFromRight(");
+    const auto searchBoxLayout = onlineSource->find("searchBox->setBounds(searchRow);");
+    REQUIRE(searchButtonLayout != std::string::npos);
+    REQUIRE(searchBoxLayout != std::string::npos);
+    CHECK(searchButtonLayout < searchBoxLayout);
+    CHECK(onlineSource->find("melatonin::DropShadow shadow{juce::Colours::black.withAlpha(0.28f), 10, {0, 4}};") !=
+          std::string::npos);
+    CHECK(onlineSource->find("juce::ColourGradient cardGrad(palette.face2, detailsBounds.getX(), detailsBounds.getY(),") !=
+          std::string::npos);
+    CHECK(onlineSource->find("palette.face, detailsBounds.getX(), detailsBounds.getBottom(), false);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("g.setColour(palette.edgeHi.withAlpha(0.36f));") != std::string::npos);
+    CHECK(onlineSource->find("setMinimumHorizontalScale(0.72f)") != std::string::npos);
+    CHECK(onlineSource->find("g.drawText(juce::String(selectedTone->name),") != std::string::npos);
+    CHECK(onlineSource->find("g.drawText(\"by \" + juce::String(selectedTone->authorName),") !=
+          std::string::npos);
+}

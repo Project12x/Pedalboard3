@@ -70,6 +70,67 @@ juce::String formatToneFileSize(juce::int64 fileSize)
         return juce::String(fileSize / 1024) + " KB";
     return juce::String(fileSize) + " B";
 }
+
+struct BrowserPalette
+{
+    juce::Colour top;
+    juce::Colour bottom;
+    juce::Colour accent;
+    juce::Colour accent2;
+    juce::Colour led;
+    juce::Colour text;
+    juce::Colour face;
+    juce::Colour face2;
+    juce::Colour inset;
+    juce::Colour edge;
+    juce::Colour edgeHi;
+};
+
+// Keep this local palette helper in visual sync with makeBrowserPalette() in NAMModelBrowser.cpp
+// without sharing online browser search/auth/download behavior.
+BrowserPalette makeOnlineBrowserPalette()
+{
+    auto& colours = ::ColourScheme::getInstance().colours;
+    const auto preset = ::ColourScheme::getInstance().presetName;
+
+    auto palette = [](juce::uint32 top, juce::uint32 bottom, juce::uint32 face, juce::uint32 face2,
+                      juce::uint32 inset, juce::uint32 edge, juce::uint32 edgeHi, juce::uint32 accent,
+                      juce::uint32 accent2, juce::uint32 led, juce::uint32 text)
+    {
+        return BrowserPalette{juce::Colour(top),    juce::Colour(bottom), juce::Colour(accent),
+                              juce::Colour(accent2), juce::Colour(led),    juce::Colour(text),
+                              juce::Colour(face),   juce::Colour(face2),  juce::Colour(inset),
+                              juce::Colour(edge),   juce::Colour(edgeHi)};
+    };
+
+    if (preset == "Midnight")
+        return palette(0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57, 0xFF5B4C6E,
+                       0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84, 0xFFF4ECDD);
+    if (preset == "Deep Ocean")
+        return palette(0xFF102029, 0xFF08131B, 0xFF142A36, 0xFF1B3543, 0xFF07121A, 0xFF2C5563, 0xFF3C6B7A,
+                       0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD, 0xFFEAF3F1);
+    if (preset == "Synthwave")
+        return palette(0xFF1E0A28, 0xFF0F0518, 0xFF2A1139, 0xFF351747, 0xFF0C0414, 0xFF5A2D72, 0xFF76439A,
+                       0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0, 0xFFF6EBFF);
+    if (preset == "Forest")
+        return palette(0xFF1C1D13, 0xFF10110A, 0xFF26281A, 0xFF2F3120, 0xFF0E0F08, 0xFF4A4D2E, 0xFF5F633D,
+                       0xFFE6AD36, 0xFF79D479, 0xFF7CE87C, 0xFFF1EEDA);
+    if (preset == "Daylight")
+        return palette(0xFF3B332A, 0xFF2B241C, 0xFF473E33, 0xFF52483B, 0xFF241F18, 0xFF615648, 0xFF796B58,
+                       0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84, 0xFFF5EDDE);
+
+    const auto accent = colours["Warning Colour"];
+    const auto accent2 = colours["Audio Connection"];
+    const auto top = colours["Window Background"].interpolatedWith(accent, 0.08f);
+    const auto bottom = colours["Window Background"].darker(0.16f).interpolatedWith(accent, 0.04f);
+    const auto face = colours["Dialog Inner Background"].interpolatedWith(accent, 0.055f);
+    const auto face2 = colours["Dialog Inner Background"].brighter(0.08f).interpolatedWith(accent, 0.075f);
+    const auto inset = colours["Window Background"].darker(0.06f).interpolatedWith(accent, 0.025f);
+    const auto edge = colours["Plugin Border"].interpolatedWith(accent, 0.12f);
+
+    return {top, bottom, accent, accent2, colours["Success Colour"], colours["Text Colour"], face, face2, inset, edge,
+            edge.brighter(0.2f)};
+}
 } // namespace
 
 //==============================================================================
@@ -295,14 +356,15 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     : namProcessor(processor), onModelLoadedCallback(std::move(onModelLoaded))
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeOnlineBrowserPalette();
 
     // Search controls
     searchBox = std::make_unique<juce::TextEditor>("searchBox");
     searchBox->setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
-    searchBox->setColour(juce::TextEditor::textColourId, colours["Text Colour"]);
+    searchBox->setColour(juce::TextEditor::textColourId, palette.text);
     searchBox->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
     searchBox->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
-    searchBox->setTextToShowWhenEmpty("Search TONE3000...", colours["Text Colour"].withAlpha(0.5f));
+    searchBox->setTextToShowWhenEmpty("Search TONE3000...", palette.text.withAlpha(0.5f));
     searchBox->setFont(FontManager::getInstance().getSubheadingFont()); // 15px fills pill better
     searchBox->setIndents(28, 6); // Left indent for magnifying glass icon, top indent to center text
     searchBox->addListener(this);
@@ -319,7 +381,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     // Filter controls
     gearTypeLabel = std::make_unique<juce::Label>("gearLabel", "Type:");
-    gearTypeLabel->setColour(juce::Label::textColourId, colours["Text Colour"]);
+    gearTypeLabel->setColour(juce::Label::textColourId, palette.text);
     addAndMakeVisible(gearTypeLabel.get());
 
     gearTypeCombo = std::make_unique<juce::ComboBox>("gearType");
@@ -328,15 +390,15 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     gearTypeCombo->addItem("Pedal", 3);
     gearTypeCombo->addItem("Full Rig", 4);
     gearTypeCombo->setSelectedId(1);
-    gearTypeCombo->setColour(juce::ComboBox::backgroundColourId, colours["Dialog Inner Background"]);
-    gearTypeCombo->setColour(juce::ComboBox::textColourId, colours["Text Colour"]);
-    gearTypeCombo->setColour(juce::ComboBox::outlineColourId, colours["Text Colour"].withAlpha(0.2f));
-    gearTypeCombo->setColour(juce::ComboBox::arrowColourId, colours["Text Colour"].withAlpha(0.6f));
+    gearTypeCombo->setColour(juce::ComboBox::backgroundColourId, palette.inset);
+    gearTypeCombo->setColour(juce::ComboBox::textColourId, palette.text);
+    gearTypeCombo->setColour(juce::ComboBox::outlineColourId, palette.edge);
+    gearTypeCombo->setColour(juce::ComboBox::arrowColourId, palette.text.withAlpha(0.6f));
     gearTypeCombo->addListener(this);
     addAndMakeVisible(gearTypeCombo.get());
 
     sortLabel = std::make_unique<juce::Label>("sortLabel", "Sort:");
-    sortLabel->setColour(juce::Label::textColourId, colours["Text Colour"]);
+    sortLabel->setColour(juce::Label::textColourId, palette.text);
     addAndMakeVisible(sortLabel.get());
 
     sortCombo = std::make_unique<juce::ComboBox>("sort");
@@ -345,10 +407,10 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     sortCombo->addItem("Most Downloaded", 3);
     sortCombo->addItem("Name A-Z", 4);
     sortCombo->setSelectedId(1);
-    sortCombo->setColour(juce::ComboBox::backgroundColourId, colours["Dialog Inner Background"]);
-    sortCombo->setColour(juce::ComboBox::textColourId, colours["Text Colour"]);
-    sortCombo->setColour(juce::ComboBox::outlineColourId, colours["Text Colour"].withAlpha(0.2f));
-    sortCombo->setColour(juce::ComboBox::arrowColourId, colours["Text Colour"].withAlpha(0.6f));
+    sortCombo->setColour(juce::ComboBox::backgroundColourId, palette.inset);
+    sortCombo->setColour(juce::ComboBox::textColourId, palette.text);
+    sortCombo->setColour(juce::ComboBox::outlineColourId, palette.edge);
+    sortCombo->setColour(juce::ComboBox::arrowColourId, palette.text.withAlpha(0.6f));
     sortCombo->addListener(this);
     addAndMakeVisible(sortCombo.get());
 
@@ -364,23 +426,25 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     // Details panel
     detailsTitle = std::make_unique<juce::Label>("detailsTitle", "Details");
     detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
-    detailsTitle->setColour(juce::Label::textColourId, colours["Text Colour"]);
+    detailsTitle->setColour(juce::Label::textColourId, palette.text);
     addAndMakeVisible(detailsTitle.get());
 
-    auto createDetailLabel = [&colours](const juce::String& text)
+    auto createDetailLabel = [&palette](const juce::String& text)
     {
         auto label = std::make_unique<juce::Label>();
         label->setText(text, juce::dontSendNotification);
         label->setFont(FontManager::getInstance().getLabelFont());
-        label->setColour(juce::Label::textColourId, colours["Text Colour"].withAlpha(0.7f));
+        label->setColour(juce::Label::textColourId, palette.text.withAlpha(0.7f));
         return label;
     };
 
-    auto createValueLabel = [&colours]()
+    auto createValueLabel = [&palette]()
     {
         auto label = std::make_unique<juce::Label>();
         label->setFont(FontManager::getInstance().getLabelFont());
-        label->setColour(juce::Label::textColourId, colours["Text Colour"]);
+        label->setColour(juce::Label::textColourId, palette.text);
+        label->setJustificationType(juce::Justification::centredLeft);
+        label->setMinimumHorizontalScale(0.72f);
         return label;
     };
 
@@ -495,20 +559,24 @@ NAMOnlineBrowserComponent::~NAMOnlineBrowserComponent()
     spdlog::debug("[NAMOnlineBrowser] Removed download listener");
 }
 
+bool NAMOnlineBrowserComponent::isCompactLayout() const
+{
+    return getWidth() < 780 || getHeight() < 620;
+}
+
 void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 {
-    auto& colours = ColourScheme::getInstance().colours;
-    auto bgColour = colours["Window Background"];
+    const auto palette = makeOnlineBrowserPalette();
+    const bool compactLayout = isCompactLayout();
 
     // Gradient background
-    juce::ColourGradient bgGradient(bgColour.brighter(0.06f), 0, 0, bgColour.darker(0.06f), 0,
-                                    static_cast<float>(getHeight()), false);
+    juce::ColourGradient bgGradient(palette.top, 0, 0, palette.bottom, 0, static_cast<float>(getHeight()), false);
     g.setGradientFill(bgGradient);
     g.fillAll();
 
     // Subtle dot-grid pattern on background for visual character
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         const int gridStep = 16;
         for (int gy = 0; gy < getHeight(); gy += gridStep)
             for (int gx = 0; gx < getWidth(); gx += gridStep)
@@ -516,44 +584,44 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     }
 
     auto outer = getLocalBounds().reduced(8);
-    auto toolbarBounds = outer.removeFromTop(68).toFloat();
+    auto toolbarBounds = outer.removeFromTop(compactLayout ? 74 : 82).toFloat();
     auto footerArea = getLocalBounds().reduced(8);
     auto footerBounds = footerArea.removeFromBottom(28).toFloat();
 
-    juce::ColourGradient toolbarFill(colours["Plugin Background"].brighter(0.04f), toolbarBounds.getX(),
-                                     toolbarBounds.getY(), colours["Dialog Inner Background"].darker(0.05f),
+    juce::ColourGradient toolbarFill(palette.face2, toolbarBounds.getX(),
+                                     toolbarBounds.getY(), palette.face,
                                      toolbarBounds.getX(), toolbarBounds.getBottom(), false);
     g.setGradientFill(toolbarFill);
     g.fillRoundedRectangle(toolbarBounds, 8.0f);
-    g.setColour(colours["Accent Colour"].withAlpha(0.26f));
+    g.setColour(palette.accent.withAlpha(0.26f));
     g.fillRoundedRectangle(toolbarBounds.getX() + 1.0f, toolbarBounds.getY() + 6.0f, 3.0f,
                            toolbarBounds.getHeight() - 12.0f, 1.5f);
-    g.setColour(colours["Text Colour"].withAlpha(0.10f));
+    g.setColour(palette.edge.withAlpha(0.75f));
     g.drawRoundedRectangle(toolbarBounds.reduced(0.5f), 8.0f, 1.0f);
 
     if (searchBox != nullptr)
     {
         auto searchPill = searchBox->getBounds().toFloat();
-        juce::ColourGradient searchFill(colours["Field Background"].brighter(0.03f), searchPill.getX(),
-                                        searchPill.getY(), colours["Field Background"].darker(0.06f),
+        juce::ColourGradient searchFill(palette.inset.brighter(0.03f), searchPill.getX(),
+                                        searchPill.getY(), palette.inset.darker(0.06f),
                                         searchPill.getX(), searchPill.getBottom(), false);
         g.setGradientFill(searchFill);
         g.fillRoundedRectangle(searchPill, 7.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.10f));
+        g.setColour(palette.edge.withAlpha(0.70f));
         g.drawRoundedRectangle(searchPill.reduced(0.5f), 7.0f, 1.0f);
-        g.setColour(colours["Text Colour"].withAlpha(0.05f));
+        g.setColour(palette.text.withAlpha(0.05f));
         g.drawLine(searchPill.getX() + 8.0f, searchPill.getY() + 2.0f, searchPill.getRight() - 8.0f,
                    searchPill.getY() + 2.0f, 1.0f);
     }
 
-    g.setColour(colours["Dialog Inner Background"].withAlpha(0.74f));
+    g.setColour(palette.inset.withAlpha(0.74f));
     g.fillRoundedRectangle(footerBounds, 7.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.10f));
+    g.setColour(palette.edge.withAlpha(0.64f));
     g.drawRoundedRectangle(footerBounds.reduced(0.5f), 7.0f, 1.0f);
 
     // Calculate panel areas
     auto bounds = getLocalBounds().reduced(8);
-    bounds.removeFromTop(70);    // Search + filters
+    bounds.removeFromTop(compactLayout ? 82 : 90); // Search + filters
     bounds.removeFromBottom(32); // Status bar
 
     int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
@@ -562,15 +630,15 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 
     // Draw rounded list background
     auto listBounds = listArea.toFloat();
-    juce::ColourGradient listFill(colours["Dialog Inner Background"].brighter(0.03f), listBounds.getX(),
-                                  listBounds.getY(), colours["Dialog Inner Background"].darker(0.05f),
+    juce::ColourGradient listFill(palette.inset.brighter(0.03f), listBounds.getX(),
+                                  listBounds.getY(), palette.inset.darker(0.05f),
                                   listBounds.getX(), listBounds.getBottom(), false);
     g.setGradientFill(listFill);
     g.fillRoundedRectangle(listBounds, 8.0f);
-    g.setColour(colours["Accent Colour"].withAlpha(0.12f));
+    g.setColour(palette.accent.withAlpha(0.12f));
     g.drawLine(listBounds.getX() + 9.0f, listBounds.getY() + 2.0f, listBounds.getRight() - 9.0f,
                listBounds.getY() + 2.0f, 1.0f);
-    g.setColour(colours["Text Colour"].withAlpha(0.14f));
+    g.setColour(palette.edge.withAlpha(0.70f));
     g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
     // Draw card-style details panel with shadow
@@ -578,24 +646,16 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     juce::Path detailsPath;
     detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
-    // Drop shadow
-    melatonin::DropShadow shadow(juce::Colours::black.withAlpha(0.22f), 10, {2, 3});
+    melatonin::DropShadow shadow{juce::Colours::black.withAlpha(0.28f), 10, {0, 4}};
     shadow.render(g, detailsPath);
 
-    // Card fill with subtle gradient
-    juce::ColourGradient cardGrad(colours["Dialog Inner Background"].brighter(0.05f), detailsBounds.getX(),
-                                  detailsBounds.getY(), colours["Plugin Background"].interpolatedWith(
-                                                                 colours["Dialog Inner Background"], 0.52f),
-                                  detailsBounds.getX(), detailsBounds.getBottom(), false);
+    juce::ColourGradient cardGrad(palette.face2, detailsBounds.getX(), detailsBounds.getY(),
+                                  palette.face, detailsBounds.getX(), detailsBounds.getBottom(), false);
     g.setGradientFill(cardGrad);
     g.fillPath(detailsPath);
 
-    // Card border
-    g.setColour(colours["Text Colour"].withAlpha(0.14f));
+    g.setColour(palette.edgeHi.withAlpha(0.36f));
     g.strokePath(detailsPath, juce::PathStrokeType(1.0f));
-    g.setColour(colours["Accent Colour"].withAlpha(0.32f));
-    g.fillRoundedRectangle(detailsBounds.getX() + 1.0f, detailsBounds.getY() + 8.0f, 3.0f,
-                           detailsBounds.getHeight() - 16.0f, 1.5f);
 
     if (selectedTone != nullptr)
     {
@@ -621,13 +681,13 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         g.drawText(gearText.toUpperCase(), chipBounds, juce::Justification::centred, true);
 
         g.setFont(FontManager::getInstance().getSubheadingFont());
-        g.setColour(colours["Text Colour"]);
-        g.drawFittedText(juce::String(selectedTone->name), heroText.removeFromTop(28).toNearestInt(),
-                         juce::Justification::centredLeft, 1);
+        g.setColour(palette.text);
+        g.drawText(juce::String(selectedTone->name), heroText.removeFromTop(28.0f),
+                   juce::Justification::centredLeft, true);
         g.setFont(FontManager::getInstance().getCaptionFont());
-        g.setColour(colours["Text Colour"].withAlpha(0.62f));
-        g.drawFittedText("by " + juce::String(selectedTone->authorName), heroText.removeFromTop(20).toNearestInt(),
-                         juce::Justification::centredLeft, 1);
+        g.setColour(palette.text.withAlpha(0.62f));
+        g.drawText("by " + juce::String(selectedTone->authorName), heroText.removeFromTop(20.0f),
+                   juce::Justification::centredLeft, true);
 
         auto separator = detailsBounds.reduced(18.0f, 0.0f).withY(detailsBounds.getY() + 114.0f).withHeight(1.0f);
         g.setColour(gearAccent.withAlpha(0.24f));
@@ -639,7 +699,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     {
         int sepLeft = nameLabel->getX();
         int sepRight = nameValue->getRight();
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(palette.text.withAlpha(0.08f));
 
         const juce::Label* values[] = {nameValue.get(), authorValue.get(), gearValue.get(), architectureValue.get(),
                                        downloadsValue.get(), sizeValue.get()};
@@ -658,8 +718,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         auto empty = detailsBounds.reduced(26.0f);
         auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
         IconManager::getInstance().drawDomainGlyphTile(g, icon, IconManager::DomainGlyph::Amp,
-                                                       colours["Accent Colour"], false);
-        g.setColour(colours["Text Colour"].withAlpha(0.34f));
+                                                       palette.accent, false);
+        g.setColour(palette.text.withAlpha(0.34f));
         g.setFont(FontManager::getInstance().getLabelFont());
         g.drawText("Search TONE3000 to browse NAM models", empty.translated(0.0f, 34.0f),
                    juce::Justification::centred, true);
@@ -670,8 +730,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         auto empty = detailsBounds.reduced(26.0f);
         auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
         IconManager::getInstance().drawDomainGlyphTile(g, icon, IconManager::DomainGlyph::FullRig,
-                                                       colours["Accent Colour"], false);
-        g.setColour(colours["Text Colour"].withAlpha(0.36f));
+                                                       palette.accent, false);
+        g.setColour(palette.text.withAlpha(0.36f));
         g.setFont(FontManager::getInstance().getLabelFont());
         g.drawText("Select a model for details", empty.translated(0.0f, 34.0f), juce::Justification::centred, true);
     }
@@ -699,12 +759,16 @@ void NAMOnlineBrowserComponent::paintOverChildren(juce::Graphics& g)
 
 void NAMOnlineBrowserComponent::resized()
 {
+    const bool compactLayout = isCompactLayout();
     auto bounds = getLocalBounds().reduced(8);
 
     // Search row
-    auto searchRow = bounds.removeFromTop(32);
-    searchButton->setBounds(searchRow.removeFromRight(70));
-    searchRow.removeFromRight(8);
+    bounds.removeFromTop(compactLayout ? 8 : 12);
+    auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 34);
+    const int searchButtonWidth = compactLayout ? 68 : 70;
+    const int searchButtonGap = compactLayout ? 8 : 10;
+    searchButton->setBounds(searchRow.removeFromRight(juce::jmin(searchButtonWidth, searchRow.getWidth())));
+    searchRow.removeFromRight(juce::jmin(searchButtonGap, searchRow.getWidth()));
     searchBox->setBounds(searchRow);
 
     bounds.removeFromTop(8);
