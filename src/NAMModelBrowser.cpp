@@ -1831,7 +1831,8 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                        .expanded(10.0f, 5.0f);
                 previewCard.setLeft(detailsBounds.getX() + 14.0f);
                 previewCard.setRight(detailsBounds.getRight() - 14.0f);
-                previewCard.setBottom(previewCard.getBottom() + 24.0f);
+                previewCard.setTop(previewCard.getY() - (detailsBounds.getWidth() >= 250.0f ? 60.0f : 0.0f));
+                previewCard.setBottom(previewCard.getBottom() + 14.0f);
 
                 g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
                                           : palette.text.withAlpha(0.045f));
@@ -1840,11 +1841,12 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                           : palette.edge.withAlpha(0.42f));
                 g.drawRoundedRectangle(previewCard.reduced(0.5f), 9.0f, 1.0f);
 
-                const bool showPreviewGlyph = detailsBounds.getWidth() >= 330.0f;
+                const bool showPreviewGlyph = detailsBounds.getWidth() >= 250.0f;
                 if (showPreviewGlyph)
                 {
-                    auto glyph =
-                        Rectangle<float>(previewCard.getRight() - 60.0f, previewCard.getY() + 12.0f, 44.0f, 44.0f);
+                    const float glyphSize = detailsBounds.getWidth() >= 330.0f ? 50.0f : 42.0f;
+                    auto glyph = Rectangle<float>(0.0f, previewCard.getY() + 12.0f, glyphSize, glyphSize)
+                                     .withCentre({previewCard.getCentreX(), previewCard.getY() + 12.0f + glyphSize * 0.5f});
                     const auto archColour = selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette)
                                                           : palette.accent2;
                     drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"],
@@ -1853,38 +1855,50 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
                 auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(24.0f);
                 const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
-                if (chipRow.getWidth() >= stateChipWidth)
-                    drawBrowserChip(g, chipRow.removeFromLeft(stateChipWidth),
+                float typeChipWidth = 0.0f;
+                float toneChipWidth = 0.0f;
+                String typeChip;
+                String toneTag;
+
+                if (selectedModel != nullptr)
+                {
+                    typeChip = normaliseNAMModelType(fields.modelType);
+                    typeChipWidth =
+                        jlimit(48.0f, 82.0f, FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeChip) + 16.0f);
+
+                    toneTag = inferToneTag(String(selectedModel->name) + " " + fields.rig + " " + fields.modelType);
+                    if (toneTag.isNotEmpty())
+                        toneChipWidth = FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag) + 18.0f;
+                }
+
+                const float gap = 6.0f;
+                float totalChipWidth = stateChipWidth;
+                if (typeChipWidth > 0.0f)
+                    totalChipWidth += gap + typeChipWidth;
+                if (toneChipWidth > 0.0f)
+                    totalChipWidth += gap + toneChipWidth;
+
+                auto centredChips = chipRow.withWidth(jmin(chipRow.getWidth(), totalChipWidth))
+                                        .withCentre({chipRow.getCentreX(), chipRow.getCentreY()});
+                if (centredChips.getWidth() >= stateChipWidth)
+                    drawBrowserChip(g, centredChips.removeFromLeft(stateChipWidth),
                                     selectedModel ? (selectedReady ? "READY" : "MISSING") : "EMPTY",
                                     selectedModel ? (selectedReady ? palette.led : colours["Warning Colour"])
                                                   : palette.text.withAlpha(0.45f),
                                     selectedModel != nullptr);
 
-                if (selectedModel != nullptr)
+                if (selectedModel != nullptr && typeChipWidth > 0.0f && centredChips.getWidth() > gap + typeChipWidth)
                 {
-                    if (chipRow.getWidth() > 56.0f)
-                    {
-                        chipRow.removeFromLeft(6.0f);
-                        const auto typeChip = normaliseNAMModelType(fields.modelType);
-                        const auto typeChipWidth = jmin(chipRow.getWidth(),
-                                                        jlimit(48.0f, 82.0f,
-                                                               FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeChip) +
-                                                                   16.0f));
-                        drawBrowserChip(g, chipRow.removeFromLeft(typeChipWidth), typeChip,
-                                        colourForNAMModelType(fields.modelType, palette), true);
-                    }
-
-                    const auto toneTag = inferToneTag(String(selectedModel->name) + " " + fields.rig + " " + fields.modelType);
-                    if (toneTag.isNotEmpty() && chipRow.getWidth() > 48.0f)
-                    {
-                        chipRow.removeFromLeft(6.0f);
-                        const auto toneChipWidth = jmin(chipRow.getWidth(),
-                                                        FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag) + 18.0f);
-                        drawBrowserChip(g, chipRow.removeFromLeft(toneChipWidth), toneTag, toneColourForTag(toneTag),
-                                        true);
-                    }
+                    centredChips.removeFromLeft(gap);
+                    drawBrowserChip(g, centredChips.removeFromLeft(typeChipWidth), typeChip,
+                                    colourForNAMModelType(fields.modelType, palette), true);
                 }
 
+                if (selectedModel != nullptr && toneChipWidth > 0.0f && centredChips.getWidth() > gap + toneChipWidth)
+                {
+                    centredChips.removeFromLeft(gap);
+                    drawBrowserChip(g, centredChips.removeFromLeft(toneChipWidth), toneTag, toneColourForTag(toneTag), true);
+                }
             }
             else
             {
@@ -1904,7 +1918,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 return;
 
             auto row = label->getBounds().getUnion(value->getBounds()).expanded(7, 3).toFloat();
-            row.setRight(detailsBounds.getRight() - (detailsBounds.getWidth() >= 250.0f && row.getY() < detailsBounds.getY() + 124.0f ? 96.0f : 16.0f));
+            row.setRight(detailsBounds.getRight() - 16.0f);
             row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
 
             g.setColour((rowIndex % 2 == 0 ? palette.inset : palette.face).withAlpha(0.72f));
@@ -2303,15 +2317,17 @@ void NAMModelBrowserComponent::resized()
     };
 
     // -- Identity / preview section --
-    auto heroArea = detailsArea.removeFromTop(compactLayout ? 84 : 118);
+    auto heroArea = detailsArea.removeFromTop(compactLayout ? 132 : 164);
     auto heroText = heroArea;
-    if (!compactLayout && detailsPanelBounds.getWidth() >= 330)
-        heroText.removeFromRight(78);
     nameLabel->setVisible(false);
     nameLabel->setBounds({});
-    nameValue->setBounds(heroText.removeFromTop(compactLayout ? 24 : 34));
+    authorLabel->setVisible(false);
+    authorLabel->setBounds({});
+    heroText.removeFromTop(compactLayout ? 48 : 64);
+    nameValue->setJustificationType(Justification::centred);
+    authorValue->setJustificationType(Justification::centred);
+    nameValue->setBounds(heroText.removeFromTop(compactLayout ? 22 : 30));
     auto authorRow = heroText.removeFromTop(compactLayout ? 19 : 22);
-    authorLabel->setBounds(authorRow.removeFromLeft(labelWidth));
     authorValue->setBounds(authorRow);
     heroText.removeFromTop(compactLayout ? 2 : 4);
     modelDescriptionLabel->setBounds(heroText.removeFromTop(compactLayout ? 31 : 34));
