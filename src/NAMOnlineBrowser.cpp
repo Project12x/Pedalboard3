@@ -60,6 +60,47 @@ juce::String formatToneFileSize(juce::int64 fileSize)
         return juce::String(fileSize / 1024) + " KB";
     return juce::String(fileSize) + " B";
 }
+
+void drawTone3000GearGlyph(juce::Graphics& g, juce::Rectangle<float> tile, juce::Colour accent,
+                           const std::string& gearType, bool active)
+{
+    const auto radius = 7.0f;
+    g.setColour(accent.withAlpha(active ? 0.22f : 0.12f));
+    g.fillRoundedRectangle(tile, radius);
+    g.setColour(accent.withAlpha(active ? 0.72f : 0.42f));
+    g.drawRoundedRectangle(tile.reduced(0.5f), radius, 1.0f);
+
+    auto icon = tile.reduced(tile.getWidth() * 0.24f, tile.getHeight() * 0.22f);
+    g.setColour(accent.withAlpha(active ? 0.95f : 0.70f));
+
+    if (gearType == "pedal")
+    {
+        auto body = icon.withTrimmedLeft(icon.getWidth() * 0.12f).withTrimmedRight(icon.getWidth() * 0.12f);
+        g.drawRoundedRectangle(body, 3.0f, 1.4f);
+        g.drawEllipse(body.withSizeKeepingCentre(body.getWidth() * 0.38f, body.getWidth() * 0.38f)
+                          .translated(0.0f, -body.getHeight() * 0.18f),
+                      1.2f);
+        g.fillRoundedRectangle(body.withTrimmedTop(body.getHeight() * 0.70f).reduced(body.getWidth() * 0.18f, 0.0f),
+                               2.0f);
+    }
+    else if (gearType == "full_rig")
+    {
+        auto top = icon.removeFromTop(icon.getHeight() * 0.40f);
+        g.drawRoundedRectangle(top, 2.0f, 1.3f);
+        icon.removeFromTop(3.0f);
+        g.drawRoundedRectangle(icon, 2.0f, 1.3f);
+        g.fillEllipse(top.getX() + 3.0f, top.getCentreY() - 1.5f, 3.0f, 3.0f);
+        g.drawEllipse(icon.withSizeKeepingCentre(icon.getWidth() * 0.32f, icon.getWidth() * 0.32f), 1.1f);
+    }
+    else
+    {
+        g.drawRoundedRectangle(icon, 3.0f, 1.4f);
+        auto speaker = icon.withSizeKeepingCentre(icon.getWidth() * 0.46f, icon.getWidth() * 0.46f);
+        g.drawEllipse(speaker, 1.3f);
+        g.fillEllipse(speaker.withSizeKeepingCentre(3.0f, 3.0f));
+        g.drawLine(icon.getX() + 4.0f, icon.getY() + 4.0f, icon.getX() + 9.0f, icon.getY() + 4.0f, 1.3f);
+    }
+}
 } // namespace
 
 //==============================================================================
@@ -146,6 +187,9 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     const int badgeHeight = 17;
     auto& fm = FontManager::getInstance();
 
+    auto glyphTile = itemBounds.withWidth(31.0f).reduced(6.0f, 5.0f);
+    drawTone3000GearGlyph(g, glyphTile, gearAccent, tone.gearType, rowIsSelected || rowNumber == hoveredRow);
+
     // Gear type badge.
     auto gearText = getGearDisplayText(tone.gearType);
     if (gearText.isNotEmpty())
@@ -222,7 +266,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     }
 
     // Name (primary text)
-    const int textX = margin + 14;
+    const int textX = margin + 46;
     int textRight = rightEdge - 4;
     textRight = juce::jmax(textX + 48, textRight);
     g.setColour(colours["Text Colour"]);
@@ -233,7 +277,8 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     // Author (secondary text)
     g.setFont(fm.getCaptionFont());
     g.setColour(colours["Text Colour"].withAlpha(rowIsSelected ? 0.62f : 0.48f));
-    g.drawText("by " + juce::String(tone.authorName), textX, height / 2, textRight - textX, height / 2 - 2,
+    const auto author = juce::String(tone.authorName).isNotEmpty() ? juce::String(tone.authorName) : "unknown author";
+    g.drawText("by " + author, textX, height / 2, textRight - textX, height / 2 - 2,
                juce::Justification::centredLeft, true);
 }
 
@@ -582,6 +627,42 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.fillRoundedRectangle(detailsBounds.getX() + 1.0f, detailsBounds.getY() + 8.0f, 3.0f,
                            detailsBounds.getHeight() - 16.0f, 1.5f);
 
+    if (selectedTone != nullptr)
+    {
+        const auto gearAccent = getGearAccentColour(selectedTone->gearType);
+        auto hero = detailsBounds.reduced(18.0f, 14.0f).removeFromTop(92.0f);
+        auto glyph = hero.removeFromLeft(58.0f).reduced(2.0f, 10.0f);
+        drawTone3000GearGlyph(g, glyph, gearAccent, selectedTone->gearType, true);
+
+        auto heroText = hero.reduced(12.0f, 4.0f);
+        auto chip = heroText.removeFromBottom(20.0f);
+        const auto gearText = getGearDisplayText(selectedTone->gearType);
+        const float chipWidth = juce::jlimit(52.0f, 108.0f,
+                                             FontManager::getInstance().getCaptionFont().getStringWidthFloat(gearText) +
+                                                 24.0f);
+        auto chipBounds = chip.withWidth(chipWidth);
+        g.setColour(gearAccent.withAlpha(0.16f));
+        g.fillRoundedRectangle(chipBounds, 7.0f);
+        g.setColour(gearAccent.withAlpha(0.58f));
+        g.drawRoundedRectangle(chipBounds.reduced(0.5f), 7.0f, 1.0f);
+        g.setFont(FontManager::getInstance().getCaptionFont());
+        g.setColour(gearAccent.withAlpha(0.95f));
+        g.drawText(gearText.toUpperCase(), chipBounds, juce::Justification::centred, true);
+
+        g.setFont(FontManager::getInstance().getSubheadingFont());
+        g.setColour(colours["Text Colour"]);
+        g.drawFittedText(juce::String(selectedTone->name), heroText.removeFromTop(28).toNearestInt(),
+                         juce::Justification::centredLeft, 1);
+        g.setFont(FontManager::getInstance().getCaptionFont());
+        g.setColour(colours["Text Colour"].withAlpha(0.62f));
+        g.drawFittedText("by " + juce::String(selectedTone->authorName), heroText.removeFromTop(20).toNearestInt(),
+                         juce::Justification::centredLeft, 1);
+
+        auto separator = detailsBounds.reduced(18.0f, 0.0f).withY(detailsBounds.getY() + 114.0f).withHeight(1.0f);
+        g.setColour(gearAccent.withAlpha(0.24f));
+        g.fillRect(separator);
+    }
+
     // Detail panel section separators
     if (nameLabel && nameValue)
     {
@@ -589,16 +670,13 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         int sepRight = nameValue->getRight();
         g.setColour(colours["Text Colour"].withAlpha(0.08f));
 
-        // Separator after author row
-        if (authorValue)
+        const juce::Label* values[] = {nameValue.get(), authorValue.get(), gearValue.get(), architectureValue.get(),
+                                       downloadsValue.get(), sizeValue.get()};
+        for (const auto* value : values)
         {
-            float sepY = static_cast<float>(authorValue->getBottom()) + 2.0f;
-            g.drawLine(static_cast<float>(sepLeft), sepY, static_cast<float>(sepRight), sepY, 1.0f);
-        }
-        // Separator after size row (before buttons)
-        if (sizeValue)
-        {
-            float sepY = static_cast<float>(sizeValue->getBottom()) + 2.0f;
+            if (value == nullptr)
+                continue;
+            float sepY = static_cast<float>(value->getBottom()) + 2.0f;
             g.drawLine(static_cast<float>(sepLeft), sepY, static_cast<float>(sepRight), sepY, 1.0f);
         }
     }
@@ -606,17 +684,23 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     // Empty state — subtle text only, no oversized icon
     if (selectedTone == nullptr && listModel.getNumRows() == 0)
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.30f));
+        auto empty = detailsBounds.reduced(26.0f);
+        auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
+        drawTone3000GearGlyph(g, icon, colours["Accent Colour"], "amp", false);
+        g.setColour(colours["Text Colour"].withAlpha(0.34f));
         g.setFont(FontManager::getInstance().getLabelFont());
-        g.drawText("Search TONE3000 to browse NAM models", detailsBounds.reduced(16), juce::Justification::centred,
-                   true);
+        g.drawText("Search TONE3000 to browse NAM models", empty.translated(0.0f, 34.0f),
+                   juce::Justification::centred, true);
     }
     else if (selectedTone == nullptr)
     {
         // Have results but nothing selected
-        g.setColour(colours["Text Colour"].withAlpha(0.32f));
+        auto empty = detailsBounds.reduced(26.0f);
+        auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
+        drawTone3000GearGlyph(g, icon, colours["Accent Colour"], "full_rig", false);
+        g.setColour(colours["Text Colour"].withAlpha(0.36f));
         g.setFont(FontManager::getInstance().getLabelFont());
-        g.drawText("Select a model for details", detailsBounds.reduced(16), juce::Justification::centred, true);
+        g.drawText("Select a model for details", empty.translated(0.0f, 34.0f), juce::Justification::centred, true);
     }
 }
 
@@ -686,7 +770,7 @@ void NAMOnlineBrowserComponent::resized()
     // Details panel
     auto detailsArea = bounds;
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(8);
+    detailsArea.removeFromTop(selectedTone != nullptr ? 92 : 8);
 
     int labelWidth = 80;
     int rowHeight = 20;
@@ -941,6 +1025,8 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
 
         downloadButton->setEnabled(false);
         loadButton->setEnabled(false);
+        resized();
+        repaint();
         return;
     }
 
@@ -973,6 +1059,8 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
     downloadButton->setEnabled(!isCached && !isDownloading && Tone3000Client::getInstance().isAuthenticated());
     downloadButton->setButtonText(isDownloading ? "Downloading..." : "Download");
     loadButton->setEnabled(isCached);
+    resized();
+    repaint();
 }
 
 void NAMOnlineBrowserComponent::onListSelectionChanged()
