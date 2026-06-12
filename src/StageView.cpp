@@ -1058,6 +1058,12 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
 
     const float hintWidth = juce::jmin(520.0f, bankRow.getWidth() * 0.42f);
     auto hintArea = bankRow.removeFromRight(hintWidth);
+    if (prevButton != nullptr && nextButton != nullptr)
+    {
+        const auto navBounds = prevButton->getBounds().getUnion(nextButton->getBounds()).toFloat().expanded(14.0f, 0.0f);
+        if (hintArea.intersects(navBounds))
+            hintArea.setRight(juce::jmax(hintArea.getX(), navBounds.getX() - 10.0f));
+    }
     const float bankPillWidth = juce::jlimit(94.0f, 118.0f, bankRow.getWidth() * 0.22f);
     const float bankPillGap = 8.0f;
     const int maxBankPills = juce::jmax(1, juce::roundToInt((bankRow.getWidth() + bankPillGap) /
@@ -1071,14 +1077,19 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
         bankRow.removeFromLeft(bankPillGap);
     }
 
-    const auto rangeText = patchCount > 0
-                               ? String(bankStart + 1).paddedLeft('0', 2) + "-" +
-                                     String(bankEnd).paddedLeft('0', 2) + " of " + String(patchCount) +
-                                     " patches - tap a bank or tile to switch"
-                               : String("No patches loaded");
-    g.setFont(fonts.getDisplayFont(14.0f));
-    g.setColour(colours["Text Colour"].withAlpha(0.42f));
-    g.drawText(rangeText, hintArea, Justification::centredRight);
+    const auto rangePrefix = patchCount > 0
+                                 ? String(bankStart + 1).paddedLeft('0', 2) + "-" +
+                                       String(bankEnd).paddedLeft('0', 2) + " of " + String(patchCount)
+                                 : String("No patches loaded");
+    const auto rangeText = patchCount > 0 && hintArea.getWidth() >= 300.0f
+                               ? rangePrefix + " patches - tap a bank or tile to switch"
+                               : rangePrefix;
+    if (hintArea.getWidth() >= 96.0f)
+    {
+        g.setFont(fonts.getDisplayFont(14.0f));
+        g.setColour(colours["Text Colour"].withAlpha(0.42f));
+        g.drawText(rangeText, hintArea, Justification::centredRight);
+    }
 
     if (patchCount <= 0)
     {
