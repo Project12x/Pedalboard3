@@ -185,6 +185,46 @@ NodeVisualStyle getNodeVisualStyle(AudioProcessor* processor, const String& disp
     return {"module", graphCategoryColour("Graph Category Delay")};
 }
 
+void drawPortLabelBackplates(Graphics& g, const OwnedArray<GlyphArrangement>& labels, Colour accent, float nodeWidth,
+                             bool rightSide)
+{
+    if (labels.isEmpty())
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto plateFill = colours["Window Background"].interpolatedWith(accent, 0.10f).withAlpha(0.46f);
+    const auto plateBorder = accent.withAlpha(0.24f);
+    const auto rail = accent.withAlpha(0.48f);
+
+    for (auto* label : labels)
+    {
+        if (label == nullptr)
+            continue;
+
+        auto bounds = label->getBoundingBox(0, -1, true);
+        if (bounds.isEmpty())
+            continue;
+
+        auto plate = bounds.expanded(4.5f, 2.5f);
+        plate.setHeight(jmax(14.0f, plate.getHeight()));
+        plate.setY(bounds.getCentreY() - plate.getHeight() * 0.5f);
+        const auto maxPlateX = jmax(7.0f, nodeWidth - plate.getWidth() - 7.0f);
+        plate.setX(jlimit(7.0f, maxPlateX, plate.getX()));
+
+        g.setColour(plateFill);
+        g.fillRoundedRectangle(plate, 4.0f);
+        g.setColour(plateBorder);
+        g.drawRoundedRectangle(plate.reduced(0.5f), 4.0f, 0.8f);
+
+        auto railBounds = rightSide ? Rectangle<float>(plate.getRight() - 2.0f, plate.getY() + 3.0f, 1.5f,
+                                                       plate.getHeight() - 6.0f)
+                                    : Rectangle<float>(plate.getX() + 0.5f, plate.getY() + 3.0f, 1.5f,
+                                                       plate.getHeight() - 6.0f);
+        g.setColour(rail);
+        g.fillRoundedRectangle(railBounds, 0.75f);
+    }
+}
+
 bool areNodeParameterControlsEnabled()
 {
     return SettingsManager::getInstance().getBool(kShowNodeParameterControlsSettingsKey, true);
@@ -714,10 +754,15 @@ void PluginComponent::paint(Graphics& g)
                                beingDragged ? 2.2f : 1.4f);
     }
 
-    // Draw the plugin name.
-    g.setColour(colours["Text Colour"]);
+    // Draw port label backplates before the existing glyph arrangements.
+    if (!isAudioIONode())
+    {
+        drawPortLabelBackplates(g, inputText, accentColour, w, false);
+        drawPortLabelBackplates(g, outputText, accentColour, w, true);
+    }
 
     // Draw the input channels.
+    g.setColour(colours["Text Colour"]);
     for (i = 0; i < inputText.size(); ++i)
         inputText[i]->draw(g);
 
