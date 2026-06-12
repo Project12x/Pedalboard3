@@ -130,6 +130,11 @@ bool containsAnyToken(const String& text, std::initializer_list<const char*> tok
     return false;
 }
 
+bool isLabelNodeName(const String& name)
+{
+    return name.equalsIgnoreCase("Label") || name.equalsIgnoreCase("Label Node");
+}
+
 Colour graphCategoryColour(const String& role)
 {
     auto& colours = ColourScheme::getInstance().colours;
@@ -518,8 +523,9 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         // non-existent close button.
         titleLabel->setBounds(20, 3, getWidth() - 40, 20);
 
-        // Skip edit/mappings buttons for Tuner (no external editor, no mappable params)
-        if (pluginName != "Tuner")
+        const bool labelNode = isLabelNodeName(pluginName);
+        const bool tunerNode = pluginName == "Tuner";
+        if (!labelNode && !tunerNode)
         {
             editButton = new TextButton("e", "Open plugin editor (right-click for options)");
             editButton->setBounds(10, getHeight() - 30, 20, 20);
@@ -534,12 +540,15 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             addAndMakeVisible(mappingsButton);
         }
 
-        bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
-        bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
-        bypassButton->setClickingTogglesState(true);
-        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
-        bypassButton->addListener(this);
-        addAndMakeVisible(bypassButton);
+        if (!labelNode)
+        {
+            bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
+            bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
+            bypassButton->setClickingTogglesState(true);
+            bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+            bypassButton->addListener(this);
+            addAndMakeVisible(bypassButton);
+        }
 
         deleteButton = new DrawableButton("DeleteFilterButton", DrawableButton::ImageRaw);
         deleteButton->setImages(closeUp.get(), closeOver.get(), closeDown.get());
@@ -613,7 +622,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         }
     }
 
-    if (node->properties.getWithDefault("windowOpen", false))
+    if (node->properties.getWithDefault("windowOpen", false) && editButton != nullptr)
         buttonClicked(editButton);
 }
 
@@ -869,7 +878,7 @@ void PluginComponent::timerUpdate()
 {
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
 
-    if (bypassable)
+    if (bypassable != nullptr && bypassButton != nullptr)
         bypassButton->setToggleState(bypassable->getBypass(), false);
 
     // Update meter levels for Audio I/O nodes

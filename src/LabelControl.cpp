@@ -108,19 +108,23 @@ void LabelControl::resized()
 
 void LabelControl::paint(Graphics& g)
 {
-    auto& scheme = ColourScheme::getInstance();
-    auto bgColour = scheme.colours["Plugin Background"];
-    auto textColour = scheme.colours["Text Colour"];
-
-    // Semi-transparent background with rounded corners
-    g.setColour(bgColour.withAlpha(0.85f));
-    g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
+    auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto accent = colours["Graph Category Source"];
+    ColourGradient fill(colours["Plugin Background"].brighter(0.08f), bounds.getX(), bounds.getY(),
+                        colours["Plugin Background"].darker(0.10f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(bounds, 7.0f);
+    g.setColour(accent.withAlpha(0.42f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 1.1f);
+    g.setColour(accent.withAlpha(0.48f));
+    g.fillRoundedRectangle(bounds.getX() + 4.0f, bounds.getY() + 5.0f, 2.0f, bounds.getHeight() - 10.0f, 1.0f);
 
     // Only draw text when not in edit mode
     if (!editMode)
     {
         g.setFont(labelFont);
-        g.setColour(textColour);
+        g.setColour(colours["Text Colour"]);
 
         // Draw multi-line text centered
         String text = processor->getText();

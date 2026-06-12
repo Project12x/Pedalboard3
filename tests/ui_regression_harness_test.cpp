@@ -331,6 +331,67 @@ TEST_CASE("Graph source polish keeps cable rendering and grid defaults stable",
     CHECK(mainPanelSource->find("getString(kGraphGridStyleSettingsKey, \"Off\")") == std::string::npos);
 }
 
+TEST_CASE("Built-in node polish source contract covers label, tuner, NAM, mixer, and splitter",
+          "[ui][regression][visual][source][nodes]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto labelSource = loadSourceFile("src/LabelControl.cpp");
+    const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
+    const auto namSource = loadSourceFile("src/NAMControl.cpp");
+    const auto mixerSource = loadSourceFile("src/DawMixerProcessor.cpp");
+    const auto splitterSource = loadSourceFile("src/DawSplitterProcessor.cpp");
+
+    REQUIRE(pluginSource.has_value());
+    REQUIRE(labelSource.has_value());
+    REQUIRE(tunerSource.has_value());
+    REQUIRE(namSource.has_value());
+    REQUIRE(mixerSource.has_value());
+    REQUIRE(splitterSource.has_value());
+
+    CHECK(pluginSource->find("bool isLabelNodeName(const String& name)") != std::string::npos);
+    CHECK(pluginSource->find(
+              "return name.equalsIgnoreCase(\"Label\") || name.equalsIgnoreCase(\"Label Node\");") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);") != std::string::npos);
+    CHECK(pluginSource->find("const bool tunerNode = pluginName == \"Tuner\";") != std::string::npos);
+    CHECK(pluginSource->find("if (!labelNode && !tunerNode)") != std::string::npos);
+    CHECK(pluginSource->find("if (!labelNode)\n        {\n            bypassButton = new DrawableButton") !=
+          std::string::npos);
+    const auto labelNodeMarker = pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);");
+    REQUIRE(labelNodeMarker != std::string::npos);
+    const auto deleteButtonMarker =
+        pluginSource->find("deleteButton = new DrawableButton(\"DeleteFilterButton\", DrawableButton::ImageRaw);",
+                           labelNodeMarker);
+    REQUIRE(deleteButtonMarker != std::string::npos);
+    const auto optionalButtonSection = pluginSource->substr(labelNodeMarker, deleteButtonMarker - labelNodeMarker);
+    CHECK(optionalButtonSection.find("deleteButton =") == std::string::npos);
+    CHECK(pluginSource->find("if (bypassable != nullptr && bypassButton != nullptr)") != std::string::npos);
+
+    CHECK(labelSource->find("const auto accent = colours[\"Graph Category Source\"];") != std::string::npos);
+    CHECK(labelSource->find("g.fillRoundedRectangle(bounds.getX() + 4.0f") != std::string::npos);
+
+    CHECK(tunerSource->find("auto tunerAccent = colours[\"Tuner Active Colour\"];") != std::string::npos);
+    CHECK(tunerSource->find("ColourGradient panelFill(") != std::string::npos);
+    CHECK(tunerSource->find("g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 1.2f);") != std::string::npos);
+
+    CHECK(namSource->find("ColourGradient headerGrad(namLookAndFeel.ampHeaderBg.brighter(0.13f)") !=
+          std::string::npos);
+    CHECK(namSource->find("header.getBottom() - 3.0f") != std::string::npos);
+    CHECK(namSource->find(
+              "g.drawText(label.getText(), bounds.reduced(8.0f, 0.0f), label.getJustificationType(), true);") !=
+          std::string::npos);
+
+    const std::array<const std::string*, 2> stripSources{&*mixerSource, &*splitterSource};
+    for (const auto* source : stripSources)
+    {
+        CHECK(source->find("const auto accent = colours[\"Graph Category Dynamics\"];") != std::string::npos);
+        CHECK(source->find("ColourGradient stripFill(") != std::string::npos);
+        CHECK(source->find("g.fillRoundedRectangle(bounds, 6.0f);") != std::string::npos);
+        CHECK(source->find("g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);") !=
+              std::string::npos);
+    }
+}
+
 TEST_CASE("LookAndFeel colour contract maps shared controls to semantic roles", "[ui][regression][theme][laf]")
 {
     const auto& specs = ColourScheme::getLookAndFeelColourSpecs();

@@ -474,10 +474,12 @@ void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
 
         if (!label.isBeingEdited())
         {
-            auto textArea = label.getLocalBounds().reduced(isArchChip ? 2 : 8, 0);
             g.setColour(loaded || isArchChip ? ampTextBright : ampTextDim);
             g.setFont(label.getFont());
-            g.drawText(label.getText(), textArea, label.getJustificationType(), true);
+            if (isArchChip)
+                g.drawText(label.getText(), bounds.reduced(2.0f, 0.0f), label.getJustificationType(), true);
+            else
+                g.drawText(label.getText(), bounds.reduced(8.0f, 0.0f), label.getJustificationType(), true);
         }
     }
     else
@@ -846,18 +848,17 @@ void NAMControl::paint(Graphics& g)
 
     // Header bar -- shows current model state with amp-category identity
     Rectangle<int> headerBounds(2, 2, getWidth() - 4, headerH);
-    ColourGradient headerGradient(laf.ampHeaderBg.brighter(0.12f), 0, 2, laf.ampHeaderBg.darker(0.20f), 0,
-                                  (float)headerH, false);
-    g.setGradientFill(headerGradient);
-    g.fillRoundedRectangle(headerBounds.toFloat(), 3.0f);
+    auto header = headerBounds.toFloat();
+    ColourGradient headerGrad(namLookAndFeel.ampHeaderBg.brighter(0.13f), header.getX(), header.getY(),
+                              namLookAndFeel.ampHeaderBg.darker(0.12f), header.getX(), header.getBottom(), false);
+    g.setGradientFill(headerGrad);
+    g.fillRoundedRectangle(header, 8.0f);
+    g.setColour(namLookAndFeel.ampAccent.withAlpha(0.55f));
+    g.fillRoundedRectangle(header.getX() + 8.0f, header.getBottom() - 3.0f, header.getWidth() - 16.0f, 2.0f, 1.0f);
 
-    // Header accent rail and top sheen
-    g.setColour(laf.ampAccent.withAlpha(0.82f));
-    g.fillRect(2, headerH + 2, getWidth() - 4, 2);
+    // Header top sheen
     g.setColour(laf.ampTextBright.withAlpha(0.07f));
     g.drawLine(8.0f, 4.0f, (float)getWidth() - 10.0f, 4.0f, 1.0f);
-    g.setColour(laf.ampBorder.darker(0.2f));
-    g.fillRect(2, headerH + 4, getWidth() - 4, 1);
 
     String headerText = namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No Model";
     auto headerTextArea = headerBounds.reduced(12, 0).withTrimmedRight(56);

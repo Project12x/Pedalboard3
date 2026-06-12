@@ -83,15 +83,16 @@ void TunerControl::paint(Graphics& g)
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
 
-    // Gradient background
-    Colour bgTop = colours["Plugin Background"].brighter(0.05f);
-    Colour bgBot = colours["Plugin Background"].darker(0.08f);
-    g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBot, 0, bounds.getHeight(), false));
-    g.fillAll();
-
-    // Subtle frame
-    g.setColour(colours["Plugin Border"].withAlpha(0.3f));
-    g.drawRect(bounds.reduced(1), 1.0f);
+    auto panel = getLocalBounds().toFloat().reduced(1.0f);
+    auto tunerAccent = colours["Tuner Active Colour"];
+    ColourGradient panelFill(colours["Plugin Background"].interpolatedWith(tunerAccent, 0.06f).brighter(0.06f),
+                             panel.getX(), panel.getY(),
+                             colours["Plugin Background"].interpolatedWith(tunerAccent, 0.04f).darker(0.12f),
+                             panel.getX(), panel.getBottom(), false);
+    g.setGradientFill(panelFill);
+    g.fillRoundedRectangle(panel, 8.0f);
+    g.setColour(tunerAccent.withAlpha(0.36f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 1.2f);
 
     auto area = bounds.reduced(6);
 

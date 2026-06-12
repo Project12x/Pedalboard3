@@ -487,10 +487,16 @@ class DawStripRow : public Component
 
     void paint(Graphics& g) override
     {
-        g.setColour(Colour(0xFF2A2A2A));
-        g.fillRect(getLocalBounds());
-        g.setColour(Colour(0xFF404040));
-        g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
+        auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+        auto& colours = ColourScheme::getInstance().colours;
+        const auto accent = colours["Graph Category Dynamics"];
+        ColourGradient stripFill(colours["Plugin Background"].brighter(0.07f), bounds.getX(), bounds.getY(),
+                                 colours["Plugin Background"].darker(0.10f), bounds.getX(), bounds.getBottom(),
+                                 false);
+        g.setGradientFill(stripFill);
+        g.fillRoundedRectangle(bounds, 6.0f);
+        g.setColour(accent.withAlpha(0.42f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
 
         auto* s = processor->getStrip(index);
         if (!s)
