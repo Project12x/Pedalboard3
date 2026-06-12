@@ -9,6 +9,11 @@
 
 #include "StageLayout.h"
 
+namespace
+{
+constexpr int kShortHeightContentMin = 148;
+}
+
 namespace StageLayout
 {
 Metrics calculateMetrics(int width, int height, bool showTuner)
@@ -23,7 +28,17 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
 
     metrics.headerHeight = juce::roundToInt(juce::jlimit(58.0f, 76.0f, safeHeight * 0.075f));
     metrics.footerHeight = juce::roundToInt(juce::jlimit(86.0f, 116.0f, safeHeight * 0.105f));
-    metrics.tunerHeight = showTuner ? juce::roundToInt(juce::jlimit(118.0f, 198.0f, safeHeight * 0.19f)) : 0;
+    if (showTuner)
+    {
+        const int preferredTunerHeight = juce::roundToInt(juce::jlimit(118.0f, 198.0f, safeHeight * 0.19f));
+        const int availableTunerHeight =
+            safeHeight - metrics.headerHeight - metrics.footerHeight - kShortHeightContentMin;
+        metrics.tunerHeight = juce::jmax(0, juce::jmin(preferredTunerHeight, availableTunerHeight));
+    }
+    else
+    {
+        metrics.tunerHeight = 0;
+    }
     metrics.patchAreaMinHeight =
         juce::jmax(0, safeHeight - metrics.headerHeight - metrics.footerHeight - metrics.tunerHeight);
 
@@ -91,7 +106,8 @@ Metrics calculateMetrics(int width, int height, bool showTuner)
 
 bool shouldReserveTunerStrip(bool showTuner, bool tunerFocus, bool patchView)
 {
-    return showTuner && !tunerFocus && patchView;
+    juce::ignoreUnused(patchView);
+    return showTuner && !tunerFocus;
 }
 
 juce::String elideLabel(const juce::String& text, int maxChars)

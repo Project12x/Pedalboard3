@@ -392,6 +392,26 @@ TEST_CASE("Built-in node polish source contract covers label, tuner, NAM, mixer,
     }
 }
 
+TEST_CASE("Scratch footer source contract keeps panel affordance reachable",
+          "[ui][regression][visual][source][scratch]")
+{
+    const auto mainPanelSource = loadSourceFile("src/MainPanel.cpp");
+    REQUIRE(mainPanelSource.has_value());
+
+    CHECK(mainPanelSource->find("const int scratchRecordW = 52;") != std::string::npos);
+    CHECK(mainPanelSource->find("const int scratchPanelW = 76;") != std::string::npos);
+    CHECK(mainPanelSource->find("const int scratchMediumW = scratchRecordW + gap + scratchPanelW;") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("const int scratchFullW = scratchMediumW + gap + scratchMinStatusW;") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("layoutScratchControls(8, footerY, scratchFullW);") != std::string::npos);
+    CHECK(mainPanelSource->find("layoutScratchControls(8, row3Y, scratchW);") != std::string::npos);
+    CHECK(mainPanelSource->find("footerLayoutW >= 780 ? scratchFullW : scratchMediumW") != std::string::npos);
+    CHECK(mainPanelSource->find("layoutScratchControls(8, footerY, 112)") == std::string::npos);
+    CHECK(mainPanelSource->find("layoutScratchControls(8, row2Y, 112)") == std::string::npos);
+    CHECK(mainPanelSource->find("layoutScratchControls(8, row3Y, 180)") == std::string::npos);
+}
+
 TEST_CASE("LookAndFeel colour contract maps shared controls to semantic roles", "[ui][regression][theme][laf]")
 {
     const auto& specs = ColourScheme::getLookAndFeelColourSpecs();

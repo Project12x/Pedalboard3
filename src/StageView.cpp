@@ -1193,9 +1193,13 @@ void StageView::drawGridView(Graphics& g, Rectangle<float> bounds)
             g.drawText(StageLayout::elideLabel(tone, toneChars), toneArea, Justification::centredLeft);
         }
 
-        auto stripe = Rectangle<float>(tile.getX(), tile.getBottom() - 7.0f, tile.getWidth(), 7.0f);
-        g.setColour(accent.withAlpha(isActive ? 0.98f : 0.72f));
-        g.fillRoundedRectangle(stripe, 3.5f);
+        Path tileClip;
+        tileClip.addRoundedRectangle(tile, 16.0f);
+        g.saveState();
+        g.reduceClipRegion(tileClip);
+        g.setColour(accent.withAlpha(isActive ? 0.78f : 0.45f));
+        g.fillRect(tile.getX(), tile.getBottom() - 4.0f, tile.getWidth(), 4.0f);
+        g.restoreState();
     }
 }
 

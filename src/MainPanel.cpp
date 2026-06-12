@@ -419,8 +419,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     scratchStatusLabel->setTooltip("Scratch capture status");
 
     addAndMakeVisible(scratchPanelButton = new TextButton("scratchPanelButton"));
-    scratchPanelButton->setButtonText("Takes");
-    scratchPanelButton->setTooltip("Open scratch takes");
+    scratchPanelButton->setButtonText("Scratch");
+    scratchPanelButton->setTooltip("Open Scratch Mode");
     scratchPanelButton->addListener(this);
 
     themeSwitcher = std::make_unique<ThemeSwitcherComponent>(
@@ -998,6 +998,11 @@ void MainPanel::resized()
     const int controlH = 24;
     const int gap = 4;
     const int rightMargin = 6;
+    const int scratchRecordW = 52;
+    const int scratchPanelW = 76;
+    const int scratchMinStatusW = 64;
+    const int scratchMediumW = scratchRecordW + gap + scratchPanelW;
+    const int scratchFullW = scratchMediumW + gap + scratchMinStatusW;
 
     patchLabel->setVisible(true);
     prevPatch->setVisible(true);
@@ -1075,11 +1080,12 @@ void MainPanel::resized()
         return x + 24;
     };
 
-    auto layoutScratchControls = [this, gap, controlH](int left, int controlY, int areaW)
+    auto layoutScratchControls =
+        [this, gap, controlH, scratchRecordW, scratchPanelW, scratchMinStatusW](int left, int controlY, int areaW)
     {
-        const int recW = 52;
-        const int panelW = 56;
-        const int minStatusW = 64;
+        const int recW = scratchRecordW;
+        const int panelW = scratchPanelW;
+        const int minStatusW = scratchMinStatusW;
 
         if (areaW >= recW + gap + minStatusW + gap + panelW)
         {
@@ -1188,8 +1194,10 @@ void MainPanel::resized()
         const int footerY = footerTop + 7;
         const int centerX = footerW / 2;
 
-        layoutScratchControls(8, footerY, 112);
-        layoutPatchControls(128, footerY, 312);
+        layoutScratchControls(8, footerY, scratchFullW);
+        const int transportLeftX = centerX - 169;
+        const int patchLeft = 8 + scratchFullW + 8;
+        layoutPatchControls(patchLeft, footerY, jmax(patchLeft, transportLeftX - 8));
         playButton->setBounds(centerX - 18, footerTop + 2, 36, 36);
         rtzButton->setBounds(centerX + 20, footerY, 24, controlH);
         tempoLabel->setBounds(centerX - 169, footerY, 64, controlH);
@@ -1219,12 +1227,14 @@ void MainPanel::resized()
             const int row3Y = footerTop + 72;
             layoutTransportControls(8, row2Y);
             layoutCpuControls(footerW, row2Y);
-            layoutScratchControls(8, row3Y, 180);
-            layoutGainControls(196, row3Y, footerW - 204, 64);
+            const int scratchW = jmin(scratchFullW, jmax(0, footerW - 16));
+            layoutScratchControls(8, row3Y, scratchW);
+            const int gainLeft = 8 + scratchW + 8;
+            layoutGainControls(gainLeft, row3Y, footerW - gainLeft - 8, 64);
         }
         else
         {
-            const int scratchW = footerLayoutW >= 780 ? 180 : 112;
+            const int scratchW = footerLayoutW >= 780 ? scratchFullW : scratchMediumW;
             layoutScratchControls(8, row2Y, scratchW);
             const int transportEndX = layoutTransportControls(8 + scratchW + 8, row2Y);
             const int cpuLeft = layoutCpuControls(footerW, row2Y);
@@ -1776,7 +1786,6 @@ void MainPanel::refreshScratchControls()
     auto& colours = ColourScheme::getInstance().colours;
     const auto text = colours["Text Colour"];
     const auto accent = colours["Accent Colour"];
-    const auto border = colours["Plugin Border"];
     const auto stateColour = status.state == ScratchRecorderState::Recording
                                  ? colours["Danger Colour"]
                              : status.state == ScratchRecorderState::Saving
@@ -1806,9 +1815,12 @@ void MainPanel::refreshScratchControls()
 
     if (scratchPanelButton != nullptr)
     {
-        scratchPanelButton->setColour(TextButton::buttonColourId, border.withAlpha(0.46f));
+        scratchPanelButton->setColour(TextButton::buttonColourId,
+                                      stateColour.withAlpha(status.state == ScratchRecorderState::Ready ? 0.12f
+                                                                                                        : 0.30f));
         scratchPanelButton->setColour(TextButton::buttonOnColourId, accent.withAlpha(0.18f));
-        scratchPanelButton->setColour(TextButton::textColourOffId, text.withAlpha(0.86f));
+        scratchPanelButton->setColour(TextButton::textColourOffId,
+                                      text.withAlpha(status.state == ScratchRecorderState::Ready ? 0.82f : 0.98f));
         scratchPanelButton->setColour(TextButton::textColourOnId, text);
     }
 
