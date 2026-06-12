@@ -287,3 +287,94 @@ std::unique_ptr<Drawable> IconManager::getSpeakerIcon(Colour colour)
 {
     return createFromSvg(lucide_volume2_svg, colour);
 }
+
+//------------------------------------------------------------------------------
+// Pedalboard domain glyphs
+//------------------------------------------------------------------------------
+void IconManager::drawDomainGlyph(Graphics& g, Rectangle<float> area, DomainGlyph glyph, Colour colour,
+                                  bool active) const
+{
+    auto icon = area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.18f);
+    g.setColour(colour.withAlpha(active ? 0.96f : 0.72f));
+
+    switch (glyph)
+    {
+    case DomainGlyph::Pedal:
+    {
+        auto body = icon.withTrimmedLeft(icon.getWidth() * 0.13f).withTrimmedRight(icon.getWidth() * 0.13f);
+        g.drawRoundedRectangle(body, 3.0f, 1.45f);
+        auto knob = body.withSizeKeepingCentre(body.getWidth() * 0.36f, body.getWidth() * 0.36f)
+                        .translated(0.0f, -body.getHeight() * 0.18f);
+        g.drawEllipse(knob, 1.25f);
+        g.fillRoundedRectangle(body.withTrimmedTop(body.getHeight() * 0.70f).reduced(body.getWidth() * 0.18f, 0.0f),
+                               2.0f);
+        break;
+    }
+    case DomainGlyph::FullRig:
+    {
+        auto top = icon.removeFromTop(icon.getHeight() * 0.38f);
+        g.drawRoundedRectangle(top, 2.0f, 1.35f);
+        icon.removeFromTop(3.0f);
+        g.drawRoundedRectangle(icon, 2.0f, 1.35f);
+        g.fillEllipse(top.getX() + top.getWidth() * 0.18f, top.getCentreY() - 1.5f, 3.0f, 3.0f);
+        g.drawEllipse(icon.withSizeKeepingCentre(icon.getWidth() * 0.32f, icon.getWidth() * 0.32f), 1.15f);
+        break;
+    }
+    case DomainGlyph::Cabinet:
+    {
+        g.drawRoundedRectangle(icon, 3.0f, 1.35f);
+        const auto cell = jmin(icon.getWidth(), icon.getHeight()) * 0.22f;
+        for (int y = 0; y < 2; ++y)
+        {
+            for (int x = 0; x < 2; ++x)
+            {
+                auto speaker = Rectangle<float>(icon.getX() + icon.getWidth() * (0.33f + x * 0.28f) - cell * 0.5f,
+                                                icon.getY() + icon.getHeight() * (0.34f + y * 0.28f) - cell * 0.5f,
+                                                cell, cell);
+                g.drawEllipse(speaker, 1.15f);
+                g.fillEllipse(speaker.withSizeKeepingCentre(cell * 0.32f, cell * 0.32f));
+            }
+        }
+        break;
+    }
+    case DomainGlyph::Plugin:
+    {
+        auto body = icon.reduced(1.0f, icon.getHeight() * 0.12f);
+        g.drawRoundedRectangle(body, 3.0f, 1.35f);
+        g.drawLine(body.getX() + body.getWidth() * 0.24f, body.getCentreY(), body.getRight() - body.getWidth() * 0.24f,
+                   body.getCentreY(), 1.35f);
+        g.fillEllipse(body.getCentreX() - 2.6f, body.getCentreY() - 2.6f, 5.2f, 5.2f);
+        g.drawEllipse(body.withSizeKeepingCentre(body.getWidth() * 0.78f, body.getHeight() * 0.62f), 0.95f);
+        break;
+    }
+    case DomainGlyph::Amp:
+    default:
+    {
+        g.drawRoundedRectangle(icon, 3.0f, 1.45f);
+        auto speaker = icon.withSizeKeepingCentre(icon.getWidth() * 0.46f, icon.getWidth() * 0.46f);
+        g.drawEllipse(speaker, 1.35f);
+        g.fillEllipse(speaker.withSizeKeepingCentre(3.0f, 3.0f));
+        g.drawLine(icon.getX() + icon.getWidth() * 0.18f, icon.getY() + icon.getHeight() * 0.20f,
+                   icon.getX() + icon.getWidth() * 0.40f, icon.getY() + icon.getHeight() * 0.20f, 1.25f);
+        break;
+    }
+    }
+}
+
+void IconManager::drawDomainGlyphTile(Graphics& g, Rectangle<float> tile, DomainGlyph glyph, Colour accent, bool active,
+                                      float cornerRadius) const
+{
+    ColourGradient fill(accent.withAlpha(active ? 0.22f : 0.12f), tile.getX(), tile.getY(),
+                        accent.withAlpha(active ? 0.12f : 0.07f), tile.getX(), tile.getBottom(), false);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(tile, cornerRadius);
+
+    g.setColour(accent.withAlpha(active ? 0.72f : 0.42f));
+    g.drawRoundedRectangle(tile.reduced(0.5f), cornerRadius, 1.0f);
+
+    g.setColour(Colours::white.withAlpha(active ? 0.08f : 0.04f));
+    g.drawLine(tile.getX() + cornerRadius, tile.getY() + 1.5f, tile.getRight() - cornerRadius, tile.getY() + 1.5f,
+               1.0f);
+
+    drawDomainGlyph(g, tile, glyph, accent, active);
+}

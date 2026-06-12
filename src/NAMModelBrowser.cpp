@@ -158,41 +158,12 @@ void drawMagnifierGlyph(Graphics& g, Rectangle<float> area, Colour colour, float
 
 void drawModelGlyph(Graphics& g, Rectangle<float> tile, Colour accent, bool active)
 {
-    const auto base = active ? accent.withAlpha(0.24f) : accent.withAlpha(0.13f);
-    g.setColour(base);
-    g.fillRoundedRectangle(tile, 9.0f);
-    g.setColour(accent.withAlpha(active ? 0.7f : 0.42f));
-    g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.0f);
-
-    const auto speaker = tile.reduced(tile.getWidth() * 0.26f, tile.getHeight() * 0.22f);
-    g.setColour(accent.withAlpha(active ? 0.95f : 0.7f));
-    g.drawEllipse(speaker, 1.4f);
-    g.fillEllipse(speaker.withSizeKeepingCentre(speaker.getWidth() * 0.26f, speaker.getHeight() * 0.26f));
-    g.drawLine(tile.getX() + tile.getWidth() * 0.24f, tile.getY() + tile.getHeight() * 0.25f,
-               tile.getX() + tile.getWidth() * 0.42f, tile.getY() + tile.getHeight() * 0.25f, 1.2f);
+    IconManager::getInstance().drawDomainGlyphTile(g, tile, IconManager::DomainGlyph::Amp, accent, active, 9.0f);
 }
 
 void drawIRGlyph(Graphics& g, Rectangle<float> tile, Colour accent, bool active)
 {
-    g.setColour(active ? accent.withAlpha(0.22f) : accent.withAlpha(0.12f));
-    g.fillRoundedRectangle(tile, 9.0f);
-    g.setColour(accent.withAlpha(active ? 0.7f : 0.42f));
-    g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.0f);
-
-    const auto cell = jmin(tile.getWidth(), tile.getHeight()) * 0.2f;
-    for (int y = 0; y < 2; ++y)
-    {
-        for (int x = 0; x < 2; ++x)
-        {
-            auto dot = Rectangle<float>(tile.getX() + tile.getWidth() * (0.32f + x * 0.28f) - cell * 0.5f,
-                                        tile.getY() + tile.getHeight() * (0.33f + y * 0.28f) - cell * 0.5f, cell,
-                                        cell);
-            g.setColour(accent.withAlpha(active ? 0.82f : 0.58f));
-            g.drawEllipse(dot, 1.2f);
-            g.setColour(accent.withAlpha(active ? 0.22f : 0.12f));
-            g.fillEllipse(dot.reduced(3.0f));
-        }
-    }
+    IconManager::getInstance().drawDomainGlyphTile(g, tile, IconManager::DomainGlyph::Cabinet, accent, active, 9.0f);
 }
 
 void drawStatusLed(Graphics& g, Rectangle<float> area, Colour colour, bool active)

@@ -24,6 +24,15 @@
 class IconManager
 {
   public:
+    enum class DomainGlyph
+    {
+        Amp,
+        Pedal,
+        FullRig,
+        Cabinet,
+        Plugin
+    };
+
     static IconManager& getInstance();
 
     // === FontAudio: Transport Controls ===
@@ -52,6 +61,11 @@ class IconManager
     // === Lucide: Audio I/O Icons ===
     std::unique_ptr<Drawable> getMicIcon(Colour colour = Colours::white);
     std::unique_ptr<Drawable> getSpeakerIcon(Colour colour = Colours::white);
+
+    // === Pedalboard domain glyphs ===
+    void drawDomainGlyph(Graphics& g, Rectangle<float> area, DomainGlyph glyph, Colour colour, bool active = false) const;
+    void drawDomainGlyphTile(Graphics& g, Rectangle<float> tile, DomainGlyph glyph, Colour accent,
+                             bool active = false, float cornerRadius = 7.0f) const;
 
   private:
     IconManager() = default;

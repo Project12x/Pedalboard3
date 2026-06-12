@@ -8,6 +8,7 @@
 
 #include "ColourScheme.h"
 #include "FontManager.h"
+#include "IconManager.h"
 #include "InternalFilters.h"
 
 // ==============================================================================
@@ -454,12 +455,8 @@ void PluginSearchContent::paintListBoxItem(int rowNumber, Graphics& g, int width
     // Format badge
     auto glyph = itemBounds.removeFromLeft(40.0f).reduced(7.0f);
     Colour glyphColour = result.isInternal ? Colour(0xFF44AA66) : colours["Accent Colour"];
-    g.setColour(glyphColour.withAlpha(rowIsSelected ? 0.22f : 0.12f));
-    g.fillRoundedRectangle(glyph, 7.0f);
-    g.setColour(glyphColour.withAlpha(rowIsSelected ? 0.76f : 0.45f));
-    g.drawRoundedRectangle(glyph.reduced(0.5f), 7.0f, 1.0f);
-    g.drawLine(glyph.getX() + 7.0f, glyph.getCentreY(), glyph.getRight() - 7.0f, glyph.getCentreY(), 1.3f);
-    g.fillEllipse(glyph.getCentreX() - 3.0f, glyph.getCentreY() - 3.0f, 6.0f, 6.0f);
+    IconManager::getInstance().drawDomainGlyphTile(g, glyph, IconManager::DomainGlyph::Plugin, glyphColour,
+                                                   rowIsSelected);
 
     auto badgeBounds = Rectangle<int>((int)itemBounds.getX() + 6, (height - 20) / 2, 58, 20);
     paintFormatBadge(g, result.formatName, badgeBounds);

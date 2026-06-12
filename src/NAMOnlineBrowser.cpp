@@ -11,6 +11,7 @@
 
 #include "ColourScheme.h"
 #include "FontManager.h"
+#include "IconManager.h"
 #include "NAMProcessor.h"
 #include "Tone3000Auth.h"
 #include "Tone3000Client.h"
@@ -50,6 +51,15 @@ juce::String getGearDisplayText(const std::string& gearType)
     return juce::String(gearType);
 }
 
+IconManager::DomainGlyph getGearGlyph(const std::string& gearType)
+{
+    if (gearType == "pedal")
+        return IconManager::DomainGlyph::Pedal;
+    if (gearType == "full_rig")
+        return IconManager::DomainGlyph::FullRig;
+    return IconManager::DomainGlyph::Amp;
+}
+
 juce::String formatToneFileSize(juce::int64 fileSize)
 {
     if (fileSize <= 0)
@@ -59,47 +69,6 @@ juce::String formatToneFileSize(juce::int64 fileSize)
     if (fileSize > 1024)
         return juce::String(fileSize / 1024) + " KB";
     return juce::String(fileSize) + " B";
-}
-
-void drawTone3000GearGlyph(juce::Graphics& g, juce::Rectangle<float> tile, juce::Colour accent,
-                           const std::string& gearType, bool active)
-{
-    const auto radius = 7.0f;
-    g.setColour(accent.withAlpha(active ? 0.22f : 0.12f));
-    g.fillRoundedRectangle(tile, radius);
-    g.setColour(accent.withAlpha(active ? 0.72f : 0.42f));
-    g.drawRoundedRectangle(tile.reduced(0.5f), radius, 1.0f);
-
-    auto icon = tile.reduced(tile.getWidth() * 0.24f, tile.getHeight() * 0.22f);
-    g.setColour(accent.withAlpha(active ? 0.95f : 0.70f));
-
-    if (gearType == "pedal")
-    {
-        auto body = icon.withTrimmedLeft(icon.getWidth() * 0.12f).withTrimmedRight(icon.getWidth() * 0.12f);
-        g.drawRoundedRectangle(body, 3.0f, 1.4f);
-        g.drawEllipse(body.withSizeKeepingCentre(body.getWidth() * 0.38f, body.getWidth() * 0.38f)
-                          .translated(0.0f, -body.getHeight() * 0.18f),
-                      1.2f);
-        g.fillRoundedRectangle(body.withTrimmedTop(body.getHeight() * 0.70f).reduced(body.getWidth() * 0.18f, 0.0f),
-                               2.0f);
-    }
-    else if (gearType == "full_rig")
-    {
-        auto top = icon.removeFromTop(icon.getHeight() * 0.40f);
-        g.drawRoundedRectangle(top, 2.0f, 1.3f);
-        icon.removeFromTop(3.0f);
-        g.drawRoundedRectangle(icon, 2.0f, 1.3f);
-        g.fillEllipse(top.getX() + 3.0f, top.getCentreY() - 1.5f, 3.0f, 3.0f);
-        g.drawEllipse(icon.withSizeKeepingCentre(icon.getWidth() * 0.32f, icon.getWidth() * 0.32f), 1.1f);
-    }
-    else
-    {
-        g.drawRoundedRectangle(icon, 3.0f, 1.4f);
-        auto speaker = icon.withSizeKeepingCentre(icon.getWidth() * 0.46f, icon.getWidth() * 0.46f);
-        g.drawEllipse(speaker, 1.3f);
-        g.fillEllipse(speaker.withSizeKeepingCentre(3.0f, 3.0f));
-        g.drawLine(icon.getX() + 4.0f, icon.getY() + 4.0f, icon.getX() + 9.0f, icon.getY() + 4.0f, 1.3f);
-    }
 }
 } // namespace
 
@@ -188,7 +157,8 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     auto& fm = FontManager::getInstance();
 
     auto glyphTile = itemBounds.withWidth(31.0f).reduced(6.0f, 5.0f);
-    drawTone3000GearGlyph(g, glyphTile, gearAccent, tone.gearType, rowIsSelected || rowNumber == hoveredRow);
+    IconManager::getInstance().drawDomainGlyphTile(g, glyphTile, getGearGlyph(tone.gearType), gearAccent,
+                                                   rowIsSelected || rowNumber == hoveredRow);
 
     // Gear type badge.
     auto gearText = getGearDisplayText(tone.gearType);
@@ -632,7 +602,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         const auto gearAccent = getGearAccentColour(selectedTone->gearType);
         auto hero = detailsBounds.reduced(18.0f, 14.0f).removeFromTop(92.0f);
         auto glyph = hero.removeFromLeft(58.0f).reduced(2.0f, 10.0f);
-        drawTone3000GearGlyph(g, glyph, gearAccent, selectedTone->gearType, true);
+        IconManager::getInstance().drawDomainGlyphTile(g, glyph, getGearGlyph(selectedTone->gearType), gearAccent,
+                                                       true);
 
         auto heroText = hero.reduced(12.0f, 4.0f);
         auto chip = heroText.removeFromBottom(20.0f);
@@ -686,7 +657,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     {
         auto empty = detailsBounds.reduced(26.0f);
         auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
-        drawTone3000GearGlyph(g, icon, colours["Accent Colour"], "amp", false);
+        IconManager::getInstance().drawDomainGlyphTile(g, icon, IconManager::DomainGlyph::Amp,
+                                                       colours["Accent Colour"], false);
         g.setColour(colours["Text Colour"].withAlpha(0.34f));
         g.setFont(FontManager::getInstance().getLabelFont());
         g.drawText("Search TONE3000 to browse NAM models", empty.translated(0.0f, 34.0f),
@@ -697,7 +669,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         // Have results but nothing selected
         auto empty = detailsBounds.reduced(26.0f);
         auto icon = empty.withSizeKeepingCentre(56.0f, 56.0f).translated(0.0f, -28.0f);
-        drawTone3000GearGlyph(g, icon, colours["Accent Colour"], "full_rig", false);
+        IconManager::getInstance().drawDomainGlyphTile(g, icon, IconManager::DomainGlyph::FullRig,
+                                                       colours["Accent Colour"], false);
         g.setColour(colours["Text Colour"].withAlpha(0.36f));
         g.setFont(FontManager::getInstance().getLabelFont());
         g.drawText("Select a model for details", empty.translated(0.0f, 34.0f), juce::Justification::centred, true);
