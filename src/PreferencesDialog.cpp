@@ -38,8 +38,65 @@ namespace
 {
 constexpr int preferencesContentMinWidth = 560;
 constexpr int preferencesContentMinHeight = 704;
+constexpr int interfacePanelY = 128;
+constexpr int interfacePanelHeight = 42;
 constexpr int ioOptionsPanelY = 204;
 constexpr int ioOptionsPanelHeight = 112;
+constexpr int midiPanelY = 350;
+constexpr int midiPanelHeight = 58;
+constexpr int otherPanelY = 438;
+constexpr int otherPanelHeight = 198;
+constexpr int namPanelY = 662;
+constexpr int namPanelHeight = 38;
+
+void paintSectionPanel(Graphics& g, Rectangle<int> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto panel = colours["Dialog Inner Background"];
+    const auto border = colours["Plugin Border"];
+
+    g.setColour(panel.withAlpha(0.84f));
+    g.fillRoundedRectangle(bounds.toFloat(), 8.0f);
+    g.setColour(border.withAlpha(0.32f));
+    g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f), 8.0f, 1.0f);
+}
+
+void styleLabel(Label& label, Font font, float alpha = 1.0f)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    label.setFont(font);
+    label.setJustificationType(Justification::centredLeft);
+    label.setEditable(false, false, false);
+    label.setColour(Label::textColourId, colours["Text Colour"].withAlpha(alpha));
+    label.setColour(TextEditor::backgroundColourId, Colour(0x0));
+}
+
+void styleToggle(ToggleButton& button)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    button.setColour(ToggleButton::textColourId, colours["Text Colour"].withAlpha(0.92f));
+    button.setColour(ToggleButton::tickColourId, colours["Audio Connection Colour"]);
+    button.setColour(ToggleButton::tickDisabledColourId, colours["Disabled Text Colour"]);
+}
+
+void styleTextEditor(TextEditor& editor)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    editor.setColour(TextEditor::backgroundColourId, colours["Text Editor Colour"]);
+    editor.setColour(TextEditor::textColourId, colours["Text Colour"]);
+    editor.setColour(TextEditor::highlightColourId, colours["Audio Connection Colour"].withAlpha(0.35f));
+    editor.setColour(TextEditor::outlineColourId, colours["Plugin Border"].withAlpha(0.46f));
+    editor.setColour(TextEditor::focusedOutlineColourId, colours["Audio Connection Colour"].withAlpha(0.82f));
+}
+
+void styleTextButton(TextButton& button)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    button.setColour(TextButton::buttonColourId, colours["Button Colour"]);
+    button.setColour(TextButton::buttonOnColourId, colours["Button Highlight Colour"]);
+    button.setColour(TextButton::textColourOffId, colours["Text Colour"]);
+    button.setColour(TextButton::textColourOnId, colours["Text Colour"]);
+}
 
 class PreferencesContentComponent : public Component
 {
@@ -48,11 +105,12 @@ class PreferencesContentComponent : public Component
     {
         g.fillAll(ColourScheme::getInstance().colours["Window Background"]);
 
-        g.setColour(ColourScheme::getInstance().colours["Dialog Inner Background"]);
-        g.fillRect(12, ioOptionsPanelY, getWidth() - 24, ioOptionsPanelHeight);
-
-        g.setColour(ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.25f));
-        g.drawRect(12, ioOptionsPanelY, getWidth() - 24, ioOptionsPanelHeight, 1);
+        const auto width = getWidth() - 24;
+        paintSectionPanel(g, {12, interfacePanelY, width, interfacePanelHeight});
+        paintSectionPanel(g, {12, ioOptionsPanelY, width, ioOptionsPanelHeight});
+        paintSectionPanel(g, {12, midiPanelY, width, midiPanelHeight});
+        paintSectionPanel(g, {12, otherPanelY, width, otherPanelHeight});
+        paintSectionPanel(g, {12, namPanelY, width, namPanelHeight});
     }
 };
 } // namespace
@@ -240,6 +298,34 @@ PreferencesDialog::PreferencesDialog(MainPanel* panel, const String& port, const
     contentComponent->addAndMakeVisible(namDirBrowseButton = new TextButton("namDirBrowseButton"));
     namDirBrowseButton->setButtonText("Browse...");
     namDirBrowseButton->addListener(this);
+
+    for (auto* label : {oscLabel, interfaceLabel, ioOptionsLabel, midiLabel, otherLabel, namLabel})
+        styleLabel(*label, FontManager::getInstance().getSubheadingFont());
+
+    for (auto* label : {oscPortLabel, oscMulticastLabel, uiScaleLabel, namDirLabel})
+        styleLabel(*label, FontManager::getInstance().getBodyFont(), 0.86f);
+
+    styleLabel(*multicastHintLabel, FontManager::getInstance().getBodyFont(), 0.52f);
+    styleLabel(*namDirValue, FontManager::getInstance().getBodyFont(), 0.78f);
+    namDirValue->setColour(Label::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
+    namDirValue->setColour(Label::outlineColourId,
+                           ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.38f));
+
+    for (auto* editor : {oscPortEditor, oscMulticastEditor})
+        styleTextEditor(*editor);
+
+    for (auto* button : {audioInputButton, midiInputButton, oscInputButton, virtualMidiInputButton,
+                         mappingsWindowButton, loopPatchesButton, windowsOnTopButton, ignorePinNamesButton,
+                         midiProgramChangeButton, mmcTransportButton, useTrayIconButton, startInTrayButton,
+                         fixedSizeButton, pdlAudioSettingsButton})
+        styleToggle(*button);
+
+    styleTextButton(*namDirBrowseButton);
+    uiScaleComboBox->setColour(ComboBox::backgroundColourId, ColourScheme::getInstance().colours["Text Editor Colour"]);
+    uiScaleComboBox->setColour(ComboBox::textColourId, ColourScheme::getInstance().colours["Text Colour"]);
+    uiScaleComboBox->setColour(ComboBox::outlineColourId,
+                               ColourScheme::getInstance().colours["Plugin Border"].withAlpha(0.52f));
+    uiScaleComboBox->setColour(ComboBox::arrowColourId, ColourScheme::getInstance().colours["Text Colour"]);
 
     //[UserPreSize]
 

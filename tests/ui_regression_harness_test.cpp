@@ -386,6 +386,8 @@ TEST_CASE("Visual QA script keeps scaled dialog matrix scoped to documented surf
     }
 
     CHECK(scaledSurfaceList.find("scratch-panel") == std::string::npos);
+    CHECK(source->find("[switch]$CaptureScratchPanel") != std::string::npos);
+    CHECK(source->find("if ($CaptureScratchPanel)") != std::string::npos);
     CHECK(source->find("$scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -contains $_.Name })") !=
           std::string::npos);
     CHECK(source->find("foreach ($dialog in $scaledDialogSpecs)") != std::string::npos);

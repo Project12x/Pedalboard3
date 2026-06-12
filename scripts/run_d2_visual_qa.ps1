@@ -5,6 +5,7 @@ param(
     [int]$UiScalePercent = 100,
     [switch]$CaptureScaledFooterMatrix,
     [switch]$CaptureScaledDialogMatrix,
+    [switch]$CaptureScratchPanel,
     [Alias("ExpectedScalePercent")]
     [int]$ExpectedOsScalePercent = 0
 )
@@ -423,9 +424,11 @@ $dialogSpecs = @(
     @{ Name = "plugin-search"; Title = "Add Plugin"; Arguments = @("--visual-qa-plugin-search") },
     @{ Name = "preferences"; Title = "Misc Settings"; Arguments = @("--visual-qa-preferences") },
     @{ Name = "nam-browser"; Title = "NAM Model Browser"; Arguments = @("--visual-qa-nam-browser") },
-    @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") },
-    @{ Name = "scratch-panel"; Title = "Scratch Capture"; Arguments = @("--visual-qa-scratch-panel") }
+    @{ Name = "ir-browser"; Title = "IR Browser"; Arguments = @("--visual-qa-ir-browser") }
 )
+if ($CaptureScratchPanel) {
+    $dialogSpecs += @{ Name = "scratch-panel"; Title = "Scratch Capture"; Arguments = @("--visual-qa-scratch-panel") }
+}
 $scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -contains $_.Name })
 
 try {
@@ -643,6 +646,7 @@ $summary = [pscustomobject]@{
     scaledFooterCaptureSizes = $scaledFooterCaptureSizes
     scaledFooterControls = $scaledFooterControls
     scaledDialogMatrixEnabled = $CaptureScaledDialogMatrix.IsPresent
+    scratchPanelCaptureEnabled = $CaptureScratchPanel.IsPresent
     scaledDialogRequiredScales = $scaledDialogScales
     scaledDialogCaptureSizes = $scaledDialogCaptureSizes
     scaledDialogSurfaces = $scaledDialogSurfaces
