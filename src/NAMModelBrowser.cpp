@@ -3314,7 +3314,7 @@ void IRBrowserComponent::paint(Graphics& g)
     const int bottomGap = compactLayout ? 6 : 8;
     const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
     const int detailsInset = compactLayout ? 6 : 8;
-    const float previewHeight = shortLayout ? 58.0f : (compactLayout ? 70.0f : 86.0f);
+    const float previewHeight = shortLayout ? 94.0f : (compactLayout ? 122.0f : 146.0f);
     const bool showPreviewGlyph = !compactLayout || detailsWidth >= 190;
     const bool showLocalChip = !compactLayout || detailsWidth >= 200;
 
@@ -3393,35 +3393,42 @@ void IRBrowserComponent::paint(Graphics& g)
                            : palette.edge.withAlpha(0.42f));
     g.drawRoundedRectangle(previewArea.reduced(0.5f), 9.0f, 1.0f);
 
+    auto previewText = previewArea.reduced(8.0f, compactLayout ? 6.0f : 10.0f);
     if (showPreviewGlyph)
     {
-        auto glyphArea = previewArea.removeFromLeft(compactLayout ? 42.0f : 52.0f)
-                             .withSizeKeepingCentre(compactLayout ? 30.0f : 40.0f, compactLayout ? 30.0f : 40.0f);
+        const float glyphSize = compactLayout ? 34.0f : 44.0f;
+        auto glyphArea = Rectangle<float>(0.0f, previewText.getY(), glyphSize, glyphSize)
+                             .withCentre({previewArea.getCentreX(), previewText.getY() + glyphSize * 0.5f});
         drawIRGlyph(g, glyphArea, selectedIRReady ? palette.accent2 : palette.accent, selectedIR != nullptr);
+        previewText.removeFromTop(compactLayout ? 40.0f : 52.0f);
     }
 
-    auto previewText = previewArea.reduced(4.0f, compactLayout ? 5.0f : 7.0f);
-    auto chipRow = previewText.removeFromBottom(compactLayout ? 18.0f : 20.0f);
+    auto chipRow = previewText.removeFromBottom(compactLayout ? 20.0f : 22.0f);
     g.setFont(compactLayout ? FontManager::getInstance().getBodyBoldFont().withHeight(12.0f)
                             : FontManager::getInstance().getBodyBoldFont());
     g.setColour(selectedIR ? palette.text : palette.text.withAlpha(0.54f));
     g.drawText(selectedIR ? String(selectedIR->name) : String("Select an IR"),
-               previewText.removeFromTop(compactLayout ? 18.0f : 24.0f),
-               Justification::centredLeft, true);
+               previewText.removeFromTop(compactLayout ? 18.0f : 22.0f),
+               Justification::centred, true);
 
     g.setFont(FontManager::getInstance().getCaptionFont());
     g.setColour(palette.text.withAlpha(selectedIR ? 0.62f : 0.38f));
     g.drawText(selectedIR ? makeIRPreviewSummary(*selectedIR) : String("Double-click a row or use Load IR"),
-               previewText, Justification::centredLeft, true);
+               previewText, Justification::centred, true);
 
-    drawBrowserChip(g, chipRow.removeFromLeft(selectedIR && !selectedIRReady ? 70.0f : 58.0f),
+    const float stateChipWidth = selectedIR && !selectedIRReady ? 70.0f : 58.0f;
+    const float localChipWidth = showLocalChip ? 56.0f : 0.0f;
+    const float chipGap = showLocalChip ? 6.0f : 0.0f;
+    auto centredChips = chipRow.withWidth(jmin(chipRow.getWidth(), stateChipWidth + chipGap + localChipWidth))
+                            .withCentre({chipRow.getCentreX(), chipRow.getCentreY()});
+    drawBrowserChip(g, centredChips.removeFromLeft(stateChipWidth),
                     selectedIR ? (selectedIRReady ? "READY" : "MISSING") : "EMPTY",
                     selectedIR ? (selectedIRReady ? palette.led : palette.accent) : palette.text.withAlpha(0.45f),
                     selectedIR != nullptr);
     if (showLocalChip)
     {
-        chipRow.removeFromLeft(6.0f);
-        drawBrowserChip(g, chipRow.removeFromLeft(56.0f), "LOCAL", palette.accent2, selectedIR != nullptr);
+        centredChips.removeFromLeft(6.0f);
+        drawBrowserChip(g, centredChips.removeFromLeft(56.0f), "LOCAL", palette.accent2, selectedIR != nullptr);
     }
 
     auto drawDetailRowBacking = [&](Label* label, Label* value, int rowIndex)
@@ -3491,7 +3498,7 @@ void IRBrowserComponent::resized()
     const int bottomGap = compactLayout ? 6 : 8;
     const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
     const int detailsInset = compactLayout ? 6 : 8;
-    const int previewReserved = shortLayout ? 68 : (compactLayout ? 82 : 96);
+    const int previewReserved = shortLayout ? 112 : (compactLayout ? 140 : 164);
     const int rowHeight = compactLayout ? 20 : 22;
     const int rowGap = compactLayout ? 3 : 4;
     const int labelWidth = compactLayout ? 62 : 76;
