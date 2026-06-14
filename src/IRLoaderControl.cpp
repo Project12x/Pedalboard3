@@ -15,6 +15,7 @@
 #include "IconManager.h"
 #include "IRLoaderProcessor.h"
 #include "NAMModelBrowser.h"
+#include "PluginComponent.h"
 
 namespace
 {
@@ -398,6 +399,250 @@ IRLoaderControl::~IRLoaderControl()
     setLookAndFeel(nullptr);
 }
 
+bool IRLoaderControl::isEmbeddedInGraphNode() const
+{
+    return findParentComponentOfClass<PluginComponent>() != nullptr;
+}
+
+void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
+{
+    const auto palette = makeIRLoaderPalette();
+    auto& fonts = FontManager::getInstance();
+    auto area = bounds.reduced(8, 6);
+
+    auto drawSectionHeader = [&](Rectangle<int> header, const String& title, Colour accent)
+    {
+        auto dot = Rectangle<float>(5.0f, 5.0f).withCentre({(float)header.getX() + 2.5f, (float)header.getCentreY()});
+        g.setColour(accent.withAlpha(0.78f));
+        g.fillEllipse(dot);
+        g.setColour(accent.withAlpha(0.18f));
+        g.fillEllipse(dot.expanded(3.0f));
+        g.setFont(fonts.getBadgeFont().withHeight(9.2f));
+        g.setColour(palette.textDim.withAlpha(0.80f));
+        g.drawText(title.toUpperCase(), header.withTrimmedLeft(12), Justification::centredLeft, true);
+    };
+
+    auto drawEmbeddedStatusPill = [&](Rectangle<int> pillBounds, const String& text, bool active, Colour accent)
+    {
+        auto pill = pillBounds.toFloat();
+        const auto fill = active ? palette.inset.interpolatedWith(accent, 0.14f) : palette.inset.darker(0.08f);
+        g.setColour(fill.withAlpha(0.92f));
+        g.fillRoundedRectangle(pill, 5.0f);
+        g.setColour((active ? accent : palette.edge).withAlpha(active ? 0.54f : 0.34f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 5.0f, 0.85f);
+
+        auto dot = Rectangle<float>(5.5f, 5.5f).withCentre({pill.getX() + 9.0f, pill.getCentreY()});
+        drawIRLoaderLed(g, dot, active ? palette.led : palette.textDim.withAlpha(0.42f), active);
+
+        g.setFont(fonts.getBadgeFont().withHeight(8.5f));
+        g.setColour((active ? palette.text : palette.textDim).withAlpha(active ? 0.86f : 0.56f));
+        g.drawText(text, pillBounds.withTrimmedLeft(17), Justification::centredLeft, true);
+    };
+
+    auto drawEmbeddedIRWaveform = [&](Rectangle<int> waveBounds, bool active, float seed)
+    {
+        auto wave = waveBounds.toFloat();
+        g.setColour(palette.inset.withAlpha(0.88f));
+        g.fillRoundedRectangle(wave, 5.0f);
+        g.setColour(palette.edge.withAlpha(0.38f));
+        g.drawRoundedRectangle(wave.reduced(0.5f), 5.0f, 0.75f);
+
+        if (!active)
+            return;
+
+        auto graph = wave.reduced(6.0f, 3.0f);
+        Path line;
+        const int points = 18;
+        for (int i = 0; i < points; ++i)
+        {
+            const auto t = (float)i / (float)(points - 1);
+            const auto x = graph.getX() + graph.getWidth() * t;
+            const auto y = graph.getCentreY() +
+                           std::sin((t * 7.0f + seed) * MathConstants<float>::pi) * graph.getHeight() * 0.28f +
+                           std::sin((t * 19.0f + seed * 0.4f) * MathConstants<float>::pi) * graph.getHeight() * 0.13f;
+            if (i == 0)
+                line.startNewSubPath(x, y);
+            else
+                line.lineTo(x, y);
+        }
+
+        g.setColour(palette.accent2.withAlpha(0.20f));
+        g.strokePath(line, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(palette.accent2.withAlpha(0.88f));
+        g.strokePath(line, PathStrokeType(1.25f, PathStrokeType::curved, PathStrokeType::rounded));
+    };
+
+    auto drawEmbeddedSlotCard = [&](Rectangle<int> slotBounds, const String& label, const String& value,
+                                    const String& badge, bool loaded, float seed)
+    {
+        auto slot = slotBounds.toFloat();
+        const auto base = palette.inset.interpolatedWith(palette.face, 0.42f)
+                              .interpolatedWith(palette.accent2, loaded ? 0.075f : 0.018f);
+        g.setColour(palette.bottom.darker(0.18f).withAlpha(0.30f));
+        g.fillRoundedRectangle(slot.translated(0.0f, 1.0f), 8.0f);
+        ColourGradient fill(base.brighter(0.055f), slot.getX(), slot.getY(), base.darker(0.15f), slot.getX(),
+                            slot.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(slot, 8.0f);
+        g.setColour((loaded ? palette.accent2 : palette.edge).withAlpha(loaded ? 0.50f : 0.34f));
+        g.drawRoundedRectangle(slot.reduced(0.5f), 8.0f, 0.9f);
+        if (loaded)
+        {
+            g.setColour(palette.accent.withAlpha(0.55f));
+            g.fillRoundedRectangle(slot.getX() + 1.0f, slot.getY() + 5.0f, 2.5f, slot.getHeight() - 10.0f, 1.2f);
+        }
+
+        g.setFont(fonts.getBadgeFont().withHeight(9.0f));
+        g.setColour(palette.textDim.withAlpha(0.70f));
+        g.drawText(label.toUpperCase(), slotBounds.reduced(9, 0).removeFromTop(20), Justification::centredLeft, true);
+
+        drawEmbeddedStatusPill(slotBounds.withTrimmedRight(7).withY(slotBounds.getY() + 5).withHeight(18)
+                                   .removeFromRight(48),
+                               badge, loaded, palette.accent2);
+
+        ignoreUnused(value);
+
+        drawEmbeddedIRWaveform(slotBounds.reduced(10, 0).withY(slotBounds.getBottom() - 26).withHeight(20), loaded,
+                               seed);
+    };
+
+    auto drawControlRail = [&](Rectangle<int> row, Colour accent)
+    {
+        auto rail = row.reduced(48, 4).toFloat();
+        g.setColour(palette.inset.withAlpha(0.72f));
+        g.fillRoundedRectangle(rail, 5.0f);
+        g.setColour(palette.edge.withAlpha(0.24f));
+        g.drawRoundedRectangle(rail.reduced(0.5f), 5.0f, 0.7f);
+        g.setColour(accent.withAlpha(0.06f));
+        g.fillRoundedRectangle(rail.withHeight(rail.getHeight() * 0.42f), 5.0f);
+    };
+
+    auto drawEmbeddedXfadeReadout = [&](Rectangle<int> readoutBounds)
+    {
+        auto areaF = readoutBounds.toFloat();
+        g.setColour(palette.inset.withAlpha(0.82f));
+        g.fillRoundedRectangle(areaF, 6.0f);
+        g.setColour(palette.edge.withAlpha(0.40f));
+        g.drawRoundedRectangle(areaF.reduced(0.5f), 6.0f, 0.75f);
+        g.setFont(fonts.getBadgeFont().withHeight(9.0f));
+        g.setColour(palette.accent);
+        g.drawText("A", readoutBounds.withWidth(18), Justification::centred, true);
+        g.setColour(palette.accent2);
+        g.drawText("B", readoutBounds.removeFromRight(18), Justification::centred, true);
+        const auto blend = jlimit(0.0f, 1.0f, irProcessor->getBlend());
+        const auto text = String(roundToInt((1.0f - blend) * 100.0f)) + "%  /  " + String(roundToInt(blend * 100.0f)) + "%";
+        g.setFont(fonts.getMonoFont(10.0f));
+        g.setColour(palette.textDim.withAlpha(0.84f));
+        g.drawText(text, readoutBounds, Justification::centred, true);
+    };
+
+    auto drawEmbeddedFilterChip = [&](Rectangle<int> chipBounds, const String& label, const String& value)
+    {
+        auto chip = chipBounds.toFloat();
+        g.setColour(palette.inset.withAlpha(0.88f));
+        g.fillRoundedRectangle(chip, 6.0f);
+        g.setColour(palette.edge.withAlpha(0.42f));
+        g.drawRoundedRectangle(chip.reduced(0.5f), 6.0f, 0.8f);
+        g.setFont(fonts.getBadgeFont().withHeight(8.5f));
+        g.setColour(palette.textDim.withAlpha(0.68f));
+        g.drawText(label, chipBounds.withWidth(22), Justification::centred, true);
+        g.setFont(fonts.getMonoFont(10.0f));
+        g.setColour(palette.text.withAlpha(0.82f));
+        g.drawText(value, chipBounds.withTrimmedLeft(22), Justification::centredLeft, true);
+    };
+
+    auto drawEmbeddedFilterCurve = [&](Rectangle<int> curveBounds)
+    {
+        auto curve = curveBounds.toFloat();
+        g.setColour(palette.inset.withAlpha(0.86f));
+        g.fillRoundedRectangle(curve, 7.0f);
+        g.setColour(palette.edge.withAlpha(0.38f));
+        g.drawRoundedRectangle(curve.reduced(0.5f), 7.0f, 0.75f);
+
+        auto graph = curve.reduced(9.0f, 7.0f);
+        g.setColour(palette.textDim.withAlpha(0.16f));
+        g.drawHorizontalLine(roundToInt(graph.getCentreY()), graph.getX(), graph.getRight());
+
+        const auto normLog = [](float value, float lo, float hi)
+        {
+            value = jlimit(lo, hi, value);
+            return (std::log10(value) - std::log10(lo)) / (std::log10(hi) - std::log10(lo));
+        };
+
+        const float loX = graph.getX() + graph.getWidth() * normLog(irProcessor->getLowCut(), 20.0f, 20000.0f);
+        const float hiX = graph.getX() + graph.getWidth() * normLog(irProcessor->getHighCut(), 20.0f, 20000.0f);
+        const float y = graph.getCentreY();
+
+        Path response;
+        response.startNewSubPath(graph.getX(), graph.getBottom() - 4.0f);
+        response.cubicTo(loX - 28.0f, graph.getBottom() - 4.0f, loX - 16.0f, y, loX, y);
+        response.lineTo(hiX, y);
+        response.cubicTo(hiX + 16.0f, y, hiX + 28.0f, graph.getBottom() - 4.0f, graph.getRight(),
+                         graph.getBottom() - 4.0f);
+
+        g.setColour(palette.accent2.withAlpha(0.18f));
+        g.strokePath(response, PathStrokeType(5.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(palette.accent2.withAlpha(0.86f));
+        g.strokePath(response, PathStrokeType(1.45f, PathStrokeType::curved, PathStrokeType::rounded));
+
+        const std::pair<float, Colour> markers[] = {{loX, palette.accent}, {hiX, palette.accent2}};
+        for (const auto& marker : markers)
+        {
+            auto dot = Rectangle<float>(7.0f, 7.0f).withCentre({marker.first, y});
+            g.setColour(marker.second.withAlpha(0.22f));
+            g.fillEllipse(dot.expanded(4.0f));
+            g.setColour(marker.second.withAlpha(0.90f));
+            g.fillEllipse(dot);
+            g.setColour(palette.edgeHi.withAlpha(0.58f));
+            g.drawEllipse(dot, 0.75f);
+        }
+    };
+
+    auto irSection = area.removeFromTop(190);
+    drawSectionHeader(irSection.removeFromTop(16), "Impulse Responses", palette.accent2);
+    irSection.removeFromTop(5);
+    drawEmbeddedSlotCard(irSection.removeFromTop(82), "PRIMARY IR",
+                         irProcessor->isIRLoaded() ? irProcessor->getIRName() : "No IR Loaded", "IR",
+                         irProcessor->isIRLoaded(), 1.4f);
+    irSection.removeFromTop(5);
+    drawEmbeddedSlotCard(irSection.removeFromTop(82), "SECONDARY IR",
+                         irProcessor->isIR2Loaded() ? irProcessor->getIR2Name() : "No IR 2 Loaded", "IR2",
+                         irProcessor->isIR2Loaded(), 4.7f);
+
+    area.removeFromTop(7);
+    auto mixSection = area.removeFromTop(90);
+    drawSectionHeader(mixSection.removeFromTop(16), "Blend", palette.accent);
+    mixSection.removeFromTop(6);
+    drawControlRail(mixSection.removeFromTop(18), palette.accent);
+    mixSection.removeFromTop(5);
+    drawControlRail(mixSection.removeFromTop(18), palette.accent2);
+    mixSection.removeFromTop(5);
+    drawEmbeddedXfadeReadout(mixSection.removeFromTop(24));
+
+    area.removeFromTop(7);
+    auto filterSection = area;
+    drawSectionHeader(filterSection.removeFromTop(16), "Filter", palette.accent2);
+    filterSection.removeFromTop(6);
+    auto curve = filterSection.removeFromTop(44);
+    drawEmbeddedFilterCurve(curve);
+    filterSection.removeFromTop(6);
+    auto chips = filterSection.removeFromTop(24);
+    const auto chipW = (chips.getWidth() - 6) / 2;
+    drawEmbeddedFilterChip(chips.removeFromLeft(chipW), "LO", String(roundToInt(irProcessor->getLowCut())) + " Hz");
+    chips.removeFromLeft(6);
+    drawEmbeddedFilterChip(chips, "HI", String(irProcessor->getHighCut() / 1000.0f, 1) + " kHz");
+    filterSection.removeFromTop(6);
+    drawControlRail(filterSection.removeFromTop(18), palette.accent);
+    filterSection.removeFromTop(4);
+    drawControlRail(filterSection.removeFromTop(18), palette.accent2);
+
+    const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
+    auto footer = bounds.reduced(8, 0).removeFromBottom(13);
+    g.setFont(fonts.getBadgeFont());
+    g.setColour((anyLoaded ? palette.accent2 : palette.textDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
+    g.drawText(anyLoaded ? "CABINET ACTIVE" : "NO CABINET", footer, Justification::centredRight, true);
+}
+
 //==============================================================================
 void IRLoaderControl::paint(Graphics& g)
 {
@@ -406,6 +651,7 @@ void IRLoaderControl::paint(Graphics& g)
     const auto palette = makeIRLoaderPalette();
     auto& fonts = FontManager::getInstance();
     auto bounds = getLocalBounds().toFloat();
+    const bool embeddedInGraphNode = isEmbeddedInGraphNode();
 
     auto refreshChildColours = [&]()
     {
@@ -436,44 +682,72 @@ void IRLoaderControl::paint(Graphics& g)
     };
     refreshChildColours();
 
-    // Main background with mockup-style amp faceplate depth.
-    ColourGradient bgGradient(palette.top, 0, 0, palette.bottom, 0, bounds.getHeight(), false);
-    bgGradient.addColour(0.45, palette.face);
-    g.setGradientFill(bgGradient);
-    g.fillRoundedRectangle(bounds, 6.0f);
-
-    // Outer border with bevel effect
-    g.setColour(Colours::black.withAlpha(0.46f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
-    g.setColour(palette.edgeHi.withAlpha(0.52f));
-    g.drawRoundedRectangle(bounds.reduced(1.5f), 5.0f, 1.0f);
-
-    for (auto screwCentre : {Point<float>{7.0f, 7.0f},
-                             Point<float>{bounds.getRight() - 7.0f, 7.0f},
-                             Point<float>{7.0f, bounds.getBottom() - 7.0f},
-                             Point<float>{bounds.getRight() - 7.0f, bounds.getBottom() - 7.0f}})
+    if (embeddedInGraphNode)
     {
-        auto screw = Rectangle<float>(5.0f, 5.0f).withCentre(screwCentre);
-        g.setColour(Colours::black.withAlpha(0.3f));
-        g.fillEllipse(screw.translated(0.0f, 0.7f));
-        g.setColour(palette.edgeHi.withAlpha(0.46f));
-        g.drawEllipse(screw, 0.8f);
+        paintEmbeddedGraphNode(g, getLocalBounds());
+        return;
     }
 
-    // Header bar with rounded top corners
-    Rectangle<float> headerBounds(2, 2, bounds.getWidth() - 4, 27);
-    Path headerPath;
-    headerPath.addRoundedRectangle(headerBounds.getX(), headerBounds.getY(), headerBounds.getWidth(),
-                                   headerBounds.getHeight(), 5.0f, 5.0f, true, true, false, false);
-    ColourGradient headerGradient(palette.face2.brighter(0.1f), 0, 2, palette.face.darker(0.12f), 0, 29, false);
-    g.setGradientFill(headerGradient);
-    g.fillPath(headerPath);
+    if (!embeddedInGraphNode)
+    {
+        // Main background with mockup-style amp faceplate depth.
+        ColourGradient bgGradient(palette.top, 0, 0, palette.bottom, 0, bounds.getHeight(), false);
+        bgGradient.addColour(0.45, palette.face);
+        g.setGradientFill(bgGradient);
+        g.fillRoundedRectangle(bounds, 6.0f);
 
-    // Header bottom line
-    g.setColour(Colours::black.withAlpha(0.38f));
-    g.drawHorizontalLine(29, 2, bounds.getWidth() - 2);
-    g.setColour(palette.accent.withAlpha(0.26f));
-    g.drawLine(38.0f, 28.0f, jmin(bounds.getWidth() - 52.0f, 148.0f), 28.0f, 1.0f);
+        // Outer border with bevel effect
+        g.setColour(Colours::black.withAlpha(0.46f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+        g.setColour(palette.edgeHi.withAlpha(0.52f));
+        g.drawRoundedRectangle(bounds.reduced(1.5f), 5.0f, 1.0f);
+
+        for (auto screwCentre : {Point<float>{7.0f, 7.0f},
+                                 Point<float>{bounds.getRight() - 7.0f, 7.0f},
+                                 Point<float>{7.0f, bounds.getBottom() - 7.0f},
+                                 Point<float>{bounds.getRight() - 7.0f, bounds.getBottom() - 7.0f}})
+        {
+            auto screw = Rectangle<float>(5.0f, 5.0f).withCentre(screwCentre);
+            g.setColour(Colours::black.withAlpha(0.3f));
+            g.fillEllipse(screw.translated(0.0f, 0.7f));
+            g.setColour(palette.edgeHi.withAlpha(0.46f));
+            g.drawEllipse(screw, 0.8f);
+        }
+
+        // Header bar with rounded top corners
+        Rectangle<float> headerBounds(2, 2, bounds.getWidth() - 4, 27);
+        Path headerPath;
+        headerPath.addRoundedRectangle(headerBounds.getX(), headerBounds.getY(), headerBounds.getWidth(),
+                                       headerBounds.getHeight(), 5.0f, 5.0f, true, true, false, false);
+        ColourGradient headerGradient(palette.face2.brighter(0.1f), 0, 2, palette.face.darker(0.12f), 0, 29, false);
+        g.setGradientFill(headerGradient);
+        g.fillPath(headerPath);
+
+        // Header bottom line
+        g.setColour(Colours::black.withAlpha(0.38f));
+        g.drawHorizontalLine(29, 2, bounds.getWidth() - 2);
+        g.setColour(palette.accent.withAlpha(0.26f));
+        g.drawLine(38.0f, 28.0f, jmin(bounds.getWidth() - 52.0f, 148.0f), 28.0f, 1.0f);
+
+        // Cabinet icon and title text.
+        drawIRLoaderCabinetGlyph(g, Rectangle<float>(10.0f, 6.0f, 19.0f, 18.0f), palette,
+                                 irProcessor->isIRLoaded() || irProcessor->isIR2Loaded());
+
+        g.setFont(fonts.getBadgeFont());
+        g.setColour(palette.textDim.withAlpha(0.58f));
+        g.drawText("CABINET", Rectangle<float>(36.0f, 4.0f, 70.0f, 9.0f), Justification::centredLeft);
+        g.setColour(palette.text);
+        g.setFont(fonts.getSubheadingFont().withHeight(13.0f));
+        g.drawText("IR LOADER", Rectangle<float>(36.0f, 11.0f, 116.0f, 16.0f), Justification::centredLeft);
+
+        // Status LED (IR loaded indicator)
+        const float ledSize = 8.0f;
+        const float ledX = bounds.getWidth() - 18.0f;
+        const float ledY = (28 - ledSize) * 0.5f;
+        const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
+        drawIRLoaderLed(g, Rectangle<float>(ledX, ledY, ledSize, ledSize), anyLoaded ? palette.led : palette.textDim,
+                        anyLoaded);
+    }
 
     auto drawSlotWell = [&](Rectangle<float> slotBounds, const String& label, bool loaded)
     {
@@ -495,27 +769,11 @@ void IRLoaderControl::paint(Graphics& g)
         g.drawText(label, rightRail.withTrimmedLeft(15.0f), Justification::centredLeft, true);
     };
 
-    drawSlotWell(Rectangle<float>(8.0f, 36.0f, bounds.getWidth() - 16.0f, 22.0f), "IR 1", irProcessor->isIRLoaded());
-    drawSlotWell(Rectangle<float>(8.0f, 62.0f, bounds.getWidth() - 16.0f, 22.0f), "IR 2", irProcessor->isIR2Loaded());
-
-    // Cabinet icon and title text.
-    drawIRLoaderCabinetGlyph(g, Rectangle<float>(10.0f, 6.0f, 19.0f, 18.0f), palette,
-                             irProcessor->isIRLoaded() || irProcessor->isIR2Loaded());
-
-    g.setFont(fonts.getBadgeFont());
-    g.setColour(palette.textDim.withAlpha(0.58f));
-    g.drawText("CABINET", Rectangle<float>(36.0f, 4.0f, 70.0f, 9.0f), Justification::centredLeft);
-    g.setColour(palette.text);
-    g.setFont(fonts.getSubheadingFont().withHeight(13.0f));
-    g.drawText("IR LOADER", Rectangle<float>(36.0f, 11.0f, 116.0f, 16.0f), Justification::centredLeft);
-
-    // Status LED (IR loaded indicator)
-    const float ledSize = 8.0f;
-    const float ledX = bounds.getWidth() - 18.0f;
-    const float ledY = (28 - ledSize) * 0.5f;
     const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
-    drawIRLoaderLed(g, Rectangle<float>(ledX, ledY, ledSize, ledSize), anyLoaded ? palette.led : palette.textDim,
-                    anyLoaded);
+    const float slotTop = 36.0f;
+    drawSlotWell(Rectangle<float>(8.0f, slotTop, bounds.getWidth() - 16.0f, 22.0f), "IR 1", irProcessor->isIRLoaded());
+    drawSlotWell(Rectangle<float>(8.0f, slotTop + 26.0f, bounds.getWidth() - 16.0f, 22.0f), "IR 2",
+                 irProcessor->isIR2Loaded());
 
     // Subtle section separator above sliders
     float separatorY = 88.0f;
@@ -535,9 +793,89 @@ void IRLoaderControl::paint(Graphics& g)
     g.drawText(status, footer, Justification::centredRight, true);
 }
 
+void IRLoaderControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
+{
+    auto area = bounds.reduced(8, 6);
+    constexpr int gap = 3;
+
+    for (auto* slider : {blendSlider.get(), mixSlider.get(), lowCutSlider.get(), highCutSlider.get()})
+        slider->setTextBoxStyle(Slider::TextBoxRight, false, 42, 14);
+    highCutSlider->setTextBoxStyle(Slider::TextBoxRight, false, 58, 14);
+
+    auto irSection = area.removeFromTop(190);
+    irSection.removeFromTop(16);
+    irSection.removeFromTop(5);
+
+    auto row1Slot = irSection.removeFromTop(82).reduced(8, 6);
+    row1Slot.removeFromTop(17);
+    auto row1 = row1Slot.removeFromTop(22);
+    loadButton->setBounds(row1.removeFromLeft(45));
+    row1.removeFromLeft(gap);
+    browseButton->setBounds(row1.removeFromLeft(55));
+    row1.removeFromLeft(gap);
+    clearButton->setBounds(row1.removeFromLeft(22));
+    row1.removeFromLeft(gap);
+    irNameLabel->setBounds(row1.removeFromTop(22));
+
+    irSection.removeFromTop(5);
+    auto row2Slot = irSection.removeFromTop(82).reduced(8, 6);
+    row2Slot.removeFromTop(17);
+    auto row2 = row2Slot.removeFromTop(22);
+    loadButton2->setBounds(row2.removeFromLeft(45));
+    row2.removeFromLeft(gap);
+    browseButton2->setBounds(row2.removeFromLeft(55));
+    row2.removeFromLeft(gap);
+    clearButton2->setBounds(row2.removeFromLeft(22));
+    row2.removeFromLeft(gap);
+    irName2Label->setBounds(row2.removeFromTop(22));
+
+    area.removeFromTop(7);
+    auto mixArea = area.removeFromTop(90);
+    mixArea.removeFromTop(16);
+    mixArea.removeFromTop(6);
+
+    auto blendRow = mixArea.removeFromTop(18);
+    blendLabel->setBounds(blendRow.removeFromLeft(46));
+    blendRow.removeFromLeft(gap);
+    blendSlider->setBounds(blendRow);
+
+    mixArea.removeFromTop(5);
+    auto mixRow = mixArea.removeFromTop(18);
+    mixLabel->setBounds(mixRow.removeFromLeft(46));
+    mixRow.removeFromLeft(gap);
+    mixSlider->setBounds(mixRow);
+
+    area.removeFromTop(7);
+    auto filterArea = area;
+    filterArea.removeFromTop(16);
+    filterArea.removeFromTop(6);
+    filterArea.removeFromTop(44);
+    filterArea.removeFromTop(6);
+    filterArea.removeFromTop(24);
+    filterArea.removeFromTop(6);
+
+    auto lowRow = filterArea.removeFromTop(18);
+    lowCutLabel->setBounds(lowRow.removeFromLeft(46));
+    lowRow.removeFromLeft(gap);
+    lowCutSlider->setBounds(lowRow);
+
+    filterArea.removeFromTop(4);
+    auto highRow = filterArea.removeFromTop(18);
+    highCutLabel->setBounds(highRow.removeFromLeft(46));
+    highRow.removeFromLeft(gap);
+    highCutSlider->setBounds(highRow);
+}
+
 void IRLoaderControl::resized()
 {
     auto bounds = getLocalBounds();
+    const bool embeddedInGraphNode = isEmbeddedInGraphNode();
+    if (embeddedInGraphNode)
+    {
+        resizedEmbeddedGraphNode(bounds);
+        return;
+    }
+
     bounds.removeFromTop(32); // Header space
     bounds = bounds.reduced(8, 4);
 

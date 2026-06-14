@@ -50,6 +50,7 @@
 #include "OscilloscopeProcessor.h"
 #include "PatchOrganiser.h"
 #include "PedalboardProcessors.h"
+#include "PluginComponent.h"
 #include "PluginField.h"
 #include "PluginPoolManager.h"
 #include "PreferencesDialog.h"
@@ -77,6 +78,44 @@ using namespace std;
 //[/Headers]
 
 #include "MainPanel.h"
+
+namespace
+{
+String getVisualQaNodeSnapshotName(const String& pluginName)
+{
+    if (pluginName == "NAM Loader")
+        return "app-node-nam-loader.png";
+    if (pluginName == "IR Loader")
+        return "app-node-ir-loader.png";
+    if (pluginName == "Effect Rack" || pluginName == "New Rack")
+        return "app-node-effect-rack.png";
+    if (pluginName == "Tuner")
+        return "app-node-tuner.png";
+    if (pluginName == "Mixer")
+        return "app-node-mixer.png";
+    if (pluginName == "Splitter")
+        return "app-node-splitter.png";
+    if (pluginName == "Notes" || pluginName == "Note" || pluginName == "Label" || pluginName == "Label Node")
+        return "app-node-notes.png";
+
+    return {};
+}
+
+bool writePngSnapshot(const Image& image, const File& targetFile)
+{
+    if (!image.isValid())
+        return false;
+
+    targetFile.deleteFile();
+    if (auto out = targetFile.createOutputStream())
+    {
+        PNGImageFormat png;
+        return png.writeImageToStream(image, *out);
+    }
+
+    return false;
+}
+}
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 
@@ -2068,6 +2107,37 @@ void MainPanel::setVirtualKeyboardCollapsedForVisualQa(bool shouldCollapse)
         keyboardToggleButton->setToggleState(!virtualKeyboardCollapsed, dontSendNotification);
     resized();
     repaint();
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::writeNodeSnapshotsForVisualQa(const File& outputDir)
+{
+    outputDir.createDirectory();
+
+    auto* field = viewport != nullptr ? dynamic_cast<PluginField*>(viewport->getViewedComponent()) : nullptr;
+    if (field == nullptr)
+        return;
+
+    field->refreshNodeParameterControls();
+    field->resized();
+
+    for (int i = 0; i < field->getNumChildComponents(); ++i)
+    {
+        auto* pluginComponent = dynamic_cast<PluginComponent*>(field->getChildComponent(i));
+        if (pluginComponent == nullptr)
+            continue;
+
+        auto* node = pluginComponent->getNode();
+        auto* processor = node != nullptr ? node->getProcessor() : nullptr;
+        const auto pluginName = processor != nullptr ? processor->getName() : pluginComponent->getUserName();
+        const auto fileName = getVisualQaNodeSnapshotName(pluginName);
+        if (fileName.isEmpty())
+            continue;
+
+        pluginComponent->repaint();
+        const auto snapshot = pluginComponent->createComponentSnapshot(pluginComponent->getLocalBounds(), true, 1.0f);
+        writePngSnapshot(snapshot, outputDir.getChildFile(fileName));
+    }
 }
 
 //------------------------------------------------------------------------------

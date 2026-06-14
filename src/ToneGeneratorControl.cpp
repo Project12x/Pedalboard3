@@ -233,13 +233,8 @@ void ToneGeneratorControl::paint(Graphics& g)
     g.setColour(colours["Plugin Border"].withAlpha(0.3f));
     g.drawRect(bounds.reduced(1), 1.0f);
 
-    // Title
-    g.setColour(colours["Text Colour"]);
-    g.setFont(fonts.getLabelFont());
-    g.drawText("TONE GENERATOR", bounds.removeFromTop(18).reduced(4, 0), Justification::left);
-
     // Frequency display
-    auto displayArea = bounds.removeFromTop(22).reduced(4, 0);
+    auto displayArea = bounds.removeFromTop(26).reduced(4, 0);
     g.setFont(fonts.getMonoDisplayFont(16.0f));
     g.setColour(Colour(0xFF00E676));
     g.drawText(String(displayedFrequency, 1) + " Hz  " + displayedNote, displayArea, Justification::left);
@@ -247,9 +242,9 @@ void ToneGeneratorControl::paint(Graphics& g)
     // Labels
     g.setColour(colours["Text Colour"].withAlpha(0.6f));
     g.setFont(fonts.getBadgeFont());
-    g.drawText("Freq:", Rectangle<float>(4, 44, 30, 14), Justification::left);
-    g.drawText("Detune:", Rectangle<float>(4, 66, 40, 14), Justification::left);
-    g.drawText("Level:", Rectangle<float>(4, 108, 30, 14), Justification::left);
+    g.drawText("Freq:", Rectangle<float>(4, 28, 30, 14), Justification::left);
+    g.drawText("Detune:", Rectangle<float>(4, 50, 40, 14), Justification::left);
+    g.drawText("Level:", Rectangle<float>(4, 92, 30, 14), Justification::left);
 }
 
 void ToneGeneratorControl::resized()
@@ -257,8 +252,7 @@ void ToneGeneratorControl::resized()
     auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().reduced(4);
 
-    bounds.removeFromTop(18); // Title
-    bounds.removeFromTop(22); // Frequency display
+    bounds.removeFromTop(26); // Frequency display
 
     // Frequency slider row
     auto freqRow = bounds.removeFromTop(20);

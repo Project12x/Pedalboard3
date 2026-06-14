@@ -12,10 +12,10 @@
 
 #include "ColourScheme.h"
 #include "FontManager.h"
+#include "NAMProcessor.h"
 
 #include <JuceHeader.h>
-
-class NAMProcessor;
+#include <array>
 
 //==============================================================================
 /**
@@ -51,9 +51,11 @@ class NAMLookAndFeel : public LookAndFeel_V4
     void refreshColours();
 
     // Theme-derived palette (public for NAMControl::paint to use)
-    Colour ampBackground;      // Darkened plugin background
+    Colour ampBackgroundTop;   // Browser chassis top gradient colour
+    Colour ampBackground;      // Browser chassis bottom/background colour
     Colour ampSurface;         // Slightly lighter surface for panels
     Colour ampBorder;          // Panel borders
+    Colour ampBorderBright;    // Highlight border from browser palette
     Colour ampHeaderBg;        // Header bar background
     Colour ampAccent;          // Primary accent (warm orange from Warning Colour)
     Colour ampAccentSecondary; // Secondary accent (from Slider Colour)
@@ -100,10 +102,15 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     void updateModelDisplay();
     void updateIRDisplay();
     void drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, const String& title);
+    void paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds);
+    void resizedEmbeddedGraphNode(Rectangle<int> bounds);
+    bool isEmbeddedInGraphNode() const;
+    void updateEqModeVisibility();
 
     NAMProcessor* namProcessor;
     NAMLookAndFeel namLookAndFeel;
     bool collapsed = false;
+    bool cabinetIrCollapsed = false;
 
     // LED animation state
     float ledPulsePhase = 0.0f;
@@ -116,6 +123,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     std::unique_ptr<Label> modelArchLabel; // Architecture type badge
 
     // IR loading
+    std::unique_ptr<TextButton> cabinetIrCollapseButton;
     std::unique_ptr<TextButton> loadIRButton;
     std::unique_ptr<TextButton> clearIRButton;
     std::unique_ptr<Label> irNameLabel;
@@ -154,12 +162,19 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     // Tone stack
     std::unique_ptr<ToggleButton> toneStackEnabledButton;
     std::unique_ptr<TextButton> toneStackPreButton;
+    std::unique_ptr<TextButton> toneEqModeStackButton;
+    std::unique_ptr<TextButton> toneEqModeParamButton;
+    std::unique_ptr<TextButton> paramEqBandCountButton;
     std::unique_ptr<Slider> bassSlider;
     std::unique_ptr<Label> bassLabel;
     std::unique_ptr<Slider> midSlider;
     std::unique_ptr<Label> midLabel;
     std::unique_ptr<Slider> trebleSlider;
     std::unique_ptr<Label> trebleLabel;
+    std::array<std::unique_ptr<Label>, NAMProcessor::kParamEqBandCount> paramEqBandLabels;
+    std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqFrequencySliders;
+    std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqGainSliders;
+    std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqQSliders;
 
     // Normalize
     std::unique_ptr<ToggleButton> normalizeButton;

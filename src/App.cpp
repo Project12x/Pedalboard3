@@ -238,15 +238,19 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
         const bool visualQaStageQueue = commandLine.contains("--visual-qa-stage-queue");
         const bool visualQaStageGrid = commandLine.contains("--visual-qa-stage-grid");
         const bool visualQaStageTuner = commandLine.contains("--visual-qa-stage-tuner");
+        const bool visualQaNodeSnapshots = commandLine.contains("--visual-qa-node-snapshots");
+        const auto visualQaNodeSnapshotDir =
+            File::getSpecialLocation(File::tempDirectory).getChildFile("Pedalboard3VisualQa").getChildFile("node-snapshots");
         if (visualQaNextPatch || visualQaStage || visualQaPluginSearch || visualQaPreferences || visualQaNamBrowser ||
             visualQaIrBrowser || visualQaScratchPanel || visualQaKeyboardCollapsed || visualQaStageQueue ||
-            visualQaStageGrid || visualQaStageTuner)
+            visualQaStageGrid || visualQaStageTuner || visualQaNodeSnapshots)
         {
             Component::SafePointer<StupidWindow> safeThis(this);
             MessageManager::callAsync([safeThis, visualQaNextPatch, visualQaStage, visualQaPluginSearch,
                                        visualQaPreferences, visualQaNamBrowser, visualQaIrBrowser,
                                        visualQaScratchPanel, visualQaKeyboardCollapsed, visualQaStageQueue,
-                                       visualQaStageGrid, visualQaStageTuner]()
+                                       visualQaStageGrid, visualQaStageTuner, visualQaNodeSnapshots,
+                                       visualQaNodeSnapshotDir]()
                                       {
                                           if (safeThis == nullptr || safeThis->mainPanel == nullptr)
                                               return;
@@ -284,6 +288,18 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 
                                           if (visualQaPreferences)
                                               safeThis->commandManager.invokeDirectly(MainPanel::OptionsPreferences, true);
+
+                                          if (visualQaNodeSnapshots)
+                                          {
+                                              Timer::callAfterDelay(1200, [safeThis, visualQaNodeSnapshotDir]()
+                                                                    {
+                                                                        if (safeThis != nullptr &&
+                                                                            safeThis->mainPanel != nullptr)
+                                                                            safeThis->mainPanel
+                                                                                ->writeNodeSnapshotsForVisualQa(
+                                                                                    visualQaNodeSnapshotDir);
+                                                                    });
+                                          }
                                       });
         }
     }

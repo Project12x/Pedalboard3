@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pedalboard 3 · Demo</title>
+<link rel="stylesheet" href="mw2.css" />
+<link rel="stylesheet" href="nam.css" />
+<link rel="stylesheet" href="nam-browser.css" />
+<link rel="stylesheet" href="scratch.css" />
+<link rel="stylesheet" href="stage.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #050509; overflow: hidden; }
+
+  .demo-root { position: fixed; inset: 0; }
+  .demo-fit { position: absolute; inset: 0; display: grid; place-items: center; }
+  .demo-scale { transform-origin: center; }
+  .demo-scale.main .mw2 { border-radius: 14px; box-shadow: 0 40px 110px rgba(0,0,0,0.7); overflow: hidden; }
+  .demo-scale.stage .stage { border-radius: 16px; box-shadow: 0 30px 90px rgba(0,0,0,0.6); }
+
+  /* fullscreen takeover for Stage Mode */
+  .demo-stage-overlay { position: absolute; inset: 0; z-index: 200;
+    background: radial-gradient(120% 100% at 50% 0%, #0c0c15, #000 70%); }
+
+  /* ---------- floating window chrome ---------- */
+  .demo-window { position: fixed; z-index: 120; display: flex; flex-direction: column;
+    box-sizing: border-box;
+    border-radius: 14px; overflow: hidden;
+    background: #0e0e16; border: 1px solid #26263a;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.62), 0 2px 0 rgba(255,255,255,0.03) inset; }
+  .demo-win-bar { flex: none; display: flex; align-items: center; gap: 9px;
+    height: 40px; padding: 0 8px 0 14px; cursor: grab;
+    background: linear-gradient(180deg, #18182a, #121220);
+    border-bottom: 1px solid #26263a; user-select: none; }
+  .demo-win-bar:active { cursor: grabbing; }
+  .demo-win-ic { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px;
+    color: #ff5a5a; background: rgba(255,64,64,0.14); }
+  .demo-win-title { flex: 1; font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.01em; color: #d6d8e6; }
+  .demo-win-x { width: 30px; height: 28px; display: grid; place-items: center; border: none;
+    background: none; border-radius: 7px; color: #9a9cb4; cursor: pointer; }
+  .demo-win-x:hover { background: #c0392b; color: #fff; }
+  .demo-win-body { box-sizing: border-box; padding: 12px; background: #0b0b12; max-height: calc(100vh - 168px); overflow-x: hidden; overflow-y: auto; }
+  .demo-win-body::-webkit-scrollbar { width: 10px; }
+  .demo-win-body::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+
+  /* re-house ScratchPanel: keep .sc-stage's CSS vars + button/box resets,
+     drop its fullscreen fixed positioning so it lays out inside the window */
+  .demo-sc-host.sc-stage { position: static; inset: auto; display: block;
+    background: transparent; overflow: visible; height: auto; min-height: 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .demo-window { animation: dm-win 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .demo-stage-overlay { animation: dm-fade 0.26s ease; }
+  }
+  /* transform-only entrances — never gate visibility on opacity, so a throttled
+     animation clock can't leave a surface stuck invisible */
+  @keyframes dm-win { from { transform: translateY(12px) scale(0.98); } }
+  @keyframes dm-fade { from { transform: scale(1.012); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- shared -->
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<!-- Main Window v2 -->
+<script type="text/babel" src="mw2-data.jsx"></script>
+<script type="text/babel" src="mw2-prims.jsx"></script>
+<script type="text/babel" src="mw2-nodes.jsx"></script>
+<script type="text/babel" src="mw2-canvas.jsx"></script>
+<script type="text/babel" src="mw2-chrome.jsx"></script>
+
+<!-- NAM editor + browser (float from inside the Main Window) -->
+<script type="text/babel" src="nam-controls.jsx"></script>
+<script type="text/babel" src="nam-editor.jsx"></script>
+<script type="text/babel" src="nam-browser-data.jsx"></script>
+<script type="text/babel" src="nam-browser.jsx"></script>
+<script type="text/babel" src="nam-window.jsx"></script>
+<script type="text/babel" src="mw2-app.jsx"></script>
+
+<!-- Scratch Mode -->
+<script type="text/babel" src="scratch-data.jsx"></script>
+<script type="text/babel" src="scratch-waveform.jsx"></script>
+<script type="text/babel" src="scratch-panel.jsx"></script>
+
+<!-- Stage Mode -->
+<script type="text/babel" src="stage-shared.jsx"></script>
+<script type="text/babel" src="StageHud.jsx"></script>
+<script type="text/babel" src="StageSetlist.jsx"></script>
+<script type="text/babel" src="StageGrid.jsx"></script>
+<script type="text/babel" src="StageMode.jsx"></script>
+
+<!-- demo shell -->
+<script type="text/babel" src="demo-app.jsx"></script>
+
+<script type="text/babel">
+  ReactDOM.createRoot(document.getElementById("root")).render(<PedalboardDemo />);
+</script>
+</body>
+</html>

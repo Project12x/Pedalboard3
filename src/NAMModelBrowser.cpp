@@ -173,6 +173,26 @@ bool isReadableNAMModel(const NAMModelInfo& model)
     return File(String(model.filePath)).existsAsFile();
 }
 
+int getLibrarySplitGap(bool compactLayout)
+{
+    return compactLayout ? 8 : 12;
+}
+
+int getLibraryRailWidth(int availableWidth, bool compactLayout)
+{
+    return compactLayout ? jlimit(118, 142, availableWidth / 7) : jlimit(132, 168, availableWidth / 7);
+}
+
+bool canShowThreePillarLibraryLayout(int availableWidth, bool compactLayout)
+{
+    const int splitGap = getLibrarySplitGap(compactLayout);
+    const int minimumRailWidth = compactLayout ? 118 : 132;
+    const int minimumListWidth = compactLayout ? 150 : 220;
+    const int minimumDetailsWidth = compactLayout ? 170 : 250;
+
+    return availableWidth >= minimumRailWidth + splitGap + minimumListWidth + splitGap + minimumDetailsWidth;
+}
+
 void drawMagnifierGlyph(Graphics& g, Rectangle<float> area, Colour colour, float thickness)
 {
     const auto size = jmin(area.getWidth(), area.getHeight()) * 0.58f;
@@ -710,22 +730,20 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
             const auto palette = makeBrowserPalette();
             auto area = getLocalBounds().toFloat().reduced(4.0f);
 
-            if (isButtonDown)
+            if (isMouseOverButton || isButtonDown)
             {
-                g.setColour(Colours::red.withAlpha(0.6f));
-                g.fillEllipse(area);
-            }
-            else if (isMouseOverButton)
-            {
-                g.setColour(Colours::red.withAlpha(0.3f));
-                g.fillEllipse(area);
+                const auto fill = isButtonDown ? palette.face2.darker(0.12f) : palette.face2.brighter(0.08f);
+                g.setColour(fill.withAlpha(0.84f));
+                g.fillRoundedRectangle(area, 4.0f);
+                g.setColour(palette.edge.withAlpha(0.54f));
+                g.drawRoundedRectangle(area.reduced(0.5f), 4.0f, 0.8f);
             }
 
             // X symbol
             auto cross = area.reduced(area.getWidth() * 0.25f);
-            g.setColour(isMouseOverButton ? palette.text : palette.text.withAlpha(0.7f));
-            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.5f);
-            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.5f);
+            g.setColour(isMouseOverButton ? palette.text : palette.text.withAlpha(0.62f));
+            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.35f);
+            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.35f);
         }
     };
 };
@@ -1283,6 +1301,7 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     // Title
     titleLabel = std::make_unique<Label>("title", "NAM Library");
     titleLabel->setFont(FontManager::getInstance().getHeadingFont());
+    titleLabel->setJustificationType(Justification::centred);
     titleLabel->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(titleLabel.get());
 
@@ -1371,7 +1390,11 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
 
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->addListener(this);
-    styleButton(closeButton.get());
+    closeButton->setLookAndFeel(nullptr);
+    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
+    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
+    closeButton->setColour(TextButton::textColourOnId, palette.text);
     addAndMakeVisible(closeButton.get());
 
     // Model list - transparent background for custom rounded painting
@@ -1621,7 +1644,11 @@ void NAMModelBrowserComponent::refreshColours()
     styleButton(browseFolderButton.get());
     styleButton(loadButton.get(), true);
     styleButton(favoriteButton.get());
-    styleButton(closeButton.get());
+    closeButton->setLookAndFeel(nullptr);
+    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
+    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
+    closeButton->setColour(TextButton::textColourOnId, palette.text);
 
     // Details panel labels
     detailsTitle->setColour(Label::textColourId, palette.text);
@@ -1835,6 +1862,14 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         g.setColour(palette.edge);
         g.strokePath(detailsPath, PathStrokeType(1.0f));
 
+        auto boundsInBrowser = [this](const Component* component)
+        {
+            if (component == nullptr)
+                return Rectangle<int>();
+
+        return component->getBounds();
+    };
+
         if (detailsBounds.getWidth() >= 250.0f)
         {
             if (currentTab == 0)
@@ -1843,15 +1878,16 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 const bool selectedReady = selectedModel != nullptr && isReadableNAMModel(*selectedModel);
                 const auto fields = selectedModel != nullptr ? extractNAMPreviewFields(*selectedModel) : NAMPreviewFields{};
 
-                auto previewCard = nameValue->getBounds()
-                                       .getUnion(authorLabel->getBounds())
-                                       .getUnion(authorValue->getBounds())
-                                       .getUnion(modelDescriptionLabel->getBounds())
+                auto previewCard = boundsInBrowser(nameValue.get())
+                                       .getUnion(boundsInBrowser(authorLabel.get()))
+                                       .getUnion(boundsInBrowser(authorValue.get()))
+                                       .getUnion(boundsInBrowser(modelDescriptionLabel.get()))
                                        .toFloat()
                                        .expanded(10.0f, 5.0f);
                 previewCard.setLeft(detailsBounds.getX() + 14.0f);
                 previewCard.setRight(detailsBounds.getRight() - 14.0f);
-                previewCard.setTop(previewCard.getY() - (detailsBounds.getWidth() >= 250.0f ? 60.0f : 0.0f));
+                previewCard.setTop(jmax(detailsBounds.getY() + 14.0f,
+                                        previewCard.getY() - (detailsBounds.getWidth() >= 250.0f ? 60.0f : 0.0f)));
                 previewCard.setBottom(previewCard.getBottom() + 14.0f);
 
                 g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
@@ -1937,9 +1973,10 @@ void NAMModelBrowserComponent::paint(Graphics& g)
             if (label == nullptr || value == nullptr || !label->isVisible() || !value->isVisible())
                 return;
 
-            auto row = label->getBounds().getUnion(value->getBounds()).expanded(7, 3).toFloat();
+            const auto labelBounds = boundsInBrowser(label);
+            auto row = labelBounds.getUnion(boundsInBrowser(value)).expanded(7, 3).toFloat();
             row.setRight(detailsBounds.getRight() - 16.0f);
-            row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)label->getX() - 6.0f));
+            row.setLeft(jmax(detailsBounds.getX() + 8.0f, (float)labelBounds.getX() - 6.0f));
 
             g.setColour((rowIndex % 2 == 0 ? palette.inset : palette.face).withAlpha(0.72f));
             g.fillRoundedRectangle(row, 6.0f);
@@ -1973,6 +2010,9 @@ void NAMModelBrowserComponent::paint(Graphics& g)
         for (auto y : detailsSeparatorPositions)
         {
             const auto yf = static_cast<float>(y);
+            if (yf < separatorBounds.getY() || yf > separatorBounds.getBottom())
+                continue;
+
             g.setColour(palette.edge.withAlpha(0.46f));
             g.drawLine(separatorBounds.getX(), yf, separatorBounds.getRight(), yf, 1.0f);
         }
@@ -2064,7 +2104,7 @@ void NAMModelBrowserComponent::resized()
     titleRow.removeFromLeft(2);
     irTabButton->setBounds(titleRow.removeFromLeft(irTabWidth));
 
-    bounds.removeFromTop(compactLayout ? 8 : 12);
+    bounds.removeFromTop(compactLayout ? 14 : 20);
 
     // Hide all IR components by default
     auto hideIRComponents = [this]()
@@ -2175,22 +2215,22 @@ void NAMModelBrowserComponent::resized()
         irLoadButton->setVisible(true);
 
         // Split remaining area: library rail, list, and focused inspector card.
-        const bool showRail = !compactLayout && bounds.getWidth() >= 720;
+        const int splitGap = getLibrarySplitGap(compactLayout);
+        const bool showRail = canShowThreePillarLibraryLayout(bounds.getWidth(), compactLayout);
         if (showRail)
         {
-            const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
+            const int railWidth = getLibraryRailWidth(bounds.getWidth(), compactLayout);
             libraryRailBounds = bounds.removeFromLeft(railWidth);
-            bounds.removeFromLeft(12);
+            bounds.removeFromLeft(splitGap);
         }
 
-        const int splitGap = compactLayout ? 8 : 12;
         const int minimumListWidth = compactLayout ? 150 : 220;
-        const int desiredDetailsWidth = compactLayout ? jlimit(170, 230, roundToInt(bounds.getWidth() * 0.44f))
+        const int desiredDetailsWidth = compactLayout ? jlimit(210, 270, roundToInt(bounds.getWidth() * 0.48f))
                                                       : jlimit(250, 350, roundToInt(bounds.getWidth() * 0.34f));
         const int maxDetailsWidth = jmax(120, bounds.getWidth() - splitGap - minimumListWidth);
         const int detailsWidth = jmin(desiredDetailsWidth, maxDetailsWidth);
-        auto detailsArea = bounds.removeFromRight(detailsWidth);
-        detailsPanelBounds = detailsArea;
+        auto detailsPanelArea = bounds.removeFromRight(detailsWidth);
+        detailsPanelBounds = detailsPanelArea;
         bounds.removeFromRight(splitGap);
         auto listArea = bounds;
 
@@ -2201,7 +2241,7 @@ void NAMModelBrowserComponent::resized()
         updateIRBrowserState();
 
         // IR details panel
-        detailsArea.reduce(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
+        auto detailsArea = detailsPanelArea.reduced(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
         const int labelWidth = compactLayout ? 72 : 90;
         const int rowH = compactLayout ? 19 : 22;
         const int detailRowGap = compactLayout ? 2 : 4;
@@ -2304,22 +2344,22 @@ void NAMModelBrowserComponent::resized()
     loadButton->setBounds(buttonRow.removeFromRight(compactLayout ? 92 : 100));
 
     // Split remaining area: library rail, list, and focused inspector card.
-    const bool showRail = !compactLayout && bounds.getWidth() >= 720;
+    const int splitGap = getLibrarySplitGap(compactLayout);
+    const bool showRail = canShowThreePillarLibraryLayout(bounds.getWidth(), compactLayout);
     if (showRail)
     {
-        const int railWidth = jlimit(132, 168, bounds.getWidth() / 7);
+        const int railWidth = getLibraryRailWidth(bounds.getWidth(), compactLayout);
         libraryRailBounds = bounds.removeFromLeft(railWidth);
-        bounds.removeFromLeft(12);
+        bounds.removeFromLeft(splitGap);
     }
 
-    const int splitGap = compactLayout ? 8 : 12;
     const int minimumListWidth = compactLayout ? 150 : 220;
-    const int desiredDetailsWidth = compactLayout ? jlimit(170, 230, juce::roundToInt(bounds.getWidth() * 0.44f))
+    const int desiredDetailsWidth = compactLayout ? jlimit(210, 270, juce::roundToInt(bounds.getWidth() * 0.48f))
                                                   : jlimit(250, 350, juce::roundToInt(bounds.getWidth() * 0.34f));
     const int maxDetailsWidth = jmax(120, bounds.getWidth() - splitGap - minimumListWidth);
     const int detailsWidth = jmin(desiredDetailsWidth, maxDetailsWidth);
-    auto detailsArea = bounds.removeFromRight(detailsWidth);
-    detailsPanelBounds = detailsArea;
+    auto detailsPanelArea = bounds.removeFromRight(detailsWidth);
+    detailsPanelBounds = detailsPanelArea;
     bounds.removeFromRight(splitGap);
     auto listArea = bounds;
 
@@ -2328,12 +2368,12 @@ void NAMModelBrowserComponent::resized()
     emptyStateLabel->setBounds(listArea);
 
     // Details panel with section grouping
-    detailsArea.reduce(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
+    auto detailsArea = detailsPanelArea.reduced(compactLayout ? 10 : 14, compactLayout ? 9 : 12);
     const int labelWidth = compactLayout ? 72 : 90;
     const int sectionGap = compactLayout ? 6 : 10;
     const int rowH = compactLayout ? 19 : 22;
     const int detailRowGap = compactLayout ? 2 : 4;
-    const bool showFullTechnicalDetails = !compactLayout;
+    const bool showFullTechnicalDetails = true;
 
     sampleRateLabel->setVisible(showFullTechnicalDetails);
     sampleRateValue->setVisible(showFullTechnicalDetails);
@@ -2397,8 +2437,9 @@ void NAMModelBrowserComponent::resized()
     {
         metadataLabel->setBounds(detailsArea.removeFromTop(20));
         detailsArea.removeFromTop(4);
-        metadataDisplay->setBounds(detailsArea);
+        metadataDisplay->setBounds(detailsArea.removeFromTop(compactLayout ? 96 : 132));
     }
+
 }
 
 void NAMModelBrowserComponent::buttonClicked(Button* button)
@@ -3329,6 +3370,7 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     // Title with icon-like styling
     titleLabel = std::make_unique<Label>("title", "IR Browser");
     titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
+    titleLabel->setJustificationType(Justification::centred);
     titleLabel->setColour(Label::textColourId, palette.text);
     addAndMakeVisible(titleLabel.get());
 
@@ -3377,10 +3419,10 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
     addAndMakeVisible(loadButton.get());
 
     closeButton = std::make_unique<TextButton>("Close");
-    closeButton->setLookAndFeel(&browserActionButtonLookAndFeel);
-    closeButton->setColour(TextButton::buttonColourId, palette.face2);
-    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
-    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.85f));
+    closeButton->setLookAndFeel(nullptr);
+    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
+    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
     closeButton->setColour(TextButton::textColourOnId, palette.text);
     closeButton->addListener(this);
     addAndMakeVisible(closeButton.get());
@@ -3465,9 +3507,9 @@ void IRBrowserComponent::paint(Graphics& g)
     const bool shortLayout = getHeight() < 430;
     const int outerPadding = compactLayout ? 10 : 12;
     const int titleHeight = compactLayout ? 30 : 32;
-    const int headerGap = compactLayout ? 6 : 8;
-    const int searchHeight = compactLayout ? 30 : 32;
-    const int contentGap = compactLayout ? 8 : 12;
+    const int headerGap = compactLayout ? 10 : 14;
+    const int searchHeight = compactLayout ? 32 : 34;
+    const int contentGap = compactLayout ? 9 : 13;
     const int statusHeight = compactLayout ? 18 : 20;
     const int bottomGap = compactLayout ? 6 : 8;
     const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
@@ -3649,9 +3691,9 @@ void IRBrowserComponent::resized()
     const bool shortLayout = getHeight() < 430;
     const int outerPadding = compactLayout ? 10 : 12;
     const int titleHeight = compactLayout ? 30 : 32;
-    const int headerGap = compactLayout ? 6 : 8;
-    const int searchHeight = compactLayout ? 30 : 32;
-    const int contentGap = compactLayout ? 8 : 12;
+    const int headerGap = compactLayout ? 10 : 14;
+    const int searchHeight = compactLayout ? 32 : 34;
+    const int contentGap = compactLayout ? 9 : 13;
     const int statusHeight = compactLayout ? 18 : 20;
     const int bottomGap = compactLayout ? 6 : 8;
     const int detailsWidth = compactLayout ? jlimit(160, 220, roundToInt(getWidth() * 0.30f)) : 210;
@@ -3671,10 +3713,11 @@ void IRBrowserComponent::resized()
 
     // Title row (inside header area)
     auto titleRow = bounds.removeFromTop(titleHeight);
-    titleLabel->setBounds(titleRow.removeFromLeft(compactLayout ? 104 : 120));
+    auto titleTextRow = titleRow;
     closeButton->setBounds(titleRow.removeFromRight(compactLayout ? 58 : 65));
     titleRow.removeFromRight(compactLayout ? 6 : 8);
     loadButton->setBounds(titleRow.removeFromRight(compactLayout ? 72 : 80));
+    titleLabel->setBounds(titleTextRow);
 
     bounds.removeFromTop(headerGap);
 

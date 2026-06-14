@@ -17,16 +17,32 @@
 //==============================================================================
 TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor)
 {
-    // Mode toggle button
-    modeButton = std::make_unique<TextButton>("NEEDLE");
-    modeButton->setTooltip("Toggle between Needle and Strobe tuner modes");
-    modeButton->addListener(this);
-    addAndMakeVisible(modeButton.get());
+    needleModeButton = std::make_unique<TextButton>("NEEDLE");
+    needleModeButton->setTooltip("Needle tuner view");
+    needleModeButton->addListener(this);
+    addAndMakeVisible(needleModeButton.get());
+
+    strobeModeButton = std::make_unique<TextButton>("STROBE");
+    strobeModeButton->setTooltip("Strobe tuner view");
+    strobeModeButton->addListener(this);
+    addAndMakeVisible(strobeModeButton.get());
+
+    sixStringModeButton = std::make_unique<TextButton>("6 STR");
+    sixStringModeButton->setTooltip("Six-string guitar tuner view");
+    sixStringModeButton->addListener(this);
+    addAndMakeVisible(sixStringModeButton.get());
+
+    bypassButton = std::make_unique<TextButton>("BYPASS");
+    bypassButton->setTooltip("Bypass tuner processing");
+    bypassButton->setClickingTogglesState(true);
+    bypassButton->addListener(this);
+    addAndMakeVisible(bypassButton.get());
+    updateModeButtons();
 
     // 60 fps for smooth animation
     startTimerHz(60);
 
-    setSize(300, 200);
+    setSize(340, 220);
 }
 
 TunerControl::~TunerControl()
@@ -35,20 +51,39 @@ TunerControl::~TunerControl()
 }
 
 //==============================================================================
+void TunerControl::setBypassController(std::function<bool()> stateGetter, std::function<void(bool)> stateSetter)
+{
+    getBypassState = std::move(stateGetter);
+    setBypassState = std::move(stateSetter);
+    if (bypassButton != nullptr && getBypassState)
+        bypassButton->setToggleState(getBypassState(), dontSendNotification);
+}
+
+//==============================================================================
 void TunerControl::buttonClicked(Button* button)
 {
-    if (button == modeButton.get())
+    if (button == needleModeButton.get())
     {
-        if (currentMode == TunerMode::Needle)
-        {
-            currentMode = TunerMode::Strobe;
-            modeButton->setButtonText("STROBE");
-        }
-        else
-        {
-            currentMode = TunerMode::Needle;
-            modeButton->setButtonText("NEEDLE");
-        }
+        currentMode = TunerMode::Needle;
+        updateModeButtons();
+        repaint();
+    }
+    else if (button == strobeModeButton.get())
+    {
+        currentMode = TunerMode::Strobe;
+        updateModeButtons();
+        repaint();
+    }
+    else if (button == sixStringModeButton.get())
+    {
+        currentMode = TunerMode::SixString;
+        updateModeButtons();
+        repaint();
+    }
+    else if (button == bypassButton.get())
+    {
+        if (setBypassState)
+            setBypassState(bypassButton->getToggleState());
         repaint();
     }
 }
@@ -74,34 +109,39 @@ void TunerControl::timerCallback()
         strobeRotation = tunerProcessor->getStrobePhase() * MathConstants<float>::twoPi * STROBE_BANDS;
     }
 
+    if (bypassButton != nullptr && getBypassState)
+        bypassButton->setToggleState(getBypassState(), dontSendNotification);
+
     repaint();
 }
 
 //==============================================================================
 void TunerControl::paint(Graphics& g)
 {
-    auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat();
 
-    auto panel = getLocalBounds().toFloat().reduced(1.0f);
-    auto tunerAccent = colours["Tuner Active Colour"];
-    ColourGradient panelFill(colours["Plugin Background"].interpolatedWith(tunerAccent, 0.06f).brighter(0.06f),
-                             panel.getX(), panel.getY(),
-                             colours["Plugin Background"].interpolatedWith(tunerAccent, 0.04f).darker(0.12f),
-                             panel.getX(), panel.getBottom(), false);
-    g.setGradientFill(panelFill);
-    g.fillRoundedRectangle(panel, 8.0f);
-    g.setColour(tunerAccent.withAlpha(0.36f));
-    g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 1.2f);
+    drawTunerGlassPanel(g, bounds);
 
-    auto area = bounds.reduced(6);
+    auto area = bounds.reduced(8, 6);
 
-    auto noteArea = area.removeFromTop(52);
+    auto modeArea = area.removeFromTop(25);
+    drawModeSegmentedControl(g, modeArea);
+
+    area.removeFromTop(4);
+
+    auto noteArea = area.removeFromTop(50);
     drawNoteDisplay(g, noteArea);
 
-    auto meterArea = area.removeFromTop(90);
+    auto coarseArea = area.removeFromTop(18);
+    drawCoarseDeviationStrip(g, coarseArea);
+
+    area.removeFromTop(2);
+
+    auto meterArea = area.removeFromTop(66);
     if (currentMode == TunerMode::Needle)
         drawNeedleMeter(g, meterArea);
+    else if (currentMode == TunerMode::SixString)
+        drawSixStringDisplay(g, meterArea.expanded(0.0f, 10.0f));
     else
         drawStrobeDisc(g, meterArea);
 
@@ -109,7 +149,284 @@ void TunerControl::paint(Graphics& g)
     if (currentMode == TunerMode::Needle)
         drawLedIndicators(g, ledArea);
 
-    drawFrequencyDisplay(g, area);
+    auto statusArea = area;
+    drawStatusBadge(g, statusArea);
+}
+
+//==============================================================================
+void TunerControl::drawTunerGlassPanel(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto tunerAccent = colours["Tuner Active Colour"];
+    const auto pluginBase = colours["Plugin Background"];
+    const auto fieldBase = colours["Field Background"];
+
+    ColourGradient panelFill(pluginBase.interpolatedWith(tunerAccent, 0.10f).brighter(0.06f), bounds.getX(),
+                             bounds.getY(), pluginBase.interpolatedWith(fieldBase, 0.20f).darker(0.16f),
+                             bounds.getX(), bounds.getBottom(), false);
+    panelFill.addColour(0.38, pluginBase.interpolatedWith(tunerAccent, 0.055f));
+    panelFill.addColour(0.72, pluginBase.interpolatedWith(fieldBase, 0.12f).darker(0.06f));
+    g.setGradientFill(panelFill);
+    g.fillRoundedRectangle(bounds, 8.0f);
+
+    g.setColour(Colours::black.withAlpha(0.18f));
+    g.fillRoundedRectangle(bounds.reduced(4.0f).translated(0.0f, 1.5f), 7.0f);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.055f));
+    g.drawLine(bounds.getX() + 9.0f, bounds.getY() + 3.0f, bounds.getRight() - 9.0f, bounds.getY() + 3.0f,
+               1.0f);
+
+    g.setColour(tunerAccent.withAlpha(0.38f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.1f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.44f));
+    g.drawRoundedRectangle(bounds.reduced(2.0f), 6.5f, 0.65f);
+}
+
+void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto tunerAccent = colours["Tuner Active Colour"];
+    const auto plate = bounds.withTrimmedRight(76.0f).reduced(1.0f);
+
+    g.setColour(colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f).darker(0.12f));
+    g.fillRoundedRectangle(plate, 7.0f);
+    g.setColour(colours["Plugin Border"].interpolatedWith(tunerAccent, 0.14f).withAlpha(0.64f));
+    g.drawRoundedRectangle(plate.reduced(0.5f), 7.0f, 0.9f);
+
+    const float segmentW = plate.getWidth() / 3.0f;
+    const int modeIndex = currentMode == TunerMode::Needle ? 0 : currentMode == TunerMode::Strobe ? 1 : 2;
+    const auto selected = Rectangle<float>(plate.getX() + segmentW * (float)modeIndex, plate.getY(), segmentW,
+                                           plate.getHeight())
+                              .reduced(2.0f);
+    g.setColour(tunerAccent.withAlpha(0.16f));
+    g.fillRoundedRectangle(selected, 5.0f);
+    g.setColour(tunerAccent.withAlpha(0.42f));
+    g.drawRoundedRectangle(selected.reduced(0.5f), 5.0f, 0.75f);
+}
+
+void TunerControl::drawSixStringDisplay(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const StringArray strings{"E2", "A2", "D3", "G3", "B3", "E4"};
+
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
+    const auto detectedName = detected ? getNoteName(tunerProcessor->getDetectedNote()) : String();
+    const auto root = detectedName.retainCharacters("ABCDEFG");
+    const float cents = detected ? displayedCents : 0.0f;
+    const auto activeColour = detected ? getTuningColour(cents) : colours["Text Colour"].withAlpha(0.28f);
+
+    auto panel = bounds.reduced(2.0f, 0.0f);
+    g.setColour(colours["Field Background"].withAlpha(0.74f));
+    g.fillRoundedRectangle(panel, 8.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.48f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 0.8f);
+
+    auto row = panel.reduced(8.0f, 6.0f);
+    const float slotW = row.getWidth() / 6.0f;
+    for (int i = 0; i < 6; ++i)
+    {
+        auto slot = row.removeFromLeft(slotW).reduced(2.0f, 0.0f);
+        const bool likelyActive = detected && strings[i].startsWith(root);
+        const auto colour = likelyActive ? activeColour : colours["Text Colour"].withAlpha(0.30f);
+
+        g.setColour(colour.withAlpha(likelyActive ? 0.18f : 0.05f));
+        g.fillRoundedRectangle(slot, 6.0f);
+        g.setColour(colour.withAlpha(likelyActive ? 0.68f : 0.22f));
+        g.drawRoundedRectangle(slot.reduced(0.5f), 6.0f, 0.8f);
+
+        auto centreLine = slot.withSizeKeepingCentre(2.0f, slot.getHeight() - 18.0f);
+        g.setColour(colour.withAlpha(likelyActive ? 0.72f : 0.20f));
+        g.fillRoundedRectangle(centreLine, 1.0f);
+
+        if (likelyActive)
+        {
+            const float y = jmap(jlimit(-50.0f, 50.0f, cents), -50.0f, 50.0f, slot.getBottom() - 17.0f,
+                                 slot.getY() + 9.0f);
+            auto dot = Rectangle<float>(10.0f, 10.0f).withCentre({slot.getCentreX(), y});
+            g.setColour(activeColour.withAlpha(0.24f));
+            g.fillEllipse(dot.expanded(4.0f));
+            g.setColour(activeColour);
+            g.fillEllipse(dot);
+        }
+
+        g.setColour(colour.withAlpha(likelyActive ? 0.90f : 0.48f));
+        g.setFont(fonts.getMonoFont(9.5f));
+        g.drawText(strings[i], slot.removeFromBottom(14.0f), Justification::centred, true);
+    }
+}
+
+void TunerControl::drawNoteGlyph(Graphics& g, Rectangle<float> bounds, const String& noteName, Colour noteColour)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+
+    if (noteName == "---" || noteName.isEmpty())
+    {
+        g.setColour(colours["Text Colour"].withAlpha(0.25f));
+        g.setFont(fonts.getDisplayFont(44.0f));
+        g.drawText("---", bounds, Justification::centred);
+        return;
+    }
+
+    String pitch = noteName;
+    String octave;
+    while (pitch.isNotEmpty() && CharacterFunctions::isDigit(pitch.getLastCharacter()))
+    {
+        octave = String::charToString(pitch.getLastCharacter()) + octave;
+        pitch = pitch.dropLastCharacters(1);
+    }
+
+    String root = pitch.substring(0, 1);
+    String accidental = pitch.substring(1);
+    auto centre = bounds.getCentre();
+    auto noteBounds = bounds.withSizeKeepingCentre(92.0f, bounds.getHeight());
+
+    g.setColour(Colours::black.withAlpha(0.38f));
+    g.setFont(fonts.getDisplayFont(50.0f));
+    g.drawText(root, noteBounds.translated(1.5f, 1.5f), Justification::centred);
+
+    g.setColour(noteColour);
+    g.drawText(root, noteBounds, Justification::centred);
+
+    if (accidental.isNotEmpty())
+    {
+        auto accidentalBounds = Rectangle<float>(centre.x + 22.0f, bounds.getY() + 9.0f, 22.0f, 20.0f);
+        g.setColour(noteColour.withAlpha(0.86f));
+        g.setFont(fonts.getSubheadingFont().withHeight(18.0f));
+        g.drawText(accidental, accidentalBounds, Justification::centredLeft, true);
+    }
+
+    if (octave.isNotEmpty())
+    {
+        auto octaveBadge = Rectangle<float>(centre.x + 25.0f, bounds.getBottom() - 23.0f, 24.0f, 17.0f);
+        g.setColour(colours["Field Background"].interpolatedWith(noteColour, 0.10f));
+        g.fillRoundedRectangle(octaveBadge, 6.0f);
+        g.setColour(noteColour.withAlpha(0.42f));
+        g.drawRoundedRectangle(octaveBadge.reduced(0.5f), 6.0f, 0.8f);
+        g.setColour(colours["Text Colour"].withAlpha(0.78f));
+        g.setFont(fonts.getMonoFont(10.0f));
+        g.drawText(octave, octaveBadge, Justification::centred, true);
+    }
+
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
+    if (detected && std::abs(displayedCents) >= 3.0f)
+    {
+        const bool flat = displayedCents < 0.0f;
+        auto symbolArea = flat ? Rectangle<float>(bounds.getX() + 42.0f, centre.y - 11.0f, 24.0f, 24.0f)
+                               : Rectangle<float>(bounds.getRight() - 66.0f, centre.y - 11.0f, 24.0f, 24.0f);
+        g.setColour(noteColour.withAlpha(0.18f));
+        g.fillEllipse(symbolArea.expanded(2.0f));
+        if (flat)
+            drawFlatSymbol(g, symbolArea.getCentreX(), symbolArea.getCentreY(), 15.0f, noteColour.withAlpha(0.88f));
+        else
+            drawSharpSymbol(g, symbolArea.getCentreX(), symbolArea.getCentreY(), 15.0f, noteColour.withAlpha(0.88f));
+    }
+}
+
+void TunerControl::drawNeedleArcBackdrop(Graphics& g, Point<float> centre, float radius)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto tunerAccent = colours["Tuner Active Colour"];
+
+    auto makeArc = [&](float arcRadius)
+    {
+        Path arc;
+        for (int d = -140; d <= -40; d += 4)
+        {
+            const float radians = degreesToRadians((float)d);
+            const float x = centre.x + std::cos(radians) * arcRadius;
+            const float y = centre.y + std::sin(radians) * arcRadius;
+            if (d == -140)
+                arc.startNewSubPath(x, y);
+            else
+                arc.lineTo(x, y);
+        }
+        return arc;
+    };
+
+    const auto arc = makeArc(radius - 2.0f);
+    g.setColour(colours["Field Background"].darker(0.20f).withAlpha(0.82f));
+    g.strokePath(arc, PathStrokeType(5.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(colours["Plugin Border"].interpolatedWith(tunerAccent, 0.16f).withAlpha(0.54f));
+    g.strokePath(arc, PathStrokeType(1.2f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    auto centreMark = makeArc(radius - 17.0f);
+    g.setColour(tunerAccent.withAlpha(0.11f));
+    g.strokePath(centreMark, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
+}
+
+void TunerControl::drawCoarseDeviationStrip(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto tunerAccent = colours["Tuner Active Colour"];
+    auto track = bounds.reduced(25.0f, 5.0f);
+
+    g.setColour(colours["Field Background"].darker(0.18f));
+    g.fillRoundedRectangle(track, 3.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.55f));
+    g.drawRoundedRectangle(track.reduced(0.5f), 3.0f, 0.75f);
+
+    const float cents = tunerProcessor != nullptr && tunerProcessor->isPitchDetected() ? displayedCents : 0.0f;
+    const bool inTune = tunerProcessor != nullptr && tunerProcessor->isPitchDetected() && std::abs(cents) < 3.0f;
+    const bool close = tunerProcessor != nullptr && tunerProcessor->isPitchDetected() && std::abs(cents) < 14.0f;
+    const float normalized = jlimit(0.0f, 1.0f, (jlimit(-50.0f, 50.0f, cents) + 50.0f) / 100.0f);
+    const float dotX = track.getX() + track.getWidth() * normalized;
+    const auto dotColour = tunerProcessor != nullptr && tunerProcessor->isPitchDetected()
+                               ? (inTune ? tunerAccent : close ? colours["Warning Colour"] : colours["Danger Colour"])
+                               : colours["Text Colour"].withAlpha(0.34f);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.34f));
+    g.fillRoundedRectangle(track.getCentreX() - 0.75f, track.getY() - 3.0f, 1.5f, track.getHeight() + 6.0f, 0.75f);
+
+    g.setColour(dotColour.withAlpha(inTune ? 0.30f : 0.16f));
+    g.fillEllipse(dotX - 7.0f, track.getCentreY() - 7.0f, 14.0f, 14.0f);
+    g.setColour(dotColour);
+    g.fillEllipse(dotX - 4.5f, track.getCentreY() - 4.5f, 9.0f, 9.0f);
+
+    g.setFont(FontManager::getInstance().getMonoFont(8.0f));
+    g.setColour(colours["Text Colour"].withAlpha(0.44f));
+    g.drawText("b", bounds.withWidth(18.0f), Justification::centred);
+    g.drawText("#", bounds.withX(bounds.getRight() - 18.0f).withWidth(18.0f), Justification::centred);
+}
+
+void TunerControl::drawStatusBadge(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    auto tunerAccent = colours["Tuner Active Colour"];
+
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
+    const float cents = detected ? displayedCents : 0.0f;
+    const bool inTune = detected && std::abs(cents) < 3.0f;
+    const auto statusColour =
+        detected ? (inTune ? tunerAccent : std::abs(cents) < 14.0f ? colours["Warning Colour"] : colours["Danger Colour"])
+                 : colours["Text Colour"].withAlpha(0.42f);
+
+    auto badge = bounds.withTrimmedRight(76.0f).reduced(0.0f, 1.0f);
+    const String statusText = detected ? (inTune ? "In Tune"
+                                                 : ((cents >= 0.0f ? "+" : "") + String(static_cast<int>(std::round(cents))) +
+                                                    " cents"))
+                                       : "Waiting for signal";
+
+    g.setColour(colours["Field Background"].interpolatedWith(statusColour, detected ? 0.10f : 0.03f));
+    g.fillRoundedRectangle(badge, 6.0f);
+    g.setColour(statusColour.withAlpha(detected ? 0.48f : 0.20f));
+    g.drawRoundedRectangle(badge.reduced(0.5f), 6.0f, 0.8f);
+
+    auto dot = Rectangle<float>(6.0f, 6.0f).withCentre({badge.getX() + 11.0f, badge.getCentreY()});
+    g.setColour(statusColour.withAlpha(inTune ? 0.24f : 0.10f));
+    g.fillEllipse(dot.expanded(3.0f));
+    g.setColour(statusColour);
+    g.fillEllipse(dot);
+
+    g.setColour(detected ? colours["Text Colour"].withAlpha(0.84f) : colours["Text Colour"].withAlpha(0.44f));
+    g.setFont(fonts.getMonoFont(10.0f));
+    g.drawText(statusText, badge.withTrimmedLeft(21.0f).withTrimmedRight(6.0f), Justification::centredLeft, true);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.46f));
+    g.setFont(fonts.getMonoFont(9.0f));
+    g.drawText("A=440", bounds.removeFromRight(70.0f), Justification::centredRight, true);
 }
 
 //==============================================================================
@@ -150,15 +467,7 @@ void TunerControl::drawNoteDisplay(Graphics& g, Rectangle<float> bounds)
 
     // Note name with shadow
     Colour noteCol = getTuningColour(displayedCents);
-    g.setFont(fonts.getDisplayFont(50.0f));
-
-    // Shadow
-    g.setColour(Colours::black.withAlpha(0.4f));
-    g.drawText(noteName, bounds.translated(1.5f, 1.5f), Justification::centred);
-
-    // Main text
-    g.setColour(noteCol);
-    g.drawText(noteName, bounds, Justification::centred);
+    drawNoteGlyph(g, bounds, noteName, noteCol);
 }
 
 //==============================================================================
@@ -173,6 +482,8 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
     float centreX = bounds.getCentreX();
     float bottomY = bounds.getBottom() + 10; // Reduced offset to raise meter
     float meterRadius = jmin(bounds.getWidth() * 0.38f, bounds.getHeight() * 0.95f);
+
+    drawNeedleArcBackdrop(g, {centreX, bottomY}, meterRadius);
 
     // Tick marks with color zones
     for (int i = -5; i <= 5; ++i)
@@ -356,7 +667,6 @@ void TunerControl::drawStrobeDisc(Graphics& g, Rectangle<float> bounds)
 void TunerControl::drawLedIndicators(Graphics& g, Rectangle<float> bounds)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    auto& fonts = FontManager::getInstance();
 
     if (tunerProcessor == nullptr)
         return;
@@ -456,10 +766,39 @@ void TunerControl::resized()
 {
     auto& colours = ColourScheme::getInstance().colours;
 
-    auto bounds = getLocalBounds().reduced(6);
-    modeButton->setBounds(bounds.getRight() - 55, bounds.getBottom() - 14, 50, 13);
-    modeButton->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.1f));
-    modeButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));
+    auto bounds = getLocalBounds().reduced(8, 6);
+    auto modeArea = bounds.removeFromTop(25);
+    modeArea.removeFromRight(18);
+    auto bypassArea = modeArea.removeFromRight(72).reduced(2, 2);
+    const int thirdWidth = modeArea.getWidth() / 3;
+    needleModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
+    strobeModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
+    sixStringModeButton->setBounds(modeArea.reduced(2, 2));
+    bypassButton->setBounds(bypassArea);
+
+    for (auto* button : {needleModeButton.get(), strobeModeButton.get(), sixStringModeButton.get()})
+    {
+        button->setColour(TextButton::buttonColourId, colours["Field Background"].withAlpha(0.0f));
+        button->setColour(TextButton::buttonOnColourId, colours["Tuner Active Colour"].withAlpha(0.18f));
+        button->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.58f));
+        button->setColour(TextButton::textColourOnId, colours["Tuner Active Colour"].brighter(0.18f));
+    }
+    bypassButton->setColour(TextButton::buttonColourId, colours["Field Background"].withAlpha(0.42f));
+    bypassButton->setColour(TextButton::buttonOnColourId, colours["Danger Colour"].withAlpha(0.30f));
+    bypassButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.70f));
+    bypassButton->setColour(TextButton::textColourOnId, colours["Danger Colour"].brighter(0.22f));
+
+    updateModeButtons();
+}
+
+void TunerControl::updateModeButtons()
+{
+    if (needleModeButton != nullptr)
+        needleModeButton->setToggleState(currentMode == TunerMode::Needle, dontSendNotification);
+    if (strobeModeButton != nullptr)
+        strobeModeButton->setToggleState(currentMode == TunerMode::Strobe, dontSendNotification);
+    if (sixStringModeButton != nullptr)
+        sixStringModeButton->setToggleState(currentMode == TunerMode::SixString, dontSendNotification);
 }
 
 //==============================================================================

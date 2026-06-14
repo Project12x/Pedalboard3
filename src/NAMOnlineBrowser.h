@@ -128,6 +128,8 @@ class NAMOnlineBrowserComponent : public juce::Component,
     std::unique_ptr<juce::ListBox> resultsList;
 
     // Details panel
+    std::unique_ptr<juce::Component> detailsContent;
+    std::unique_ptr<juce::Viewport> detailsViewport;
     std::unique_ptr<juce::Label> detailsTitle;
     std::unique_ptr<juce::Label> nameLabel;
     std::unique_ptr<juce::Label> nameValue;

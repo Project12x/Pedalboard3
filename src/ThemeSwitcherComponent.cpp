@@ -37,7 +37,7 @@ const std::array<ThemeSwitcherComponent::ThemeSwatch, 5>& ThemeSwitcherComponent
         {"Synthwave", swatchColour("ffff2bff"), swatchColour("ff0d0221")},
         {"Deep Ocean", swatchColour("ff00c8ff"), swatchColour("ff0a1628")},
         {"Forest", swatchColour("ff7edb7a"), swatchColour("ff172514")},
-        {"Daylight", swatchColour("ff0077cc"), swatchColour("ffe8ebef")},
+        {"Daylight", swatchColour("ff0077cc"), swatchColour("ffe2e7ec")},
     }};
 
     return themes;

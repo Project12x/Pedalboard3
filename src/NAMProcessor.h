@@ -12,6 +12,7 @@
 
 #include "PedalboardProcessors.h"
 
+#include <array>
 #include <atomic>
 #include <memory>
 
@@ -34,6 +35,14 @@ class SubGraphProcessor;
 class NAMProcessor : public PedalboardProcessor
 {
   public:
+    enum class ToneEqMode
+    {
+        Stack = 0,
+        Parametric = 1
+    };
+
+    static constexpr int kParamEqBandCount = 12;
+
     NAMProcessor();
     ~NAMProcessor();
 
@@ -45,6 +54,8 @@ class NAMProcessor : public PedalboardProcessor
     // F1: Collapsible editor
     bool isEditorCollapsed() const { return editorCollapsed.load(); }
     void setEditorCollapsed(bool c) { editorCollapsed.store(c); }
+    bool isEmbeddedCabinetIrCollapsed() const { return embeddedCabinetIrCollapsed.load(); }
+    void setEmbeddedCabinetIrCollapsed(bool c) { embeddedCabinetIrCollapsed.store(c); }
 
     void updateEditorBounds(const juce::Rectangle<int>& bounds);
 
@@ -96,6 +107,21 @@ class NAMProcessor : public PedalboardProcessor
 
     bool isToneStackPre() const { return toneStackPre.load(); }
     void setToneStackPre(bool pre) { toneStackPre.store(pre); }
+
+    ToneEqMode getToneEqMode() const;
+    void setToneEqMode(ToneEqMode mode);
+
+    int getActiveParamEqBandCount() const;
+    void setActiveParamEqBandCount(int count);
+
+    float getParamEqBandFrequency(int bandIndex) const;
+    void setParamEqBandFrequency(int bandIndex, float freqHz);
+
+    float getParamEqBandGain(int bandIndex) const;
+    void setParamEqBandGain(int bandIndex, float gainDb);
+
+    float getParamEqBandQ(int bandIndex) const;
+    void setParamEqBandQ(int bandIndex, float q);
 
     bool isNormalizeOutput() const { return normalizeOutput.load(); }
     void setNormalizeOutput(bool enabled) { normalizeOutput.store(enabled); }
@@ -180,9 +206,27 @@ class NAMProcessor : public PedalboardProcessor
   private:
     void updateNoiseGate();
     void updateToneStack();
+    void applySelectedToneEq(float* data, int numSamples);
+    void applyParametricEq(float* data, int numSamples);
+    void updateParametricEqCoefficients();
+    void resetParametricEqState();
     void updateIRFilters();
     void normalizeModelOutput(float* output, int numSamples);
     static float dBToLinear(float dB);
+
+    struct ParamEqBandRuntime
+    {
+        float b0 = 1.0f;
+        float b1 = 0.0f;
+        float b2 = 0.0f;
+        float a1 = 0.0f;
+        float a2 = 0.0f;
+        float z1 = 0.0f;
+        float z2 = 0.0f;
+        float lastFrequency = -1.0f;
+        float lastGain = 999.0f;
+        float lastQ = -1.0f;
+    };
 
     //==========================================================================
     // NAM DSP core (isolated from JUCE to avoid namespace conflicts)
@@ -233,6 +277,11 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<float> treble{5.0f};               // 0-10
     std::atomic<bool> toneStackEnabled{true};
     std::atomic<bool> toneStackPre{false};
+    std::atomic<int> toneEqMode{static_cast<int>(ToneEqMode::Stack)};
+    std::atomic<int> activeParamEqBandCount{4};
+    std::array<std::atomic<float>, kParamEqBandCount> paramEqFrequencies;
+    std::array<std::atomic<float>, kParamEqBandCount> paramEqGains;
+    std::array<std::atomic<float>, kParamEqBandCount> paramEqQs;
     std::atomic<bool> normalizeOutput{false};
 
     //==========================================================================
@@ -240,9 +289,12 @@ class NAMProcessor : public PedalboardProcessor
     double currentSampleRate = 44100.0;
     int currentBlockSize = 512;
     bool isPrepared = false;
+    std::array<ParamEqBandRuntime, kParamEqBandCount> paramEqBands;
+    int lastAppliedToneEqMode = -1;
 
     // F1: Editor collapse state
     std::atomic<bool> editorCollapsed{false};
+    std::atomic<bool> embeddedCabinetIrCollapsed{false};
 
     // Noise gate fixed parameters
     static constexpr double kNoiseGateTime = 0.01;

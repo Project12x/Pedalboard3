@@ -22,19 +22,20 @@ LabelControl::LabelControl(LabelProcessor* proc) : processor(proc), editMode(fal
 
     // Create the inline text editor (hidden initially)
     editor.reset(new TextEditor());
-    editor->setMultiLine(true, false);       // Multi-line, no word wrap
+    editor->setMultiLine(true, true);        // Multi-line with wrapping
     editor->setReturnKeyStartsNewLine(true); // Allow Enter for new lines
     editor->addListener(this);
 
     // Style the editor to match theme
     auto& scheme = ColourScheme::getInstance();
-    auto bgColour = scheme.colours["Plugin Background"];
-    auto textColour = scheme.colours["Text Colour"];
+    auto bgColour = scheme.colours["Warning Colour"].withMultipliedSaturation(0.28f).brighter(1.35f);
+    auto textColour = scheme.colours["Window Background"].contrasting(0.82f);
 
     editor->setColour(TextEditor::backgroundColourId, bgColour);
     editor->setColour(TextEditor::textColourId, textColour);
-    editor->setColour(TextEditor::outlineColourId, scheme.colours["Slider Colour"]);
-    editor->setColour(TextEditor::focusedOutlineColourId, scheme.colours["Slider Colour"]);
+    editor->setColour(TextEditor::outlineColourId, scheme.colours["Warning Colour"].withAlpha(0.36f));
+    editor->setColour(TextEditor::focusedOutlineColourId, scheme.colours["Warning Colour"].withAlpha(0.72f));
+    editor->setColour(TextEditor::highlightColourId, scheme.colours["Warning Colour"].withAlpha(0.28f));
     editor->setColour(CaretComponent::caretColourId, textColour);
 
     // Use Space Grotesk Bold if available
@@ -82,8 +83,8 @@ void LabelControl::autoResize()
     int textHeight = numLines * lineHeight;
 
     // Add padding
-    int newWidth = maxWidth + 24;
-    int newHeight = textHeight + 12;
+    int newWidth = maxWidth + 34;
+    int newHeight = textHeight + 20;
 
     // Enforce minimum sizes
     newWidth = jmax(60, newWidth);
@@ -108,28 +109,45 @@ void LabelControl::resized()
 
 void LabelControl::paint(Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+    auto bounds = getLocalBounds().toFloat().reduced(2.0f);
     auto& colours = ColourScheme::getInstance().colours;
-    const auto accent = colours["Graph Category Source"];
-    ColourGradient fill(colours["Plugin Background"].brighter(0.08f), bounds.getX(), bounds.getY(),
-                        colours["Plugin Background"].darker(0.10f), bounds.getX(), bounds.getBottom(), false);
+    const auto paper = colours["Warning Colour"].withMultipliedSaturation(0.32f).brighter(1.24f);
+    const auto edge = colours["Warning Colour"].withMultipliedSaturation(0.72f).darker(0.18f);
+    const auto ink = colours["Window Background"].contrasting(0.84f);
+
+    Path shadow;
+    shadow.addRoundedRectangle(bounds.translated(2.2f, 2.8f), 6.0f);
+    g.setColour(Colours::black.withAlpha(0.16f));
+    g.fillPath(shadow);
+
+    Path paperPath;
+    paperPath.startNewSubPath(bounds.getX() + 3.0f, bounds.getY());
+    paperPath.lineTo(bounds.getRight() - 2.0f, bounds.getY() + 1.0f);
+    paperPath.lineTo(bounds.getRight(), bounds.getBottom() - 3.0f);
+    paperPath.lineTo(bounds.getX() + 1.0f, bounds.getBottom());
+    paperPath.closeSubPath();
+
+    ColourGradient fill(paper.brighter(0.10f), bounds.getX(), bounds.getY(), paper.darker(0.08f), bounds.getX(),
+                        bounds.getBottom(), false);
+    fill.addColour(0.55, paper);
     g.setGradientFill(fill);
-    g.fillRoundedRectangle(bounds, 7.0f);
-    g.setColour(accent.withAlpha(0.42f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 1.1f);
-    g.setColour(accent.withAlpha(0.48f));
-    g.fillRoundedRectangle(bounds.getX() + 4.0f, bounds.getY() + 5.0f, 2.0f, bounds.getHeight() - 10.0f, 1.0f);
+    g.fillPath(paperPath);
+    g.setColour(edge.withAlpha(0.58f));
+    g.strokePath(paperPath, PathStrokeType(1.0f));
+
+    g.setColour(Colours::white.withAlpha(0.16f));
+    g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 5.0f, bounds.getRight() - 9.0f, bounds.getY() + 6.0f, 1.0f);
 
     // Only draw text when not in edit mode
     if (!editMode)
     {
         g.setFont(labelFont);
-        g.setColour(colours["Text Colour"]);
+        g.setColour(ink);
 
         // Draw multi-line text centered
         String text = processor->getText();
-        auto bounds = getLocalBounds().reduced(4);
-        g.drawFittedText(text, bounds, Justification::centred, 10, 1.0f);
+        auto textBounds = getLocalBounds().reduced(10, 7);
+        g.drawFittedText(text, textBounds, Justification::centred, 10, 0.82f);
     }
 }
 

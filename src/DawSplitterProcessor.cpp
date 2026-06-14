@@ -329,6 +329,121 @@ static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, f
     drawBar(barR, peakR);
 }
 
+static Colour getRoutingAccent()
+{
+    return ColourScheme::getInstance().colours["Graph Category Dynamics"];
+}
+
+static float normalisePeakForMeter(float peak)
+{
+    const float dbVal = Decibels::gainToDecibels(jmax(0.0f, peak), -60.0f);
+    return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
+}
+
+static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto bg = primary ? accent.withAlpha(0.20f) : colours["Plugin Background"].brighter(0.10f);
+    ColourGradient fill(bg.brighter(0.12f), bounds.getX(), bounds.getY(), bg.darker(0.26f), bounds.getX(),
+                        bounds.getBottom(), false);
+    fill.addColour(0.48, bg);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(bounds, 5.0f);
+
+    g.setColour(accent.withAlpha(primary ? 0.72f : 0.42f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, 1.0f);
+
+    g.setColour((primary ? accent : colours["Text Colour"]).withAlpha(primary ? 0.95f : 0.72f));
+    g.setFont(Font(10.5f, Font::bold));
+    g.drawText(text, bounds.toNearestInt(), Justification::centred, false);
+}
+
+static void paintRoutingShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto outer = bounds;
+    const auto base = colours["Plugin Background"];
+    ColourGradient shell(base.brighter(0.10f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
+                         bounds.getBottom(), false);
+    shell.addColour(0.32, base.brighter(0.03f));
+    shell.addColour(0.74, base.darker(0.08f));
+    g.setGradientFill(shell);
+    g.fillRoundedRectangle(bounds.reduced(0.5f), 8.0f);
+
+    auto header = bounds.removeFromTop(25.0f).reduced(5.0f, 4.0f);
+    ColourGradient headerFill(accent.withAlpha(0.20f), header.getX(), header.getY(), colours["Plugin Background"],
+                              header.getX(), header.getBottom(), false);
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(header, 6.0f);
+
+    g.setColour(accent.withAlpha(0.46f));
+    g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f, 1.15f);
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawRoundedRectangle(outer.reduced(1.5f), 7.0f, 0.8f);
+
+    if (title.isNotEmpty())
+    {
+        g.setColour(accent.withAlpha(0.88f));
+        g.setFont(Font(11.0f, Font::bold));
+        g.drawText(title, header.reduced(8.0f, 0.0f).toNearestInt(), Justification::centredLeft, false);
+    }
+}
+
+static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float peak, Colour accent, bool stereo)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    if (bounds.isEmpty())
+        return;
+
+    g.setColour(colours["Plugin Background"].darker(0.35f));
+    g.fillRoundedRectangle(bounds, 4.0f);
+    g.setColour(Colours::black.withAlpha(0.45f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 4.0f, 1.0f);
+
+    const auto norm = normalisePeakForMeter(peak);
+    auto fill = bounds.reduced(1.5f).withWidth(bounds.reduced(1.5f).getWidth() * norm);
+    ColourGradient meter(accent.withAlpha(0.62f), fill.getX(), fill.getCentreY(),
+                         ColourScheme::getInstance().colours["Warning Colour"].withAlpha(0.74f), fill.getRight(),
+                         fill.getCentreY(), false);
+    meter.addColour(0.76, accent.withAlpha(0.72f));
+    g.setGradientFill(meter);
+    g.fillRoundedRectangle(fill, 3.0f);
+
+    if (stereo)
+    {
+        g.setColour(Colours::white.withAlpha(0.15f));
+        g.drawLine(bounds.getX() + 2.0f, bounds.getCentreY(), bounds.getRight() - 2.0f, bounds.getCentreY(), 0.7f);
+    }
+}
+
+static void paintSplitterFanout(Graphics& g, Rectangle<float> bounds, int outputs, Colour accent)
+{
+    if (bounds.isEmpty())
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    g.setColour(colours["Plugin Background"].darker(0.22f));
+    g.fillRoundedRectangle(bounds.reduced(7.0f, 2.0f), 6.0f);
+
+    const int count = jmax(1, outputs);
+    const float startX = bounds.getX() + 34.0f;
+    const float startY = bounds.getCentreY();
+    const float endX = bounds.getRight() - 34.0f;
+    Path fan;
+    for (int i = 0; i < count; ++i)
+    {
+        const float t = count > 1 ? static_cast<float>(i) / static_cast<float>(count - 1) : 0.5f;
+        const float endY = jmap(t, bounds.getY() + 5.0f, bounds.getBottom() - 5.0f);
+        fan.startNewSubPath(startX, startY);
+        fan.cubicTo(startX + 56.0f, startY, endX - 60.0f, endY, endX, endY);
+    }
+
+    g.setColour(accent.withAlpha(0.36f));
+    g.strokePath(fan, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(accent.withAlpha(0.75f));
+    g.fillEllipse(startX - 3.0f, startY - 3.0f, 6.0f, 6.0f);
+}
+
 //==============================================================================
 // UI -- Horizontal Strip Row (same layout as DawMixerProcessor)
 //==============================================================================
@@ -427,50 +542,57 @@ class SplitterStripRow : public Component
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(2, 1);
-        int halfH = r.getHeight() / 2;
-        auto row1 = r.removeFromTop(halfH);
-        auto row2 = r;
+        auto r = getLocalBounds().reduced(7, 5);
+        auto top = r.removeFromTop(19);
+        badgeArea = top.removeFromLeft(25).reduced(1);
 
-        // Row 1: [name 30] [ST 24] [Ph 22] [M 22] [S 22] [gap 4] [VU rest]
-        nameLabel.setBounds(row1.removeFromLeft(30));
-        stereoBtn.setBounds(row1.removeFromLeft(28));
-        phaseBtn.setBounds(row1.removeFromLeft(22));
-        muteBtn.setBounds(row1.removeFromLeft(22));
-        soloBtn.setBounds(row1.removeFromLeft(22));
-        row1.removeFromLeft(4);
-        vuArea = row1;
+        auto buttons = top.removeFromRight(92);
+        stereoBtn.setBounds(buttons.removeFromLeft(25).reduced(1));
+        phaseBtn.setBounds(buttons.removeFromLeft(21).reduced(1));
+        muteBtn.setBounds(buttons.removeFromLeft(22).reduced(1));
+        soloBtn.setBounds(buttons.removeFromLeft(22).reduced(1));
+        nameLabel.setBounds(top.reduced(5, 0));
 
-        // Row 2: [fader full width]
-        fader.setBounds(row2);
+        auto meter = r.removeFromTop(12);
+        vuArea = meter.reduced(31, 3);
+        fader.setBounds(r.reduced(1, 2));
     }
 
     void paint(Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat().reduced(0.5f);
         auto& colours = ColourScheme::getInstance().colours;
-        const auto accent = colours["Graph Category Dynamics"];
+        const auto accent = getRoutingAccent();
         ColourGradient stripFill(colours["Plugin Background"].brighter(0.07f), bounds.getX(), bounds.getY(),
                                  colours["Plugin Background"].darker(0.10f), bounds.getX(), bounds.getBottom(),
                                  false);
+        stripFill.addColour(0.45, colours["Plugin Background"].brighter(0.01f));
         g.setGradientFill(stripFill);
         g.fillRoundedRectangle(bounds, 6.0f);
         g.setColour(accent.withAlpha(0.42f));
         g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+        g.setColour(Colours::white.withAlpha(0.045f));
+        g.drawLine(bounds.getX() + 8.0f, bounds.getY() + 1.0f, bounds.getRight() - 8.0f, bounds.getY() + 1.0f);
+
+        auto badge = badgeArea;
+        paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);
 
         if (auto* s = processor->getStrip(index))
         {
             bool isStereo = s->stereo.load(std::memory_order_relaxed);
             float peakL = s->peakL.load(std::memory_order_relaxed);
+            float peakForInset = peakL;
             if (isStereo)
             {
                 float peakR = s->peakR.load(std::memory_order_relaxed);
+                peakForInset = jmax(peakL, peakR);
                 paintStereoVUHelper(g, vuArea, peakL, peakR);
             }
             else
             {
                 paintMonoVU(g, vuArea, peakL);
             }
+            paintInsetMeterTrack(g, vuArea.toFloat(), peakForInset, accent, isStereo);
         }
     }
 
@@ -505,6 +627,7 @@ class SplitterStripRow : public Component
     Slider fader;
     Label nameLabel;
     Rectangle<int> vuArea;
+    Rectangle<int> badgeArea;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SplitterStripRow)
 };
 
@@ -524,26 +647,37 @@ class SplitterInputRow : public Component
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(2, 1);
-        nameLabel.setBounds(r.removeFromLeft(46));
-        vuArea = r;
+        auto r = getLocalBounds().reduced(7, 5);
+        badgeArea = r.removeFromLeft(35).reduced(1, 12);
+        nameLabel.setBounds(r.removeFromLeft(56).reduced(5, 0));
+        vuArea = r.reduced(0, 20);
     }
 
     void paint(Graphics& g) override
     {
-        g.setColour(Colour(0xFF333333));
-        g.fillRect(getLocalBounds());
-        g.setColour(Colour(0xFF606060));
-        g.drawHorizontalLine(getHeight() - 1, 0.0f, static_cast<float>(getWidth()));
+        auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+        auto accent = getRoutingAccent();
+        auto& colours = ColourScheme::getInstance().colours;
+        ColourGradient stripFill(colours["Plugin Background"].brighter(0.12f), bounds.getX(), bounds.getY(),
+                                 colours["Plugin Background"].darker(0.13f), bounds.getX(), bounds.getBottom(),
+                                 false);
+        g.setGradientFill(stripFill);
+        g.fillRoundedRectangle(bounds, 6.0f);
+        g.setColour(accent.withAlpha(0.55f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.1f);
+
+        auto badge = badgeArea;
+        paintRoutingBadge(g, badge.toFloat(), "IN", accent, true);
         float peakL = processor->inputPeakL.load(std::memory_order_relaxed);
         float peakR = processor->inputPeakR.load(std::memory_order_relaxed);
-        paintStereoVUHelper(g, vuArea, peakL, peakR);
+        paintInsetMeterTrack(g, vuArea.toFloat(), jmax(peakL, peakR), accent, true);
     }
 
   private:
     DawSplitterProcessor* processor;
     Label nameLabel;
     Rectangle<int> vuArea;
+    Rectangle<int> badgeArea;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SplitterInputRow)
 };
 
@@ -554,12 +688,6 @@ class DawSplitterControl : public Component, private Timer
   public:
     DawSplitterControl(DawSplitterProcessor* proc) : processor(proc)
     {
-        titleLabel.setText("DAW Splitter", dontSendNotification);
-        titleLabel.setFont(Font(13.0f, Font::bold));
-        titleLabel.setColour(Label::textColourId, Colours::white);
-        titleLabel.setJustificationType(Justification::centredLeft);
-        addAndMakeVisible(titleLabel);
-
         addBtn.setButtonText("+");
         addBtn.onClick = [this]() { addStripClicked(); };
         addAndMakeVisible(addBtn);
@@ -601,24 +729,28 @@ class DawSplitterControl : public Component, private Timer
         auto header = r.removeFromTop(24);
         removeBtn.setBounds(header.removeFromRight(24));
         addBtn.setBounds(header.removeFromRight(24));
-        titleLabel.setBounds(header);
 
         // Input row at top (instead of master at bottom for mixer)
         inputRow->setBounds(r.removeFromTop(stripRowHeight));
+        fanArea = r.removeFromTop(20).reduced(7, 0);
 
         for (auto* row : stripRows)
             row->setBounds(r.removeFromTop(stripRowHeight));
     }
 
-    void paint(Graphics& g) override { g.fillAll(Colour(0xFF222222)); }
+    void paint(Graphics& g) override
+    {
+        paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});
+        paintSplitterFanout(g, fanArea.toFloat(), processor->getNumStrips(), getRoutingAccent());
+    }
 
   private:
-    static constexpr int stripRowHeight = 52;
+    static constexpr int stripRowHeight = 58;
     DawSplitterProcessor* processor;
-    Label titleLabel;
     TextButton addBtn, removeBtn;
     OwnedArray<SplitterStripRow> stripRows;
     std::unique_ptr<SplitterInputRow> inputRow;
+    Rectangle<int> fanArea;
 
     void addStripClicked()
     {
@@ -659,8 +791,8 @@ Component* DawSplitterProcessor::getControls()
 Point<int> DawSplitterProcessor::getSize()
 {
     int n = numStrips_.load(std::memory_order_acquire);
-    int height = 24 + (n + 1) * 52; // header + input row + strips
-    return Point<int>(340, jmax(160, height));
+    int height = 24 + 58 + 20 + n * 58; // header + input row + fanout + strips
+    return Point<int>(360, jmax(170, height));
 }
 
 //==============================================================================
@@ -742,31 +874,31 @@ PedalboardProcessor::PinLayout DawSplitterProcessor::getInputPinLayout() const
     // Input row is always stereo. In PC coords:
     // PC title=24, control at PC Y=24, control header=24
     // => input row top = 48
-    // Within a 52px row: L center = +14, R center = +38
+    // Within a 58px row: L center = +16, R center = +42
     PinLayout layout;
-    layout.pinY.push_back(48 + 6);  // L (pin top = center - 8)
-    layout.pinY.push_back(48 + 30); // R
+    layout.pinY.push_back(48 + 8);  // L (pin top = center - 8)
+    layout.pinY.push_back(48 + 34); // R
     return layout;
 }
 
 PedalboardProcessor::PinLayout DawSplitterProcessor::getOutputPinLayout() const
 {
-    // Strip rows start after input row.
-    // strip row i top in PC coords = 48 + 52 + i * 52 = 100 + i * 52
+    // Strip rows start after input row and fanout lane.
+    // strip row i top in PC coords = 48 + 58 + 20 + i * 58 = 126 + i * 58
     PinLayout layout;
     int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < n; ++i)
     {
-        int rowTop = 100 + i * 52;
+        int rowTop = 126 + i * 58;
         bool isStereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
         if (isStereo)
         {
-            layout.pinY.push_back(rowTop + 6);  // L
-            layout.pinY.push_back(rowTop + 30); // R
+            layout.pinY.push_back(rowTop + 8);  // L
+            layout.pinY.push_back(rowTop + 34); // R
         }
         else
         {
-            layout.pinY.push_back(rowTop + 18); // Mono centered
+            layout.pinY.push_back(rowTop + 21); // Mono centered
         }
     }
     return layout;

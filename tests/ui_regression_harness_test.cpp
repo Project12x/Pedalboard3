@@ -270,6 +270,40 @@ TEST_CASE("Built-in themes provide every semantic colour role", "[ui][regression
     }
 }
 
+TEST_CASE("Daylight theme uses layered off-white surfaces instead of plain white",
+          "[ui][regression][theme][tokens]")
+{
+    auto& colourScheme = ColourScheme::getInstance();
+    REQUIRE(colourScheme.loadBuiltInPreset("Daylight"));
+
+    const auto maxChannel = [](Colour colour) {
+        return std::max({colour.getRed(), colour.getGreen(), colour.getBlue()});
+    };
+
+    constexpr std::array softlyTintedLightSurfaces{
+        std::string_view{"Window Background"},
+        std::string_view{"Field Background"},
+        std::string_view{"Plugin Background"},
+        std::string_view{"Button Highlight"},
+        std::string_view{"Text Editor Colour"},
+        std::string_view{"Dialog Inner Background"},
+        std::string_view{"Dialog Background"},
+    };
+
+    for (auto role : softlyTintedLightSurfaces)
+    {
+        const auto key = toJuceString(role);
+        INFO("role: " << role);
+        REQUIRE(colourScheme.colours.find(key) != colourScheme.colours.end());
+        CHECK(colourScheme.colours[key].getARGB() != 0xFFFFFFFF);
+        CHECK(maxChannel(colourScheme.colours[key]) <= 244);
+    }
+
+    CHECK(colourScheme.colours["Plugin Background"].getBrightness() <
+          colourScheme.colours["Field Background"].getBrightness());
+    CHECK(colourScheme.colours["Text Colour"].getBrightness() < 0.20f);
+}
+
 TEST_CASE("Token-audited core UI files avoid hardcoded colour and font literals",
           "[ui][regression][theme][tokens][source]")
 {
@@ -315,10 +349,19 @@ TEST_CASE("Graph source polish keeps cable rendering and grid defaults stable",
     CHECK(connectionSource->find("cableGlow.render(g, glowPath)") == std::string::npos);
     CHECK(connectionSource->find("glowPath.getBounds().getTopLeft()") == std::string::npos);
     CHECK(connectionSource->find("glowPath.getBounds().getBottomRight()") == std::string::npos);
-    CHECK(connectionSource->find("PathStrokeType(outerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded)") !=
+    CHECK(connectionSource->find("const float outerGlowWidth = selected ? 11.0f : 7.5f;") != std::string::npos);
+    CHECK(connectionSource->find("const float innerGlowWidth = selected ? 6.5f : 4.5f;") != std::string::npos);
+    CHECK(connectionSource->find("cableColour.withAlpha(selected ? 0.12f : 0.045f)") != std::string::npos);
+    CHECK(connectionSource->find("cableColour.withAlpha(selected ? 0.18f : 0.07f)") != std::string::npos);
+    CHECK(connectionSource->find("PathStrokeType(outerGlowWidth, PathStrokeType::curved, PathStrokeType::rounded)") !=
           std::string::npos);
-    CHECK(connectionSource->find("PathStrokeType(innerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded)") !=
+    CHECK(connectionSource->find("PathStrokeType(innerGlowWidth, PathStrokeType::curved, PathStrokeType::rounded)") !=
           std::string::npos);
+    CHECK(connectionSource->find("PathStrokeType drawnType(4.4f, PathStrokeType::curved, PathStrokeType::rounded);") !=
+          std::string::npos);
+    CHECK(connectionSource->find("PathStrokeType hitType(18.0f, PathStrokeType::curved, PathStrokeType::rounded);") !=
+          std::string::npos);
+    CHECK(connectionSource->find("glowPath = tempPath;") != std::string::npos);
     CHECK(connectionSource->find(
               "ColourGradient wireGrad(startCol, gradientStart.x, gradientStart.y, endCol, gradientEnd.x, "
               "gradientEnd.y, false)") != std::string::npos);
@@ -331,20 +374,20 @@ TEST_CASE("Graph source polish keeps cable rendering and grid defaults stable",
     CHECK(mainPanelSource->find("getString(kGraphGridStyleSettingsKey, \"Off\")") == std::string::npos);
 }
 
-TEST_CASE("Built-in node polish source contract covers label, tuner, NAM, mixer, and splitter",
+TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixer, and splitter",
           "[ui][regression][visual][source][nodes]")
 {
     const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
     const auto labelSource = loadSourceFile("src/LabelControl.cpp");
+    const auto notesSource = loadSourceFile("src/NotesControl.cpp");
     const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
-    const auto namSource = loadSourceFile("src/NAMControl.cpp");
     const auto mixerSource = loadSourceFile("src/DawMixerProcessor.cpp");
     const auto splitterSource = loadSourceFile("src/DawSplitterProcessor.cpp");
 
     REQUIRE(pluginSource.has_value());
     REQUIRE(labelSource.has_value());
+    REQUIRE(notesSource.has_value());
     REQUIRE(tunerSource.has_value());
-    REQUIRE(namSource.has_value());
     REQUIRE(mixerSource.has_value());
     REQUIRE(splitterSource.has_value());
 
@@ -367,38 +410,125 @@ TEST_CASE("Built-in node polish source contract covers label, tuner, NAM, mixer,
     CHECK(optionalButtonSection.find("deleteButton =") == std::string::npos);
     CHECK(pluginSource->find("if (bypassable != nullptr && bypassButton != nullptr)") != std::string::npos);
 
-    CHECK(labelSource->find("const auto accent = colours[\"Graph Category Source\"];") != std::string::npos);
-    CHECK(labelSource->find("g.fillRoundedRectangle(bounds.getX() + 4.0f") != std::string::npos);
+    CHECK(labelSource->find("const auto paper = colours[\"Warning Colour\"].withMultipliedSaturation(0.32f).brighter(1.24f);") !=
+          std::string::npos);
+    CHECK(labelSource->find("paperPath.startNewSubPath") != std::string::npos);
+    CHECK(labelSource->find("editor->setMultiLine(true, true);") != std::string::npos);
+    CHECK(labelSource->find("g.fillRoundedRectangle(bounds.getX() + 4.0f") == std::string::npos);
+    CHECK(notesSource->find("const auto paper = colours[\"Warning Colour\"].withMultipliedSaturation(0.30f).brighter(1.26f);") !=
+          std::string::npos);
+    CHECK(notesSource->find("paperPath.startNewSubPath") != std::string::npos);
+    CHECK(notesSource->find("renderedText.draw(g, getLocalBounds().reduced(12, 10).toFloat());") !=
+          std::string::npos);
+    CHECK(notesSource->find("editor->setBounds(getLocalBounds().reduced(10, 8));") != std::string::npos);
 
     CHECK(tunerSource->find("auto tunerAccent = colours[\"Tuner Active Colour\"];") != std::string::npos);
     CHECK(tunerSource->find("ColourGradient panelFill(") != std::string::npos);
-    CHECK(tunerSource->find("g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 1.2f);") != std::string::npos);
-
-    CHECK(namSource->find("ColourGradient headerGrad(namLookAndFeel.ampHeaderBg.brighter(0.13f)") !=
-          std::string::npos);
-    CHECK(namSource->find("header.getBottom() - 3.0f") != std::string::npos);
-    CHECK(namSource->find(
-              "g.drawText(label.getText(), bounds.reduced(8.0f, 0.0f), label.getJustificationType(), true);") !=
-          std::string::npos);
+    CHECK(tunerSource->find("drawTunerGlassPanel(g, panel);") != std::string::npos);
 
     const std::array<const std::string*, 2> stripSources{&*mixerSource, &*splitterSource};
     for (const auto* source : stripSources)
     {
-        CHECK(source->find("const auto accent = colours[\"Graph Category Dynamics\"];") != std::string::npos);
-        CHECK(source->find("ColourGradient stripFill(") != std::string::npos);
-        CHECK(source->find("g.fillRoundedRectangle(bounds, 6.0f);") != std::string::npos);
-        CHECK(source->find("g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);") !=
+        CHECK(source->find("static Colour getRoutingAccent()") != std::string::npos);
+        CHECK(source->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
               std::string::npos);
+        CHECK(source->find("static void paintRoutingShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") !=
+              std::string::npos);
+        CHECK(source->find("static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float peak, Colour accent, bool stereo)") !=
+              std::string::npos);
+        CHECK(source->find("stereoBtn.setButtonText(\"ST\");") != std::string::npos);
+        CHECK(source->find("phaseBtn.setButtonText(CharPointer_UTF8") != std::string::npos);
+        CHECK(source->find("muteBtn.setButtonText(\"M\");") != std::string::npos);
+        CHECK(source->find("soloBtn.setButtonText(\"S\");") != std::string::npos);
+        CHECK(source->find("void addStripClicked()") != std::string::npos);
+        CHECK(source->find("void removeStripClicked()") != std::string::npos);
     }
+
+    CHECK(mixerSource->find("paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);") !=
+          std::string::npos);
+    CHECK(mixerSource->find("paintRoutingBadge(g, badge.toFloat(), \"M\", accent, true);") != std::string::npos);
+    CHECK(mixerSource->find("paintMixerPanRail(g, panRail.toFloat(), static_cast<float>(panKnob.getValue()), accent);") !=
+          std::string::npos);
+    CHECK(mixerSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), \"DAW MIXER\");") !=
+          std::string::npos);
+
+    CHECK(splitterSource->find("static void paintSplitterFanout(Graphics& g, Rectangle<float> bounds, int outputs, Colour accent)") !=
+          std::string::npos);
+    CHECK(splitterSource->find("paintRoutingBadge(g, badge.toFloat(), \"IN\", accent, true);") != std::string::npos);
+    CHECK(splitterSource->find("paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);") !=
+          std::string::npos);
+    CHECK(splitterSource->find("paintSplitterFanout(g, fanArea.toFloat(), processor->getNumStrips(), getRoutingAccent());") !=
+          std::string::npos);
+    CHECK(splitterSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), \"DAW SPLITTER\");") !=
+          std::string::npos);
+}
+
+TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish without losing controls",
+          "[ui][regression][visual][source][nodes][routing]")
+{
+    const auto routingSource = loadSourceFile("src/RoutingProcessors.cpp");
+    const auto routingHeader = loadSourceFile("src/RoutingProcessors.h");
+
+    REQUIRE(routingSource.has_value());
+    REQUIRE(routingHeader.has_value());
+
+    CHECK(routingSource->find("static Colour getRoutingNodeAccent()") != std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour accent, bool muteA, bool muteB)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static String getRoutingVisualLabel(int index)") != std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float level, Colour accent, bool muted)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)") !=
+          std::string::npos);
+
+    CHECK(routingSource->find("muteA.setButtonText(\"1\");") != std::string::npos);
+    CHECK(routingSource->find("muteB.setButtonText(\"2\");") != std::string::npos);
+    CHECK(routingSource->find("paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState());") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingBadge(g, outBadgeA.toFloat(), getRoutingVisualLabel(0), accent, !muteA.getToggleState());") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingBadge(g, outBadgeB.toFloat(), getRoutingVisualLabel(1), accent, !muteB.getToggleState());") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingMeterTrack(g, laneA.toFloat(), 0.72f, accent, muteA.getToggleState());") !=
+          std::string::npos);
+
+    CHECK(routingSource->find("f.setSliderStyle(Slider::LinearVertical);") != std::string::npos);
+    CHECK(routingSource->find("p.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);") != std::string::npos);
+    CHECK(routingSource->find("m.setButtonText(\"M\");") != std::string::npos);
+    CHECK(routingSource->find("s.setButtonText(\"S\");") != std::string::npos);
+    CHECK(routingSource->find("ph.setButtonText(CharPointer_UTF8") != std::string::npos);
+    CHECK(routingSource->find("paintRoutingBadge(g, badge.toFloat(), getRoutingVisualLabel(ch), accent, true);") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), \"MIXER\");") !=
+          std::string::npos);
+
+    CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 180); }") !=
+          std::string::npos);
+    CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 280); }") !=
+          std::string::npos);
 }
 
 TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph chrome",
           "[ui][regression][visual][source][subgraph]")
 {
     const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto filterGraphSource = loadSourceFile("src/FilterGraph.cpp");
+    const auto mainFieldSource = loadSourceFile("src/PluginField.cpp");
     const auto subGraphSource = loadSourceFile("src/SubGraphEditorComponent.cpp");
 
     REQUIRE(pluginSource.has_value());
+    REQUIRE(filterGraphSource.has_value());
+    REQUIRE(mainFieldSource.has_value());
     REQUIRE(subGraphSource.has_value());
 
     CHECK(pluginSource->find("bool containsTokenWord(const String& text, StringRef token)") != std::string::npos);
@@ -417,21 +547,119 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
     REQUIRE(moduleFallback != std::string::npos);
     CHECK(rackTokenCheck < instrumentFallback);
     CHECK(rackTokenCheck < moduleFallback);
+    CHECK(pluginSource->find("const bool rackNode = visualCategoryName == \"rack\";") != std::string::npos);
+    CHECK(pluginSource->find("rackNode ? 0.145f") != std::string::npos);
+    CHECK(pluginSource->find("rackNode ? colours[\"Graph Category Modulation\"] : visualAccentColour") !=
+          std::string::npos);
+    CHECK(pluginSource->find("Point<int> getEmbeddedNodeControlSize(PedalboardProcessor* proc, const String& pluginName)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("bool isHeroChassisNodeName(const String& pluginName)") != std::string::npos);
+    CHECK(pluginSource->find("int getEmbeddedNodeControlTopOffset(const String& pluginName)") != std::string::npos);
+    CHECK(pluginSource->find("void drawHeroChassisNodeChrome(Graphics& g, Rectangle<float> bounds, const String& pluginName, AudioProcessor* processor, bool highlighted, bool bypassed)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (pluginName == \"NAM Loader\")") != std::string::npos);
+    CHECK(pluginSource->find("if (pluginName == \"IR Loader\")") != std::string::npos);
+    CHECK(pluginSource->find("return {520, 704};") == std::string::npos);
+    CHECK(pluginSource->find("return {480, 558};") == std::string::npos);
+    CHECK(pluginSource->find("compSize = getEmbeddedNodeControlSize(proc, pluginName);") != std::string::npos);
+    CHECK(pluginSource->find("void drawEffectRackSubgraphPreview(Graphics& g, Rectangle<float> rackPreview, Colour accentColour)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("drawEffectRackSubgraphPreview(g, rackPreview, accentColour);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("countSubGraphContentProcessors") == std::string::npos);
+    CHECK(pluginSource->find("#include \"SubGraphProcessor.h\"") == std::string::npos);
+    CHECK(pluginSource->find("constexpr const char* kRackNodeWidthProperty = \"nodeWidth\";") !=
+          std::string::npos);
+    CHECK(pluginSource->find("constexpr const char* kRackNodeHeightProperty = \"nodeHeight\";") !=
+          std::string::npos);
+    CHECK(pluginSource->find("Point<int> getDefaultRackNodeSize()") != std::string::npos);
+    CHECK(pluginSource->find("return {324, 212};") != std::string::npos);
+    CHECK(pluginSource->find("drawEffectRackShell(g, getLocalBounds().toFloat(), accentColour, highlighted, bypassed);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const int storedW = storedWRaw > 0 ? storedWRaw : rackDefault.getX();") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const int storedH = storedHRaw > 0 ? storedHRaw : rackDefault.getY();") !=
+          std::string::npos);
+    CHECK(pluginSource->find("std::make_unique<ResizableBorderComponent>(this, &rackBoundsConstrainer)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("rackBoundsConstrainer.setMinimumSize(248, 152);") != std::string::npos);
+    CHECK(pluginSource->find("node->properties.set(kRackNodeWidthProperty, getWidth());") !=
+          std::string::npos);
+    CHECK(pluginSource->find("node->properties.set(kRackNodeHeightProperty, getHeight());") !=
+          std::string::npos);
+    CHECK(pluginSource->find("drawEffectRackPortSummary") == std::string::npos);
+    CHECK(pluginSource->find("if (containedProcessorCount <= 0)") == std::string::npos);
+    CHECK(pluginSource->find("g.drawText(\"EMPTY RACK\"") == std::string::npos);
+    CHECK(pluginSource->find("g.drawText(\"SUB-GRAPH\"") == std::string::npos);
+    CHECK(pluginSource->find("g.drawText(\"IN\",") == std::string::npos);
+    CHECK(pluginSource->find("g.drawText(\"OUT\",") == std::string::npos);
+    CHECK(pluginSource->find("\"processors nested\"") == std::string::npos);
+    CHECK(pluginSource->find("g.drawText(\"Open\"") == std::string::npos);
+    CHECK(pluginSource->find("editButton->setButtonText(\"Open\");") != std::string::npos);
+    CHECK(pluginSource->find("mappingsButton->setButtonText(\"Map\");") != std::string::npos);
+    CHECK(pluginSource->find("nodeFill.addColour(0.62") != std::string::npos);
+    CHECK(pluginSource->find("jackBounds") == std::string::npos);
+    CHECK(pluginSource->find("const float chassisBorderWidth = highlighted ? 1.6f : 1.1f;") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const float nodeBorderWidth = highlighted ? 1.15f : 0.9f;") !=
+          std::string::npos);
+    CHECK(pluginSource->find(
+              "g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, nodeBorderWidth);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("g.fillRoundedRectangle(3.0f, 7.0f, 2.0f, h - 14.0f, 1.0f);") ==
+          std::string::npos);
+    CHECK(pluginSource->find("titleLabel->setVisible(!isHeroChassisNodeName(pluginName));") !=
+          std::string::npos);
+
+    CHECK(mainFieldSource->find("const auto gridStyle = getGraphGridStyle();") != std::string::npos);
+    CHECK(mainFieldSource->find("const auto canvasAccent = colours[\"Accent Colour\"];") !=
+          std::string::npos);
+    CHECK(mainFieldSource->find("ColourGradient radialTint(canvasAccent.withAlpha(0.030f)") !=
+          std::string::npos);
+    CHECK(mainFieldSource->find("const float gridSize = 24.0f;") != std::string::npos);
+    CHECK(mainFieldSource->find("const float majorGridSize = gridSize * 4.0f;") != std::string::npos);
+    CHECK(mainFieldSource->find("const auto gridAccent = canvasAccent;") !=
+          std::string::npos);
+    CHECK(mainFieldSource->find("gridAccent.withAlpha(gridStyle == \"dots\" ? 0.080f : 0.052f)") !=
+          std::string::npos);
+    CHECK(mainFieldSource->find("Colour majorGridCol = gridAccent.withAlpha(0.090f);") !=
+          std::string::npos);
+    CHECK(mainFieldSource->find("const auto dotSize = 1.5f;") != std::string::npos);
+    CHECK(mainFieldSource->find("for (float x = firstMajorX; x < clip.getRight(); x += majorGridSize)") !=
+          std::string::npos);
 
     CHECK(subGraphSource->find("String getSubGraphGridStyle()") != std::string::npos);
     CHECK(subGraphSource->find("getString(kSubGraphGridStyleSettingsKey, \"Lines\")") != std::string::npos);
     CHECK(subGraphSource->find("style != \"dots\" && style != \"lines\" && style != \"off\"") !=
           std::string::npos);
-    CHECK(subGraphSource->find("Colour bgCol = colours[\"Field Background\"];") != std::string::npos);
+    CHECK(subGraphSource->find("const auto rackAccent = colours[\"Graph Category Modulation\"];") !=
+          std::string::npos);
+    CHECK(subGraphSource->find("const auto rackCanvasBase = colours[\"Field Background\"].interpolatedWith(rackAccent, 0.16f);") !=
+          std::string::npos);
+    CHECK(subGraphSource->find("Colour bgCol = rackCanvasBase.darker(0.08f);") != std::string::npos);
+    CHECK(subGraphSource->find("const auto textureColour = rackAccent.withAlpha(0.025f);") != std::string::npos);
+    CHECK(subGraphSource->find("setResizable(true, true);") != std::string::npos);
+    CHECK(subGraphSource->find("setResizeLimits(520, 360, 1600, 1200);") != std::string::npos);
+    CHECK(subGraphSource->find("const auto accent = colours[\"Graph Category Modulation\"];") != std::string::npos);
+    CHECK(subGraphSource->find("colour[\"Accent Colour\"]") == std::string::npos);
     CHECK(subGraphSource->find("const auto gridStyle = getSubGraphGridStyle();") != std::string::npos);
-    CHECK(subGraphSource->find("colours[\"Plugin Border\"].withAlpha(gridStyle == \"dots\" ? 0.13f : 0.10f)") !=
+    CHECK(subGraphSource->find("const float gridSize = 24.0f;") != std::string::npos);
+    CHECK(subGraphSource->find("const auto gridAccent = rackAccent;") != std::string::npos);
+    CHECK(subGraphSource->find("gridAccent.withAlpha(gridStyle == \"dots\" ? 0.09f : 0.075f)") !=
           std::string::npos);
-    CHECK(subGraphSource->find(
-              "colours[\"Accent Colour\"].interpolatedWith(colours[\"Plugin Border\"], 0.65f).withAlpha(0.13f)") !=
-          std::string::npos);
-    CHECK(subGraphSource->find("const float majorGridSize = gridSize * 4.0f;") != std::string::npos);
+    CHECK(subGraphSource->find("const auto dotSize = 1.5f;") != std::string::npos);
+    CHECK(subGraphSource->find("const float majorGridSize = gridSize * 4.0f;") == std::string::npos);
     CHECK(subGraphSource->find("if (gridStyle == \"dots\")") != std::string::npos);
     CHECK(subGraphSource->find("if (gridStyle != \"off\")") != std::string::npos);
+
+    CHECK(filterGraphSource->find("e->setAttribute(\"nodeWidth\", (int)node->properties.getWithDefault(\"nodeWidth\", 0));") !=
+          std::string::npos);
+    CHECK(filterGraphSource->find("e->setAttribute(\"nodeHeight\", (int)node->properties.getWithDefault(\"nodeHeight\", 0));") !=
+          std::string::npos);
+    CHECK(filterGraphSource->find("node->properties.set(\"nodeWidth\", xml.getIntAttribute(\"nodeWidth\", 0));") !=
+          std::string::npos);
+    CHECK(filterGraphSource->find("node->properties.set(\"nodeHeight\", xml.getIntAttribute(\"nodeHeight\", 0));") !=
+          std::string::npos);
 
     CHECK(subGraphSource->find("0xFF00AAAA") == std::string::npos);
     CHECK(subGraphSource->find("0xFF00CCCC") == std::string::npos);
@@ -447,6 +675,246 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
     CHECK(editorPaint.find("colours[\"Plugin Border\"") != std::string::npos);
     CHECK(editorPaint.find("ColourGradient") != std::string::npos);
     CHECK(editorPaint.find("fillRoundedRectangle") != std::string::npos);
+}
+
+TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks reachable",
+          "[ui][regression][source][nodes][loader][design-guardrail]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto namSource = loadSourceFile("src/NAMControl.cpp");
+    const auto irSource = loadSourceFile("src/IRLoaderControl.cpp");
+
+    REQUIRE(pluginSource.has_value());
+    REQUIRE(namSource.has_value());
+    REQUIRE(irSource.has_value());
+
+    // This is not a visual approval test. It only keeps the node-porting work
+    // from drifting back to generic or function-stripping implementations.
+    CHECK(pluginSource->find("Point<int> getEmbeddedNodeControlSize(PedalboardProcessor* proc, const String& pluginName)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("int getEmbeddedNodeControlTopOffset(const String& pluginName)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("int getEmbeddedNodeControlHeightPadding(const String& pluginName)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("return {520, 704};") == std::string::npos);
+    CHECK(pluginSource->find("return {480, 558};") == std::string::npos);
+    CHECK(pluginSource->find("class PluginNodeFooterButtonLookAndFeel final : public LookAndFeel_V4") !=
+          std::string::npos);
+    CHECK(pluginSource->find("void PluginComponent::layoutFooterButtons()") != std::string::npos);
+    CHECK(pluginSource->find("editButton->setButtonText(\"Edit\");") != std::string::npos);
+    CHECK(pluginSource->find("mappingsButton->setButtonText(\"Map\");") != std::string::npos);
+    CHECK(pluginSource->find("IconManager::getInstance().drawDomainGlyphTile") != std::string::npos);
+    CHECK(pluginSource->find("IconManager::DomainGlyph::Amp") != std::string::npos);
+    CHECK(pluginSource->find("IconManager::DomainGlyph::Cabinet") != std::string::npos);
+
+    CHECK(namSource->find("drawSectionHeader") != std::string::npos);
+    CHECK(namSource->find("drawInsetField") != std::string::npos);
+    CHECK(namSource->find("drawEmbeddedToneCurve") != std::string::npos);
+    CHECK(namSource->find("drawEmbeddedEqCurve") != std::string::npos);
+    CHECK(namSource->find("\"Capture\"") != std::string::npos);
+    CHECK(namSource->find("\"Cabinet IR\"") != std::string::npos);
+    CHECK(namSource->find("auto slotGrid = cabinetSection.removeFromTop") != std::string::npos);
+    CHECK(namSource->find("\"Signal Chain\"") == std::string::npos);
+    CHECK(namSource->find("auto slotGrid = signal.removeFromTop") == std::string::npos);
+    CHECK(namSource->find("loadModelButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("browseModelsButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("clearModelButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("irEnabledButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("ir2EnabledButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("fxLoopEnabledButton->setBounds") != std::string::npos);
+    CHECK(namSource->find("editFxLoopButton->setBounds") != std::string::npos);
+
+    CHECK(irSource->find("drawSectionHeader") != std::string::npos);
+    CHECK(irSource->find("drawEmbeddedChassisCard") == std::string::npos);
+    CHECK(irSource->find("drawEmbeddedStatusPill") != std::string::npos);
+    CHECK(irSource->find("drawEmbeddedIRWaveform") != std::string::npos);
+    CHECK(irSource->find("drawEmbeddedXfadeReadout") != std::string::npos);
+    CHECK(irSource->find("drawEmbeddedFilterChip") != std::string::npos);
+    CHECK(irSource->find("\"Impulse Responses\"") != std::string::npos);
+    CHECK(irSource->find("\"Blend\"") != std::string::npos);
+    CHECK(irSource->find("\"Filter\"") != std::string::npos);
+    CHECK(irSource->find("loadButton->setBounds") != std::string::npos);
+    CHECK(irSource->find("browseButton->setBounds") != std::string::npos);
+    CHECK(irSource->find("clearButton->setBounds") != std::string::npos);
+    CHECK(irSource->find("loadButton2->setBounds") != std::string::npos);
+    CHECK(irSource->find("browseButton2->setBounds") != std::string::npos);
+    CHECK(irSource->find("clearButton2->setBounds") != std::string::npos);
+
+}
+
+TEST_CASE("NAM and IR loader mockup ports cannot remove existing app-only controls",
+          "[ui][regression][source][nodes][loader][function-contract]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto namHeader = loadSourceFile("src/NAMControl.h");
+    const auto namSource = loadSourceFile("src/NAMControl.cpp");
+    const auto irHeader = loadSourceFile("src/IRLoaderControl.h");
+    const auto irSource = loadSourceFile("src/IRLoaderControl.cpp");
+
+    REQUIRE(pluginSource.has_value());
+    REQUIRE(namHeader.has_value());
+    REQUIRE(namSource.has_value());
+    REQUIRE(irHeader.has_value());
+    REQUIRE(irSource.has_value());
+
+    // Node-host controls are real Pedalboard functions. The mockup may restyle them,
+    // but the graph node must not lose edit, mapping, bypass, or delete reachability.
+    CHECK(pluginSource->find("editButton = new TextButton") != std::string::npos);
+    CHECK(pluginSource->find("mappingsButton = new TextButton") != std::string::npos);
+    CHECK(pluginSource->find("bypassButton = new DrawableButton") != std::string::npos);
+    CHECK(pluginSource->find("deleteButton = new DrawableButton") != std::string::npos);
+    CHECK(pluginSource->find("openMappingsWindow();") != std::string::npos);
+    CHECK(pluginSource->find("bypassable->setBypass(bypassButton->getToggleState());") != std::string::npos);
+
+    // NAM graph-node body must preserve controls that exist in the app but are
+    // absent or compressed in the mockup: FX loop, gain/gate, PRE/POST, normalize,
+    // stack EQ, and four-band parametric EQ.
+    for (const auto* token : {
+             "std::unique_ptr<TextButton> loadModelButton",
+             "std::unique_ptr<TextButton> browseModelsButton",
+             "std::unique_ptr<TextButton> clearModelButton",
+             "std::unique_ptr<Label> modelNameLabel",
+             "std::unique_ptr<Label> modelArchLabel",
+             "std::unique_ptr<TextButton> loadIRButton",
+             "std::unique_ptr<TextButton> clearIRButton",
+             "std::unique_ptr<ToggleButton> irEnabledButton",
+             "std::unique_ptr<TextButton> loadIR2Button",
+             "std::unique_ptr<TextButton> clearIR2Button",
+             "std::unique_ptr<ToggleButton> ir2EnabledButton",
+             "std::unique_ptr<Slider> irBlendSlider",
+             "std::unique_ptr<Slider> irLowCutSlider",
+             "std::unique_ptr<Slider> irHighCutSlider",
+             "std::unique_ptr<ToggleButton> fxLoopEnabledButton",
+             "std::unique_ptr<TextButton> editFxLoopButton",
+             "std::unique_ptr<Slider> inputGainSlider",
+             "std::unique_ptr<Slider> outputGainSlider",
+             "std::unique_ptr<Slider> noiseGateSlider",
+             "std::unique_ptr<ToggleButton> toneStackEnabledButton",
+             "std::unique_ptr<TextButton> toneStackPreButton",
+             "std::unique_ptr<TextButton> toneEqModeStackButton",
+             "std::unique_ptr<TextButton> toneEqModeParamButton",
+             "std::unique_ptr<Slider> bassSlider",
+             "std::unique_ptr<Slider> midSlider",
+             "std::unique_ptr<Slider> trebleSlider",
+             "std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqFrequencySliders",
+             "std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqGainSliders",
+             "std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqQSliders",
+             "std::unique_ptr<ToggleButton> normalizeButton"})
+    {
+        INFO("Missing NAM header control token: " << token);
+        CHECK(namHeader->find(token) != std::string::npos);
+    }
+
+    for (const auto* token : {
+             "loadModelButton->setBounds",
+             "browseModelsButton->setBounds",
+             "clearModelButton->setBounds",
+             "modelNameLabel->setBounds",
+             "loadIRButton->setBounds",
+             "clearIRButton->setBounds",
+             "irEnabledButton->setBounds",
+             "loadIR2Button->setBounds",
+             "clearIR2Button->setBounds",
+             "ir2EnabledButton->setBounds",
+             "irBlendSlider->setBounds",
+             "irLowCutSlider->setBounds",
+             "irHighCutSlider->setBounds",
+             "fxLoopEnabledButton->setBounds",
+             "editFxLoopButton->setBounds",
+             "inputGainSlider->setBounds",
+             "outputGainSlider->setBounds",
+             "noiseGateSlider->setBounds",
+             "toneStackEnabledButton->setBounds",
+             "toneStackPreButton->setBounds",
+             "toneEqModeStackButton->setBounds",
+             "toneEqModeParamButton->setBounds",
+             "normalizeButton->setBounds",
+             "paramEqFrequencySliders[band]->setBounds",
+             "paramEqGainSliders[band]->setBounds",
+             "paramEqQSliders[band]->setBounds",
+             "bassSlider->setBounds",
+             "midSlider->setBounds",
+             "trebleSlider->setBounds"})
+    {
+        INFO("Missing NAM embedded layout token: " << token);
+        CHECK(namSource->find(token) != std::string::npos);
+    }
+
+    for (const auto* token : {
+             "NAMModelBrowser::showWindow",
+             "namProcessor->clearModel();",
+             "namProcessor->clearIR();",
+             "namProcessor->clearIR2();",
+             "namProcessor->setIREnabled",
+             "namProcessor->setIR2Enabled",
+             "namProcessor->setEffectsLoopEnabled",
+             "new FXLoopWindow",
+             "namProcessor->setToneStackEnabled",
+             "namProcessor->setToneStackPre",
+             "namProcessor->setToneEqMode(NAMProcessor::ToneEqMode::Stack)",
+             "namProcessor->setToneEqMode(NAMProcessor::ToneEqMode::Parametric)",
+             "namProcessor->setNormalizeOutput",
+             "namProcessor->setInputGain",
+             "namProcessor->setOutputGain",
+             "namProcessor->setNoiseGateThreshold",
+             "namProcessor->setBass",
+             "namProcessor->setMid",
+             "namProcessor->setTreble",
+             "namProcessor->setIRLowCut",
+             "namProcessor->setIRHighCut",
+             "namProcessor->setIRBlend",
+             "namProcessor->setParamEqBandFrequency",
+             "namProcessor->setParamEqBandGain",
+             "namProcessor->setParamEqBandQ"})
+    {
+        INFO("Missing NAM behavior token: " << token);
+        CHECK(namSource->find(token) != std::string::npos);
+    }
+
+    // Standalone IR Loader node must keep both disk loading and browser loading
+    // for both slots, plus all existing blend/mix/filter controls.
+    for (const auto* token : {
+             "std::unique_ptr<TextButton> loadButton",
+             "std::unique_ptr<TextButton> browseButton",
+             "std::unique_ptr<TextButton> clearButton",
+             "std::unique_ptr<Label> irNameLabel",
+             "std::unique_ptr<TextButton> loadButton2",
+             "std::unique_ptr<TextButton> browseButton2",
+             "std::unique_ptr<TextButton> clearButton2",
+             "std::unique_ptr<Label> irName2Label",
+             "std::unique_ptr<Slider> blendSlider",
+             "std::unique_ptr<Slider> mixSlider",
+             "std::unique_ptr<Slider> lowCutSlider",
+             "std::unique_ptr<Slider> highCutSlider"})
+    {
+        INFO("Missing IR header control token: " << token);
+        CHECK(irHeader->find(token) != std::string::npos);
+    }
+
+    for (const auto* token : {
+             "loadButton->setBounds",
+             "browseButton->setBounds",
+             "clearButton->setBounds",
+             "irNameLabel->setBounds",
+             "loadButton2->setBounds",
+             "browseButton2->setBounds",
+             "clearButton2->setBounds",
+             "irName2Label->setBounds",
+             "blendSlider->setBounds",
+             "mixSlider->setBounds",
+             "lowCutSlider->setBounds",
+             "highCutSlider->setBounds",
+             "IRBrowser::showWindow",
+             "irProcessor->loadIRFile(File());",
+             "irProcessor->clearIR2();",
+             "irProcessor->setMix",
+             "irProcessor->setLowCut",
+             "irProcessor->setHighCut",
+             "irProcessor->setBlend"})
+    {
+        INFO("Missing IR embedded layout/behavior token: " << token);
+        CHECK(irSource->find(token) != std::string::npos);
+    }
 }
 
 TEST_CASE("Scratch footer source contract keeps panel affordance reachable",
@@ -607,13 +1075,30 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
     CHECK(browserHeader->find("bool irDirectoryManuallySelected = false;") != std::string::npos);
 
     CHECK(browserSource->find("setMinimumHorizontalScale(0.72f)") != std::string::npos);
-    CHECK(browserSource->find("setJustificationType(Justification::centredLeft)") != std::string::npos);
+    CHECK(browserSource->find("titleLabel->setJustificationType(Justification::centred);") != std::string::npos);
     CHECK(browserSource->find("const auto separatorBounds = detailsPanelBounds.toFloat().reduced(18.0f, 0.0f);") !=
           std::string::npos);
-    CHECK(browserSource->find("bounds.removeFromTop(compactLayout ? 8 : 12);") != std::string::npos);
-    CHECK(browserSource->find("const bool showRail = !compactLayout && bounds.getWidth() >= 720;") !=
+    CHECK(browserSource->find("bounds.removeFromTop(compactLayout ? 14 : 20);") != std::string::npos);
+    CHECK(browserSource->find("bool canShowThreePillarLibraryLayout(int availableWidth, bool compactLayout)") !=
           std::string::npos);
-    CHECK(browserSource->find("jlimit(170, 230, roundToInt(bounds.getWidth() * 0.44f))") != std::string::npos);
+    CHECK(browserSource->find("const bool showRail = canShowThreePillarLibraryLayout(bounds.getWidth(), compactLayout);") !=
+          std::string::npos);
+    CHECK(browserSource->find("const int railWidth = getLibraryRailWidth(bounds.getWidth(), compactLayout);") !=
+          std::string::npos);
+    CHECK(browserSource->find("const bool showRail = !compactLayout && bounds.getWidth() >= 720;") ==
+          std::string::npos);
+    CHECK(browserSource->find("jlimit(210, 270, roundToInt(bounds.getWidth() * 0.48f))") != std::string::npos);
+    CHECK(browserSource->find("const bool showFullTechnicalDetails = true;") != std::string::npos);
+    CHECK(browserSource->find("addAndMakeVisible(labelPtr.get());") != std::string::npos);
+    CHECK(browserSource->find("closeButton->setLookAndFeel(nullptr);") != std::string::npos);
+    CHECK(browserSource->find("titleLabel->setJustificationType(Justification::centred);") !=
+          std::string::npos);
+    CHECK(browserSource->find("closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));") !=
+          std::string::npos);
+    CHECK(browserSource->find("const int headerGap = compactLayout ? 10 : 14;") != std::string::npos);
+    CHECK(browserSource->find("const int searchHeight = compactLayout ? 32 : 34;") != std::string::npos);
+    CHECK(browserSource->find("auto titleTextRow = titleRow;") != std::string::npos);
+    CHECK(browserSource->find("titleLabel->setBounds(titleTextRow);") != std::string::npos);
     CHECK(browserSource->find("bool NAMModelBrowserComponent::syncIRDirectoryFromSettingsIfAllowed()") !=
           std::string::npos);
     CHECK(browserSource->find("if (irDirectoryManuallySelected)") != std::string::npos);
@@ -649,24 +1134,52 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
 TEST_CASE("NAM online browser polish source contract matches library visual structure",
           "[ui][regression][visual][source][library]")
 {
+    const auto onlineHeader = loadSourceFile("src/NAMOnlineBrowser.h");
     const auto onlineSource = loadSourceFile("src/NAMOnlineBrowser.cpp");
+    REQUIRE(onlineHeader.has_value());
     REQUIRE(onlineSource.has_value());
 
+    CHECK(onlineHeader->find("std::unique_ptr<juce::Component> detailsContent;") != std::string::npos);
+    CHECK(onlineHeader->find("std::unique_ptr<juce::Viewport> detailsViewport;") != std::string::npos);
     CHECK(onlineSource->find("BrowserPalette makeOnlineBrowserPalette()") != std::string::npos);
     CHECK(onlineSource->find("0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57, 0xFF5B4C6E") !=
           std::string::npos);
     CHECK(onlineSource->find("const auto palette = makeOnlineBrowserPalette();") != std::string::npos);
     CHECK(onlineSource->find("visual sync with makeBrowserPalette() in NAMModelBrowser.cpp") != std::string::npos);
-    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 8 : 12);") != std::string::npos);
-    CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 34);") !=
+    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 22 : 30);") != std::string::npos);
+    CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);") !=
           std::string::npos);
-    CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 68 : 70;") != std::string::npos);
-    CHECK(onlineSource->find("const int searchButtonGap = compactLayout ? 8 : 10;") != std::string::npos);
+    CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 76 : 86;") != std::string::npos);
+    CHECK(onlineSource->find("const int searchButtonGap = compactLayout ? 10 : 12;") != std::string::npos);
     const auto searchButtonLayout = onlineSource->find("searchButton->setBounds(searchRow.removeFromRight(");
-    const auto searchBoxLayout = onlineSource->find("searchBox->setBounds(searchRow);");
+    const auto searchBoxLayout = onlineSource->find("searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));");
     REQUIRE(searchButtonLayout != std::string::npos);
     REQUIRE(searchBoxLayout != std::string::npos);
     CHECK(searchButtonLayout < searchBoxLayout);
+    CHECK(onlineSource->find("auto toolbarBounds = outer.removeFromTop(compactLayout ? 100 : 112).toFloat();") !=
+          std::string::npos);
+    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 292 : 340;") != std::string::npos);
+    CHECK(onlineSource->find("class OnlineBrowserActionButtonLookAndFeel") != std::string::npos);
+    CHECK(onlineSource->find("searchButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("downloadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("loadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("loginButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("logoutButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("prevPageButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("nextPageButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("loginButton->setLookAndFeel(nullptr);") != std::string::npos);
+    CHECK(onlineSource->find("nextPageButton->setLookAndFeel(nullptr);") != std::string::npos);
+    CHECK(onlineSource->find("detailsViewport->setViewedComponent(detailsContent.get(), false);") !=
+          std::string::npos);
+    CHECK(onlineSource->find("detailsViewport->setScrollBarsShown(true, false);") != std::string::npos);
+    CHECK(onlineSource->find("detailsContent->addAndMakeVisible(nameLabel.get());") != std::string::npos);
     CHECK(onlineSource->find("melatonin::DropShadow shadow{juce::Colours::black.withAlpha(0.28f), 10, {0, 4}};") !=
           std::string::npos);
     CHECK(onlineSource->find("juce::ColourGradient cardGrad(palette.face2, detailsBounds.getX(), detailsBounds.getY(),") !=
@@ -677,5 +1190,125 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
     CHECK(onlineSource->find("setMinimumHorizontalScale(0.72f)") != std::string::npos);
     CHECK(onlineSource->find("g.drawText(juce::String(selectedTone->name),") != std::string::npos);
     CHECK(onlineSource->find("g.drawText(\"by \" + juce::String(selectedTone->authorName),") !=
+          std::string::npos);
+}
+
+TEST_CASE("NAM parametric EQ is additive to the existing tone stack",
+          "[ui][regression][visual][source][nam][eq]")
+{
+    const auto processorHeader = loadSourceFile("src/NAMProcessor.h");
+    const auto processorSource = loadSourceFile("src/NAMProcessor.cpp");
+    const auto controlHeader = loadSourceFile("src/NAMControl.h");
+    const auto controlSource = loadSourceFile("src/NAMControl.cpp");
+
+    REQUIRE(processorHeader.has_value());
+    REQUIRE(processorSource.has_value());
+    REQUIRE(controlHeader.has_value());
+    REQUIRE(controlSource.has_value());
+
+    CHECK(processorHeader->find("enum class ToneEqMode") != std::string::npos);
+    CHECK(processorHeader->find("Stack = 0") != std::string::npos);
+    CHECK(processorHeader->find("Parametric = 1") != std::string::npos);
+    CHECK(processorHeader->find("static constexpr int kParamEqBandCount = 12;") != std::string::npos);
+    CHECK(processorHeader->find("int getActiveParamEqBandCount() const;") != std::string::npos);
+    CHECK(processorHeader->find("void setActiveParamEqBandCount(int count);") != std::string::npos);
+
+    CHECK(processorHeader->find("float getBass() const") != std::string::npos);
+    CHECK(processorHeader->find("void setBass(float value)") != std::string::npos);
+    CHECK(processorHeader->find("std::atomic<float> bass{5.0f}") != std::string::npos);
+    CHECK(processorHeader->find("std::atomic<float> mid{5.0f}") != std::string::npos);
+    CHECK(processorHeader->find("std::atomic<float> treble{5.0f}") != std::string::npos);
+
+    CHECK(processorHeader->find("ToneEqMode getToneEqMode() const;") != std::string::npos);
+    CHECK(processorHeader->find("void setToneEqMode(ToneEqMode mode);") != std::string::npos);
+    CHECK(processorHeader->find("float getParamEqBandFrequency(int bandIndex) const;") != std::string::npos);
+    CHECK(processorHeader->find("void setParamEqBandFrequency(int bandIndex, float freqHz);") !=
+          std::string::npos);
+    CHECK(processorHeader->find("float getParamEqBandGain(int bandIndex) const;") != std::string::npos);
+    CHECK(processorHeader->find("void setParamEqBandGain(int bandIndex, float gainDb);") != std::string::npos);
+    CHECK(processorHeader->find("float getParamEqBandQ(int bandIndex) const;") != std::string::npos);
+    CHECK(processorHeader->find("void setParamEqBandQ(int bandIndex, float q);") != std::string::npos);
+
+    CHECK(processorSource->find("applySelectedToneEq(inputData, numSamples);") != std::string::npos);
+    CHECK(processorSource->find("applySelectedToneEq(outputData, numSamples);") != std::string::npos);
+    CHECK(processorSource->find("void NAMProcessor::applyParametricEq(float* data, int numSamples)") !=
+          std::string::npos);
+    CHECK(processorSource->find("void NAMProcessor::updateParametricEqCoefficients()") != std::string::npos);
+    CHECK(processorSource->find("stream.writeInt(8); // Version (8 = active NAM parametric EQ band count)") !=
+          std::string::npos);
+    CHECK(processorSource->find("if (version >= 7 && !stream.isExhausted())") != std::string::npos);
+    CHECK(processorSource->find("setActiveParamEqBandCount(stream.readInt())") != std::string::npos);
+
+    CHECK(controlHeader->find("void updateEqModeVisibility();") != std::string::npos);
+    CHECK(controlHeader->find("std::unique_ptr<TextButton> toneEqModeStackButton;") != std::string::npos);
+    CHECK(controlHeader->find("std::unique_ptr<TextButton> toneEqModeParamButton;") != std::string::npos);
+    CHECK(controlHeader->find("std::unique_ptr<TextButton> paramEqBandCountButton;") != std::string::npos);
+    CHECK(controlHeader->find("std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqFrequencySliders;") !=
+          std::string::npos);
+    CHECK(controlHeader->find("std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqGainSliders;") !=
+          std::string::npos);
+    CHECK(controlHeader->find("std::array<std::unique_ptr<Slider>, NAMProcessor::kParamEqBandCount> paramEqQSliders;") !=
+          std::string::npos);
+
+    CHECK(controlSource->find("\"STACK\"") != std::string::npos);
+    CHECK(controlSource->find("\"PARAM\"") != std::string::npos);
+    CHECK(controlSource->find("\"Parametric EQ\"") != std::string::npos);
+    CHECK(controlSource->find("toneEqModeStackButton->setBounds") != std::string::npos);
+    CHECK(controlSource->find("toneEqModeParamButton->setBounds") != std::string::npos);
+    CHECK(controlSource->find("bassSlider->setVisible(!parametric") != std::string::npos);
+    CHECK(controlSource->find("paramEqFrequencySliders[band]->setVisible(visible)") != std::string::npos);
+    CHECK(controlSource->find("paramEqBandCountButton->setButtonText") != std::string::npos);
+}
+
+TEST_CASE("Tuner node polish mirrors mockup readout structure without removing real modes",
+          "[ui][regression][visual][source][nodes][tuner]")
+{
+    const auto tunerHeader = loadSourceFile("src/TunerControl.h");
+    const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
+    const auto tunerProcessorHeader = loadSourceFile("src/TunerProcessor.h");
+
+    REQUIRE(tunerHeader.has_value());
+    REQUIRE(tunerSource.has_value());
+    REQUIRE(tunerProcessorHeader.has_value());
+
+    CHECK(tunerHeader->find("void drawTunerGlassPanel(Graphics& g, Rectangle<float> bounds);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("void drawNoteGlyph(Graphics& g, Rectangle<float> bounds, const String& noteName, Colour noteColour);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("void drawNeedleArcBackdrop(Graphics& g, Point<float> centre, float radius);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("void drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("void drawCoarseDeviationStrip(Graphics& g, Rectangle<float> bounds);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("void drawStatusBadge(Graphics& g, Rectangle<float> bounds);") !=
+          std::string::npos);
+    CHECK(tunerHeader->find("std::unique_ptr<TextButton> needleModeButton;") != std::string::npos);
+    CHECK(tunerHeader->find("std::unique_ptr<TextButton> strobeModeButton;") != std::string::npos);
+    CHECK(tunerHeader->find("TunerMode::Needle") != std::string::npos);
+    CHECK(tunerHeader->find("TunerMode::Strobe") != std::string::npos);
+    CHECK(tunerHeader->find("TunerMode::Poly") == std::string::npos);
+
+    CHECK(tunerSource->find("needleModeButton = std::make_unique<TextButton>(\"NEEDLE\");") !=
+          std::string::npos);
+    CHECK(tunerSource->find("strobeModeButton = std::make_unique<TextButton>(\"STROBE\");") !=
+          std::string::npos);
+    CHECK(tunerSource->find("setSize(340, 220);") != std::string::npos);
+    CHECK(tunerSource->find("drawTunerGlassPanel(g, panel);") != std::string::npos);
+    CHECK(tunerSource->find("drawModeSegmentedControl(g, modeArea);") != std::string::npos);
+    CHECK(tunerSource->find("drawNoteGlyph(g, bounds, noteName, noteCol);") != std::string::npos);
+    CHECK(tunerSource->find("drawCoarseDeviationStrip(g, coarseArea);") != std::string::npos);
+    CHECK(tunerSource->find("drawNeedleArcBackdrop(g, {centreX, bottomY}, meterRadius);") !=
+          std::string::npos);
+    CHECK(tunerSource->find("drawStatusBadge(g, statusArea);") != std::string::npos);
+    CHECK(tunerSource->find("\"In Tune\"") != std::string::npos);
+    CHECK(tunerSource->find("\"A=440\"") != std::string::npos);
+    CHECK(tunerSource->find("const float dotX = track.getX() + track.getWidth() * normalized;") !=
+          std::string::npos);
+    CHECK(tunerSource->find("needleModeButton->setBounds") != std::string::npos);
+    CHECK(tunerSource->find("strobeModeButton->setBounds") != std::string::npos);
+    CHECK(tunerSource->find("modeButton") == std::string::npos);
+    CHECK(tunerSource->find("polyModeButton") == std::string::npos);
+    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(340, 220); }") !=
           std::string::npos);
 }

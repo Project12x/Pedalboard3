@@ -1,0 +1,292 @@
+/* ============================================================
+   NAM Loader — standalone editor.
+   Polished remix language (soft cards, thin controls, generous space),
+   but with its OWN warm "amplifier chassis" token scheme derived per
+   theme, so the unit stands out against the cool main-window canvas.
+   Backdrop keeps the theme colour; the panel runs a warmer, darker palette.
+   Theme tokens verbatim from src/ColourScheme.cpp.
+   ============================================================ */
+
+@font-face { font-family: "Space Grotesk"; src: url("fonts/SpaceGrotesk-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url("fonts/SpaceGrotesk-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+
+/* ---------- BACKDROP theme palettes (match the main window) ---------- */
+.nam-stage.theme-midnight  { --bg-top:#1a1a2e; --bg-bottom:#0f0f1a; --accent:#00d9ff; --param:#ffaa00; --text:#e8e8e8; }
+.nam-stage.theme-deep-ocean{ --bg-top:#0a1628; --bg-bottom:#060e18; --accent:#00c8ff; --param:#7dd3fc; --text:#cfe3f2; }
+.nam-stage.theme-synthwave { --bg-top:#0d0221; --bg-bottom:#060112; --accent:#ff2bff; --param:#ff6b00; --text:#f4e6ff; }
+.nam-stage.theme-forest    { --bg-top:#1a2f1a; --bg-bottom:#0f1f0f; --accent:#66cc66; --param:#ccaa44; --text:#dcecd2; }
+.nam-stage.theme-daylight  { --bg-top:#eef0f2; --bg-bottom:#d6d9dd; --accent:#0077cc; --param:#cc6600; --text:#1a1f24; }
+.nam-stage {
+  --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+  --t40: color-mix(in srgb, var(--text) 40%, transparent);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ---------- AMP chassis palettes (own scheme, warm, per theme) ---------- */
+.nam.theme-midnight {
+  --amp-top:#211a2b; --amp-bot:#140f1b; --amp-face:#271f33; --amp-face2:#30273d; --amp-inset:#0e0a14;
+  --amp-edge:#473a57; --amp-edge-hi:#5b4c6e; --amp-accent:#ffb020; --amp-accent2:#36c8ff; --amp-led:#3ddc84; --amp-text:#f4ecdd;
+}
+.nam.theme-deep-ocean {
+  --amp-top:#102029; --amp-bot:#08131b; --amp-face:#142a36; --amp-face2:#1b3543; --amp-inset:#07121a;
+  --amp-edge:#2c5563; --amp-edge-hi:#3c6b7a; --amp-accent:#ff9e3d; --amp-accent2:#2bd4ff; --amp-led:#00e0ad; --amp-text:#eaf3f1;
+}
+.nam.theme-synthwave {
+  --amp-top:#1e0a28; --amp-bot:#0f0518; --amp-face:#2a1139; --amp-face2:#351747; --amp-inset:#0c0414;
+  --amp-edge:#5a2d72; --amp-edge-hi:#74409; --amp-edge-hi:#76439a; --amp-accent:#ff8a3d; --amp-accent2:#ff45ff; --amp-led:#1fffa0; --amp-text:#f6ebff;
+}
+.nam.theme-forest {
+  --amp-top:#1c1d13; --amp-bot:#10110a; --amp-face:#26281a; --amp-face2:#2f3120; --amp-inset:#0e0f08;
+  --amp-edge:#4a4d2e; --amp-edge-hi:#5f633d; --amp-accent:#e6ad36; --amp-accent2:#79d479; --amp-led:#7ce87c; --amp-text:#f1eeda;
+}
+.nam.theme-daylight {
+  --amp-top:#3b332a; --amp-bot:#2b241c; --amp-face:#473e33; --amp-face2:#52483b; --amp-inset:#241f18;
+  --amp-edge:#62574788; --amp-edge:#615648; --amp-edge-hi:#796b58; --amp-accent:#ffb43a; --amp-accent2:#3aa6ec; --amp-led:#4ddc84; --amp-text:#f5edde;
+}
+
+/* derived amp tints */
+.nam {
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --amp-accent-soft: color-mix(in srgb, var(--amp-accent) 16%, transparent);
+  --amp-accent-line: color-mix(in srgb, var(--amp-accent) 52%, transparent);
+  --amp-accent-glow: color-mix(in srgb, var(--amp-accent) 38%, transparent);
+  --amp-acc2-soft: color-mix(in srgb, var(--amp-accent2) 15%, transparent);
+  --amp-acc2-line: color-mix(in srgb, var(--amp-accent2) 50%, transparent);
+  --amp-knob-face: color-mix(in srgb, var(--amp-face2) 60%, #000 40%);
+  --amp-surface-hi: color-mix(in srgb, var(--amp-face2) 78%, var(--amp-text) 6%);
+  --at85: color-mix(in srgb, var(--amp-text) 85%, transparent);
+  --at70: color-mix(in srgb, var(--amp-text) 70%, transparent);
+  --at60: color-mix(in srgb, var(--amp-text) 60%, transparent);
+  --at55: color-mix(in srgb, var(--amp-text) 55%, transparent);
+  --at50: color-mix(in srgb, var(--amp-text) 50%, transparent);
+  --at45: color-mix(in srgb, var(--amp-text) 45%, transparent);
+  --at40: color-mix(in srgb, var(--amp-text) 40%, transparent);
+  --at22: color-mix(in srgb, var(--amp-text) 22%, transparent);
+  --at16: color-mix(in srgb, var(--amp-text) 16%, transparent);
+}
+
+/* ---------------- STAGE / SHELL ---------------- */
+.nam-stage { position: fixed; inset: 0; display: flex; flex-direction: column;
+  font-family: var(--font-display); color: var(--text); -webkit-font-smoothing: antialiased; overflow: hidden; letter-spacing: -0.01em; }
+.nam-stage * { box-sizing: border-box; }
+:where(.nam-stage) button { font-family: inherit; color: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; border: none; background: none; padding: 0; }
+.nam-stage.bg-flat { background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom)); }
+.nam-stage.bg-spotlight { background:
+  radial-gradient(58% 52% at 50% 40%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+  linear-gradient(180deg, var(--bg-top), var(--bg-bottom)); }
+
+.nam-topbar { flex: none; height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 22px; z-index: 5; }
+.nt-title { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; color: var(--text); }
+.nt-glyph { width: 16px; height: 16px; border-radius: 5px; background: linear-gradient(135deg, var(--param), color-mix(in srgb, var(--param) 50%, #fff)); box-shadow: 0 0 9px color-mix(in srgb, var(--param) 50%, transparent); }
+.nt-sub { color: var(--t40); font-weight: 500; }
+.nt-spacer { flex: 1; }
+.nt-themes { display: flex; align-items: center; gap: 8px; }
+.nt-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--d); border: 2px solid var(--b); box-shadow: 0 0 0 1px rgba(0,0,0,0.35); cursor: pointer; transition: transform 0.12s; }
+.nt-dot:hover { transform: scale(1.15); }
+.nt-dot.on { box-shadow: 0 0 0 2px var(--bg-bottom), 0 0 0 3.5px var(--d), 0 0 10px var(--d); transform: scale(1.12); }
+
+.nam-center { flex: 1; min-height: 0; display: grid; place-items: center; }
+.nam-scale { transform-origin: center; }
+.nam-hint { flex: none; text-align: center; padding: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--t40); letter-spacing: 0.01em; }
+
+/* ---------------- PANEL (amp chassis) ---------------- */
+.nam { position: relative; width: 568px; border-radius: 18px; padding: 18px;
+  background:
+    radial-gradient(130% 70% at 50% -8%, color-mix(in srgb, var(--amp-accent) 8%, transparent), transparent 56%),
+    linear-gradient(180deg, var(--amp-top), var(--amp-bot));
+  border: 1px solid var(--amp-edge);
+  box-shadow: 0 36px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4), inset 0 1px 0 color-mix(in srgb, var(--amp-text) 9%, transparent);
+  color: var(--amp-text); }
+/* corner screws */
+.nk-screw { position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, var(--amp-edge-hi), var(--amp-inset) 78%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35), 0 1px 1px rgba(0,0,0,0.4); }
+.nk-screw::after { content: ""; position: absolute; inset: 2px; border-top: 1px solid color-mix(in srgb, #000 45%, transparent); transform: rotate(38deg); }
+.nk-screw.tl { left: 9px; top: 9px; } .nk-screw.tr { right: 9px; top: 9px; }
+.nk-screw.bl { left: 9px; bottom: 9px; } .nk-screw.br { right: 9px; bottom: 9px; }
+
+/* faceplate header */
+.nk-head { position: relative; display: flex; align-items: center; gap: 16px; padding: 13px 16px; margin-bottom: 14px;
+  border-radius: 13px; border: 1px solid var(--amp-edge);
+  background: linear-gradient(180deg, var(--amp-face2), var(--amp-face));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amp-text) 11%, transparent), 0 2px 6px rgba(0,0,0,0.32); cursor: pointer; }
+.nk-head::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 8px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--amp-accent), transparent 60%); opacity: 0.5; }
+.nk-head-l { flex: 1; min-width: 0; }
+.nk-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--amp-accent); }
+.nk-title { margin-top: 5px; font-size: 25px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nk-title.empty { color: var(--at45); }
+.nk-head-r { display: flex; align-items: center; gap: 12px; flex: none; }
+/* amber "jewel lamp" status */
+.nk-status { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--amp-edge); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--at45); background: var(--amp-inset); }
+.nk-status i { width: 9px; height: 9px; border-radius: 50%; background: var(--at22); }
+.nk-status.on { border-color: var(--amp-accent-line); color: var(--amp-accent); background: var(--amp-accent-soft); }
+.nk-status.on i { background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--amp-accent), #fff 45%), var(--amp-accent)); box-shadow: 0 0 8px var(--amp-accent-glow), 0 0 14px var(--amp-accent-glow); animation: nkpulse 1.8s ease-in-out infinite; }
+@keyframes nkpulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+.nk-collapse { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--amp-edge); display: grid; place-items: center; color: var(--at50); background: var(--amp-inset); }
+.nk-collapse svg { width: 16px; height: 16px; transition: transform 0.15s; }
+.nam.collapsed .nk-collapse svg { transform: rotate(-90deg); }
+.nk-collapse:hover { border-color: var(--amp-accent-line); color: var(--amp-text); }
+
+.nam.collapsed .nk-head { margin-bottom: 0; }
+.nam.collapsed .nk-body { display: none; }
+.nk-body { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---------------- CARD ---------------- */
+.nk-card { border-radius: 13px; border: 1px solid var(--amp-edge); background: var(--amp-face); padding: 13px 14px; display: flex; flex-direction: column; gap: 11px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amp-text) 5%, transparent); }
+.nk-card-h { display: flex; align-items: center; gap: 9px; }
+.nk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amp-accent); box-shadow: 0 0 7px var(--amp-accent); flex: none; }
+.nk-card-t { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--at55); }
+.nk-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+
+/* ---------------- BUTTONS ---------------- */
+.nk-btn { display: inline-flex; align-items: center; justify-content: center; height: 33px; padding: 0 14px; border-radius: 9px;
+  border: 1px solid var(--amp-edge); background: linear-gradient(180deg, var(--amp-surface-hi), var(--amp-face2));
+  color: var(--at85); font-size: 13px; font-weight: 600; white-space: nowrap; flex: none; transition: border-color 0.12s, background 0.12s;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--amp-text) 8%, transparent); }
+.nk-btn:hover { border-color: var(--amp-accent-line); }
+.nk-btn.primary { background: var(--amp-accent-soft); border-color: var(--amp-accent-line); color: var(--amp-accent); }
+.nk-btn.primary:hover { background: color-mix(in srgb, var(--amp-accent) 24%, transparent); }
+
+/* ---------------- MODEL / IR FIELDS ---------------- */
+.nk-row.model { display: flex; align-items: center; gap: 8px; }
+.nk-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 33px; padding: 0 8px 0 12px; border-radius: 9px; background: var(--amp-inset); border: 1px solid var(--amp-edge); box-shadow: inset 0 1px 3px rgba(0,0,0,0.32); }
+.nk-field.sm { height: 29px; }
+.nk-field-t { flex: 1; min-width: 0; font-size: 13px; color: var(--at50); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nk-field.loaded { border-color: var(--amp-accent-line); box-shadow: inset 2px 0 0 var(--amp-accent), inset 0 1px 3px rgba(0,0,0,0.3); }
+.nk-field.loaded .nk-field-t { color: var(--amp-text); }
+.nk-tag { flex: none; padding: 3px 7px; border-radius: 5px; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--amp-accent); background: var(--amp-accent-soft); border: 1px solid var(--amp-accent-line); }
+.nk-clear, .nk-mini { flex: none; border-radius: 6px; color: var(--at40); font-size: 12px; }
+.nk-clear { width: 22px; height: 22px; display: grid; place-items: center; }
+.nk-clear:hover { background: color-mix(in srgb, #ff5252 24%, transparent); color: #ff8a8a; }
+.nk-mini { height: 22px; padding: 0 9px; border: 1px solid var(--amp-edge); font-weight: 600; color: var(--at60); }
+.nk-mini:hover { border-color: var(--amp-accent-line); color: var(--amp-accent); }
+
+.nk-cab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nk-cab { border-radius: 10px; border: 1px solid var(--amp-edge); background: color-mix(in srgb, var(--amp-inset) 55%, var(--amp-face)); padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; }
+.nk-cab-h { display: flex; align-items: center; justify-content: space-between; }
+.nk-cab-lab { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--at60); }
+
+/* ---------------- SLIDER ROWS ---------------- */
+.nk-ctl { display: flex; align-items: center; gap: 10px; }
+.nk-ctl.two { gap: 16px; }
+.nk-sub { flex: 1; display: flex; align-items: center; gap: 9px; min-width: 0; }
+.nk-ctl-l { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--at50); flex: none; }
+.nk-ctl-l.wide { width: 50px; }
+.nk-unit { font-family: var(--font-mono); font-size: 10.5px; color: var(--at40); flex: none; }
+
+.nk-slider { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; }
+.nk-track { position: relative; flex: 1; min-width: 0; height: 18px; cursor: pointer; }
+.nk-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 7px; transform: translateY(-50%); border-radius: 4px; background: var(--amp-inset); border: 1px solid var(--amp-edge); box-shadow: inset 0 1px 2px rgba(0,0,0,0.4); }
+.nk-fill { position: absolute; left: 0; top: 50%; height: 7px; transform: translateY(-50%); border-radius: 4px; box-shadow: 0 0 7px color-mix(in srgb, var(--amp-accent2) 35%, transparent); }
+.nk-thumb { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); background: linear-gradient(180deg, var(--amp-edge-hi), var(--amp-edge)); box-shadow: 0 1px 4px rgba(0,0,0,0.5); border: 1px solid color-mix(in srgb, var(--amp-text) 25%, transparent); }
+.nk-val { flex: none; min-width: 50px; text-align: right; font-family: var(--font-mono); font-size: 12px; color: var(--amp-accent2); }
+
+/* ---------------- FX ROW ---------------- */
+.nk-fxrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* ---------------- JEWEL-LAMP TOGGLES ---------------- */
+.nk-tog { --tg: var(--amp-accent); display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--amp-edge); color: var(--at55); font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--amp-inset); transition: all 0.12s; }
+.nk-tog .nk-tdot { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--at22), #000 20%), var(--amp-inset)); border: 1px solid color-mix(in srgb, #000 30%, var(--amp-edge)); flex: none; }
+.nk-tog:hover { border-color: color-mix(in srgb, var(--tg) 40%, var(--amp-edge)); }
+.nk-tog.on { border-color: color-mix(in srgb, var(--tg) 55%, transparent); background: color-mix(in srgb, var(--tg) 13%, var(--amp-inset)); color: var(--tg); }
+.nk-tog.on .nk-tdot { background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--tg), #fff 45%), var(--tg)); border-color: color-mix(in srgb, var(--tg) 60%, #000); box-shadow: 0 0 7px var(--tg), 0 0 12px color-mix(in srgb, var(--tg) 50%, transparent); }
+
+.nk-seg { height: 28px; padding: 0 13px; border-radius: 9px; border: 1px solid var(--amp-edge); background: var(--amp-inset); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--at55); }
+.nk-seg.on { border-color: var(--amp-accent-line); background: var(--amp-accent-soft); color: var(--amp-accent); }
+
+/* ---------------- TONE ---------------- */
+.nk-tone-tabs { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.nk-knobs { display: flex; justify-content: space-around; padding: 6px 0 2px; transition: opacity 0.15s; }
+.nk-knobs.off { opacity: 0.4; }
+.nk-knob { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nk-dial { cursor: ns-resize; display: block; }
+.nk-arc-track { stroke: var(--at16); }
+.nk-kv { font-family: var(--font-mono); font-size: 12px; color: var(--at70); }
+.nk-kl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--at45); }
+.nk-norm { display: flex; justify-content: center; padding-top: 2px; }
+
+/* ---------------- BROWSER MODAL (opens over the editor) ---------------- */
+.nam-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; }
+.nam-modal-scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.62); backdrop-filter: blur(3px); animation: nmfade 0.18s ease; }
+.nam-modal-scale { position: relative; transform-origin: center; animation: nmpop 0.2s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes nmfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nmpop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; } }
+
+/* ---------------- FLOATING PLUGIN WINDOW (embedded in another app) ----------------
+   Used when the NAM editor is opened from a host (e.g. the Main Window node
+   graph). Fills its positioned parent rather than the viewport, so it scales
+   along with the host. */
+.nam-winmodal { position: absolute; inset: 0; z-index: 100; display: grid; place-items: center; }
+.nam-winmodal.top { z-index: 110; }
+.nam-winmodal-scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2.5px); animation: nmfade 0.18s ease; }
+.nam-win-editor { position: relative; transform-origin: center; animation: nmpop 0.2s cubic-bezier(.2,.9,.3,1.2); }
+.nam-win-close { position: absolute; top: -14px; right: -14px; z-index: 5; width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center; border: 1px solid var(--amp-edge); background: var(--amp-face2); color: var(--at70);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45); }
+.nam-win-close svg { width: 16px; height: 16px; }
+.nam-win-close:hover { border-color: var(--amp-accent-line); color: var(--amp-text); }
+
+/* ============================================================
+   FINISH TWEAKS — toggle on via the Tweaks panel. Combinable.
+   ============================================================ */
+
+/* ---- Brushed metal: fine horizontal grain on the metal surfaces ---- */
+.nam.fin-brushed {
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--amp-text) 3.5%, transparent) 0 1px, transparent 1px 4px),
+    linear-gradient(118deg, transparent 32%, color-mix(in srgb, var(--amp-text) 5%, transparent) 50%, transparent 68%),
+    radial-gradient(130% 70% at 50% -8%, color-mix(in srgb, var(--amp-accent) 8%, transparent), transparent 56%),
+    linear-gradient(180deg, var(--amp-top), var(--amp-bot));
+}
+.fin-brushed .nk-head {
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--amp-text) 7%, transparent) 0 1px, transparent 1px 3px),
+    linear-gradient(118deg, transparent 35%, color-mix(in srgb, var(--amp-text) 8%, transparent) 50%, transparent 65%),
+    linear-gradient(180deg, var(--amp-face2), var(--amp-face));
+}
+.fin-brushed .nk-card {
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--amp-text) 4%, transparent) 0 1px, transparent 1px 3.5px),
+    linear-gradient(180deg, var(--amp-face), var(--amp-face));
+}
+.fin-brushed .nk-btn {
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--amp-text) 6%, transparent) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--amp-surface-hi), var(--amp-face2));
+}
+.fin-brushed .nk-btn.primary {
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--amp-accent) 10%, transparent) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--amp-accent-soft), var(--amp-accent-soft));
+}
+
+/* ---- Beveled edges: convex controls + concave recesses ---- */
+.fin-bevel .nk-head, .fin-bevel .nk-card {
+  box-shadow:
+    inset 0 1.5px 0 color-mix(in srgb, var(--amp-text) 15%, transparent),
+    inset 0 -3px 5px rgba(0,0,0,0.34),
+    0 3px 7px rgba(0,0,0,0.28);
+}
+.fin-bevel .nk-btn, .fin-bevel .nk-status, .fin-bevel .nk-seg, .fin-bevel .nk-tog, .fin-bevel .nk-collapse, .fin-bevel .nk-mini {
+  box-shadow:
+    inset 0 1.5px 0 color-mix(in srgb, var(--amp-text) 20%, transparent),
+    inset 0 -2px 3px rgba(0,0,0,0.4),
+    0 2px 3px rgba(0,0,0,0.3);
+}
+.fin-bevel .nk-field, .fin-bevel .nk-cab {
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,0.5),
+    inset 0 -1px 0 color-mix(in srgb, var(--amp-text) 9%, transparent);
+}
+.fin-bevel .nk-track::before {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.55), inset 0 -1px 0 color-mix(in srgb, var(--amp-text) 8%, transparent);
+}
+.fin-bevel .nk-thumb {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.55), inset 0 1.5px 0 color-mix(in srgb, var(--amp-text) 35%, transparent), inset 0 -1.5px 2px rgba(0,0,0,0.4);
+}
+.fin-bevel .nk-screw { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4), 0 1.5px 2px rgba(0,0,0,0.5); }

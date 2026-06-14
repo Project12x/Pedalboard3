@@ -108,20 +108,20 @@ void PluginConnection::paint(Graphics& g)
             float strokeWidth = 8.0f + (i * 3.0f);
             float alpha = 0.06f / (float)i;
             g.setColour(cableColour.withAlpha(alpha));
-            g.strokePath(glowPath, PathStrokeType(strokeWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+            g.strokePath(glowPath, PathStrokeType(strokeWidth, PathStrokeType::curved, PathStrokeType::rounded));
         }
     }
     */
 
     // === Cable bed, glow, and wire ===
-    const float outerGlowWidth = selected ? 14.0f : 10.0f;
-    const float innerGlowWidth = selected ? 8.0f : 6.0f;
+    const float outerGlowWidth = selected ? 11.0f : 7.5f;
+    const float innerGlowWidth = selected ? 6.5f : 4.5f;
 
-    g.setColour(cableColour.withAlpha(selected ? 0.16f : 0.075f));
-    g.strokePath(glowPath, PathStrokeType(outerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.setColour(cableColour.withAlpha(selected ? 0.12f : 0.045f));
+    g.strokePath(glowPath, PathStrokeType(outerGlowWidth, PathStrokeType::curved, PathStrokeType::rounded));
 
-    g.setColour(cableColour.withAlpha(selected ? 0.22f : 0.11f));
-    g.strokePath(glowPath, PathStrokeType(innerGlowWidth, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.setColour(cableColour.withAlpha(selected ? 0.18f : 0.07f));
+    g.strokePath(glowPath, PathStrokeType(innerGlowWidth, PathStrokeType::curved, PathStrokeType::rounded));
 
     // === Gradient fill from source to destination (bidirectional) ===
     Colour startCol = paramCon ? colours["Parameter Connection"].brighter(selected ? 0.55f : 0.24f)
@@ -135,7 +135,7 @@ void PluginConnection::paint(Graphics& g)
 
     // === Thin highlight stroke for depth ===
     g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.12f));
-    g.strokePath(glowPath, PathStrokeType(1.0f, PathStrokeType::mitered, PathStrokeType::rounded));
+    g.strokePath(glowPath, PathStrokeType(1.0f, PathStrokeType::curved, PathStrokeType::rounded));
 
     if (selected && destination != nullptr)
     {
@@ -366,8 +366,8 @@ void PluginConnection::updateBounds(int sX, int sY, int dX, int dY)
     glowPath = tempPath;
 
     // Create separate stroked paths for rendering and forgiving hit testing.
-    PathStrokeType drawnType(5.0f, PathStrokeType::mitered, PathStrokeType::rounded);
+    PathStrokeType drawnType(4.4f, PathStrokeType::curved, PathStrokeType::rounded);
     drawnType.createStrokedPath(drawnCurve, tempPath);
-    PathStrokeType hitType(18.0f, PathStrokeType::mitered, PathStrokeType::rounded);
+    PathStrokeType hitType(18.0f, PathStrokeType::curved, PathStrokeType::rounded);
     hitType.createStrokedPath(hitCurve, tempPath);
 }

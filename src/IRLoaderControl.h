@@ -52,6 +52,9 @@ class IRLoaderControl : public Component, public Button::Listener, public Slider
 
   private:
     void updateIRDisplay();
+    void paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds);
+    void resizedEmbeddedGraphNode(Rectangle<int> bounds);
+    bool isEmbeddedInGraphNode() const;
 
     IRLoaderProcessor* irProcessor;
     IRLoaderLookAndFeel irLookAndFeel;

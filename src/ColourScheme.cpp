@@ -387,23 +387,24 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
     }
     else if (name == "Daylight")
     {
-        // Light theme for bright environments
-        colours["Window Background"] = Colour(0xFFE8EBEF);
-        colours["Field Background"] = Colour(0xFFF4F6F8);
+        // Light theme for bright environments. Keep every major surface gently tinted;
+        // stark white panels flatten the graph and fight the mockup's layered shell.
+        colours["Window Background"] = Colour(0xFFE2E7EC);
+        colours["Field Background"] = Colour(0xFFEAF0F4);
         colours["Text Colour"] = Colour(0xFF1A1F24);
-        colours["Plugin Border"] = Colour(0xFFB7BDC5);
-        colours["Plugin Background"] = Colour(0xFFE2E6EA);
+        colours["Plugin Border"] = Colour(0xFFA8B3BE);
+        colours["Plugin Background"] = Colour(0xFFD8E0E7);
         colours["Audio Connection"] = Colour(0xFF0077CC);
         colours["Parameter Connection"] = Colour(0xFFCC6600);
-        colours["Button Colour"] = Colour(0xFFDDE2E7);
-        colours["Button Highlight"] = Colour(0xFFECEFF3);
-        colours["Text Editor Colour"] = Colour(0xFFF7F8FA);
+        colours["Button Colour"] = Colour(0xFFD3DAE2);
+        colours["Button Highlight"] = Colour(0xFFE4EAF0);
+        colours["Text Editor Colour"] = Colour(0xFFE7EDF2);
         colours["Menu Selection Colour"] = Colour(0xFF0077CC);
         colours["Accent Colour"] = Colour(0xFF0077CC);
         colours["CPU Meter Colour"] = Colour(0xFF00AA00);
-        colours["Dialog Inner Background"] = Colour(0xFFEFF2F5);
+        colours["Dialog Inner Background"] = Colour(0xFFDDE5EC);
         colours["Slider Colour"] = Colour(0xFF0077CC);
-        colours["List Selected Colour"] = Colour(0xFFCCE5FF);
+        colours["List Selected Colour"] = Colour(0xFFC7DDF0);
         colours["VU Meter Lower Colour"] = Colour(0x7F00AA00);
         colours["VU Meter Upper Colour"] = Colour(0x7FCCCC00);
         colours["VU Meter Over Colour"] = Colour(0x7FCC0000);
@@ -411,10 +412,10 @@ bool ColourScheme::loadBuiltInPreset(const String& name)
         colours["Waveform Colour"] = Colour(0xFF0077CC);
         colours["Level Dial Colour"] = Colour(0xFF005599);
         colours["Tick Box Colour"] = Colour(0x800077CC);
-        colours["Stage Background Top"] = Colour(0xFFE8EBEF);
-        colours["Stage Background Bottom"] = Colour(0xFFD3D8DE);
-        colours["Stage Panel Background"] = Colour(0xFFC8CED6);
-        colours["Dialog Background"] = Colour(0xFFE6EAEE);
+        colours["Stage Background Top"] = Colour(0xFFE3E8ED);
+        colours["Stage Background Bottom"] = Colour(0xFFD0D8E0);
+        colours["Stage Panel Background"] = Colour(0xFFC3CDD7);
+        colours["Dialog Background"] = Colour(0xFFDCE4EB);
         colours["Tuner Active Colour"] = Colour(0xFF0A8F5A);
         colours["Danger Colour"] = Colour(0xFFDC2626);
         colours["Warning Colour"] = Colour(0xFFD97706);

@@ -1,0 +1,1598 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedalboard 3 Polish Recommendations Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111312;
+      --panel: #181c1a;
+      --panel-2: #202621;
+      --panel-3: #242a25;
+      --ink: #f0eadc;
+      --muted: #b9b09c;
+      --faint: #817765;
+      --line: rgba(240, 224, 188, 0.13);
+      --line-strong: rgba(240, 224, 188, 0.24);
+      --green: #86c88d;
+      --green-soft: rgba(134, 200, 141, 0.16);
+      --amber: #e2b75f;
+      --amber-soft: rgba(226, 183, 95, 0.18);
+      --blue: #78b4d8;
+      --blue-soft: rgba(120, 180, 216, 0.16);
+      --rose: #d98c83;
+      --rose-soft: rgba(217, 140, 131, 0.15);
+      --violet: #b79adc;
+      --shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+      --radius: 8px;
+      --node-radius: 9px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, rgba(226, 183, 95, 0.09), transparent 28rem),
+        linear-gradient(135deg, #111312 0%, #151915 52%, #0f1213 100%);
+      background-size: 28px 28px, 28px 28px, auto, auto;
+      font-family: "Bahnschrift", "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1560px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 26px 0 38px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
+      padding: 0 2px;
+    }
+
+    .eyebrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      color: var(--amber);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(34px, 4vw, 66px);
+      line-height: 0.93;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      max-width: 910px;
+      margin: 13px 0 0;
+      color: var(--muted);
+      font-size: clamp(15px, 1.3vw, 18px);
+      line-height: 1.45;
+    }
+
+    .stamp {
+      min-width: 220px;
+      padding: 13px 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(24, 28, 26, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .stamp strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .stamp span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr) 330px;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42px),
+        rgba(23, 27, 25, 0.86);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+      overflow: hidden;
+    }
+
+    .left-panel,
+    .right-panel {
+      min-height: 780px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 15px 11px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-title small {
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .slice-list {
+      display: grid;
+      gap: 8px;
+      padding: 13px;
+    }
+
+    .slice {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .slice.active {
+      border-color: rgba(226, 183, 95, 0.42);
+      background: var(--amber-soft);
+      box-shadow: inset 0 0 0 1px rgba(226, 183, 95, 0.13);
+    }
+
+    .slice-number {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      color: var(--amber);
+      background: rgba(226, 183, 95, 0.13);
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .slice strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .slice span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .choice-stack {
+      display: grid;
+      gap: 9px;
+      padding: 12px 13px 16px;
+    }
+
+    .choice {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.025);
+      text-align: left;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .choice:hover,
+    .choice.selected {
+      color: var(--ink);
+      border-color: rgba(134, 200, 141, 0.48);
+      background: var(--green-soft);
+    }
+
+    .choice strong {
+      display: block;
+      margin-bottom: 4px;
+      color: inherit;
+      font-size: 13px;
+    }
+
+    .choice span {
+      display: block;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .main-panel {
+      min-height: 780px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .mode-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mode-pill.current {
+      color: #151711;
+      border-color: rgba(226, 183, 95, 0.64);
+      background: linear-gradient(180deg, #f1cc7b, #c89b48);
+      box-shadow: 0 7px 22px rgba(226, 183, 95, 0.16);
+    }
+
+    .graph {
+      position: relative;
+      min-height: 520px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(145deg, #151816, #101412);
+      background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px, auto;
+    }
+
+    .graph::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(226, 183, 95, 0.10), transparent 28%, transparent 72%, rgba(120, 180, 216, 0.07)),
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.045), transparent 34rem);
+      mix-blend-mode: screen;
+    }
+
+    .cables {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .cable-core {
+      fill: none;
+      stroke-width: 4.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: url(#softCableGlow);
+    }
+
+    .cable-fine {
+      fill: none;
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.86;
+    }
+
+    .node {
+      position: absolute;
+      width: 230px;
+      min-height: 164px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--node-radius);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.01) 45%),
+        linear-gradient(135deg, #222923, #151a17);
+      box-shadow:
+        0 22px 48px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.11);
+      overflow: hidden;
+    }
+
+    .node.nam {
+      left: 58px;
+      top: 62px;
+      border-color: rgba(226, 183, 95, 0.42);
+    }
+
+    .node.ir {
+      left: 382px;
+      top: 92px;
+      border-color: rgba(120, 180, 216, 0.42);
+    }
+
+    .node.tuner {
+      right: 52px;
+      top: 48px;
+      min-height: 132px;
+      border-color: rgba(134, 200, 141, 0.42);
+    }
+
+    .node.rack {
+      left: 226px;
+      bottom: 70px;
+      width: 370px;
+      min-height: 184px;
+      border-color: rgba(183, 154, 220, 0.42);
+    }
+
+    .node.split {
+      right: 76px;
+      bottom: 92px;
+      width: 228px;
+      min-height: 154px;
+      border-color: rgba(217, 140, 131, 0.38);
+    }
+
+    .node-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 42px;
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+        rgba(0, 0, 0, 0.10);
+    }
+
+    .node-title {
+      min-width: 0;
+    }
+
+    .node-title strong {
+      display: block;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node-title span {
+      display: block;
+      overflow: hidden;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .glyph-btn {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 6px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .glyph-btn.hot {
+      color: #18170f;
+      border-color: rgba(226, 183, 95, 0.55);
+      background: linear-gradient(180deg, #efca78, #cfa051);
+    }
+
+    .node-body {
+      padding: 12px;
+    }
+
+    .inset-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .inset-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(0, 0, 0, 0.14);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .meter-row {
+      display: grid;
+      gap: 7px;
+    }
+
+    .meter {
+      height: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .meter i {
+      display: block;
+      width: 62%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--amber));
+      box-shadow: 0 0 12px rgba(226, 183, 95, 0.28);
+    }
+
+    .meter.blue i {
+      width: 48%;
+      background: linear-gradient(90deg, var(--blue), var(--violet));
+      box-shadow: 0 0 12px rgba(120, 180, 216, 0.28);
+    }
+
+    .micro-copy {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .tuner-face {
+      display: grid;
+      gap: 9px;
+      justify-items: center;
+      padding: 12px;
+    }
+
+    .note {
+      font-size: 42px;
+      line-height: 0.9;
+      font-weight: 900;
+      color: var(--green);
+      text-shadow: 0 0 18px rgba(134, 200, 141, 0.24);
+    }
+
+    .needle {
+      position: relative;
+      width: 140px;
+      height: 26px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, var(--rose), var(--amber), var(--green), var(--amber), var(--rose));
+      opacity: 0.88;
+    }
+
+    .needle::after {
+      content: "";
+      position: absolute;
+      left: 67px;
+      top: -5px;
+      width: 6px;
+      height: 36px;
+      border-radius: 999px;
+      background: #fff7d6;
+      box-shadow: 0 0 18px rgba(255, 247, 214, 0.36);
+    }
+
+    .rack-graph {
+      height: 92px;
+      border: 1px solid rgba(183, 154, 220, 0.25);
+      border-radius: 7px;
+      background:
+        linear-gradient(rgba(183, 154, 220, 0.09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(183, 154, 220, 0.09) 1px, transparent 1px),
+        linear-gradient(145deg, rgba(38, 33, 48, 0.92), rgba(18, 20, 19, 0.98));
+      background-size: 22px 22px, 22px 22px, auto;
+      padding: 14px;
+    }
+
+    .rack-lane {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      height: 100%;
+    }
+
+    .mini-module {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.045);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .split-visual {
+      position: relative;
+      height: 74px;
+      margin-top: 5px;
+    }
+
+    .split-visual::before,
+    .split-visual::after {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 18px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--rose), var(--amber));
+      box-shadow: 0 0 13px rgba(217, 140, 131, 0.22);
+    }
+
+    .split-visual::before {
+      top: 19px;
+      transform: rotate(10deg);
+    }
+
+    .split-visual::after {
+      bottom: 21px;
+      transform: rotate(-10deg);
+    }
+
+    .port {
+      position: absolute;
+      z-index: 3;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.84);
+      border-radius: 50%;
+      background: #141714;
+      box-shadow: 0 0 0 3px rgba(20, 23, 20, 0.92), 0 0 16px rgba(226, 183, 95, 0.18);
+    }
+
+    .node.nam .port.in {
+      left: -7px;
+      top: 74px;
+    }
+
+    .node.nam .port.out {
+      right: -7px;
+      top: 74px;
+    }
+
+    .node.ir .port.in {
+      left: -7px;
+      top: 82px;
+    }
+
+    .node.ir .port.out {
+      right: -7px;
+      top: 82px;
+    }
+
+    .node.tuner .port.in {
+      left: -7px;
+      top: 68px;
+    }
+
+    .node.rack .port.in {
+      left: -7px;
+      bottom: 86px;
+    }
+
+    .node.rack .port.out {
+      right: -7px;
+      bottom: 86px;
+    }
+
+    .node.split .port.in {
+      left: -7px;
+      top: 70px;
+    }
+
+    .node.split .port.out {
+      right: -7px;
+      top: 70px;
+    }
+
+    .graph-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      background: rgba(15, 18, 16, 0.88);
+    }
+
+    .footer-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+        rgba(255, 255, 255, 0.03);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tool-btn.primary {
+      color: #151711;
+      border-color: rgba(226, 183, 95, 0.55);
+      background: linear-gradient(180deg, #eecb80, #b98939);
+    }
+
+    .glyph {
+      display: inline-grid;
+      place-items: center;
+      width: 17px;
+      height: 17px;
+      color: inherit;
+    }
+
+    .recommendation-card {
+      margin: 14px;
+      padding: 14px;
+      border: 1px solid rgba(134, 200, 141, 0.27);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(134, 200, 141, 0.10), rgba(134, 200, 141, 0.03)),
+        rgba(255, 255, 255, 0.02);
+    }
+
+    .recommendation-card h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .recommendation-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .browser-preview {
+      margin: 0 14px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(18, 21, 19, 0.78);
+      overflow: hidden;
+    }
+
+    .browser-head {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(170px, 0.9fr) auto auto auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+        rgba(80, 58, 92, 0.16);
+    }
+
+    .quiet-close {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .browser-title {
+      min-width: 0;
+      text-align: left;
+    }
+
+    .browser-title strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .browser-title span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .browser-tabs {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 36px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 11px;
+      background: rgba(0, 0, 0, 0.34);
+    }
+
+    .browser-tab {
+      min-width: 56px;
+      padding: 7px 11px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .browser-tab.active {
+      color: var(--amber);
+      border-color: rgba(226, 183, 95, 0.42);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)),
+        rgba(46, 37, 52, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--green);
+      background: rgba(0, 0, 0, 0.28);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(134, 200, 141, 0.42);
+    }
+
+    .browser-grid {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.9fr) minmax(170px, 1fr) minmax(210px, 0.95fr);
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .library-col {
+      min-height: 250px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.025);
+      overflow: hidden;
+    }
+
+    .library-col header {
+      padding: 12px 12px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+      padding: 14px 12px 11px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .search-row input {
+      width: 100%;
+      min-width: 0;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(0, 0, 0, 0.18);
+      padding: 0 12px;
+      outline: none;
+    }
+
+    .search-row.online input {
+      max-width: 250px;
+    }
+
+    .mini-action {
+      min-width: 34px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.045);
+      font-weight: 900;
+    }
+
+    .list-lines {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .list-line {
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.028);
+    }
+
+    .list-line strong {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .list-line span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .detail-scroll {
+      max-height: 218px;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .detail-pill {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid rgba(226, 183, 95, 0.24);
+      border-radius: 999px;
+      background: rgba(226, 183, 95, 0.08);
+    }
+
+    .detail-pill strong {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .detail-pill span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .detail-rule {
+      width: 72%;
+      height: 1px;
+      margin: 14px auto;
+      background: var(--line-strong);
+    }
+
+    .detail-kv {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 7px 10px;
+      align-items: baseline;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .detail-kv b {
+      color: var(--ink);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .detail-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 13px;
+    }
+
+    .load-btn {
+      min-height: 34px;
+      border: 1px solid rgba(226, 183, 95, 0.42);
+      border-radius: 7px;
+      color: #151711;
+      background: linear-gradient(180deg, #eecb80, #b98939);
+      font-weight: 900;
+    }
+
+    .ghost-btn {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.045);
+      font-weight: 850;
+    }
+
+    .right-body {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .note-box {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .note-box.warning {
+      border-color: rgba(217, 140, 131, 0.34);
+      background: var(--rose-soft);
+    }
+
+    .note-box strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .note-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .check i {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      color: #151711;
+      background: var(--green);
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .bottom-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .stage-preview {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .stage-tile {
+      position: relative;
+      min-height: 92px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+        rgba(255, 255, 255, 0.025);
+      overflow: hidden;
+    }
+
+    .stage-tile::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--green), var(--amber));
+    }
+
+    .stage-tile:nth-child(2)::after {
+      background: linear-gradient(90deg, var(--blue), var(--violet));
+    }
+
+    .stage-tile:nth-child(3)::after {
+      background: linear-gradient(90deg, var(--rose), var(--amber));
+    }
+
+    .stage-tile strong {
+      display: block;
+      padding: 12px 12px 4px;
+      font-size: 13px;
+    }
+
+    .stage-tile span {
+      display: block;
+      padding: 0 12px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .theme-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .theme {
+      min-height: 90px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #222;
+    }
+
+    .theme.daylight {
+      background: linear-gradient(135deg, #efe5cc, #d2dfd3 48%, #becbd4);
+    }
+
+    .theme.forest {
+      background: linear-gradient(135deg, #1b231b, #2f3e29 48%, #5b6842);
+    }
+
+    .theme.synthwave {
+      background: linear-gradient(135deg, #171322, #2a2544 46%, #d06f99);
+    }
+
+    .theme label {
+      display: inline-flex;
+      margin: 10px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.34);
+      color: #fff8de;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    @media (max-width: 1250px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .left-panel,
+      .right-panel,
+      .main-panel {
+        min-height: auto;
+      }
+
+      .slice-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .graph {
+        min-height: 650px;
+      }
+
+      .node.tuner {
+        right: 44px;
+        top: 260px;
+      }
+
+      .node.split {
+        right: 44px;
+        bottom: 78px;
+      }
+
+      .browser-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .browser-head {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .browser-tabs {
+        grid-column: 1 / -1;
+        justify-self: start;
+      }
+
+      .status-pill {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100vw - 18px, 760px);
+        padding-top: 14px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .slice-list {
+        grid-template-columns: 1fr;
+      }
+
+      .graph {
+        min-height: 870px;
+      }
+
+      .node {
+        position: relative;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        width: calc(100% - 28px) !important;
+        margin: 14px;
+      }
+
+      .cables {
+        display: none;
+      }
+
+      .port {
+        display: none;
+      }
+
+      .bottom-row {
+        grid-template-columns: 1fr;
+      }
+
+      .stage-preview,
+      .theme-strip {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Pedalboard 3 mockup harvest / recommendation preview</div>
+        <h1>Graph polish without losing the real app.</h1>
+        <p class="subtitle">
+          This preview turns the current recommendation set into a visual target: inset loader nodes, calmer graphpaper, first-class Effect Rack identity, less aggressive browser compaction, and library polish that follows the NAM Library win.
+        </p>
+      </div>
+      <aside class="stamp">
+        <strong>Local preview</strong>
+        <span>Served from the workspace at the repo-local preview URL.</span>
+      </aside>
+    </div>
+
+    <div class="layout">
+      <aside class="panel left-panel">
+        <div class="section-title">
+          Polish Slices
+          <small>proposed order</small>
+        </div>
+        <div class="slice-list">
+          <div class="slice active">
+            <div class="slice-number">7</div>
+            <div><strong>Effect Rack recovery</strong><span>Restore nested graph identity and polish rack node chrome.</span></div>
+          </div>
+          <div class="slice active">
+            <div class="slice-number">8</div>
+            <div><strong>NAM/IR node inset</strong><span>Remove double chrome while keeping mapping and bypass behavior.</span></div>
+          </div>
+          <div class="slice">
+            <div class="slice-number">9</div>
+            <div><strong>Library layout pass</strong><span>Centered header, padding, scrollable details, calmer close.</span></div>
+          </div>
+          <div class="slice">
+            <div class="slice-number">10</div>
+            <div><strong>Tuner, mixer, splitter</strong><span>Bring utility nodes to the same node standard.</span></div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          Loader Direction
+          <small>click</small>
+        </div>
+        <div class="choice-stack">
+          <button class="choice selected" data-choice="a">
+            <strong>A. Inset content in graph shell</strong>
+            <span>Recommended. The graph owns title, delete, pins, selection, mapping, and bypass. NAM/IR controls render as content.</span>
+          </button>
+          <button class="choice" data-choice="b">
+            <strong>B. Loader owns full node</strong>
+            <span>Cleaner at first glance, but duplicates selection, cable, and node lifecycle behavior.</span>
+          </button>
+          <button class="choice" data-choice="c">
+            <strong>C. Keep double chrome</strong>
+            <span>Lowest risk, but does not solve the visual issue the user flagged.</span>
+          </button>
+        </div>
+      </aside>
+
+      <section class="panel main-panel">
+        <div class="mode-row">
+          <span class="mode-pill current">Graphpaper main canvas</span>
+          <span class="mode-pill">Reduced cable glow</span>
+          <span class="mode-pill">Category node tinting</span>
+          <span class="mode-pill">Scratch quick access</span>
+        </div>
+
+        <div class="graph" aria-label="Recommendation graph preview">
+          <svg class="cables" viewBox="0 0 1000 620" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <filter id="softCableGlow" x="-35%" y="-35%" width="170%" height="170%">
+                <feGaussianBlur stdDeviation="3" result="blur"></feGaussianBlur>
+                <feMerge>
+                  <feMergeNode in="blur"></feMergeNode>
+                  <feMergeNode in="SourceGraphic"></feMergeNode>
+                </feMerge>
+              </filter>
+            </defs>
+            <path class="cable-core" d="M 274 154 C 335 152, 333 184, 405 178" stroke="rgba(226, 183, 95, 0.46)"></path>
+            <path class="cable-fine" d="M 274 154 C 335 152, 333 184, 405 178" stroke="#f0d18c"></path>
+            <path class="cable-core" d="M 596 184 C 705 184, 715 126, 794 126" stroke="rgba(120, 180, 216, 0.42)"></path>
+            <path class="cable-fine" d="M 596 184 C 705 184, 715 126, 794 126" stroke="#a8d5ec"></path>
+            <path class="cable-core" d="M 274 154 C 345 290, 332 452, 593 452" stroke="rgba(183, 154, 220, 0.38)"></path>
+            <path class="cable-fine" d="M 274 154 C 345 290, 332 452, 593 452" stroke="#d2c0ed"></path>
+            <path class="cable-core" d="M 604 452 C 706 452, 710 475, 772 472" stroke="rgba(217, 140, 131, 0.39)"></path>
+            <path class="cable-fine" d="M 604 452 C 706 452, 710 475, 772 472" stroke="#edb0a8"></path>
+          </svg>
+
+          <article class="node nam">
+            <i class="port in"></i>
+            <i class="port out"></i>
+            <header class="node-head">
+              <div class="node-title">
+                <strong>NAM Loader</strong>
+                <span>Inset model content, no second faceplate</span>
+              </div>
+              <div class="node-actions">
+                <span class="glyph-btn hot" title="Mappings">M</span>
+                <span class="glyph-btn" title="Bypass">B</span>
+              </div>
+            </header>
+            <div class="node-body">
+              <div class="inset-strip">
+                <span class="inset-pill">Twin Lead 57</span>
+                <span class="inset-pill">48 kHz</span>
+                <span class="inset-pill">Fav</span>
+              </div>
+              <div class="meter-row">
+                <span class="meter"><i></i></span>
+                <span class="meter blue"><i></i></span>
+              </div>
+              <p class="micro-copy">The shell keeps graph behavior. Loader-specific UI becomes compact, integrated content.</p>
+            </div>
+          </article>
+
+          <article class="node ir">
+            <i class="port in"></i>
+            <i class="port out"></i>
+            <header class="node-head">
+              <div class="node-title">
+                <strong>IR Loader</strong>
+                <span>Same node language as NAM</span>
+              </div>
+              <div class="node-actions">
+                <span class="glyph-btn hot" title="Mappings">M</span>
+                <span class="glyph-btn hot" title="Bypass">B</span>
+              </div>
+            </header>
+            <div class="node-body">
+              <div class="inset-strip">
+                <span class="inset-pill">2x12 open</span>
+                <span class="inset-pill">1024 taps</span>
+              </div>
+              <div class="meter-row">
+                <span class="meter blue"><i></i></span>
+                <span class="meter"><i></i></span>
+              </div>
+              <p class="micro-copy">IR folder setting belongs in Settings, but the node should surface destination and load state.</p>
+            </div>
+          </article>
+
+          <article class="node tuner">
+            <i class="port in"></i>
+            <header class="node-head">
+              <div class="node-title">
+                <strong>Tuner</strong>
+                <span>Persistent in stage grids</span>
+              </div>
+              <div class="node-actions">
+                <span class="glyph-btn hot">On</span>
+              </div>
+            </header>
+            <div class="tuner-face">
+              <div class="note">E</div>
+              <div class="needle"></div>
+            </div>
+          </article>
+
+          <article class="node rack">
+            <i class="port in"></i>
+            <i class="port out"></i>
+            <header class="node-head">
+              <div class="node-title">
+                <strong>Effect Rack</strong>
+                <span>Nested graph identity restored</span>
+              </div>
+              <div class="node-actions">
+                <span class="glyph-btn">M</span>
+                <span class="glyph-btn">B</span>
+              </div>
+            </header>
+            <div class="node-body">
+              <div class="rack-graph">
+                <div class="rack-lane">
+                  <div class="mini-module"></div>
+                  <div class="mini-module"></div>
+                  <div class="mini-module"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="node split">
+            <i class="port in"></i>
+            <i class="port out"></i>
+            <header class="node-head">
+              <div class="node-title">
+                <strong>Splitter / Mixer</strong>
+                <span>Utility node polish</span>
+              </div>
+              <div class="node-actions">
+                <span class="glyph-btn">B</span>
+              </div>
+            </header>
+            <div class="node-body">
+              <div class="split-visual"></div>
+            </div>
+          </article>
+        </div>
+
+        <footer class="graph-footer">
+          <div class="footer-group">
+            <button class="tool-btn"><span class="glyph">+</span> Plugin</button>
+            <button class="tool-btn"><span class="glyph">#</span> Grid Style</button>
+            <button class="tool-btn"><span class="glyph">*</span> Theme</button>
+          </div>
+          <div class="footer-group">
+            <button class="tool-btn primary"><span class="glyph">REC</span> Scratch</button>
+            <button class="tool-btn"><span class="glyph">P</span> Piano</button>
+          </div>
+        </footer>
+      </section>
+
+      <aside class="panel right-panel">
+        <div class="section-title">
+          Decisions
+          <small>keep UX</small>
+        </div>
+        <div class="right-body">
+          <div class="note-box warning">
+            <strong>Mapping stays mapping.</strong>
+            <p>The node M control means mappings. The loader inset plan keeps that behavior and keeps B as bypass, with no new control meaning introduced.</p>
+          </div>
+          <div class="note-box">
+            <strong>Compact mode should not erase detail.</strong>
+            <p>Use scrollable details before hiding technical fields. Compact should adjust density and rail widths, not collapse useful inspection data too early.</p>
+          </div>
+          <div class="note-box">
+            <strong>Library tabs should converge.</strong>
+            <p>NAM local, NAM online, and IR library should share the existing embedded tab treatment, search padding, detail panel rules, favorites, and button language.</p>
+          </div>
+          <div class="note-box">
+            <strong>Graph identity matters.</strong>
+            <p>Main graph, nested rack graph, and stage grid should be visually related but not identical. The rack needs its own texture and depth again.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="bottom-row">
+      <div class="panel">
+        <div class="section-title">
+          NAM/IR Browser Target
+          <small>near-identical tabs</small>
+        </div>
+        <div class="browser-preview">
+          <div class="browser-head">
+            <div class="browser-title">
+              <strong>NAM Library</strong>
+              <span>Header-integrated tabs, calmer close, no clipped search rows</span>
+            </div>
+            <div class="browser-tabs" aria-label="Library tabs">
+              <span class="browser-tab active">Local</span>
+              <span class="browser-tab">Online</span>
+              <span class="browser-tab">IRs</span>
+            </div>
+            <span class="status-pill">Local</span>
+            <button class="quiet-close" title="Close">x</button>
+          </div>
+          <div class="browser-grid">
+            <div class="library-col">
+              <header>Folders</header>
+              <div class="search-row">
+                <input value="favorites / local models" aria-label="Local search">
+                <button class="mini-action">...</button>
+              </div>
+              <div class="list-lines">
+                <div class="list-line"><strong>Favorites</strong><span>12 models</span></div>
+                <div class="list-line"><strong>Combos</strong><span>30 models</span></div>
+                <div class="list-line"><strong>High gain</strong><span>18 models</span></div>
+              </div>
+            </div>
+            <div class="library-col">
+              <header>Models</header>
+              <div class="search-row online">
+                <input value="twin lead" aria-label="Online search">
+                <button class="mini-action">S</button>
+              </div>
+              <div class="list-lines">
+                <div class="list-line"><strong>twin-lead-57-balanced-clean.nam</strong><span>Architecture: standard</span></div>
+                <div class="list-line"><strong>plexi-mid-pushed-bright.nam</strong><span>Architecture: feather</span></div>
+                <div class="list-line"><strong>deluxe-edge-of-breakup-long-file-name-safe.nam</strong><span>No pill overflow</span></div>
+              </div>
+            </div>
+            <div class="library-col">
+              <header>Details</header>
+              <div class="detail-scroll">
+                <div class="detail-pill">
+                  <strong>deluxe-edge-of-breakup-long-file-name-safe.nam</strong>
+                  <span>Filename clamps inside the pill instead of escaping.</span>
+                </div>
+                <div class="detail-rule"></div>
+                <div class="detail-kv">
+                  <b>Type</b><span>Amp</span>
+                  <b>Architecture</b><span>Standard</span>
+                  <b>Sample Rate</b><span>48 kHz</span>
+                  <b>Loudness</b><span>-18.2 LUFS</span>
+                  <b>Folder</b><span>User library / Favorites</span>
+                </div>
+                <div class="detail-actions">
+                  <button class="load-btn">Load</button>
+                  <button class="ghost-btn">Favorite</button>
+                  <button class="ghost-btn">Download</button>
+                  <button class="ghost-btn">Reveal</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-title">
+          Stage And Theme Notes
+          <small>not app code</small>
+        </div>
+        <div class="stage-preview">
+          <div class="stage-tile"><strong>Setlist</strong><span>Persistent tuner rail.</span></div>
+          <div class="stage-tile"><strong>Grid</strong><span>Accent bar clipped inside radius.</span></div>
+          <div class="stage-tile"><strong>Focus</strong><span>Large pedal-safe state feedback.</span></div>
+        </div>
+        <div class="theme-strip">
+          <div class="theme daylight"><label>Daylight: no plain white</label></div>
+          <div class="theme forest"><label>Forest: deeper contrast</label></div>
+          <div class="theme synthwave"><label>Synthwave: controlled glow</label></div>
+        </div>
+        <div class="recommendation-card">
+          <h2>Immediate next slice</h2>
+          <p>Recover Effect Rack identity, then implement the loader inset path. That fixes the two biggest structural complaints before browser micro-polish.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const choices = Array.from(document.querySelectorAll(".choice"));
+    const rec = document.querySelector(".recommendation-card p");
+    const text = {
+      a: "Recover Effect Rack identity, then implement the loader inset path. That fixes the two biggest structural complaints before browser micro-polish.",
+      b: "Full ownership looks cleaner, but it is the highest-risk route because it duplicates graph-shell responsibilities already handled by PluginComponent.",
+      c: "Keeping double chrome is the fallback only. It preserves behavior, but it does not meet the requested visual direction."
+    };
+
+    choices.forEach((button) => {
+      button.addEventListener("click", () => {
+        choices.forEach((item) => item.classList.remove("selected"));
+        button.classList.add("selected");
+        rec.textContent = text[button.dataset.choice];
+      });
+    });
+  </script>
+</body>
+</html>

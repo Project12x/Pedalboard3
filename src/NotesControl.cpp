@@ -163,8 +163,9 @@ struct RenderContext
 
     RenderContext(AttributedString& s) : attributedString(s)
     {
+        auto& colours = ColourScheme::getInstance().colours;
         baseFont = FontManager::getInstance().getBodyFont();
-        baseColour = Colours::white;
+        baseColour = colours["Window Background"].contrasting(0.84f);
         stateStack.push_back({baseFont, baseColour});
     }
 
@@ -189,12 +190,12 @@ static int enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         if (size < 12.0f)
             size = 12.0f;
         ctx->current().font = ctx->current().font.withHeight(size).withStyle(Font::bold);
-        ctx->current().colour = Colours::gold;
+        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"].darker(0.46f);
         ctx->attributedString.append("\n", ctx->current().font, ctx->current().colour); // Spacing
     }
     else if (type == MD_BLOCK_QUOTE)
     {
-        ctx->current().colour = Colours::grey;
+        ctx->current().colour = ColourScheme::getInstance().colours["Window Background"].contrasting(0.56f);
         ctx->current().font = ctx->current().font.withStyle(Font::italic);
     }
     else if (type == MD_BLOCK_LI)
@@ -224,17 +225,17 @@ static int enter_span(MD_SPANTYPE type, void* detail, void* userdata)
     if (type == MD_SPAN_STRONG)
     {
         ctx->current().font = ctx->current().font.boldened();
-        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"];
+        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"].darker(0.52f);
     }
     else if (type == MD_SPAN_EM)
     {
         ctx->current().font = ctx->current().font.italicised();
-        ctx->current().colour = Colours::lightblue;
+        ctx->current().colour = ColourScheme::getInstance().colours["Graph Category Modulation"].darker(0.28f);
     }
     else if (type == MD_SPAN_CODE)
     {
         ctx->current().font = FontManager::getInstance().getMonoFont(13.0f);
-        ctx->current().colour = Colours::pink;
+        ctx->current().colour = ColourScheme::getInstance().colours["Graph Category Delay"].darker(0.34f);
     }
 
     return 0;
@@ -267,12 +268,14 @@ NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(fal
 
     addAndMakeVisible(editor.get());
 
-    // Editor Styling - dark theme for visibility
-    editor->setColour(CodeEditorComponent::backgroundColourId, Colour(0xFF2A2A2A));
-    editor->setColour(CodeEditorComponent::lineNumberBackgroundId, Colour(0xFF2A2A2A));
-    editor->setColour(CodeEditorComponent::highlightColourId, Colours::white.withAlpha(0.2f));
-    editor->setColour(CodeEditorComponent::defaultTextColourId, Colours::white);
-    editor->setColour(CaretComponent::caretColourId, Colours::white);
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto paper = colours["Warning Colour"].withMultipliedSaturation(0.30f).brighter(1.26f);
+    const auto ink = colours["Window Background"].contrasting(0.84f);
+    editor->setColour(CodeEditorComponent::backgroundColourId, paper);
+    editor->setColour(CodeEditorComponent::lineNumberBackgroundId, paper.darker(0.03f));
+    editor->setColour(CodeEditorComponent::highlightColourId, colours["Warning Colour"].withAlpha(0.24f));
+    editor->setColour(CodeEditorComponent::defaultTextColourId, ink);
+    editor->setColour(CaretComponent::caretColourId, ink);
     editor->setFont(FontManager::getInstance().getMonoFont(14.0f));
     editor->setLineNumbersShown(false);
 
@@ -304,28 +307,52 @@ void NotesControl::resized()
         return;
 
     if (editMode)
-        editor->setBounds(getLocalBounds().reduced(2));
+        editor->setBounds(getLocalBounds().reduced(10, 8));
     else
         editor->setBounds(0, 0, 0, 0);
 }
 
 void NotesControl::paint(Graphics& g)
 {
-    // Dark background so white text is visible
-    g.fillAll(Colour(0xFF2A2A2A));
+    auto& colours = ColourScheme::getInstance().colours;
+    auto bounds = getLocalBounds().toFloat().reduced(2.0f);
+    const auto paper = colours["Warning Colour"].withMultipliedSaturation(0.30f).brighter(1.26f);
+    const auto edge = colours["Warning Colour"].withMultipliedSaturation(0.74f).darker(0.18f);
+
+    g.setColour(Colours::black.withAlpha(0.17f));
+    g.fillRoundedRectangle(bounds.translated(2.2f, 3.0f), 7.0f);
+
+    Path paperPath;
+    paperPath.startNewSubPath(bounds.getX() + 4.0f, bounds.getY());
+    paperPath.lineTo(bounds.getRight() - 2.0f, bounds.getY() + 1.0f);
+    paperPath.lineTo(bounds.getRight(), bounds.getBottom() - 4.0f);
+    paperPath.lineTo(bounds.getX() + 1.0f, bounds.getBottom());
+    paperPath.closeSubPath();
+
+    ColourGradient paperFill(paper.brighter(0.10f), bounds.getX(), bounds.getY(), paper.darker(0.08f), bounds.getX(),
+                             bounds.getBottom(), false);
+    paperFill.addColour(0.58, paper);
+    g.setGradientFill(paperFill);
+    g.fillPath(paperPath);
+    g.setColour(edge.withAlpha(0.58f));
+    g.strokePath(paperPath, PathStrokeType(1.0f));
+
+    g.setColour(Colours::white.withAlpha(0.14f));
+    g.drawLine(bounds.getX() + 9.0f, bounds.getY() + 7.0f, bounds.getRight() - 10.0f, bounds.getY() + 8.0f, 1.0f);
 
     if (!editMode)
     {
         // View Mode: Rendered rich text
-        renderedText.draw(g, getLocalBounds().reduced(4).toFloat());
+        renderedText.draw(g, getLocalBounds().reduced(12, 10).toFloat());
     }
 
-    // Draw subtle resize corner indicator (grey triangle)
-    auto bounds = getLocalBounds();
+    // Draw subtle resize corner indicator.
+    auto intBounds = getLocalBounds();
     Path resizeTriangle;
-    resizeTriangle.addTriangle((float)bounds.getRight() - 12, (float)bounds.getBottom(), (float)bounds.getRight(),
-                               (float)bounds.getBottom() - 12, (float)bounds.getRight(), (float)bounds.getBottom());
-    g.setColour(Colours::grey.withAlpha(0.6f));
+    resizeTriangle.addTriangle((float)intBounds.getRight() - 12, (float)intBounds.getBottom() - 3.0f,
+                               (float)intBounds.getRight() - 3.0f, (float)intBounds.getBottom() - 12.0f,
+                               (float)intBounds.getRight() - 3.0f, (float)intBounds.getBottom() - 3.0f);
+    g.setColour(edge.withAlpha(0.42f));
     g.fillPath(resizeTriangle);
 }
 
@@ -430,7 +457,7 @@ void NotesControl::setEditMode(bool shouldEdit)
     {
         spdlog::debug("[NotesControl::setEditMode] entering edit mode");
         editor->setVisible(true);
-        editor->setBounds(getLocalBounds().reduced(2));
+        editor->setBounds(getLocalBounds().reduced(10, 8));
         repaint();
 
         // Defer focus grab to avoid issues during mouse event handling

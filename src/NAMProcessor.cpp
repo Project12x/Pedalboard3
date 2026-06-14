@@ -14,12 +14,49 @@
 #include "NAMCore.h"
 #include "SubGraphProcessor.h"
 
+#include <cmath>
 #include <spdlog/spdlog.h>
+
+namespace
+{
+constexpr float kParamEqMinFrequency = 20.0f;
+constexpr float kParamEqMaxFrequency = 20000.0f;
+constexpr float kParamEqMinGain = -18.0f;
+constexpr float kParamEqMaxGain = 18.0f;
+constexpr float kParamEqMinQ = 0.1f;
+constexpr float kParamEqMaxQ = 10.0f;
+
+int clampParamEqBandIndex(int bandIndex)
+{
+    return juce::jlimit(0, NAMProcessor::kParamEqBandCount - 1, bandIndex);
+}
+
+int clampParamEqBandCount(int count)
+{
+    if (count <= 4)
+        return 4;
+    if (count <= 8)
+        return 8;
+    if (count <= 10)
+        return 10;
+    return 12;
+}
+} // namespace
 
 //==============================================================================
 NAMProcessor::NAMProcessor() : PedalboardProcessor()
 {
     spdlog::debug("NAMProcessor: Initializing");
+
+    const std::array<float, kParamEqBandCount> defaultFrequencies{80.0f,   120.0f,  250.0f,  650.0f,
+                                                                  1000.0f, 1800.0f, 2400.0f, 3600.0f,
+                                                                  5200.0f, 7200.0f, 10000.0f, 14000.0f};
+    for (int band = 0; band < kParamEqBandCount; ++band)
+    {
+        paramEqFrequencies[(size_t)band].store(defaultFrequencies[(size_t)band]);
+        paramEqGains[(size_t)band].store(0.0f);
+        paramEqQs[(size_t)band].store((band == 0 || band == kParamEqBandCount - 1) ? 0.8f : 1.0f);
+    }
 
     // Initialize NAM core (isolated from JUCE to avoid namespace conflicts)
     namCore = std::make_unique<NAMCore>();
@@ -70,6 +107,9 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
     irLowCutFilter.prepare(spec);
     irHighCutFilter.prepare(spec);
     updateIRFilters();
+
+    resetParametricEqState();
+    lastAppliedToneEqMode = -1;
 
     // Prepare effects loop
     if (effectsLoop)
@@ -267,9 +307,7 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
     // Apply tone stack PRE-model if configured
     if (doToneStack && toneStackPre.load())
     {
-        updateToneStack();
-        // Tone stack operates on mono inputData before NAM model
-        namCore->processToneStack(inputData, numSamples);
+        applySelectedToneEq(inputData, numSamples);
     }
 
     // Process through NAM model
@@ -291,8 +329,7 @@ void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessa
     // Apply tone stack POST-model if configured (default)
     if (doToneStack && !toneStackPre.load())
     {
-        updateToneStack();
-        namCore->processToneStack(outputData, numSamples);
+        applySelectedToneEq(outputData, numSamples);
     }
 
     // Copy to both channels (dual mono)
@@ -389,6 +426,125 @@ void NAMProcessor::updateToneStack()
     namCore->setToneStackParams(bass.load(), mid.load(), treble.load());
 }
 
+void NAMProcessor::applySelectedToneEq(float* data, int numSamples)
+{
+    const int currentMode = toneEqMode.load();
+    if (currentMode != lastAppliedToneEqMode)
+    {
+        resetParametricEqState();
+        lastAppliedToneEqMode = currentMode;
+    }
+
+    if (getToneEqMode() == ToneEqMode::Parametric)
+    {
+        applyParametricEq(data, numSamples);
+        return;
+    }
+
+    updateToneStack();
+    namCore->processToneStack(data, numSamples);
+}
+
+void NAMProcessor::applyParametricEq(float* data, int numSamples)
+{
+    if (data == nullptr || numSamples <= 0)
+        return;
+
+    updateParametricEqCoefficients();
+
+    for (int sample = 0; sample < numSamples; ++sample)
+    {
+        float value = data[sample];
+
+        const int activeBandCount = getActiveParamEqBandCount();
+        for (int bandIndex = 0; bandIndex < activeBandCount; ++bandIndex)
+        {
+            auto& band = paramEqBands[(size_t)bandIndex];
+            const float filtered = band.b0 * value + band.z1;
+            band.z1 = band.b1 * value - band.a1 * filtered + band.z2;
+            band.z2 = band.b2 * value - band.a2 * filtered;
+            value = filtered;
+        }
+
+        data[sample] = std::isfinite(value) ? value : 0.0f;
+    }
+}
+
+void NAMProcessor::updateParametricEqCoefficients()
+{
+    if (!isPrepared)
+        return;
+
+    const double sr = currentSampleRate > 1.0 ? currentSampleRate : 44100.0;
+    const float maxFrequency = juce::jlimit(kParamEqMinFrequency, kParamEqMaxFrequency, static_cast<float>(sr * 0.49));
+
+    const int activeBandCount = getActiveParamEqBandCount();
+    for (int bandIndex = 0; bandIndex < activeBandCount; ++bandIndex)
+    {
+        auto& band = paramEqBands[(size_t)bandIndex];
+        const float frequency = juce::jlimit(kParamEqMinFrequency, maxFrequency, getParamEqBandFrequency(bandIndex));
+        const float gain = juce::jlimit(kParamEqMinGain, kParamEqMaxGain, getParamEqBandGain(bandIndex));
+        const float q = juce::jlimit(kParamEqMinQ, kParamEqMaxQ, getParamEqBandQ(bandIndex));
+
+        if (frequency == band.lastFrequency && gain == band.lastGain && q == band.lastQ)
+            continue;
+
+        if (std::abs(gain) < 0.001f)
+        {
+            band.b0 = 1.0f;
+            band.b1 = 0.0f;
+            band.b2 = 0.0f;
+            band.a1 = 0.0f;
+            band.a2 = 0.0f;
+            band.z1 = 0.0f;
+            band.z2 = 0.0f;
+            band.lastFrequency = frequency;
+            band.lastGain = gain;
+            band.lastQ = q;
+            continue;
+        }
+
+        // RBJ peaking EQ. Fixed runtime storage keeps this RT-safe when parameters change.
+        const double omega = juce::MathConstants<double>::twoPi * static_cast<double>(frequency) / sr;
+        const double sinOmega = std::sin(omega);
+        const double cosOmega = std::cos(omega);
+        const double alpha = sinOmega / (2.0 * static_cast<double>(q));
+        const double amplitude = std::pow(10.0, static_cast<double>(gain) / 40.0);
+
+        const double b0 = 1.0 + alpha * amplitude;
+        const double b1 = -2.0 * cosOmega;
+        const double b2 = 1.0 - alpha * amplitude;
+        const double a0 = 1.0 + alpha / amplitude;
+        const double a1 = -2.0 * cosOmega;
+        const double a2 = 1.0 - alpha / amplitude;
+
+        if (std::abs(a0) < 1.0e-12)
+            continue;
+
+        const double invA0 = 1.0 / a0;
+        band.b0 = static_cast<float>(b0 * invA0);
+        band.b1 = static_cast<float>(b1 * invA0);
+        band.b2 = static_cast<float>(b2 * invA0);
+        band.a1 = static_cast<float>(a1 * invA0);
+        band.a2 = static_cast<float>(a2 * invA0);
+        band.lastFrequency = frequency;
+        band.lastGain = gain;
+        band.lastQ = q;
+    }
+}
+
+void NAMProcessor::resetParametricEqState()
+{
+    for (auto& band : paramEqBands)
+    {
+        band.z1 = 0.0f;
+        band.z2 = 0.0f;
+        band.lastFrequency = -1.0f;
+        band.lastGain = 999.0f;
+        band.lastQ = -1.0f;
+    }
+}
+
 void NAMProcessor::normalizeModelOutput(float* output, int numSamples)
 {
     if (!namCore->hasLoudness())
@@ -428,6 +584,66 @@ void NAMProcessor::setMid(float value)
 void NAMProcessor::setTreble(float value)
 {
     treble.store(juce::jlimit(0.0f, 10.0f, value));
+}
+
+NAMProcessor::ToneEqMode NAMProcessor::getToneEqMode() const
+{
+    return toneEqMode.load() == static_cast<int>(ToneEqMode::Parametric) ? ToneEqMode::Parametric : ToneEqMode::Stack;
+}
+
+void NAMProcessor::setToneEqMode(ToneEqMode mode)
+{
+    toneEqMode.store(mode == ToneEqMode::Parametric ? static_cast<int>(ToneEqMode::Parametric)
+                                                    : static_cast<int>(ToneEqMode::Stack));
+}
+
+int NAMProcessor::getActiveParamEqBandCount() const
+{
+    return clampParamEqBandCount(activeParamEqBandCount.load());
+}
+
+void NAMProcessor::setActiveParamEqBandCount(int count)
+{
+    activeParamEqBandCount.store(clampParamEqBandCount(count));
+    resetParametricEqState();
+}
+
+float NAMProcessor::getParamEqBandFrequency(int bandIndex) const
+{
+    return paramEqFrequencies[(size_t)clampParamEqBandIndex(bandIndex)].load();
+}
+
+void NAMProcessor::setParamEqBandFrequency(int bandIndex, float freqHz)
+{
+    const float maxFrequency =
+        juce::jlimit(kParamEqMinFrequency, kParamEqMaxFrequency, static_cast<float>(currentSampleRate * 0.49));
+    const float clamped = juce::jlimit(kParamEqMinFrequency, maxFrequency, freqHz);
+
+    paramEqFrequencies[(size_t)clampParamEqBandIndex(bandIndex)].store(clamped);
+}
+
+float NAMProcessor::getParamEqBandGain(int bandIndex) const
+{
+    return paramEqGains[(size_t)clampParamEqBandIndex(bandIndex)].load();
+}
+
+void NAMProcessor::setParamEqBandGain(int bandIndex, float gainDb)
+{
+    const float clamped = juce::jlimit(kParamEqMinGain, kParamEqMaxGain, gainDb);
+
+    paramEqGains[(size_t)clampParamEqBandIndex(bandIndex)].store(clamped);
+}
+
+float NAMProcessor::getParamEqBandQ(int bandIndex) const
+{
+    return paramEqQs[(size_t)clampParamEqBandIndex(bandIndex)].load();
+}
+
+void NAMProcessor::setParamEqBandQ(int bandIndex, float q)
+{
+    const float clamped = juce::jlimit(kParamEqMinQ, kParamEqMaxQ, q);
+
+    paramEqQs[(size_t)clampParamEqBandIndex(bandIndex)].store(clamped);
 }
 
 void NAMProcessor::setIRLowCut(float freqHz)
@@ -637,7 +853,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(6); // Version (6 = added IR2 enable toggle)
+    stream.writeInt(8); // Version (8 = active NAM parametric EQ band count)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -681,6 +897,16 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 
     // IR2 enable toggle (v6+)
     stream.writeBool(ir2Enabled.load());
+
+    // NAM EQ mode + parametric EQ bands (v7+)
+    stream.writeInt(toneEqMode.load());
+    stream.writeInt(getActiveParamEqBandCount());
+    for (int bandIndex = 0; bandIndex < kParamEqBandCount; ++bandIndex)
+    {
+        stream.writeFloat(getParamEqBandFrequency(bandIndex));
+        stream.writeFloat(getParamEqBandGain(bandIndex));
+        stream.writeFloat(getParamEqBandQ(bandIndex));
+    }
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -769,6 +995,28 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
     if (version >= 6 && !stream.isExhausted())
     {
         ir2Enabled.store(stream.readBool());
+    }
+
+    // NAM EQ mode + parametric EQ bands (v7+)
+    if (version >= 7 && !stream.isExhausted())
+    {
+        const int restoredMode = stream.readInt();
+        setToneEqMode(restoredMode == static_cast<int>(ToneEqMode::Parametric) ? ToneEqMode::Parametric
+                                                                               : ToneEqMode::Stack);
+        if (version >= 8 && !stream.isExhausted())
+            setActiveParamEqBandCount(stream.readInt());
+        else
+            setActiveParamEqBandCount(4);
+
+        for (int bandIndex = 0; bandIndex < kParamEqBandCount && !stream.isExhausted(); ++bandIndex)
+        {
+            setParamEqBandFrequency(bandIndex, stream.readFloat());
+            setParamEqBandGain(bandIndex, stream.readFloat());
+            setParamEqBandQ(bandIndex, stream.readFloat());
+        }
+
+        resetParametricEqState();
+        lastAppliedToneEqMode = -1;
     }
 }
 

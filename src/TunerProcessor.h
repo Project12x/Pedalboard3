@@ -29,7 +29,7 @@ class TunerProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(300, 200); }
+    Point<int> getSize() override { return Point<int>(340, 220); }
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 

@@ -26,37 +26,74 @@ NAMLookAndFeel::NAMLookAndFeel()
 void NAMLookAndFeel::refreshColours()
 {
     auto& cs = ::ColourScheme::getInstance();
+    const auto preset = cs.presetName;
 
-    // Derive amp palette from theme tokens
-    Colour pluginBg = cs.colours["Plugin Background"];
-    Colour pluginBorder = cs.colours["Plugin Border"];
-    Colour textCol = cs.colours["Text Colour"];
-    Colour paramCol = cs.colours["Parameter Connection"];
-    Colour warnCol = cs.colours["Warning Colour"];
-    Colour buttonCol = cs.colours["Button Colour"];
-    Colour buttonHi = cs.colours["Button Highlight"];
-    Colour fieldBg = cs.colours["Field Background"];
-    Colour successCol = cs.colours["Success Colour"];
-    auto ampRole = cs.colours.find("Graph Category Amp");
-    Colour ampCategory = (ampRole != cs.colours.end()) ? ampRole->second : warnCol;
+    auto setBrowserPalette = [&](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
+                                 uint32 edge2, uint32 accent, uint32 accent2, uint32 led, uint32 text)
+    {
+        ampBackgroundTop = Colour(top);
+        ampBackground = Colour(bottom);
+        ampSurface = Colour(face);
+        ampBorder = Colour(edge);
+        ampBorderBright = Colour(edge2);
+        ampHeaderBg = Colour(face2);
+        ampAccent = Colour(accent);
+        ampAccentSecondary = Colour(accent2);
+        ampTextBright = Colour(text);
+        ampTextDim = Colour(text).withAlpha(0.68f);
+        ampLedOn = Colour(led);
+        ampLedOff = Colour(text).withAlpha(0.42f);
+        ampKnobBody = Colour(inset).brighter(0.08f);
+        ampKnobRing = Colour(edge).brighter(0.42f);
+        ampTrackBg = Colour(inset).darker(0.12f);
+        ampButtonBg = Colour(face2);
+        ampButtonHover = Colour(face2).brighter(0.14f);
+        ampInsetBg = Colour(inset);
+    };
 
-    // Build the amp palette from theme and graph-category roles.
-    ampBackground = pluginBg.darker(0.35f);
-    ampSurface = pluginBg.interpolatedWith(fieldBg, 0.22f);
-    ampBorder = pluginBorder.interpolatedWith(ampCategory, 0.16f);
-    ampHeaderBg = pluginBg.interpolatedWith(ampCategory, 0.16f);
-    ampAccent = ampCategory;
-    ampAccentSecondary = paramCol;
-    ampTextBright = textCol;
-    ampTextDim = textCol.withAlpha(0.6f);
-    ampLedOn = successCol.brighter(0.4f);
-    ampLedOff = fieldBg.interpolatedWith(pluginBg, 0.55f).darker(0.25f);
-    ampKnobBody = pluginBg.darker(0.15f);
-    ampKnobRing = pluginBorder.interpolatedWith(textCol, 0.28f);
-    ampTrackBg = ampBackground.darker(0.4f);
-    ampButtonBg = buttonCol;
-    ampButtonHover = buttonHi;
-    ampInsetBg = fieldBg.interpolatedWith(pluginBg, 0.35f);
+    if (preset == "Midnight")
+        setBrowserPalette(0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57,
+                          0xFF5B4C6E, 0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84, 0xFFF4ECDD);
+    else if (preset == "Deep Ocean")
+        setBrowserPalette(0xFF102029, 0xFF08131B, 0xFF142A36, 0xFF1B3543, 0xFF07121A, 0xFF2C5563,
+                          0xFF3C6B7A, 0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD, 0xFFEAF3F1);
+    else if (preset == "Synthwave")
+        setBrowserPalette(0xFF1E0A28, 0xFF0F0518, 0xFF2A1139, 0xFF351747, 0xFF0C0414, 0xFF5A2D72,
+                          0xFF76439A, 0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0, 0xFFF6EBFF);
+    else if (preset == "Forest")
+        setBrowserPalette(0xFF1C1D13, 0xFF10110A, 0xFF26281A, 0xFF2F3120, 0xFF0E0F08, 0xFF4A4D2E,
+                          0xFF5F633D, 0xFFE6AD36, 0xFF79D479, 0xFF7CE87C, 0xFFF1EEDA);
+    else if (preset == "Daylight")
+        setBrowserPalette(0xFF3B332A, 0xFF2B241C, 0xFF473E33, 0xFF52483B, 0xFF241F18, 0xFF615648,
+                          0xFF796B58, 0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84, 0xFFF5EDDE);
+    else
+    {
+        Colour pluginBg = cs.colours["Plugin Background"];
+        Colour pluginBorder = cs.colours["Plugin Border"];
+        Colour textCol = cs.colours["Text Colour"];
+        Colour paramCol = cs.colours["Audio Connection"];
+        Colour warnCol = cs.colours["Warning Colour"];
+        Colour fieldBg = cs.colours["Field Background"];
+
+        ampBackgroundTop = pluginBg.interpolatedWith(warnCol, 0.08f);
+        ampBackground = pluginBg.darker(0.35f);
+        ampSurface = pluginBg.interpolatedWith(fieldBg, 0.22f);
+        ampBorder = pluginBorder.interpolatedWith(warnCol, 0.16f);
+        ampBorderBright = ampBorder.brighter(0.16f);
+        ampHeaderBg = pluginBg.interpolatedWith(warnCol, 0.16f);
+        ampAccent = warnCol;
+        ampAccentSecondary = paramCol;
+        ampTextBright = textCol;
+        ampTextDim = textCol.withAlpha(0.6f);
+        ampLedOn = cs.colours["Success Colour"].brighter(0.4f);
+        ampLedOff = fieldBg.interpolatedWith(pluginBg, 0.55f).darker(0.25f);
+        ampKnobBody = pluginBg.darker(0.15f);
+        ampKnobRing = pluginBorder.interpolatedWith(textCol, 0.28f);
+        ampTrackBg = ampBackground.darker(0.4f);
+        ampButtonBg = cs.colours["Button Colour"];
+        ampButtonHover = cs.colours["Button Highlight"];
+        ampInsetBg = fieldBg.interpolatedWith(pluginBg, 0.35f);
+    }
 
     // Apply to JUCE colour IDs
     setColour(Slider::backgroundColourId, ampTrackBg);
@@ -204,15 +241,16 @@ void NAMLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int 
         filledTrack = Rectangle<float>(track.getX(), sliderPos, trackThickness, fillHeight);
     }
 
-    // Gradient fill using theme slider colour
-    ColourGradient fillGradient(ampAccentSecondary, filledTrack.getX(), filledTrack.getY(),
-                                ampAccentSecondary.darker(0.4f), filledTrack.getRight(), filledTrack.getBottom(),
-                                false);
+    // Warm-to-cool amp rail: yellow/orange attack into explicit blue edge glow.
+    const auto railBlue = ampAccentSecondary.interpolatedWith(Colour(0xFF2BD4FF), 0.72f).brighter(0.10f);
+    ColourGradient fillGradient(ampAccent, filledTrack.getX(), filledTrack.getY(), railBlue, filledTrack.getRight(),
+                                filledTrack.getBottom(), false);
+    fillGradient.addColour(0.58, ampAccent.interpolatedWith(railBlue, 0.36f).brighter(0.08f));
     g.setGradientFill(fillGradient);
     g.fillRoundedRectangle(filledTrack, 3.0f);
 
     // Filled track glow
-    g.setColour(ampAccentSecondary.withAlpha(0.1f));
+    g.setColour(ampAccentSecondary.withAlpha(0.12f));
     g.fillRoundedRectangle(filledTrack.expanded(0, 2.0f), 3.0f);
 
     // Thumb
@@ -388,7 +426,7 @@ Label* NAMLookAndFeel::createSliderTextBox(Slider& slider)
 {
     auto* label = LookAndFeel_V4::createSliderTextBox(slider);
     auto& fm = FontManager::getInstance();
-    label->setFont(fm.getMonoFont(12.0f));
+    label->setFont(fm.getMonoFont(14.0f));
 
     // LCD-style colours: dark recessed background, bright accent text
     label->setColour(Label::backgroundColourId, ampInsetBg);
@@ -405,7 +443,7 @@ Label* NAMLookAndFeel::createSliderTextBox(Slider& slider)
 Font NAMLookAndFeel::getTextButtonFont(TextButton& /*button*/, int buttonHeight)
 {
     auto& fm = FontManager::getInstance();
-    return fm.getUIFont(jmin(13.0f, (float)buttonHeight * 0.55f));
+    return fm.getUIFont(jmin(15.0f, (float)buttonHeight * 0.55f + 2.0f));
 }
 
 void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
@@ -515,16 +553,22 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     modelNameLabel = std::make_unique<Label>("modelName", "No Model Loaded");
     modelNameLabel->setJustificationType(Justification::centredLeft);
-    modelNameLabel->setFont(fm.getBodyFont());
+    modelNameLabel->setFont(fm.getBodyFont().withHeight(fm.getBodyFont().getHeight() + 1.0f));
     addAndMakeVisible(modelNameLabel.get());
 
     // Architecture badge
     modelArchLabel = std::make_unique<Label>("modelArch", "");
     modelArchLabel->setJustificationType(Justification::centred);
-    modelArchLabel->setFont(fm.getBadgeFont());
+    modelArchLabel->setFont(fm.getBadgeFont().withHeight(fm.getBadgeFont().getHeight() + 2.0f));
     addAndMakeVisible(modelArchLabel.get());
 
     // IR loading section
+    cabinetIrCollapseButton = std::make_unique<TextButton>("IR -");
+    cabinetIrCollapseButton->setTooltip("Collapse or expand the cabinet IR section");
+    cabinetIrCollapseButton->addListener(this);
+    cabinetIrCollapseButton->setVisible(false);
+    addAndMakeVisible(cabinetIrCollapseButton.get());
+
     loadIRButton = std::make_unique<TextButton>("Load IR");
     loadIRButton->addListener(this);
     addAndMakeVisible(loadIRButton.get());
@@ -536,7 +580,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irNameLabel = std::make_unique<Label>("irName", "No IR Loaded");
     irNameLabel->setJustificationType(Justification::centredLeft);
-    irNameLabel->setFont(fm.getBodyFont());
+    irNameLabel->setFont(fm.getBodyFont().withHeight(fm.getBodyFont().getHeight() + 1.0f));
     addAndMakeVisible(irNameLabel.get());
 
     irEnabledButton = std::make_unique<ToggleButton>("IR");
@@ -556,7 +600,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     ir2NameLabel = std::make_unique<Label>("ir2Name", "No IR2 Loaded");
     ir2NameLabel->setJustificationType(Justification::centredLeft);
-    ir2NameLabel->setFont(fm.getBodyFont());
+    ir2NameLabel->setFont(fm.getBodyFont().withHeight(fm.getBodyFont().getHeight() + 1.0f));
     addAndMakeVisible(ir2NameLabel.get());
 
     ir2EnabledButton = std::make_unique<ToggleButton>("IR2");
@@ -574,7 +618,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irBlendLabel = std::make_unique<Label>("blendLabel", "BLEND");
     irBlendLabel->setJustificationType(Justification::centredRight);
-    irBlendLabel->setFont(fm.getCaptionFont());
+    irBlendLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(irBlendLabel.get());
 
     // IR filters
@@ -589,7 +633,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irLowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
     irLowCutLabel->setJustificationType(Justification::centredRight);
-    irLowCutLabel->setFont(fm.getCaptionFont());
+    irLowCutLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(irLowCutLabel.get());
 
     irHighCutSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
@@ -603,7 +647,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     irHighCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
     irHighCutLabel->setJustificationType(Justification::centredRight);
-    irHighCutLabel->setFont(fm.getCaptionFont());
+    irHighCutLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(irHighCutLabel.get());
 
     // Effects loop controls
@@ -628,7 +672,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     inputGainLabel = std::make_unique<Label>("inputLabel", "INPUT");
     inputGainLabel->setJustificationType(Justification::centredRight);
-    inputGainLabel->setFont(fm.getCaptionFont());
+    inputGainLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(inputGainLabel.get());
 
     // Output gain slider
@@ -642,7 +686,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     outputGainLabel = std::make_unique<Label>("outputLabel", "OUTPUT");
     outputGainLabel->setJustificationType(Justification::centredRight);
-    outputGainLabel->setFont(fm.getCaptionFont());
+    outputGainLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(outputGainLabel.get());
 
     // Noise gate slider
@@ -656,7 +700,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     noiseGateLabel = std::make_unique<Label>("gateLabel", "GATE");
     noiseGateLabel->setJustificationType(Justification::centredRight);
-    noiseGateLabel->setFont(fm.getCaptionFont());
+    noiseGateLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(noiseGateLabel.get());
 
     // Tone stack
@@ -670,6 +714,23 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     toneStackPreButton->addListener(this);
     addAndMakeVisible(toneStackPreButton.get());
 
+    toneEqModeStackButton = std::make_unique<TextButton>("STACK");
+    toneEqModeStackButton->setTooltip("Use the original NAM bass/mid/treble tone stack");
+    toneEqModeStackButton->setClickingTogglesState(false);
+    toneEqModeStackButton->addListener(this);
+    addAndMakeVisible(toneEqModeStackButton.get());
+
+    toneEqModeParamButton = std::make_unique<TextButton>("PARAM");
+    toneEqModeParamButton->setTooltip("Use the additive four-band parametric EQ");
+    toneEqModeParamButton->setClickingTogglesState(false);
+    toneEqModeParamButton->addListener(this);
+    addAndMakeVisible(toneEqModeParamButton.get());
+
+    paramEqBandCountButton = std::make_unique<TextButton>(String(namProcessor->getActiveParamEqBandCount()) + "B");
+    paramEqBandCountButton->setTooltip("Cycle parametric EQ band count: 4, 8, 10, 12");
+    paramEqBandCountButton->addListener(this);
+    addAndMakeVisible(paramEqBandCountButton.get());
+
     // Bass knob
     bassSlider = std::make_unique<Slider>(Slider::RotaryHorizontalVerticalDrag, Slider::NoTextBox);
     bassSlider->setRange(0.0, 10.0, 0.1);
@@ -680,7 +741,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     bassLabel = std::make_unique<Label>("bassLabel", "BASS");
     bassLabel->setJustificationType(Justification::centred);
-    bassLabel->setFont(fm.getCaptionFont());
+    bassLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(bassLabel.get());
 
     // Mid knob
@@ -693,7 +754,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     midLabel = std::make_unique<Label>("midLabel", "MID");
     midLabel->setJustificationType(Justification::centred);
-    midLabel->setFont(fm.getCaptionFont());
+    midLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(midLabel.get());
 
     // Treble knob
@@ -706,8 +767,38 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
 
     trebleLabel = std::make_unique<Label>("trebleLabel", "TREBLE");
     trebleLabel->setJustificationType(Justification::centred);
-    trebleLabel->setFont(fm.getCaptionFont());
+    trebleLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
     addAndMakeVisible(trebleLabel.get());
+
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        paramEqBandLabels[band] = std::make_unique<Label>("paramEqBand" + String(band + 1), "B" + String(band + 1));
+        paramEqBandLabels[band]->setJustificationType(Justification::centredRight);
+        paramEqBandLabels[band]->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
+        addAndMakeVisible(paramEqBandLabels[band].get());
+
+        paramEqFrequencySliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqFrequencySliders[band]->setRange(20.0, 20000.0, 1.0);
+        paramEqFrequencySliders[band]->setSkewFactorFromMidPoint(800.0);
+        paramEqFrequencySliders[band]->setValue(namProcessor->getParamEqBandFrequency(band));
+        paramEqFrequencySliders[band]->setTextValueSuffix(" Hz");
+        paramEqFrequencySliders[band]->addListener(this);
+        addAndMakeVisible(paramEqFrequencySliders[band].get());
+
+        paramEqGainSliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqGainSliders[band]->setRange(-18.0, 18.0, 0.1);
+        paramEqGainSliders[band]->setValue(namProcessor->getParamEqBandGain(band));
+        paramEqGainSliders[band]->setTextValueSuffix(" dB");
+        paramEqGainSliders[band]->addListener(this);
+        addAndMakeVisible(paramEqGainSliders[band].get());
+
+        paramEqQSliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqQSliders[band]->setRange(0.1, 10.0, 0.01);
+        paramEqQSliders[band]->setSkewFactorFromMidPoint(1.0);
+        paramEqQSliders[band]->setValue(namProcessor->getParamEqBandQ(band));
+        paramEqQSliders[band]->addListener(this);
+        addAndMakeVisible(paramEqQSliders[band].get());
+    }
 
     // Normalize button
     normalizeButton = std::make_unique<ToggleButton>("Normalize");
@@ -719,6 +810,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     refreshColours();
     updateModelDisplay();
     updateIRDisplay();
+    updateEqModeVisibility();
 
     // Start LED pulse timer (30fps)
     startTimerHz(30);
@@ -728,6 +820,11 @@ NAMControl::~NAMControl()
 {
     stopTimer();
     setLookAndFeel(nullptr);
+}
+
+bool NAMControl::isEmbeddedInGraphNode() const
+{
+    return findParentComponentOfClass<PluginComponent>() != nullptr;
 }
 
 void NAMControl::refreshColours()
@@ -762,8 +859,43 @@ void NAMControl::refreshColours()
     bassLabel->setColour(Label::textColourId, laf.ampTextDim);
     midLabel->setColour(Label::textColourId, laf.ampTextDim);
     trebleLabel->setColour(Label::textColourId, laf.ampTextDim);
+    for (auto& label : paramEqBandLabels)
+        label->setColour(Label::textColourId, laf.ampTextDim);
 
     repaint();
+}
+
+void NAMControl::updateEqModeVisibility()
+{
+    const bool controlsVisible = !collapsed;
+    const bool parametric = controlsVisible && namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric;
+    const bool stack = controlsVisible && !parametric;
+    const bool embedded = isEmbeddedInGraphNode();
+
+    toneEqModeStackButton->setToggleState(!parametric, dontSendNotification);
+    toneEqModeParamButton->setToggleState(parametric, dontSendNotification);
+    toneEqModeStackButton->setButtonText(parametric ? "PARAM" : "STACK");
+    paramEqBandCountButton->setButtonText(String(namProcessor->getActiveParamEqBandCount()) + "B");
+
+    toneEqModeStackButton->setVisible(controlsVisible);
+    toneEqModeParamButton->setVisible(controlsVisible && !embedded);
+    paramEqBandCountButton->setVisible(controlsVisible && parametric);
+
+    bassSlider->setVisible(!parametric && stack);
+    bassLabel->setVisible(!parametric && stack);
+    midSlider->setVisible(!parametric && stack);
+    midLabel->setVisible(!parametric && stack);
+    trebleSlider->setVisible(!parametric && stack);
+    trebleLabel->setVisible(!parametric && stack);
+
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        const bool visible = parametric && band < namProcessor->getActiveParamEqBandCount();
+        paramEqBandLabels[band]->setVisible(visible);
+        paramEqFrequencySliders[band]->setVisible(visible);
+        paramEqGainSliders[band]->setVisible(visible);
+        paramEqQSliders[band]->setVisible(visible);
+    }
 }
 
 void NAMControl::setCollapsed(bool shouldCollapse)
@@ -777,6 +909,7 @@ void NAMControl::setCollapsed(bool shouldCollapse)
     // Show/hide all child controls
     for (auto* child : getChildren())
         child->setVisible(!collapsed);
+    updateEqModeVisibility();
 
     // Tell the parent PluginComponent to re-query getSize() and resize the node
     if (auto* pc = dynamic_cast<PluginComponent*>(getParentComponent()))
@@ -802,8 +935,293 @@ void NAMControl::timerCallback()
 void NAMControl::mouseDown(const MouseEvent& event)
 {
     // Click in header area toggles collapse
-    if (event.y < 40)
+    if (!isEmbeddedInGraphNode() && event.y < 40)
         setCollapsed(!collapsed);
+}
+
+void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
+{
+    auto& laf = namLookAndFeel;
+    auto& fm = FontManager::getInstance();
+    cabinetIrCollapsed = namProcessor->isEmbeddedCabinetIrCollapsed();
+
+    auto area = bounds.reduced(5, 2);
+
+    auto drawSectionHeader = [&](Rectangle<int> header, const String& title, Colour accent)
+    {
+        auto dot = Rectangle<float>(7.0f, 7.0f).withCentre({(float)header.getX() + 3.5f, (float)header.getCentreY()});
+        g.setColour(accent.withAlpha(0.24f));
+        g.fillEllipse(dot.expanded(4.0f));
+        g.setColour(accent.withAlpha(0.92f));
+        g.fillEllipse(dot);
+
+        g.setFont(fm.getBadgeFont().withHeight(12.5f));
+        g.setColour(laf.ampTextDim.withAlpha(0.86f));
+        g.drawText(title.toUpperCase(), header.withTrimmedLeft(14), Justification::centredLeft, true);
+    };
+
+    auto drawInsetField = [&](Rectangle<int> fieldBounds, bool active, Colour accent)
+    {
+        auto field = fieldBounds.toFloat();
+        const auto fillBase = laf.ampInsetBg.interpolatedWith(accent, active ? 0.060f : 0.012f);
+        ColourGradient fill(fillBase.brighter(0.035f), field.getX(), field.getY(), fillBase.darker(0.16f),
+                            field.getX(), field.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(field, 7.0f);
+        g.setColour((active ? accent : laf.ampBorder).withAlpha(active ? 0.48f : 0.30f));
+        g.drawRoundedRectangle(field.reduced(0.5f), 7.0f, active ? 1.0f : 0.75f);
+        if (active)
+        {
+            g.setColour(accent.withAlpha(0.42f));
+            g.fillRoundedRectangle(field.getX() + 1.0f, field.getY() + 4.0f, 2.4f, field.getHeight() - 8.0f, 1.2f);
+        }
+    };
+
+    auto drawMockupPill = [&](Rectangle<int> pillBounds, const String& text, Colour accent, bool dot)
+    {
+        auto pill = pillBounds.toFloat();
+        g.setColour(accent.withAlpha(0.16f));
+        g.fillRoundedRectangle(pill, 5.0f);
+        g.setColour(accent.withAlpha(0.58f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 5.0f, 0.9f);
+        auto textArea = pillBounds;
+        if (dot)
+        {
+            auto led = Rectangle<float>(5.5f, 5.5f).withCentre({pill.getX() + 10.0f, pill.getCentreY()});
+            g.setColour(accent.withAlpha(0.22f));
+            g.fillEllipse(led.expanded(3.0f));
+            g.setColour(accent.withAlpha(0.94f));
+            g.fillEllipse(led);
+            textArea.removeFromLeft(17);
+        }
+        g.setFont(fm.getBadgeFont().withHeight(10.6f));
+        g.setColour(accent.brighter(0.05f));
+        g.drawText(text, textArea, Justification::centred, true);
+    };
+
+    auto drawEmbeddedSlotCard = [&](Rectangle<int> slotBounds, const String& label, const String& value,
+                                    const String& badge, bool active, Colour accent)
+    {
+        auto slot = slotBounds.toFloat();
+        const auto fillBase = laf.ampInsetBg.interpolatedWith(laf.ampSurface, 0.40f)
+                                  .interpolatedWith(accent, active ? 0.070f : 0.018f);
+        g.setColour(laf.ampBackground.darker(0.18f).withAlpha(0.32f));
+        g.fillRoundedRectangle(slot.translated(0.0f, 1.5f), 7.0f);
+        ColourGradient fill(fillBase.brighter(0.055f), slot.getX(), slot.getY(), fillBase.darker(0.14f), slot.getX(),
+                            slot.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(slot, 9.0f);
+        g.setColour((active ? accent : laf.ampBorder).withAlpha(active ? 0.50f : 0.34f));
+        g.drawRoundedRectangle(slot.reduced(0.5f), 9.0f, 1.0f);
+        g.setColour(laf.ampTextBright.withAlpha(0.04f));
+        g.drawRoundedRectangle(slot.reduced(2.0f), 7.0f, 0.7f);
+        if (active)
+        {
+            g.setColour(accent.withAlpha(0.52f));
+            g.fillRoundedRectangle(slot.getX() + 1.5f, slot.getY() + 8.0f, 2.8f, slot.getHeight() - 16.0f, 1.4f);
+        }
+
+        g.setFont(fm.getBadgeFont().withHeight(11.0f));
+        g.setColour(laf.ampTextDim.withAlpha(0.72f));
+        g.drawText(label.toUpperCase(), slotBounds.reduced(10, 0).removeFromTop(20), Justification::centredLeft, true);
+        ignoreUnused(value, badge);
+    };
+
+    auto drawControlRail = [&](Rectangle<int> row, Colour accent)
+    {
+        ignoreUnused(row, accent);
+    };
+
+    auto drawToneModeSegment = [&](Rectangle<int> segmentBounds)
+    {
+        auto segment = segmentBounds.toFloat();
+        g.setColour(laf.ampInsetBg.withAlpha(0.84f));
+        g.fillRoundedRectangle(segment, 6.0f);
+        g.setColour(laf.ampBorder.withAlpha(0.46f));
+        g.drawRoundedRectangle(segment.reduced(0.5f), 6.0f, 0.85f);
+
+        const bool parametric = namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric;
+        auto stack = segmentBounds.removeFromLeft(segmentBounds.getWidth() / 2);
+        auto param = segmentBounds;
+        auto selected = parametric ? param : stack;
+        auto accent = parametric ? laf.ampAccentSecondary : laf.ampAccent;
+        g.setColour(accent.withAlpha(0.18f));
+        g.fillRoundedRectangle(selected.reduced(3, 3).toFloat(), 5.0f);
+        g.setColour(accent.withAlpha(0.76f));
+        g.drawRoundedRectangle(selected.reduced(3, 3).toFloat().reduced(0.5f), 5.0f, 1.0f);
+        g.setColour(laf.ampBorder.withAlpha(0.48f));
+        g.drawVerticalLine(stack.getRight(), (float)stack.getY() + 4.0f, (float)stack.getBottom() - 4.0f);
+    };
+
+    auto drawEmbeddedToneCurve = [&](Rectangle<int> curveBounds)
+    {
+        auto curve = curveBounds.toFloat();
+        g.setColour(laf.ampInsetBg.withAlpha(0.88f));
+        g.fillRoundedRectangle(curve, 7.0f);
+        g.setColour(laf.ampBorder.withAlpha(0.42f));
+        g.drawRoundedRectangle(curve.reduced(0.5f), 7.0f, 0.8f);
+
+        auto graph = curve.reduced(9.0f, 7.0f);
+        const float centreY = graph.getCentreY();
+        const float amp = graph.getHeight() * 0.46f;
+        const auto norm = [](float v) { return jlimit(0.0f, 1.0f, v / 10.0f); };
+        const float bass = norm(namProcessor->getBass());
+        const float mid = norm(namProcessor->getMid());
+        const float treble = norm(namProcessor->getTreble());
+        const float yBass = centreY - (bass - 0.5f) * amp;
+        const float yMid = centreY - (mid - 0.5f) * amp;
+        const float yTreble = centreY - (treble - 0.5f) * amp;
+
+        Path fillPath;
+        fillPath.startNewSubPath(graph.getX(), graph.getBottom());
+        fillPath.lineTo(graph.getX(), yBass);
+        fillPath.cubicTo(graph.getX() + graph.getWidth() * 0.22f, yBass,
+                         graph.getX() + graph.getWidth() * 0.34f, yMid,
+                         graph.getX() + graph.getWidth() * 0.50f, yMid);
+        fillPath.cubicTo(graph.getX() + graph.getWidth() * 0.66f, yMid,
+                         graph.getX() + graph.getWidth() * 0.78f, yTreble, graph.getRight(), yTreble);
+        fillPath.lineTo(graph.getRight(), graph.getBottom());
+        fillPath.closeSubPath();
+        ColourGradient fill(laf.ampAccentSecondary.withAlpha(0.18f), graph.getCentreX(), graph.getY(),
+                            Colours::transparentBlack, graph.getCentreX(), graph.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillPath(fillPath);
+
+        Path line;
+        line.startNewSubPath(graph.getX(), yBass);
+        line.cubicTo(graph.getX() + graph.getWidth() * 0.22f, yBass,
+                     graph.getX() + graph.getWidth() * 0.34f, yMid, graph.getX() + graph.getWidth() * 0.50f,
+                     yMid);
+        line.cubicTo(graph.getX() + graph.getWidth() * 0.66f, yMid,
+                     graph.getX() + graph.getWidth() * 0.78f, yTreble, graph.getRight(), yTreble);
+        g.setColour(laf.ampAccentSecondary.withAlpha(0.24f));
+        g.strokePath(line, PathStrokeType(5.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(laf.ampAccentSecondary.withAlpha(0.92f));
+        g.strokePath(line, PathStrokeType(1.6f, PathStrokeType::curved, PathStrokeType::rounded));
+    };
+
+    auto drawEmbeddedEqCurve = [&](Rectangle<int> curveBounds)
+    {
+        auto curve = curveBounds.toFloat();
+        g.setColour(laf.ampInsetBg.withAlpha(0.90f));
+        g.fillRoundedRectangle(curve, 7.0f);
+        g.setColour(laf.ampBorder.withAlpha(0.42f));
+        g.drawRoundedRectangle(curve.reduced(0.5f), 7.0f, 0.8f);
+
+        auto graph = curve.reduced(9.0f, 7.0f);
+        g.setColour(laf.ampTextDim.withAlpha(0.16f));
+        g.drawHorizontalLine(roundToInt(graph.getCentreY()), graph.getX(), graph.getRight());
+
+        Path eqPath;
+        const int activeBandCount = namProcessor->getActiveParamEqBandCount();
+        for (int band = 0; band < activeBandCount; ++band)
+        {
+            const auto x = graph.getX() + graph.getWidth() * ((float)band + 0.5f) / (float)activeBandCount;
+            const auto y =
+                jmap(jlimit(-12.0f, 12.0f, namProcessor->getParamEqBandGain(band)), -12.0f, 12.0f,
+                     graph.getBottom(), graph.getY());
+            if (band == 0)
+                eqPath.startNewSubPath(x, y);
+            else
+                eqPath.lineTo(x, y);
+
+            const auto bandDot = Rectangle<float>(7.0f, 7.0f).withCentre({x, y});
+            g.setColour(laf.ampAccent
+                            .interpolatedWith(laf.ampAccentSecondary,
+                                              activeBandCount > 1 ? (float)band / (float)(activeBandCount - 1) : 0.0f)
+                            .withAlpha(0.88f));
+            g.fillEllipse(bandDot);
+        }
+
+        g.setColour(laf.ampAccent.withAlpha(0.18f));
+        g.strokePath(eqPath, PathStrokeType(5.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(laf.ampAccent.withAlpha(0.88f));
+        g.strokePath(eqPath, PathStrokeType(1.4f, PathStrokeType::curved, PathStrokeType::rounded));
+    };
+
+    auto captureSection = area.removeFromTop(66);
+    drawSectionHeader(captureSection.removeFromTop(18), "Capture", laf.ampAccent);
+    auto metaRow = captureSection.removeFromTop(22).reduced(6, 0);
+    auto archPill = metaRow.removeFromRight(64).reduced(2, 2);
+    metaRow.removeFromRight(4);
+    auto namPill = metaRow.removeFromRight(44).reduced(2, 2);
+    metaRow.removeFromRight(6);
+    drawMockupPill(namPill, "NAM", laf.ampAccentSecondary, false);
+    drawMockupPill(archPill, modelArchLabel->getText().isNotEmpty() ? modelArchLabel->getText() : "WaveNet",
+                   laf.ampAccent, false);
+    g.setFont(fm.getBadgeFont().withHeight(12.0f));
+    g.setColour(laf.ampTextDim.withAlpha(0.72f));
+    g.drawText(namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No model selected",
+               metaRow, Justification::centredLeft, true);
+    captureSection.removeFromTop(27);
+
+    area.removeFromTop(8);
+    const int cabinetSectionHeight = cabinetIrCollapsed ? 34 : 224;
+    auto cabinetSection = area.removeFromTop(cabinetSectionHeight);
+    drawSectionHeader(cabinetSection.removeFromTop(18), "Cabinet IR", laf.ampAccentSecondary);
+    if (cabinetIrCollapsed)
+    {
+        g.setFont(fm.getBadgeFont().withHeight(11.5f));
+        g.setColour(laf.ampTextDim.withAlpha(0.70f));
+        g.drawText("Cabinet controls collapsed", cabinetSection.reduced(16, 0), Justification::centredLeft, true);
+    }
+    else
+    {
+        cabinetSection.removeFromTop(8);
+        auto slotGrid = cabinetSection.removeFromTop(98);
+        const int slotGap = 12;
+        const int slotW = (slotGrid.getWidth() - slotGap) / 2;
+        auto ir1Slot = slotGrid.removeFromLeft(slotW);
+        slotGrid.removeFromLeft(slotGap);
+        auto ir2Slot = slotGrid;
+        drawEmbeddedSlotCard(ir1Slot, "IR 1",
+                             namProcessor->isIRLoaded() ? namProcessor->getIRName() : "No IR Loaded",
+                             namProcessor->isIREnabled() ? "ON" : "OFF",
+                             namProcessor->isIRLoaded() && namProcessor->isIREnabled(), laf.ampAccentSecondary);
+        drawEmbeddedSlotCard(ir2Slot, "IR 2",
+                             namProcessor->isIR2Loaded() ? namProcessor->getIR2Name() : "No IR 2 Loaded",
+                             namProcessor->isIR2Enabled() ? "ON" : "OFF",
+                             namProcessor->isIR2Loaded() && namProcessor->isIR2Enabled(), laf.ampAccentSecondary);
+
+        cabinetSection.removeFromTop(10);
+        drawControlRail(cabinetSection.removeFromTop(22), laf.ampAccentSecondary);
+        cabinetSection.removeFromTop(10);
+        drawControlRail(cabinetSection.removeFromTop(22), laf.ampAccentSecondary);
+        cabinetSection.removeFromTop(10);
+        drawControlRail(cabinetSection.removeFromTop(22), laf.ampAccentSecondary);
+    }
+
+    area.removeFromTop(8);
+    auto gainSection = area.removeFromTop(109);
+    drawSectionHeader(gainSection.removeFromTop(18), "Gain", laf.ampAccent);
+    gainSection.removeFromTop(5);
+    drawControlRail(gainSection.removeFromTop(22), laf.ampAccentSecondary);
+    gainSection.removeFromTop(10);
+    drawControlRail(gainSection.removeFromTop(22), laf.ampAccentSecondary);
+    gainSection.removeFromTop(10);
+    drawControlRail(gainSection.removeFromTop(22), laf.ampAccentSecondary);
+
+    area.removeFromTop(8);
+    auto toneSection = area;
+    auto toneHeader = toneSection.removeFromTop(24);
+    drawSectionHeader(toneHeader.withHeight(18), "Tone", laf.ampAccentSecondary);
+    toneSection.removeFromTop(4);
+    auto curveArea = toneSection.removeFromTop(namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric ? 58 : 42);
+    if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+    {
+        drawEmbeddedEqCurve(curveArea);
+        toneSection.removeFromTop(6);
+        toneSection.removeFromTop((18 + 3) * namProcessor->getActiveParamEqBandCount());
+    }
+    else
+    {
+        drawEmbeddedToneCurve(curveArea);
+        toneSection.removeFromTop(7);
+        toneSection.removeFromTop(86);
+    }
+
+    toneSection.removeFromTop(8);
+    drawSectionHeader(toneSection.removeFromTop(18), "FX Loop", laf.ampAccent);
 }
 
 //==============================================================================
@@ -812,6 +1230,13 @@ void NAMControl::paint(Graphics& g)
     auto& laf = namLookAndFeel;
     auto& fm = FontManager::getInstance();
     auto bounds = getLocalBounds();
+    const bool embeddedInGraphNode = isEmbeddedInGraphNode();
+
+    if (embeddedInGraphNode)
+    {
+        paintEmbeddedGraphNode(g, bounds);
+        return;
+    }
 
     // Layout constants -- shared with resized()
     const int headerH = 34;
@@ -854,7 +1279,8 @@ void NAMControl::paint(Graphics& g)
     g.setGradientFill(headerGrad);
     g.fillRoundedRectangle(header, 8.0f);
     g.setColour(namLookAndFeel.ampAccent.withAlpha(0.55f));
-    g.fillRoundedRectangle(header.getX() + 8.0f, header.getBottom() - 3.0f, header.getWidth() - 16.0f, 2.0f, 1.0f);
+    g.fillRoundedRectangle(header.getX() + 8.0f, header.getBottom() - 3.0f, header.getWidth() - 16.0f, 2.0f,
+                           1.0f);
 
     // Header top sheen
     g.setColour(laf.ampTextBright.withAlpha(0.07f));
@@ -864,7 +1290,8 @@ void NAMControl::paint(Graphics& g)
     auto headerTextArea = headerBounds.reduced(12, 0).withTrimmedRight(56);
 
     g.setColour(laf.ampAccent.withAlpha(namProcessor->isModelLoaded() ? 0.95f : 0.55f));
-    g.fillRoundedRectangle((float)headerTextArea.getX(), (float)headerTextArea.getCentreY() - 4.0f, 8.0f, 8.0f, 2.5f);
+    g.fillRoundedRectangle((float)headerTextArea.getX(), (float)headerTextArea.getCentreY() - 4.0f, 8.0f, 8.0f,
+                           2.5f);
 
     g.setColour(laf.ampTextDim.withAlpha(0.78f));
     g.setFont(fm.getCaptionFont());
@@ -888,8 +1315,8 @@ void NAMControl::paint(Graphics& g)
         g.fillEllipse(ledX - 4, ledY - 4, ledSize + 8, ledSize + 8);
     }
 
-    ColourGradient ledGradient(ledColour.brighter(0.3f), ledX, ledY, ledColour.darker(0.2f), ledX, ledY + ledSize,
-                               false);
+    ColourGradient ledGradient(ledColour.brighter(0.3f), ledX, ledY, ledColour.darker(0.2f), ledX,
+                               ledY + ledSize, false);
     g.setGradientFill(ledGradient);
     g.fillEllipse(ledX, ledY, ledSize, ledSize);
     g.setColour(laf.ampBorder.darker(0.2f));
@@ -937,15 +1364,215 @@ void NAMControl::paint(Graphics& g)
     contentArea.removeFromTop(sectionGap);
 
     auto eqBounds = contentArea.reduced(0, 2);
-    drawSectionPanel(g, eqBounds, "TONE");
+    drawSectionPanel(g, eqBounds,
+                     namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric ? "Parametric EQ"
+                                                                                            : "TONE");
+}
+
+void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
+{
+    cabinetIrCollapsed = namProcessor->isEmbeddedCabinetIrCollapsed();
+
+    auto area = bounds.reduced(5, 2);
+    constexpr int gap = 4;
+    constexpr int clearW = 23;
+
+    for (auto* slider : {irBlendSlider.get(), irLowCutSlider.get(), irHighCutSlider.get()})
+        slider->setTextBoxStyle(Slider::TextBoxRight, false, 42, 17);
+    for (auto* slider : {inputGainSlider.get(), outputGainSlider.get(), noiseGateSlider.get()})
+        slider->setTextBoxStyle(Slider::TextBoxRight, false, 46, 17);
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        paramEqFrequencySliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 44, 14);
+        paramEqGainSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 38, 14);
+        paramEqQSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 30, 14);
+    }
+    fxLoopEnabledButton->setButtonText("FX");
+    normalizeButton->setButtonText("Norm");
+    cabinetIrCollapseButton->setVisible(true);
+    cabinetIrCollapseButton->setButtonText(cabinetIrCollapsed ? "Show" : "Hide");
+    modelArchLabel->setBounds(Rectangle<int>());
+    modelNameLabel->setBounds(Rectangle<int>());
+
+    auto captureSection = area.removeFromTop(66);
+    captureSection.removeFromTop(18);
+    captureSection.removeFromTop(22);
+    auto modelButtons = captureSection.removeFromTop(27).reduced(6, 2);
+    loadModelButton->setBounds(modelButtons.removeFromLeft(92));
+    modelButtons.removeFromLeft(gap);
+    browseModelsButton->setBounds(modelButtons.removeFromLeft(86));
+    modelButtons.removeFromLeft(gap);
+    clearModelButton->setBounds(modelButtons.removeFromLeft(clearW));
+
+    area.removeFromTop(8);
+    const int cabinetSectionHeight = cabinetIrCollapsed ? 34 : 224;
+    auto cabinetSection = area.removeFromTop(cabinetSectionHeight);
+    auto cabinetHeader = cabinetSection.removeFromTop(18);
+    cabinetIrCollapseButton->setBounds(cabinetHeader.removeFromRight(54).reduced(0, 1));
+    const bool showCabinetControls = !cabinetIrCollapsed;
+    Component* cabinetControls[] = {loadIRButton.get(),     clearIRButton.get(),   irNameLabel.get(),
+                                    irEnabledButton.get(),  loadIR2Button.get(),   clearIR2Button.get(),
+                                    ir2NameLabel.get(),     ir2EnabledButton.get(), irBlendSlider.get(),
+                                    irBlendLabel.get(),     irLowCutSlider.get(),  irLowCutLabel.get(),
+                                    irHighCutSlider.get(),  irHighCutLabel.get()};
+    for (auto* child : cabinetControls)
+        child->setVisible(showCabinetControls);
+
+    if (showCabinetControls)
+    {
+        cabinetSection.removeFromTop(8);
+        auto irSlots = cabinetSection.removeFromTop(98);
+        const int slotGap = 12;
+        const int slotW = (irSlots.getWidth() - slotGap) / 2;
+        auto ir1Slot = irSlots.removeFromLeft(slotW).reduced(12, 10);
+        irSlots.removeFromLeft(slotGap);
+        auto ir2Slot = irSlots.reduced(12, 10);
+
+        ir1Slot.removeFromTop(24);
+        auto ir1Controls = ir1Slot.removeFromTop(24);
+        loadIRButton->setBounds(ir1Controls.removeFromLeft(62));
+        ir1Controls.removeFromLeft(gap);
+        clearIRButton->setBounds(ir1Controls.removeFromLeft(clearW));
+        ir1Controls.removeFromLeft(gap);
+        irEnabledButton->setBounds(Rectangle<int>(ir1Slot.getRight() - 51, ir1Slot.getY() - 24, 46, 20));
+        ir1Slot.removeFromTop(8);
+        irNameLabel->setBounds(ir1Slot.removeFromTop(25));
+
+        ir2Slot.removeFromTop(24);
+        auto ir2Controls = ir2Slot.removeFromTop(24);
+        loadIR2Button->setBounds(ir2Controls.removeFromLeft(68));
+        ir2Controls.removeFromLeft(gap);
+        clearIR2Button->setBounds(ir2Controls.removeFromLeft(clearW));
+        ir2Controls.removeFromLeft(gap);
+        ir2EnabledButton->setBounds(Rectangle<int>(ir2Slot.getRight() - 51, ir2Slot.getY() - 24, 46, 20));
+        ir2Slot.removeFromTop(8);
+        ir2NameLabel->setBounds(ir2Slot.removeFromTop(25));
+
+        cabinetSection.removeFromTop(10);
+        auto blendArea = cabinetSection.removeFromTop(22);
+        irBlendLabel->setBounds(blendArea.removeFromLeft(47));
+        blendArea.removeFromLeft(gap);
+        irBlendSlider->setBounds(blendArea);
+
+        cabinetSection.removeFromTop(10);
+        auto lowArea = cabinetSection.removeFromTop(22);
+        irLowCutLabel->setBounds(lowArea.removeFromLeft(47));
+        lowArea.removeFromLeft(gap);
+        irLowCutSlider->setBounds(lowArea);
+
+        cabinetSection.removeFromTop(10);
+        auto highArea = cabinetSection.removeFromTop(22);
+        irHighCutLabel->setBounds(highArea.removeFromLeft(47));
+        highArea.removeFromLeft(gap);
+        irHighCutSlider->setBounds(highArea);
+    }
+
+    area.removeFromTop(8);
+    auto gainArea = area.removeFromTop(109);
+    gainArea.removeFromTop(18);
+    gainArea.removeFromTop(5);
+    for (auto rowSpec : {std::pair<Label*, Slider*>{inputGainLabel.get(), inputGainSlider.get()},
+                         std::pair<Label*, Slider*>{outputGainLabel.get(), outputGainSlider.get()},
+                         std::pair<Label*, Slider*>{noiseGateLabel.get(), noiseGateSlider.get()}})
+    {
+        auto row = gainArea.removeFromTop(22);
+        rowSpec.first->setBounds(row.removeFromLeft(46));
+        row.removeFromLeft(gap);
+        rowSpec.second->setBounds(row);
+        gainArea.removeFromTop(10);
+    }
+
+    area.removeFromTop(8);
+    auto toneArea = area;
+    auto toneHeader = toneArea.removeFromTop(24);
+    toneHeader.removeFromLeft(60);
+    auto toneTools = toneHeader.reduced(2, 1);
+    toneStackEnabledButton->setBounds(toneTools.removeFromLeft(38));
+    toneTools.removeFromLeft(gap);
+    toneStackPreButton->setBounds(toneTools.removeFromLeft(40));
+    toneTools.removeFromLeft(gap);
+    toneEqModeStackButton->setBounds(toneTools.removeFromLeft(62));
+    toneTools.removeFromLeft(gap);
+    toneEqModeParamButton->setBounds(Rectangle<int>());
+    if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+    {
+        paramEqBandCountButton->setBounds(toneTools.removeFromLeft(38));
+        toneTools.removeFromLeft(gap);
+    }
+    else
+    {
+        paramEqBandCountButton->setBounds(Rectangle<int>());
+    }
+    normalizeButton->setBounds(toneTools.removeFromLeft(62));
+
+    toneArea.removeFromTop(4);
+    if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+    {
+        toneArea.removeFromTop(58);
+        toneArea.removeFromTop(6);
+        for (int band = 0; band < namProcessor->getActiveParamEqBandCount(); ++band)
+        {
+            auto row = toneArea.removeFromTop(18);
+            paramEqBandLabels[band]->setBounds(row.removeFromLeft(20));
+            row.removeFromLeft(gap);
+            const int freqW = jlimit(66, 92, row.getWidth() / 3 + 12);
+            paramEqFrequencySliders[band]->setBounds(row.removeFromLeft(freqW));
+            row.removeFromLeft(gap);
+            const int gainW = jlimit(56, 82, row.getWidth() / 2);
+            paramEqGainSliders[band]->setBounds(row.removeFromLeft(gainW));
+            row.removeFromLeft(gap);
+            paramEqQSliders[band]->setBounds(row);
+            toneArea.removeFromTop(3);
+        }
+    }
+    else
+    {
+        toneArea.removeFromTop(42);
+        toneArea.removeFromTop(7);
+        auto knobRow = toneArea.removeFromTop(86);
+        const int knobW = knobRow.getWidth() / 3;
+        const int knobSize = 68;
+
+        auto bassArea = knobRow.removeFromLeft(knobW);
+        bassLabel->setText("BASS " + String(bassSlider->getValue(), 1), dontSendNotification);
+        bassLabel->setBounds(bassArea.removeFromBottom(15));
+        bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize));
+
+        auto midArea = knobRow.removeFromLeft(knobW);
+        midLabel->setText("MID " + String(midSlider->getValue(), 1), dontSendNotification);
+        midLabel->setBounds(midArea.removeFromBottom(15));
+        midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize));
+
+        auto trebleArea = knobRow;
+        trebleLabel->setText("TREBLE " + String(trebleSlider->getValue(), 1), dontSendNotification);
+        trebleLabel->setBounds(trebleArea.removeFromBottom(15));
+        trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize));
+    }
+
+    toneArea.removeFromTop(8);
+    toneArea.removeFromTop(18);
+    toneArea.removeFromTop(3);
+    auto fxTools = toneArea.removeFromTop(24);
+    fxLoopEnabledButton->setBounds(fxTools.removeFromLeft(58));
+    fxTools.removeFromLeft(gap);
+    editFxLoopButton->setBounds(fxTools.removeFromLeft(82));
+
+    updateEqModeVisibility();
 }
 
 void NAMControl::resized()
 {
+    const bool embeddedInGraphNode = isEmbeddedInGraphNode();
+    auto bounds = getLocalBounds();
+
+    if (embeddedInGraphNode)
+    {
+        resizedEmbeddedGraphNode(bounds);
+        return;
+    }
+
     if (collapsed)
         return;
-
-    auto bounds = getLocalBounds();
 
     // Layout constants -- must match paint()
     const int headerH = 34;
@@ -964,6 +1591,19 @@ void NAMControl::resized()
     const int spacing = 4;
     const int sectionHeaderH = 20;
     const int sectionPad = 8;
+
+    fxLoopEnabledButton->setButtonText("FX Loop");
+    normalizeButton->setButtonText("Normalize");
+    cabinetIrCollapseButton->setVisible(false);
+    modelNameLabel->setVisible(true);
+    modelArchLabel->setVisible(true);
+
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        paramEqFrequencySliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 62, 18);
+        paramEqGainSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 54, 18);
+        paramEqQSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 44, 18);
+    }
 
     // ===================== SIGNAL CHAIN section =====================
     auto signalArea = bounds.removeFromTop(signalH).reduced(sectionPad, 2);
@@ -1082,27 +1722,62 @@ void NAMControl::resized()
     toneStackEnabledButton->setBounds(eqHeaderRow.removeFromLeft(55));
     eqHeaderRow.removeFromLeft(spacing);
     toneStackPreButton->setBounds(eqHeaderRow.removeFromLeft(50));
-    eqHeaderRow.removeFromLeft(spacing * 4);
-    normalizeButton->setBounds(eqHeaderRow.removeFromLeft(100));
+    eqHeaderRow.removeFromLeft(spacing);
+    toneEqModeStackButton->setBounds(eqHeaderRow.removeFromLeft(58));
+    eqHeaderRow.removeFromLeft(spacing);
+    toneEqModeParamButton->setBounds(eqHeaderRow.removeFromLeft(58));
+    eqHeaderRow.removeFromLeft(spacing);
+    if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+    {
+        paramEqBandCountButton->setBounds(eqHeaderRow.removeFromLeft(48));
+        eqHeaderRow.removeFromLeft(spacing);
+    }
+    else
+    {
+        paramEqBandCountButton->setBounds(Rectangle<int>());
+    }
+    normalizeButton->setBounds(eqHeaderRow.removeFromLeft(96));
 
     eqArea.removeFromTop(6);
 
-    // Knobs row -- use remaining space
-    auto knobRow = eqArea;
-    const int knobWidth = knobRow.getWidth() / 3;
-    const int knobSize = 52;
+    if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+    {
+        for (int band = 0; band < namProcessor->getActiveParamEqBandCount(); ++band)
+        {
+            auto row = eqArea.removeFromTop(20);
+            paramEqBandLabels[band]->setBounds(row.removeFromLeft(28));
+            row.removeFromLeft(spacing);
+            const int freqW = jlimit(112, 148, row.getWidth() / 3 + 20);
+            paramEqFrequencySliders[band]->setBounds(row.removeFromLeft(freqW));
+            row.removeFromLeft(spacing);
+            const int gainW = jlimit(86, 116, row.getWidth() / 2);
+            paramEqGainSliders[band]->setBounds(row.removeFromLeft(gainW));
+            row.removeFromLeft(spacing);
+            paramEqQSliders[band]->setBounds(row);
+            eqArea.removeFromTop(2);
+        }
+    }
+    else
+    {
+        // Knobs row -- use remaining space
+        auto knobRow = eqArea;
+        const int knobWidth = knobRow.getWidth() / 3;
+        const int knobSize = 52;
 
-    auto bassArea = knobRow.removeFromLeft(knobWidth);
-    bassLabel->setBounds(bassArea.removeFromBottom(14));
-    bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize));
+        auto bassArea = knobRow.removeFromLeft(knobWidth);
+        bassLabel->setBounds(bassArea.removeFromBottom(14));
+        bassSlider->setBounds(bassArea.withSizeKeepingCentre(knobSize, knobSize));
 
-    auto midArea = knobRow.removeFromLeft(knobWidth);
-    midLabel->setBounds(midArea.removeFromBottom(14));
-    midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize));
+        auto midArea = knobRow.removeFromLeft(knobWidth);
+        midLabel->setBounds(midArea.removeFromBottom(14));
+        midSlider->setBounds(midArea.withSizeKeepingCentre(knobSize, knobSize));
 
-    auto trebleArea = knobRow;
-    trebleLabel->setBounds(trebleArea.removeFromBottom(14));
-    trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize));
+        auto trebleArea = knobRow;
+        trebleLabel->setBounds(trebleArea.removeFromBottom(14));
+        trebleSlider->setBounds(trebleArea.withSizeKeepingCentre(knobSize, knobSize));
+    }
+
+    updateEqModeVisibility();
 }
 
 //==============================================================================
@@ -1248,6 +1923,43 @@ void NAMControl::buttonClicked(Button* button)
         bool newPre = !namProcessor->isToneStackPre();
         namProcessor->setToneStackPre(newPre);
         toneStackPreButton->setButtonText(newPre ? "PRE" : "POST");
+        repaint();
+    }
+    else if (button == toneEqModeStackButton.get())
+    {
+        if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
+            namProcessor->setToneEqMode(NAMProcessor::ToneEqMode::Stack);
+        else
+            namProcessor->setToneEqMode(NAMProcessor::ToneEqMode::Parametric);
+        updateEqModeVisibility();
+        resized();
+        repaint();
+    }
+    else if (button == toneEqModeParamButton.get())
+    {
+        namProcessor->setToneEqMode(NAMProcessor::ToneEqMode::Parametric);
+        updateEqModeVisibility();
+        resized();
+        repaint();
+    }
+    else if (button == paramEqBandCountButton.get())
+    {
+        const int current = namProcessor->getActiveParamEqBandCount();
+        const int next = current == 4 ? 8 : (current == 8 ? 10 : (current == 10 ? 12 : 4));
+        namProcessor->setActiveParamEqBandCount(next);
+        updateEqModeVisibility();
+        resized();
+        repaint();
+    }
+    else if (button == cabinetIrCollapseButton.get())
+    {
+        cabinetIrCollapsed = !cabinetIrCollapsed;
+        namProcessor->setEmbeddedCabinetIrCollapsed(cabinetIrCollapsed);
+        cabinetIrCollapseButton->setButtonText(cabinetIrCollapsed ? "Show" : "Hide");
+        resized();
+        repaint();
+        if (auto* pluginNode = findParentComponentOfClass<PluginComponent>())
+            pluginNode->updateNodeSize();
     }
     else if (button == normalizeButton.get())
     {
@@ -1272,14 +1984,20 @@ void NAMControl::sliderValueChanged(Slider* slider)
     else if (slider == bassSlider.get())
     {
         namProcessor->setBass(static_cast<float>(slider->getValue()));
+        bassLabel->setText("BASS " + String(slider->getValue(), 1), dontSendNotification);
+        repaint();
     }
     else if (slider == midSlider.get())
     {
         namProcessor->setMid(static_cast<float>(slider->getValue()));
+        midLabel->setText("MID " + String(slider->getValue(), 1), dontSendNotification);
+        repaint();
     }
     else if (slider == trebleSlider.get())
     {
         namProcessor->setTreble(static_cast<float>(slider->getValue()));
+        trebleLabel->setText("TREBLE " + String(slider->getValue(), 1), dontSendNotification);
+        repaint();
     }
     else if (slider == irLowCutSlider.get())
     {
@@ -1292,6 +2010,28 @@ void NAMControl::sliderValueChanged(Slider* slider)
     else if (slider == irBlendSlider.get())
     {
         namProcessor->setIRBlend(static_cast<float>(slider->getValue()));
+    }
+
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        if (slider == paramEqFrequencySliders[band].get())
+        {
+            namProcessor->setParamEqBandFrequency(band, static_cast<float>(slider->getValue()));
+            repaint();
+            return;
+        }
+        if (slider == paramEqGainSliders[band].get())
+        {
+            namProcessor->setParamEqBandGain(band, static_cast<float>(slider->getValue()));
+            repaint();
+            return;
+        }
+        if (slider == paramEqQSliders[band].get())
+        {
+            namProcessor->setParamEqBandQ(band, static_cast<float>(slider->getValue()));
+            repaint();
+            return;
+        }
     }
 }
 

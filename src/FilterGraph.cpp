@@ -686,6 +686,8 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
         e->setAttribute("uiLastX", (int)node->properties.getWithDefault("uiLastX", 0.0));
         e->setAttribute("uiLastY", (int)node->properties.getWithDefault("uiLastY", 0.0));
         e->setAttribute("windowOpen", (bool)node->properties.getWithDefault("windowOpen", false));
+        e->setAttribute("nodeWidth", (int)node->properties.getWithDefault("nodeWidth", 0));
+        e->setAttribute("nodeHeight", (int)node->properties.getWithDefault("nodeHeight", 0));
         e->setAttribute("program", 0);
 
         // Create plugin description for SubGraphProcessor
@@ -736,6 +738,8 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
     e->setAttribute("uiLastX", (int)node->properties.getWithDefault("uiLastX", 0.0));
     e->setAttribute("uiLastY", (int)node->properties.getWithDefault("uiLastY", 0.0));
     e->setAttribute("windowOpen", (bool)node->properties.getWithDefault("windowOpen", false));
+    e->setAttribute("nodeWidth", (int)node->properties.getWithDefault("nodeWidth", 0));
+    e->setAttribute("nodeHeight", (int)node->properties.getWithDefault("nodeHeight", 0));
     e->setAttribute("program", node->getProcessor()->getCurrentProgram());
     if (bypassable)
     {
@@ -838,6 +842,8 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     node->properties.set("uiLastX", xml.getIntAttribute("uiLastX"));
     node->properties.set("uiLastY", xml.getIntAttribute("uiLastY"));
     node->properties.set("windowOpen", xml.getIntAttribute("windowOpen"));
+    node->properties.set("nodeWidth", xml.getIntAttribute("nodeWidth", 0));
+    node->properties.set("nodeHeight", xml.getIntAttribute("nodeHeight", 0));
 
     midiAddress = xml.getStringAttribute("oscMIDIAddress");
     if (bypassable)

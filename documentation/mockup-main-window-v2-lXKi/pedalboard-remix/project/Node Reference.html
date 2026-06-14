@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pedalboard 3 · Node Reference</title>
+<link rel="stylesheet" href="mw2.css" />
+<style>
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: #07070d;
+  }
+
+  .node-ref-root {
+    min-height: 100vh;
+    padding: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 36px;
+    background:
+      radial-gradient(circle at 16% 12%, rgba(0, 217, 255, 0.12), transparent 32%),
+      linear-gradient(180deg, #101022, #07070d);
+  }
+
+  .node-ref-tile {
+    display: inline-block;
+    padding: 30px;
+    border-radius: 18px;
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+      rgba(5, 7, 16, 0.96);
+    background-size: 24px 24px;
+  }
+
+  .node-ref-tile .m2-node {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="../../../../node_modules/react/umd/react.development.js"></script>
+<script src="../../../../node_modules/react-dom/umd/react-dom.development.js"></script>
+<script src="../../../../node_modules/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" src="mw2-data.jsx"></script>
+<script type="text/babel" src="mw2-prims.jsx"></script>
+<script type="text/babel" src="mw2-nodes.jsx"></script>
+
+<script type="text/babel">
+  const handlers = {
+    onDown: () => {},
+    onEnter: () => {},
+    onLeave: () => {},
+  };
+
+  const noop = () => {};
+  const params = new URLSearchParams(window.location.search);
+  const theme = params.get("theme") || "midnight";
+  const graph = m2InitialGraph();
+  const nodeSpecs = [
+    ["nam-loader", "fx_amp"],
+    ["ir-loader", "fx_ir"],
+    ["effect-rack", "fx_rack"],
+    ["tuner", "mtr_tuner"],
+    ["mixer", "fx_mix"],
+    ["splitter", "fx_split"],
+    ["notes", "util_note"],
+  ];
+
+  function cloneNode(node) {
+    return { ...node, x: 0, y: 0 };
+  }
+
+  function NodeReferencePage() {
+    return (
+      <div className={"mw2 theme-" + theme + " node-ref-root"}>
+        {nodeSpecs.map(([name, id]) => {
+          const node = graph.nodes.find((n) => n.id === id);
+          if (!node) return null;
+          return (
+            <div key={name} className="node-ref-tile" data-node-ref={name}>
+              <MwNode2
+                node={cloneNode(node)}
+                selected={false}
+                dragging={false}
+                wiring={null}
+                target={null}
+                handlers={handlers}
+                onSelect={noop}
+                onHeaderDown={noop}
+                onToggle={noop}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<NodeReferencePage />);
+</script>
+</body>
+</html>

@@ -6,11 +6,16 @@ param(
     [switch]$CaptureScaledFooterMatrix,
     [switch]$CaptureScaledDialogMatrix,
     [switch]$CaptureScratchPanel,
+    [switch]$CaptureNodeSnapshots,
+    [switch]$NodeSnapshotsOnly,
     [Alias("ExpectedScalePercent")]
     [int]$ExpectedOsScalePercent = 0
 )
 
 $ErrorActionPreference = "Stop"
+if ($NodeSnapshotsOnly) {
+    $CaptureNodeSnapshots = $true
+}
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
@@ -22,6 +27,8 @@ $settingsBackup = Join-Path $tmpDir "settings.backup.json"
 $defaultPatchPath = Join-Path $appDataDir "default.pdl"
 $defaultPatchBackup = Join-Path $tmpDir "default.backup.pdl"
 $qaPatch = Join-Path $tmpDir "visual-qa.pdl"
+$nodeSnapshotTempDir = Join-Path $tmpDir "node-snapshots"
+$nodeSnapshotNames = @("nam-loader", "ir-loader", "effect-rack", "tuner", "mixer", "splitter", "notes")
 $scaledFooterScales = @(125, 150, 175, 200)
 $scaledFooterCaptureSizes = @(
     [pscustomobject]@{ Name = "normal"; Width = 1280; Height = 820 },
@@ -161,25 +168,24 @@ function Write-QaPatch {
       <FILTER uid="3" x="140.0" y="240.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0">
         <PLUGIN name="Virtual MIDI Input" descriptiveName="Virtual MIDI Keyboard Input" format="Internal" category="MIDI Utility" manufacturer="Pedalboard3" version="1.0" file="VirtualMidiInput" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="0" isShell="0" hasARAExtension="0" uid="0"/>
       </FILTER>
-      <FILTER uid="4" x="1040.0" y="200.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0">
+      <FILTER uid="4" x="1390.0" y="140.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0">
         <PLUGIN name="Audio Output" descriptiveName="" format="Internal" category="I/O devices" manufacturer="JUCE" version="1.0" file="" uniqueId="724248cb" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="0" isShell="0" hasARAExtension="0" uid="724248cb"/>
       </FILTER>
-      <FILTER uid="10" x="360.0" y="80.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Level" descriptiveName="Simple level processor." format="Internal" category="Built-in" manufacturer="Niall Moody" version="1.00" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="11" x="580.0" y="80.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="VU Meter" descriptiveName="Simple VU Meter." format="Internal" category="Built-in" manufacturer="Niall Moody" version="1.00" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="12" x="800.0" y="80.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="IR Loader" descriptiveName="Cabinet Impulse Response Loader" format="Internal" category="Effects" manufacturer="Pedalboard3" version="1.0" file="IR Loader" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="13" x="360.0" y="260.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Tone Generator" descriptiveName="Test signal generator for tuner and plugin testing" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="tonegenerator" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="14" x="580.0" y="260.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Tuner" descriptiveName="Chromatic Tuner" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="Tuner" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="1" numOutputs="0" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="15" x="800.0" y="260.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Oscilloscope" descriptiveName="Oscilloscope" format="Internal" category="Built-in" manufacturer="Pedalboard" version="1.0" file="Oscilloscope" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="1" numOutputs="1" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="16" x="360.0" y="480.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Mixer" descriptiveName="Mixes two stereo pairs (A and B) to stereo with gain, pan, mute/solo." format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="4" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="17" x="580.0" y="480.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Splitter" descriptiveName="Splits stereo input to two stereo pairs (A and B)." format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="4" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <FILTER uid="18" x="800.0" y="480.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Effect Rack" descriptiveName="" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="Internal:SubGraph" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="10" x="900.0" y="710.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Level" descriptiveName="Simple level processor." format="Internal" category="Built-in" manufacturer="Niall Moody" version="1.00" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="11" x="1120.0" y="710.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="VU Meter" descriptiveName="Simple VU Meter." format="Internal" category="Built-in" manufacturer="Niall Moody" version="1.00" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="12" x="900.0" y="60.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="IR Loader" descriptiveName="Cabinet Impulse Response Loader" format="Internal" category="Effects" manufacturer="Pedalboard3" version="1.0" file="IR Loader" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="13" x="40.0" y="470.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Tone Generator" descriptiveName="Test signal generator for tuner and plugin testing" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="tonegenerator" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="14" x="40.0" y="690.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Tuner" descriptiveName="Chromatic Tuner" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="Tuner" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="1" numOutputs="0" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="15" x="1120.0" y="300.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Oscilloscope" descriptiveName="Oscilloscope" format="Internal" category="Built-in" manufacturer="Pedalboard" version="1.0" file="Oscilloscope" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="1" numOutputs="1" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="16" x="1480.0" y="420.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Mixer" descriptiveName="Mixes two stereo pairs (A and B) to stereo with gain, pan, mute/solo." format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="4" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="17" x="1640.0" y="300.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Splitter" descriptiveName="Splits stereo input to two stereo pairs (A and B)." format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="" uniqueId="0" isInstrument="0" fileTime="0" numInputs="2" numOutputs="4" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <FILTER uid="18" x="1120.0" y="820.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Effect Rack" descriptiveName="" format="Internal" category="Built-in" manufacturer="Pedalboard3" version="1.0" file="Internal:SubGraph" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
       <FILTER uid="19" x="140.0" y="560.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="Notes" descriptiveName="Displays text notes on the canvas." format="Internal" category="Built-in" manufacturer="Eric Steenwerth" version="1.0" file="" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="0" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
-      <CONNECTION srcFilter="1" srcChannel="0" dstFilter="10" dstChannel="0"/>
-      <CONNECTION srcFilter="1" srcChannel="1" dstFilter="10" dstChannel="1"/>
-      <CONNECTION srcFilter="10" srcChannel="0" dstFilter="11" dstChannel="0"/>
-      <CONNECTION srcFilter="10" srcChannel="1" dstFilter="11" dstChannel="1"/>
-      <CONNECTION srcFilter="11" srcChannel="0" dstFilter="12" dstChannel="0"/>
-      <CONNECTION srcFilter="11" srcChannel="1" dstFilter="12" dstChannel="1"/>
+      <FILTER uid="20" x="320.0" y="60.0" uiLastX="0" uiLastY="0" windowOpen="0" program="0"><PLUGIN name="NAM Loader" descriptiveName="Neural Amp Modeler Loader" format="Internal" category="Effects" manufacturer="Pedalboard3" version="1.0" file="NAM Loader" uniqueId="0" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0" uid="0"/></FILTER>
+      <CONNECTION srcFilter="1" srcChannel="0" dstFilter="20" dstChannel="0"/>
+      <CONNECTION srcFilter="1" srcChannel="1" dstFilter="20" dstChannel="1"/>
+      <CONNECTION srcFilter="20" srcChannel="0" dstFilter="12" dstChannel="0"/>
+      <CONNECTION srcFilter="20" srcChannel="1" dstFilter="12" dstChannel="1"/>
       <CONNECTION srcFilter="12" srcChannel="0" dstFilter="4" dstChannel="0"/>
       <CONNECTION srcFilter="12" srcChannel="1" dstFilter="4" dstChannel="1"/>
     </FILTERGRAPH>
@@ -339,6 +345,19 @@ function Write-CaptureProgress {
     Write-Host ("[visual-qa] {0}" -f $Message)
 }
 
+function Copy-AppNodeSnapshots {
+    foreach ($nodeName in $nodeSnapshotNames) {
+        $source = Join-Path $nodeSnapshotTempDir ("app-node-{0}.png" -f $nodeName)
+        $target = Join-Path $outputDir ("app-node-{0}.png" -f $nodeName)
+        if (-not (Test-Path $source)) {
+            throw "Expected app node snapshot was not created: $source"
+        }
+
+        Copy-Item -LiteralPath $source -Destination $target -Force
+        $captures.Add([pscustomobject]@{ Name = "app-node-$nodeName"; Path = $target }) | Out-Null
+    }
+}
+
 function Find-QaWindow {
     param(
         [System.Diagnostics.Process]$Process,
@@ -431,7 +450,41 @@ if ($CaptureScratchPanel) {
 }
 $scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -contains $_.Name })
 
+if ($CaptureNodeSnapshots) {
+    Write-CaptureProgress "mockup node reference captures"
+    $mockupCaptureScript = Join-Path $repoRoot "scripts\capture_mockup_node_refs.mjs"
+    & node $mockupCaptureScript --out $outputDir --nodes ($nodeSnapshotNames -join ",") --browser msedge
+    if ($LASTEXITCODE -ne 0) {
+        throw "Mockup node reference capture failed with exit code $LASTEXITCODE."
+    }
+
+    foreach ($nodeName in $nodeSnapshotNames) {
+        $path = Join-Path $outputDir ("mockup-node-{0}.png" -f $nodeName)
+        $captures.Add([pscustomobject]@{ Name = "mockup-node-$nodeName"; Path = $path }) | Out-Null
+    }
+}
+
 try {
+    if ($NodeSnapshotsOnly) {
+        $session = $null
+        try {
+            $session = Start-QaApp -Theme "Midnight" -Arguments @("--visual-qa-node-snapshots")
+            if ($null -eq $dpi) {
+                try { $dpi = [VisualQaWin32]::GetDpiForWindow($session.Handle) } catch { $dpi = 96 }
+                Assert-ExpectedOsScale -ActualScalePercent ([Math]::Round(($dpi / 96.0) * 100))
+            }
+
+            Write-CaptureProgress "app node snapshots"
+            Start-Sleep -Seconds 2
+            Copy-AppNodeSnapshots
+        }
+        finally {
+            if ($session) {
+                Stop-QaApp -Process $session.Process
+            }
+        }
+    }
+    else {
     foreach ($theme in $themes) {
         $session = $null
         try {
@@ -455,6 +508,17 @@ try {
 
                 Stop-QaApp -Process $session.Process
                 $session = $null
+
+                if ($CaptureNodeSnapshots) {
+                    $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-node-snapshots")
+                    Write-CaptureProgress "app node snapshots"
+                    Start-Sleep -Seconds 2
+
+                    Copy-AppNodeSnapshots
+
+                    Stop-QaApp -Process $session.Process
+                    $session = $null
+                }
 
                 $stagePath = Join-Path $outputDir "workflow-stage-mode-before-switch.png"
                 $session = Start-QaApp -Theme $theme -Arguments @("--visual-qa-stage")
@@ -617,6 +681,7 @@ try {
                 }
             }
         }
+    }
     }
 }
 finally {

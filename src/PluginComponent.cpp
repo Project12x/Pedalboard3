@@ -28,15 +28,18 @@
 #include "FontManager.h"
 #include "IconManager.h"
 #include "Images.h"
+#include "IRLoaderProcessor.h"
 #include "JuceHelperStuff.h"
 #include "MappingsDialog.h"
 #include "MasterGainState.h"
+#include "NAMProcessor.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
 #include "PresetBar.h"
 #include "SafetyLimiter.h"
 #include "SettingsManager.h"
 #include "SubGraphEditorComponent.h"
+#include "TunerControl.h"
 #include "Vectors.h"
 
 #include <melatonin_blur/melatonin_blur.h>
@@ -114,6 +117,8 @@ struct NodeVisualStyle
 };
 
 constexpr const char* kShowNodeParameterControlsSettingsKey = "ShowNodeParameterControls";
+constexpr const char* kRackNodeWidthProperty = "nodeWidth";
+constexpr const char* kRackNodeHeightProperty = "nodeHeight";
 constexpr int kMaxNodeParameterControls = 3;
 constexpr int kNodeParameterControlHeight = 24;
 constexpr int kNodeParameterControlGap = 4;
@@ -263,6 +268,401 @@ bool areNodeParameterControlsEnabled()
     return SettingsManager::getInstance().getBool(kShowNodeParameterControlsSettingsKey, true);
 }
 
+bool isHeroChassisNodeName(const String& pluginName)
+{
+    return pluginName == "NAM Loader" || pluginName == "IR Loader";
+}
+
+bool isDirectPaintedEmbeddedNodeName(const String& pluginName)
+{
+    return pluginName == "Tuner";
+}
+
+bool shouldShowHostTitleLabel(const String& pluginName)
+{
+    return !isHeroChassisNodeName(pluginName) && !isDirectPaintedEmbeddedNodeName(pluginName);
+}
+
+int getEmbeddedNodeControlTopOffset(const String& pluginName)
+{
+    if (isDirectPaintedEmbeddedNodeName(pluginName))
+        return 0;
+    if (pluginName == "NAM Loader")
+        return 70;
+    if (pluginName == "IR Loader")
+        return 78;
+
+    return 26;
+}
+
+int getEmbeddedNodeControlHeightPadding(const String& pluginName)
+{
+    if (isDirectPaintedEmbeddedNodeName(pluginName))
+        return 0;
+    if (pluginName == "NAM Loader")
+        return 116;
+    if (pluginName == "IR Loader")
+        return 112;
+
+    return 64;
+}
+
+Point<int> getDefaultRackNodeSize()
+{
+    return {324, 212};
+}
+
+AudioProcessor* unwrapVisualProcessor(AudioProcessor* processor)
+{
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(processor))
+        return bypassable->getPlugin();
+
+    return processor;
+}
+
+Point<int> getEmbeddedNodeControlSize(PedalboardProcessor* proc, const String& pluginName)
+{
+    if (pluginName == "NAM Loader")
+    {
+        if (auto* nam = dynamic_cast<NAMProcessor*>(proc))
+            return {430, nam->isEmbeddedCabinetIrCollapsed() ? 535 : 640};
+        return {430, 640};
+    }
+    if (pluginName == "IR Loader")
+        return {344, 470};
+
+    return proc->getSize();
+}
+
+struct HeroChassisPalette
+{
+    Colour top;
+    Colour bottom;
+    Colour face;
+    Colour face2;
+    Colour inset;
+    Colour edge;
+    Colour edgeHi;
+    Colour accent;
+    Colour accent2;
+    Colour led;
+    Colour text;
+    Colour textDim;
+};
+
+HeroChassisPalette makeHeroChassisPalette()
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto accent = graphCategoryColour("Graph Category Amp");
+    const auto accent2 = graphCategoryColour("Audio Connection");
+    const auto window = colours["Window Background"];
+    const auto plugin = colours["Plugin Background"];
+    const auto field = colours["Field Background"];
+    const auto edge = colours["Plugin Border"].interpolatedWith(accent, 0.16f);
+    const auto face = plugin.interpolatedWith(accent, 0.15f).interpolatedWith(field, 0.18f);
+
+    return {window.interpolatedWith(accent, 0.10f).darker(0.22f),
+            window.interpolatedWith(accent, 0.06f).darker(0.44f),
+            face.darker(0.10f),
+            face.brighter(0.08f),
+            field.interpolatedWith(plugin, 0.52f).darker(0.22f),
+            edge,
+            edge.brighter(0.22f),
+            accent,
+            accent2,
+            colours["Success Colour"].brighter(0.18f),
+            colours["Text Colour"],
+            colours["Text Colour"].withAlpha(0.62f)};
+}
+
+void drawHeroChassisNodeChrome(Graphics& g, Rectangle<float> bounds, const String& pluginName, AudioProcessor* processor, bool highlighted, bool bypassed)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeHeroChassisPalette();
+    auto* inner = unwrapVisualProcessor(processor);
+    const bool namNode = pluginName == "NAM Loader";
+    const bool irNode = pluginName == "IR Loader";
+
+    bool loaded = false;
+    String title = namNode ? "No Model Loaded" : "No IR Loaded";
+    if (namNode)
+    {
+        if (auto* nam = dynamic_cast<NAMProcessor*>(inner))
+        {
+            loaded = nam->isModelLoaded();
+            if (loaded)
+                title = nam->getModelName();
+        }
+    }
+    else if (irNode)
+    {
+        if (auto* ir = dynamic_cast<IRLoaderProcessor*>(inner))
+        {
+            loaded = ir->isIRLoaded() || ir->isIR2Loaded();
+            if (ir->isIRLoaded())
+                title = ir->getIRName();
+            else if (ir->isIR2Loaded())
+                title = ir->getIR2Name();
+        }
+    }
+
+    auto outer = bounds.reduced(1.0f);
+    const float radius = 9.0f;
+    g.setColour(palette.bottom.darker(0.46f).withAlpha(0.42f));
+    g.fillRoundedRectangle(outer.translated(0.0f, 2.0f), radius);
+
+    ColourGradient shellGradient(palette.top.brighter(0.05f), outer.getX(), outer.getY(), palette.bottom, outer.getX(),
+                                 outer.getBottom(), false);
+    shellGradient.addColour(0.44, palette.face);
+    g.setGradientFill(shellGradient);
+    g.fillRoundedRectangle(outer, radius);
+    g.setColour(palette.edge.withAlpha(highlighted ? 0.92f : 0.62f));
+    const float chassisBorderWidth = highlighted ? 1.6f : 1.1f;
+    g.drawRoundedRectangle(outer.reduced(0.5f), radius, chassisBorderWidth);
+    g.setColour(palette.edgeHi.withAlpha(0.42f));
+    g.drawRoundedRectangle(outer.reduced(2.0f), radius - 2.0f, 0.7f);
+
+    auto faceplate = Rectangle<float>(outer.getX() + 8.0f, outer.getY() + 8.0f, outer.getWidth() - 16.0f, 48.0f);
+    ColourGradient faceGradient(palette.face2.brighter(0.10f), faceplate.getX(), faceplate.getY(),
+                                palette.face.darker(0.14f), faceplate.getX(), faceplate.getBottom(), false);
+    g.setGradientFill(faceGradient);
+    g.fillRoundedRectangle(faceplate, 6.0f);
+    g.setColour(palette.edge.withAlpha(0.62f));
+    g.drawRoundedRectangle(faceplate.reduced(0.5f), 6.0f, 1.0f);
+
+    g.setColour(palette.text.withAlpha(0.035f));
+    for (float yLine = faceplate.getY() + 5.0f; yLine < faceplate.getBottom() - 4.0f; yLine += 4.0f)
+        g.drawLine(faceplate.getX() + 8.0f, yLine, faceplate.getRight() - 8.0f, yLine, 0.8f);
+
+    auto faceplateContent = faceplate.reduced(10.0f, 7.0f);
+    auto glyphTile = faceplateContent.removeFromLeft(34.0f).reduced(0.0f, 1.0f);
+    IconManager::getInstance().drawDomainGlyphTile(g, glyphTile,
+                                                   namNode ? IconManager::DomainGlyph::Amp
+                                                           : IconManager::DomainGlyph::Cabinet,
+                                                   namNode ? palette.accent : palette.accent2, loaded && !bypassed,
+                                                   5.0f);
+    faceplateContent.removeFromLeft(10.0f);
+    auto textArea = faceplateContent.withTrimmedRight(92.0f);
+    g.setFont(FontManager::getInstance().getBadgeFont().withHeight(namNode ? 12.0f : 10.0f));
+    g.setColour(palette.accent.withAlpha(0.88f));
+    g.drawText(namNode ? "NAM LOADER" : "IR LOADER", textArea.removeFromTop(13.0f), Justification::centredLeft,
+               true);
+    g.setFont(FontManager::getInstance().getSubheadingFont().withHeight(namNode ? 18.0f : 16.0f));
+    g.setColour(loaded ? palette.text : palette.textDim);
+    g.drawText(title, textArea, Justification::centredLeft, true);
+
+    auto statusPill = faceplate.reduced(10.0f, 12.0f).removeFromRight(82.0f);
+    g.setColour(palette.inset.withAlpha(0.80f));
+    g.fillRoundedRectangle(statusPill, 9.0f);
+    g.setColour((loaded ? palette.led : palette.textDim).withAlpha(0.34f));
+    g.drawRoundedRectangle(statusPill.reduced(0.5f), 9.0f, 1.0f);
+    auto led = Rectangle<float>(8.0f, 8.0f).withCentre({statusPill.getX() + 13.0f, statusPill.getCentreY()});
+    if (loaded && !bypassed)
+    {
+        g.setColour(palette.led.withAlpha(0.24f));
+        g.fillEllipse(led.expanded(5.0f));
+    }
+    g.setColour((loaded && !bypassed ? palette.led : palette.textDim).withAlpha(loaded && !bypassed ? 0.92f : 0.46f));
+    g.fillEllipse(led);
+    g.setColour(palette.text.withAlpha(0.20f));
+    g.drawEllipse(led, 0.7f);
+    g.setFont(FontManager::getInstance().getBadgeFont().withHeight(namNode ? 11.0f : 9.0f));
+    g.setColour((loaded && !bypassed ? palette.text : palette.textDim).withAlpha(0.82f));
+    g.drawText(bypassed ? "BYPASS" : (loaded ? "ACTIVE" : "EMPTY"), statusPill.withTrimmedLeft(24.0f),
+               Justification::centredLeft, true);
+
+    g.setColour(palette.accent.withAlpha(0.70f));
+    g.fillRoundedRectangle(faceplate.getX() + 14.0f, faceplate.getBottom() - 3.0f, faceplate.getWidth() - 28.0f, 2.0f,
+                           1.0f);
+
+    const float contentTop = getEmbeddedNodeControlTopOffset(pluginName) - 4.0f;
+    ignoreUnused(contentTop);
+
+    auto footer = Rectangle<float>(outer.getX() + 8.0f, outer.getBottom() - 34.0f, outer.getWidth() - 16.0f, 25.0f);
+    g.setColour(palette.edge.withAlpha(0.32f));
+    g.drawHorizontalLine(roundToInt(footer.getY()), footer.getX() + 4.0f, footer.getRight() - 4.0f);
+    g.setColour(palette.accent.withAlpha(0.24f));
+    g.fillRoundedRectangle(footer.getX() + 6.0f, footer.getBottom() - 5.0f, footer.getWidth() - 12.0f, 2.0f, 1.0f);
+
+    if (bypassed)
+    {
+        g.setColour(colours["Warning Colour"].withAlpha(0.16f));
+        g.fillRoundedRectangle(outer.reduced(5.0f), radius - 2.0f);
+        g.setColour(colours["Warning Colour"].withAlpha(0.40f));
+        g.drawRoundedRectangle(outer.reduced(4.0f), radius - 2.0f, 1.2f);
+    }
+}
+
+void drawEffectRackShell(Graphics& g, Rectangle<float> bounds, Colour accentColour, bool highlighted, bool bypassed)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto outer = bounds.reduced(1.5f);
+    const float radius = 8.0f;
+
+    auto shellBase = colours["Window Background"].interpolatedWith(accentColour, 0.18f).darker(0.05f);
+    if (bypassed)
+        shellBase = shellBase.interpolatedWith(colours["Warning Colour"], 0.14f);
+
+    ColourGradient shell(shellBase.brighter(0.12f), outer.getX(), outer.getY(), shellBase.darker(0.20f), outer.getX(),
+                         outer.getBottom(), false);
+    shell.addColour(0.36, colours["Plugin Background"].interpolatedWith(accentColour, 0.18f));
+    shell.addColour(0.72, shellBase.darker(0.08f));
+    g.setGradientFill(shell);
+    g.fillRoundedRectangle(outer, radius);
+
+    g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, highlighted ? 0.48f : 0.28f));
+    g.drawRoundedRectangle(outer.reduced(0.5f), radius, highlighted ? 1.45f : 1.1f);
+    g.setColour(colours["Text Colour"].withAlpha(0.055f));
+    g.drawRoundedRectangle(outer.reduced(2.5f), radius - 2.0f, 0.8f);
+
+    auto header = outer.withHeight(33.0f);
+    ColourGradient headerGrad(colours["Plugin Background"].interpolatedWith(accentColour, 0.30f).brighter(0.11f),
+                              header.getX(), header.getY(),
+                              colours["Plugin Background"].interpolatedWith(accentColour, 0.18f).darker(0.09f),
+                              header.getX(), header.getBottom(), false);
+    headerGrad.addColour(0.52, colours["Window Background"].interpolatedWith(accentColour, 0.19f));
+    g.setGradientFill(headerGrad);
+    Path headerPath;
+    headerPath.addRoundedRectangle(header.getX(), header.getY(), header.getWidth(), header.getHeight(), radius, radius,
+                                   true, true, false, false);
+    g.fillPath(headerPath);
+
+    g.setColour(accentColour.withAlpha(0.42f));
+    g.fillRoundedRectangle(header.getX() + 11.0f, header.getBottom() - 4.0f, header.getWidth() * 0.42f, 2.0f, 1.0f);
+    g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, 0.30f).withAlpha(0.72f));
+    g.drawHorizontalLine(roundToInt(header.getBottom()), header.getX() + 3.0f, header.getRight() - 3.0f);
+
+    auto badge = Rectangle<float>(header.getRight() - 94.0f, header.getY() + 7.0f, 66.0f, 18.0f);
+    g.setColour(accentColour.withAlpha(0.16f));
+    g.fillRoundedRectangle(badge, 5.0f);
+    g.setColour(accentColour.withAlpha(0.48f));
+    g.drawRoundedRectangle(badge.reduced(0.5f), 5.0f, 0.9f);
+    g.setFont(FontManager::getInstance().getBadgeFont().withHeight(8.5f));
+    g.setColour(accentColour.brighter(0.14f).withAlpha(0.90f));
+    g.drawText("RACK", badge.toNearestInt(), Justification::centred, true);
+
+    const auto screwColour = colours["Text Colour"].interpolatedWith(accentColour, 0.28f);
+    for (auto screwCentre : {Point<float>{outer.getX() + 8.0f, outer.getY() + 8.0f},
+                             Point<float>{outer.getRight() - 8.0f, outer.getY() + 8.0f},
+                             Point<float>{outer.getX() + 8.0f, outer.getBottom() - 8.0f},
+                             Point<float>{outer.getRight() - 8.0f, outer.getBottom() - 8.0f}})
+    {
+        auto screw = Rectangle<float>(6.0f, 6.0f).withCentre(screwCentre);
+        g.setColour(screwColour.withAlpha(0.26f));
+        g.fillEllipse(screw);
+        g.setColour(colours["Window Background"].withAlpha(0.58f));
+        g.drawLine(screw.getX() + 1.5f, screw.getCentreY(), screw.getRight() - 1.5f, screw.getCentreY(), 0.8f);
+    }
+
+    g.setColour(accentColour.withAlpha(0.16f));
+    g.fillRoundedRectangle(outer.getX() + 4.0f, header.getBottom() + 7.0f, 2.0f,
+                           outer.getBottom() - header.getBottom() - 18.0f, 1.0f);
+    g.fillRoundedRectangle(outer.getRight() - 6.0f, header.getBottom() + 7.0f, 2.0f,
+                           outer.getBottom() - header.getBottom() - 18.0f, 1.0f);
+
+    if (bypassed)
+    {
+        g.setColour(colours["Warning Colour"].withAlpha(0.17f));
+        g.fillRoundedRectangle(outer.reduced(5.0f), radius - 2.0f);
+        g.setColour(colours["Warning Colour"].withAlpha(0.46f));
+        g.drawRoundedRectangle(outer.reduced(4.0f), radius - 2.0f, 1.2f);
+    }
+}
+
+void drawEffectRackSubgraphPreview(Graphics& g, Rectangle<float> rackPreview, Colour accentColour)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto base = colours["Field Background"].interpolatedWith(accentColour, 0.22f).darker(0.06f);
+    ColourGradient rackGrad(base.brighter(0.10f), rackPreview.getX(), rackPreview.getY(), base.darker(0.24f),
+                            rackPreview.getX(), rackPreview.getBottom(), false);
+    rackGrad.addColour(0.34, colours["Window Background"].interpolatedWith(accentColour, 0.20f));
+    rackGrad.addColour(0.70, base.darker(0.08f));
+    g.setGradientFill(rackGrad);
+    g.fillRoundedRectangle(rackPreview, 7.0f);
+
+    g.setColour(colours["Window Background"].darker(0.62f).withAlpha(0.22f));
+    g.fillRoundedRectangle(rackPreview.reduced(2.0f).translated(0.0f, 1.0f), 6.0f);
+    g.setColour(accentColour.withAlpha(0.40f));
+    g.drawRoundedRectangle(rackPreview.reduced(0.5f), 7.0f, 1.2f);
+    g.setColour(colours["Text Colour"].withAlpha(0.075f));
+    g.drawRoundedRectangle(rackPreview.reduced(2.0f), 5.0f, 0.7f);
+
+    auto gridArea = rackPreview.reduced(9.0f, 8.0f);
+    const float gridStep = 10.0f;
+    g.setColour(accentColour.withAlpha(0.17f));
+    for (float xLine = gridArea.getX() + gridStep; xLine < gridArea.getRight(); xLine += gridStep)
+    {
+        for (float yDot = gridArea.getY() + gridStep; yDot < gridArea.getBottom(); yDot += gridStep)
+            g.fillRect(xLine, yDot, 1.0f, 1.0f);
+    }
+
+    auto graphContent = gridArea.reduced(3.0f, 6.0f);
+    const float laneY = graphContent.getCentreY() - 1.0f;
+    auto inDot = Rectangle<float>(10.0f, 10.0f).withCentre({graphContent.getX() + 11.0f, laneY});
+    auto outDot = Rectangle<float>(10.0f, 10.0f).withCentre({graphContent.getRight() - 11.0f, laneY});
+
+    Array<Rectangle<float>> processorNodes;
+    constexpr int visibleProcessors = 4;
+    const float nodeW = jmin(38.0f, jmax(24.0f, (graphContent.getWidth() - 76.0f) / 4.0f));
+    const float nodeH = 24.0f;
+    const float nodeGap =
+        jmax(5.0f, (graphContent.getWidth() - 34.0f - nodeW * visibleProcessors) /
+                       static_cast<float>(visibleProcessors + 1));
+    float nodeX = inDot.getRight() + nodeGap;
+    for (int i = 0; i < visibleProcessors; ++i)
+    {
+        auto nodeRect = Rectangle<float>(nodeX, laneY - nodeH * 0.5f + ((i % 2 == 0) ? -4.0f : 4.0f), nodeW, nodeH);
+        processorNodes.add(nodeRect);
+        nodeX += nodeW + nodeGap;
+    }
+
+    Path route;
+    auto start = inDot.getCentre();
+    route.startNewSubPath(start);
+    for (auto nodeRect : processorNodes)
+    {
+        const auto target = Point<float>{nodeRect.getX(), nodeRect.getCentreY()};
+        route.cubicTo(start.x + 16.0f, start.y, target.x - 16.0f, target.y, target.x, target.y);
+        start = Point<float>{nodeRect.getRight(), nodeRect.getCentreY()};
+    }
+    route.cubicTo(start.x + 16.0f, start.y, outDot.getCentreX() - 16.0f, outDot.getCentreY(),
+                  outDot.getCentreX(), outDot.getCentreY());
+    g.setColour(accentColour.withAlpha(0.16f));
+    g.strokePath(route, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(accentColour.withAlpha(0.62f));
+    g.strokePath(route, PathStrokeType(1.7f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    g.setColour(accentColour.withAlpha(0.28f));
+    g.fillEllipse(inDot.expanded(4.0f));
+    g.fillEllipse(outDot.expanded(4.0f));
+    g.setColour(colours["Window Background"].interpolatedWith(accentColour, 0.18f));
+    g.fillEllipse(inDot.expanded(1.0f));
+    g.fillEllipse(outDot.expanded(1.0f));
+    g.setColour(accentColour.withAlpha(0.90f));
+    g.drawEllipse(inDot.expanded(1.0f), 1.4f);
+    g.drawEllipse(outDot.expanded(1.0f), 1.4f);
+
+    for (int i = 0; i < processorNodes.size(); ++i)
+    {
+        const auto nodeRect = processorNodes.getReference(i);
+        Colour nodeAccent = accentColour.interpolatedWith(colours["Graph Category Delay"], i == 1 ? 0.24f : 0.08f);
+        if (i == 2)
+            nodeAccent = accentColour.interpolatedWith(colours["Graph Category Reverb"], 0.28f);
+
+        ColourGradient nodeFill(colours["Plugin Background"].interpolatedWith(nodeAccent, 0.26f).brighter(0.04f),
+                                nodeRect.getX(), nodeRect.getY(),
+                                colours["Window Background"].interpolatedWith(nodeAccent, 0.16f),
+                                nodeRect.getX(), nodeRect.getBottom(), false);
+        nodeFill.addColour(0.62, colours["Plugin Background"].interpolatedWith(nodeAccent, 0.20f));
+        g.setGradientFill(nodeFill);
+        g.fillRoundedRectangle(nodeRect, 5.0f);
+        g.setColour(nodeAccent.withAlpha(0.58f));
+        g.drawRoundedRectangle(nodeRect.reduced(0.5f), 5.0f, 0.95f);
+        g.setColour(nodeAccent.withAlpha(0.86f));
+        g.fillRoundedRectangle(nodeRect.getX() + 1.5f, nodeRect.getY() + 3.0f, nodeRect.getWidth() - 3.0f, 3.0f, 1.4f);
+    }
+}
+
 AudioPluginInstance* getPreviewParameterProcessor(AudioProcessor* processor)
 {
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(processor))
@@ -337,6 +737,57 @@ String formatPreviewParameterValue(AudioProcessorParameter& parameter)
 
     return text.substring(0, 18);
 }
+
+class PluginNodeFooterButtonLookAndFeel final : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics& g, Button& button, const Colour&, bool isMouseOverButton,
+                              bool isButtonDown) override
+    {
+        auto& schemeColours = ::ColourScheme::getInstance().colours;
+        auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+        if (bounds.isEmpty())
+            return;
+
+        auto accent = schemeColours["Accent Colour"];
+        if (auto* owner = button.findParentComponentOfClass<PluginComponent>())
+            accent = owner->getVisualAccentColour();
+
+        const auto base = schemeColours["Plugin Background"].interpolatedWith(accent, isMouseOverButton ? 0.18f : 0.10f);
+        if (!isButtonDown)
+        {
+            g.setColour(schemeColours["Window Background"].darker(0.62f).withAlpha(0.26f));
+            g.fillRoundedRectangle(bounds.translated(0.0f, 1.0f), 5.0f);
+        }
+
+        ColourGradient fill(base.brighter(isMouseOverButton ? 0.16f : 0.09f), bounds.getX(), bounds.getY(),
+                            base.darker(isButtonDown ? 0.20f : 0.12f), bounds.getX(), bounds.getBottom(), false);
+        fill.addColour(0.54, base);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bounds, 5.0f);
+
+        g.setColour(schemeColours["Text Colour"].contrasting(0.20f).withAlpha(isMouseOverButton ? 0.10f : 0.055f));
+        g.drawLine(bounds.getX() + 4.0f, bounds.getY() + 1.0f, bounds.getRight() - 4.0f, bounds.getY() + 1.0f,
+                   1.0f);
+
+        g.setColour(schemeColours["Plugin Border"].interpolatedWith(accent, isMouseOverButton ? 0.54f : 0.30f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, isMouseOverButton ? 1.1f : 0.8f);
+    }
+
+    void drawButtonText(Graphics& g, TextButton& button, bool, bool) override
+    {
+        auto& schemeColours = ::ColourScheme::getInstance().colours;
+        auto accent = schemeColours["Accent Colour"];
+        if (auto* owner = button.findParentComponentOfClass<PluginComponent>())
+            accent = owner->getVisualAccentColour();
+
+        g.setFont(FontManager::getInstance().getBadgeFont().withHeight(button.getHeight() <= 20 ? 8.5f : 9.4f));
+        g.setColour(schemeColours["Text Colour"].interpolatedWith(accent, 0.12f).withAlpha(button.isEnabled() ? 0.88f : 0.36f));
+        g.drawText(button.getButtonText(), button.getLocalBounds().reduced(3, 1), Justification::centred, true);
+    }
+};
+
+PluginNodeFooterButtonLookAndFeel pluginNodeFooterButtonLookAndFeel;
 } // namespace
 
 //------------------------------------------------------------------------------
@@ -498,8 +949,8 @@ class NiallsGenericEditor : public GenericAudioProcessorEditor
 PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     : Component(),
       // plugin(p),
-      editButton(0), mappingsButton(0), bypassButton(0), deleteButton(0), node(n), pluginWindow(0), beingDragged(false),
-      dragX(0), dragY(0)
+      titleLabel(0), editButton(0), mappingsButton(0), bypassButton(0), deleteButton(0), node(n), pluginWindow(0),
+      beingDragged(false), dragX(0), dragY(0)
 {
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
     PedalboardProcessor* proc = nullptr;
@@ -528,6 +979,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     titleLabel->setJustificationType(Justification::centredLeft);
     titleLabel->addListener(this);
     addAndMakeVisible(titleLabel);
+    titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
 
     // Shift title label to make room for icon on Audio I/O nodes
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
@@ -556,6 +1008,11 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         if (!labelNode && !tunerNode)
         {
             editButton = new TextButton("e", "Open plugin editor (right-click for options)");
+            editButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
+            if (isHeroChassisNodeName(pluginName))
+                editButton->setButtonText("Edit");
+            else if (visualCategoryName == "rack")
+                editButton->setButtonText("Open");
             editButton->setBounds(10, getHeight() - 30, 20, 20);
             editButton->addListener(this);
             // Add mouse listener for right-click context menu
@@ -563,16 +1020,21 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             addAndMakeVisible(editButton);
 
             mappingsButton = new TextButton("m", "Open mappings editor");
+            mappingsButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
+            if (isHeroChassisNodeName(pluginName) || visualCategoryName == "rack")
+                mappingsButton->setButtonText("Map");
             mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
             mappingsButton->addListener(this);
             addAndMakeVisible(mappingsButton);
         }
 
-        if (!labelNode)
+        if (!labelNode && !tunerNode)
         {
             bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
             bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
             bypassButton->setClickingTogglesState(true);
+            if (isHeroChassisNodeName(pluginName))
+                bypassButton->setEdgeIndent(4);
             bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
             bypassButton->addListener(this);
             addAndMakeVisible(bypassButton);
@@ -586,23 +1048,51 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         addAndMakeVisible(deleteButton);
     }
 
+    if (visualCategoryName == "rack")
+    {
+        rackBoundsConstrainer.setMinimumSize(248, 152);
+        rackBoundsConstrainer.setMaximumSize(620, 520);
+        rackResizeBorder = std::make_unique<ResizableBorderComponent>(this, &rackBoundsConstrainer);
+        rackResizeBorder->setBorderThickness(BorderSize<int>(5));
+        addAndMakeVisible(rackResizeBorder.get());
+    }
+
     if (proc)
     {
         int tempint;
         Component* comp = proc->getControls();
         Point<int> compSize = proc->getSize();
+        compSize = getEmbeddedNodeControlSize(proc, pluginName);
 
         spdlog::debug("[PluginComponent] proc valid, getControls()={}, getSize()={}x{}", comp != nullptr,
                       compSize.getX(), compSize.getY());
 
-        tempint = (getWidth() / 2) - (compSize.getX() / 2);
-        comp->setTopLeftPosition(tempint, 26);
-        comp->setSize(compSize.getX(), compSize.getY()); // Ensure size is set explicitly
-
-        spdlog::debug("[PluginComponent] Control positioned: x={}, y=24, PluginComponent size={}x{}", tempint,
-                      getWidth(), getHeight());
-
         addAndMakeVisible(comp);
+
+        if (pluginName == "Tuner")
+        {
+            if (auto* tunerControl = dynamic_cast<TunerControl*>(comp))
+            {
+                tunerControl->setBypassController(
+                    [bypassable]() { return bypassable != nullptr && bypassable->getBypass(); },
+                    [bypassable, this](bool bypassed)
+                    {
+                        if (bypassable != nullptr)
+                        {
+                            bypassable->setBypass(bypassed);
+                            repaint();
+                        }
+                    });
+            }
+        }
+
+        tempint = (getWidth() / 2) - (compSize.getX() / 2);
+        comp->setBounds(tempint, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
+        if (deleteButton != nullptr)
+            deleteButton->toFront(false);
+
+        spdlog::debug("[PluginComponent] Control positioned: x={}, y={}, PluginComponent size={}x{}", tempint,
+                      getEmbeddedNodeControlTopOffset(pluginName), getWidth(), getHeight());
     }
 
     createPins();
@@ -658,11 +1148,94 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 PluginComponent::~PluginComponent()
 {
     stopTimer();                     // Stop drag lerp timer
+    if (editButton != nullptr)
+        editButton->setLookAndFeel(nullptr);
+    if (mappingsButton != nullptr)
+        mappingsButton->setLookAndFeel(nullptr);
+    rackResizeBorder.reset();
     channelGainSliders.clear(false); // Release without deleting - deleteAllChildren() handles it
     nodeParameterControls.clear(false);
     deleteAllChildren();
     if (pluginWindow)
         delete pluginWindow;
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::resized()
+{
+    const int titleLeft = isAudioIONode() ? 22 : 20;
+    const int titleRightInset = deleteButton ? 24 : 8;
+    if (titleLabel != nullptr)
+        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+
+    layoutFooterButtons();
+    if (deleteButton != nullptr)
+        deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
+
+    for (auto* pin : outputPins)
+    {
+        if (pin != nullptr)
+            pin->setTopLeftPosition(isAudioIONode() ? getWidth() - 8 : getWidth() - 6, pin->getY());
+    }
+
+    if (visualCategoryName == "rack" && node != nullptr)
+    {
+        node->properties.set(kRackNodeWidthProperty, getWidth());
+        node->properties.set(kRackNodeHeightProperty, getHeight());
+    }
+
+    layoutNodeParameterControls();
+
+    if (rackResizeBorder != nullptr)
+    {
+        rackResizeBorder->setBounds(getLocalBounds());
+        rackResizeBorder->toFront(false);
+        sendChangeMessage();
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::layoutFooterButtons()
+{
+    const bool heroNode = isHeroChassisNodeName(pluginName);
+    const bool rackNode = visualCategoryName == "rack";
+
+    if (heroNode)
+    {
+        const int y = getHeight() - 31;
+        const int h = 22;
+
+        if (editButton != nullptr)
+            editButton->setBounds(16, y, 46, h);
+        if (mappingsButton != nullptr)
+            mappingsButton->setBounds(68, y, 48, h);
+        if (bypassButton != nullptr)
+            bypassButton->setBounds(getWidth() - 40, y, 26, h);
+
+        return;
+    }
+
+    if (rackNode)
+    {
+        const int y = getHeight() - 31;
+        const int h = 22;
+
+        if (editButton != nullptr)
+            editButton->setBounds(14, y, 54, h);
+        if (mappingsButton != nullptr)
+            mappingsButton->setBounds(74, y, 46, h);
+        if (bypassButton != nullptr)
+            bypassButton->setBounds(getWidth() - 40, y, 26, h);
+
+        return;
+    }
+
+    if (editButton != nullptr)
+        editButton->setBounds(10, getHeight() - 30, 20, 20);
+    if (mappingsButton != nullptr)
+        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+    if (bypassButton != nullptr)
+        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
 }
 
 //------------------------------------------------------------------------------
@@ -675,18 +1248,44 @@ void PluginComponent::paint(Graphics& g)
     const float cornerRadius = 8.0f;
     const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
     const bool highlighted = beingDragged || isMouseOver(true);
-    Colour accentColour = visualAccentColour;
+    const bool rackNode = visualCategoryName == "rack";
+    const bool heroChassisNode = isHeroChassisNodeName(pluginName);
+    const bool directPaintedNode = isDirectPaintedEmbeddedNodeName(pluginName);
+    Colour accentColour = rackNode ? colours["Graph Category Modulation"] : visualAccentColour;
+
+    if (directPaintedNode)
+        return;
+
+    if (heroChassisNode)
+    {
+        drawHeroChassisNodeChrome(g, getLocalBounds().toFloat(), pluginName, node->getProcessor(), highlighted,
+                                  bypassed);
+        return;
+    }
+
+    if (rackNode)
+    {
+        drawEffectRackShell(g, getLocalBounds().toFloat(), accentColour, highlighted, bypassed);
+
+        const float rackHeaderHeight = 33.0f;
+        auto rackPreview = Rectangle<float>(14.0f, rackHeaderHeight + 13.0f, w - 28.0f,
+                                            jmax(86.0f, h - rackHeaderHeight - 64.0f));
+        drawEffectRackSubgraphPreview(g, rackPreview, accentColour);
+        return;
+    }
 
     // === MAIN FILL (gradient for premium feel) ===
-    Colour bgBase = colours["Plugin Background"].interpolatedWith(accentColour, isAudioIONode() ? 0.10f : 0.065f);
+    Colour bgBase =
+        colours["Plugin Background"].interpolatedWith(accentColour, rackNode ? 0.145f : (isAudioIONode() ? 0.10f : 0.065f));
     Colour bgTop = bgBase.brighter(0.11f);
     Colour bgBottom = bgBase.darker(0.13f);
     g.setGradientFill(ColourGradient(bgTop, 0, 0, bgBottom, 0, h, false));
     g.fillRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius);
 
-    // === BORDER (thicker, more defined) ===
+    // === BORDER (thin mockup-style chrome) ===
     g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, highlighted ? 0.34f : 0.18f));
-    g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, 2.0f);
+    const float nodeBorderWidth = highlighted ? 1.15f : 0.9f;
+    g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, nodeBorderWidth);
 
     // === HEADER BAR (title area with gradient) ===
     const float headerHeight = 23.0f;
@@ -720,9 +1319,6 @@ void PluginComponent::paint(Graphics& g)
         g.setColour(colours["Text Colour"].withAlpha(0.18f));
         g.drawEllipse(dotX - dotRadius, dotY - dotRadius, dotRadius * 2.0f, dotRadius * 2.0f, 0.8f);
     }
-
-    g.setColour(accentColour.withAlpha(bypassed ? 0.38f : 0.56f));
-    g.fillRoundedRectangle(3.0f, 7.0f, 2.0f, h - 14.0f, 1.0f);
 
     // Subtle top highlight (inner bevel)
     g.setColour(colours["Text Colour"].withAlpha(0.06f));
@@ -788,24 +1384,27 @@ void PluginComponent::paint(Graphics& g)
     {
         g.setColour(accentColour.withAlpha(beingDragged ? 0.46f : 0.24f));
         g.drawRoundedRectangle(1.0f, 1.0f, w - 2.0f, h - 2.0f, cornerRadius + 1.0f,
-                               beingDragged ? 2.2f : 1.4f);
+                               beingDragged ? 1.8f : 1.15f);
     }
 
     // Draw port label backplates before the existing glyph arrangements.
-    if (!isAudioIONode())
+    if (!isAudioIONode() && !rackNode)
     {
         drawPortLabelBackplates(g, inputText, accentColour, w, false);
         drawPortLabelBackplates(g, outputText, accentColour, w, true);
     }
 
-    // Draw the input channels.
-    g.setColour(colours["Text Colour"]);
-    for (i = 0; i < inputText.size(); ++i)
-        inputText[i]->draw(g);
+    if (!rackNode)
+    {
+        // Draw the input channels.
+        g.setColour(colours["Text Colour"]);
+        for (i = 0; i < inputText.size(); ++i)
+            inputText[i]->draw(g);
 
-    // Draw the output channels.
-    for (i = 0; i < outputText.size(); ++i)
-        outputText[i]->draw(g);
+        // Draw the output channels.
+        for (i = 0; i < outputText.size(); ++i)
+            outputText[i]->draw(g);
+    }
 
     // Draw horizontal VU meters for Audio I/O nodes (full width)
     if (isAudioIONode() && cachedMeterChannelCount > 0)
@@ -1234,11 +1833,11 @@ void PluginComponent::labelTextChanged(Label* label)
         const int titleLeft = isAudioIONode() ? 22 : 20;
         const int titleRightInset = deleteButton ? 24 : 8;
         titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
     if (deleteButton)
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
-    if (bypassButton)
-        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+    layoutFooterButtons();
 
     {
         const bool largePin = isAudioIONode();
@@ -1551,6 +2150,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         if (proc)
         {
             Point<int> compSize = proc->getSize();
+            compSize = getEmbeddedNodeControlSize(proc, pluginName);
             // Ensure inputs and outputs fit on sides of the control
             procW = inputWidth + compSize.getX() + outputWidth + 20.0f;
             procH = (float)compSize.getY();
@@ -1581,8 +2181,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         h *= (int)pinSpacing;
 
         float minH = (float)h + 70.0f;
-        if (proc && minH < procH + 60.0f)
-            minH = procH + 60.0f;
+        if (proc && minH < procH + (float)getEmbeddedNodeControlHeightPadding(pluginName))
+            minH = procH + (float)getEmbeddedNodeControlHeightPadding(pluginName);
 
         if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
@@ -1605,13 +2205,25 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     else
     {
         Point<int> compSize = proc->getSize();
+        compSize = getEmbeddedNodeControlSize(proc, pluginName);
 
         if (nameWidth > (compSize.getX() + 24.0f))
             w = (int)(nameWidth + 20.0f);
         else
             w = (int)(compSize.getX() + 24.0f);
 
-        h = compSize.getY() + 64;
+        h = compSize.getY() + getEmbeddedNodeControlHeightPadding(pluginName);
+    }
+
+    if (visualCategoryName == "rack")
+    {
+        const auto rackDefault = getDefaultRackNodeSize();
+        const int storedWRaw = (int)node->properties.getWithDefault(kRackNodeWidthProperty, rackDefault.getX());
+        const int storedHRaw = (int)node->properties.getWithDefault(kRackNodeHeightProperty, rackDefault.getY());
+        const int storedW = storedWRaw > 0 ? storedWRaw : rackDefault.getX();
+        const int storedH = storedHRaw > 0 ? storedHRaw : rackDefault.getY();
+        w = jmax(w, jlimit(248, 620, storedW));
+        h = jmax(h, jlimit(152, 520, storedH));
     }
 
     // Enforce matching size for MIDI input node pair
@@ -1650,15 +2262,11 @@ void PluginComponent::updateNodeSize()
         const int titleLeft = isAudioIONode() ? 22 : 20;
         const int titleRightInset = deleteButton ? 24 : 8;
         titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
 
     // Reposition bottom buttons after size change
-    if (editButton)
-        editButton->setBounds(10, getHeight() - 30, 20, 20);
-    if (mappingsButton)
-        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
-    if (bypassButton)
-        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+    layoutFooterButtons();
 
     // Reposition PedalboardProcessor control component
     auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
@@ -1668,6 +2276,7 @@ void PluginComponent::updateNodeSize()
     if (proc)
     {
         Point<int> compSize = proc->getSize();
+        compSize = getEmbeddedNodeControlSize(proc, pluginName);
         for (int ci = 0; ci < getNumChildComponents(); ++ci)
         {
             auto* child = getChildComponent(ci);
@@ -1681,11 +2290,12 @@ void PluginComponent::updateNodeSize()
             if (dynamic_cast<NodeParameterMiniControl*>(child) != nullptr)
                 continue;
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
-            child->setTopLeftPosition(cx, 26);
-            child->setSize(compSize.getX(), compSize.getY());
+            child->setBounds(cx, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
             break;
         }
     }
+
+    layoutFooterButtons();
 
     createPins();
     rebuildNodeParameterControls();
@@ -1701,14 +2311,10 @@ void PluginComponent::refreshNodeParameterControls()
         const int titleLeft = isAudioIONode() ? 22 : 20;
         const int titleRightInset = deleteButton ? 24 : 8;
         titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
 
-    if (editButton)
-        editButton->setBounds(10, getHeight() - 30, 20, 20);
-    if (mappingsButton)
-        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
-    if (bypassButton)
-        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+    layoutFooterButtons();
 
     rebuildNodeParameterControls();
     layoutNodeParameterControls();
@@ -1720,6 +2326,9 @@ void PluginComponent::refreshNodeParameterControls()
 int PluginComponent::getNodeParameterControlCount() const
 {
     if (!areNodeParameterControlsEnabled() || isAudioIONode() || node == nullptr)
+        return 0;
+
+    if (isDirectPaintedEmbeddedNodeName(pluginName))
         return 0;
 
     const auto excludedSystemNode =
@@ -1860,6 +2469,7 @@ void PluginComponent::refreshPins()
         const int titleLeft = isAudioIONode() ? 22 : 20;
         const int titleRightInset = deleteButton ? 24 : 8;
         titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
     createPins();
 
@@ -1874,12 +2484,7 @@ void PluginComponent::refreshPins()
     }
 
     // Reposition bottom buttons after size change (prevents clipping by growing controls)
-    if (editButton)
-        editButton->setBounds(10, getHeight() - 30, 20, 20);
-    if (mappingsButton)
-        mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
-    if (bypassButton)
-        bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
+    layoutFooterButtons();
 
     // Reposition the internal PedalboardProcessor control component if present
     // (mirrors the positioning logic in the constructor)
@@ -1893,6 +2498,7 @@ void PluginComponent::refreshPins()
     if (auto* proc = innerProc)
     {
         Point<int> compSize = proc->getSize();
+        compSize = getEmbeddedNodeControlSize(proc, pluginName);
         // Find the control component among our children and reposition it
         for (int ci = 0; ci < getNumChildComponents(); ++ci)
         {
@@ -1909,8 +2515,7 @@ void PluginComponent::refreshPins()
                 continue;
             // This should be the PedalboardProcessor's control component
             int cx = (getWidth() / 2) - (compSize.getX() / 2);
-            child->setTopLeftPosition(cx, 26);
-            child->setSize(compSize.getX(), compSize.getY());
+            child->setBounds(cx, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
             break;
         }
     }
@@ -2285,7 +2890,12 @@ PluginEditorWindow::PluginEditorWindow(AudioProcessorEditor* editor, PluginCompo
     setAlwaysOnTop(SettingsManager::getInstance().getBool("WindowsOnTop", false));
     // setDropShadowEnabled(false);
     // Fix for my favourite synth being unable to handle being resizable :(
-    if ((c->getNode()->getProcessor()->getName() != "VAZPlusVSTi") &&
+    const bool isEffectRackEditor = c->getNode()->getProcessor()->getName() == "Effect Rack";
+    if (isEffectRackEditor)
+    {
+        setResizable(true, true);
+    }
+    else if ((c->getNode()->getProcessor()->getName() != "VAZPlusVSTi") &&
         !SettingsManager::getInstance().getBool("fixedSizeWindows", true))
     {
         /*#ifdef __APPLE__

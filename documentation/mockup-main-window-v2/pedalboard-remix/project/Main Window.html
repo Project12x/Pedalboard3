@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pedalboard3 · Main Window</title>
+<link rel="stylesheet" href="main.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #fit { position: fixed; inset: 0; display: grid; place-items: center; }
+  #scale { width: 1280px; height: 800px; transform-origin: center; }
+  #scale .mw { border-radius: 16px; box-shadow: 0 30px 90px rgba(0,0,0,0.6); overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="fit"><div id="scale"><div id="root"></div></div></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="mw-data.jsx"></script>
+<script type="text/babel" src="mw-knob.jsx"></script>
+<script type="text/babel" src="mw-node.jsx"></script>
+<script type="text/babel" src="mw-canvas.jsx"></script>
+<script type="text/babel" src="mw-chrome.jsx"></script>
+<script type="text/babel" src="mw-app.jsx"></script>
+
+<script type="text/babel">
+  ReactDOM.createRoot(document.getElementById("root")).render(<MainWindow />);
+  function fit() {
+    const s = document.getElementById("scale");
+    const k = Math.min(window.innerWidth / 1280, window.innerHeight / 800);
+    if (k > 0 && isFinite(k)) s.style.transform = "scale(" + k + ")";
+  }
+  window.addEventListener("resize", fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(document.documentElement);
+  fit();
+  requestAnimationFrame(fit);
+</script>
+</body>
+</html>

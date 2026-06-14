@@ -49,6 +49,8 @@ class PluginComponent : public Component,
 
     ///	Draws the component.
     void paint(Graphics& g);
+    /// Keeps rack resize chrome and pin/button positions aligned after manual node resizing.
+    void resized() override;
 
     ///	Used to redraw any connections to this component's pins.
     void moved();
@@ -155,6 +157,7 @@ class PluginComponent : public Component,
     int getNodeParameterControlsHeight() const;
     void rebuildNodeParameterControls();
     void layoutNodeParameterControls();
+    void layoutFooterButtons();
 
     ///	The title label.
     Label* titleLabel;
@@ -218,6 +221,9 @@ class PluginComponent : public Component,
     OwnedArray<Slider> channelGainSliders;
     /// Optional compact parameter controls shown on external plugin nodes.
     OwnedArray<NodeParameterMiniControl> nodeParameterControls;
+    /// Resize affordance shown only on Effect Rack graph nodes.
+    std::unique_ptr<ResizableBorderComponent> rackResizeBorder;
+    ComponentBoundsConstrainer rackBoundsConstrainer;
 
     /// Drop shadow for premium floating-node effect (melatonin_blur, cached internally)
     melatonin::DropShadow nodeShadow{Colours::black.withAlpha(0.35f), 8, {2, 3}};

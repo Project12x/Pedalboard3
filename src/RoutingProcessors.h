@@ -30,7 +30,7 @@ class SplitterProcessor : public PedalboardProcessor
 
     // PedalboardProcessor overrides
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(100, 60); }
+    Point<int> getSize() override { return Point<int>(230, 180); }
 
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override {}
@@ -92,7 +92,7 @@ class MixerProcessor : public PedalboardProcessor
 
     // PedalboardProcessor overrides
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(230, 340); }
+    Point<int> getSize() override { return Point<int>(230, 280); }
 
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;

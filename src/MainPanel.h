@@ -355,6 +355,8 @@ class MainPanel : public Component,
     void setStageViewModeForVisualQa(int modeIndex);
     /// Sets the virtual keyboard deck state for deterministic visual QA captures.
     void setVirtualKeyboardCollapsedForVisualQa(bool shouldCollapse);
+    /// Writes isolated graph-node PNGs for visual comparison against mockups.
+    void writeNodeSnapshotsForVisualQa(const File& outputDir);
 
     ///	Returns the PluginField's MidiMappingManager.
     MidiMappingManager* getMidiMappingManager()

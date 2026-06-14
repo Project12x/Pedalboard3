@@ -16,6 +16,169 @@
 #include "PedalboardProcessorEditors.h"
 #include "Vectors.h"
 
+static Colour getRoutingNodeAccent()
+{
+    return ColourScheme::getInstance().colours["Graph Category Dynamics"];
+}
+
+static String getRoutingVisualLabel(int index)
+{
+    return String(index + 1);
+}
+
+static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto outer = bounds;
+    const auto base = colours["Plugin Background"];
+
+    ColourGradient body(base.brighter(0.10f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
+                        bounds.getBottom(), false);
+    body.addColour(0.36, base.brighter(0.02f));
+    body.addColour(0.78, base.darker(0.08f));
+    g.setGradientFill(body);
+    g.fillRoundedRectangle(outer.reduced(0.5f), 8.0f);
+
+    auto header = bounds.removeFromTop(25.0f).reduced(5.0f, 4.0f);
+    ColourGradient headerFill(accent.withAlpha(0.20f), header.getX(), header.getY(), base.darker(0.06f),
+                              header.getX(), header.getBottom(), false);
+    headerFill.addColour(0.48, base.interpolatedWith(accent, 0.10f));
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(header, 6.0f);
+
+    g.setColour(accent.withAlpha(0.48f));
+    g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f, 1.15f);
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawRoundedRectangle(outer.reduced(1.5f), 7.0f, 0.8f);
+
+    if (title.isNotEmpty())
+    {
+        g.setColour(accent.withAlpha(0.88f));
+        g.setFont(Font(11.0f, Font::bold));
+        g.drawText(title, header.reduced(8.0f, 0.0f).toNearestInt(), Justification::centredLeft, false);
+    }
+}
+
+static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto base = primary ? accent.withAlpha(0.20f) : colours["Plugin Background"].brighter(0.08f);
+    ColourGradient fill(base.brighter(0.12f), bounds.getX(), bounds.getY(), base.darker(0.24f), bounds.getX(),
+                        bounds.getBottom(), false);
+    fill.addColour(0.50, base);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(bounds, 5.0f);
+
+    g.setColour(accent.withAlpha(primary ? 0.72f : 0.38f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, 1.0f);
+
+    g.setColour((primary ? accent : colours["Text Colour"]).withAlpha(primary ? 0.96f : 0.70f));
+    g.setFont(Font(10.5f, Font::bold));
+    g.drawText(text, bounds.toNearestInt(), Justification::centred, false);
+}
+
+static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float level, Colour accent, bool muted)
+{
+    if (bounds.isEmpty())
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto track = bounds.reduced(0.0f, juce::jmax(0.0f, (bounds.getHeight() - 5.0f) * 0.5f));
+
+    g.setColour(colours["Plugin Background"].darker(0.34f));
+    g.fillRoundedRectangle(track, 3.0f);
+
+    auto fill = track.withWidth(track.getWidth() * jlimit(0.0f, 1.0f, level));
+    ColourGradient fillGradient(accent.withAlpha(muted ? 0.18f : 0.72f), fill.getX(), fill.getY(),
+                                colours["VU Meter Upper Colour"].withAlpha(muted ? 0.10f : 0.56f),
+                                fill.getRight(), fill.getY(), false);
+    fillGradient.addColour(0.70, colours["VU Meter Lower Colour"].withAlpha(muted ? 0.12f : 0.64f));
+    g.setGradientFill(fillGradient);
+    g.fillRoundedRectangle(fill, 3.0f);
+
+    g.setColour(accent.withAlpha(muted ? 0.14f : 0.28f));
+    g.drawRoundedRectangle(track.reduced(0.5f), 3.0f, 0.8f);
+}
+
+static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour accent, bool muteA, bool muteB)
+{
+    if (bounds.isEmpty())
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    auto well = bounds.reduced(6.0f, 2.0f);
+    g.setColour(colours["Plugin Background"].darker(0.22f));
+    g.fillRoundedRectangle(well, 6.0f);
+    g.setColour(accent.withAlpha(0.16f));
+    g.drawRoundedRectangle(well.reduced(0.5f), 6.0f, 0.8f);
+
+    const float startX = bounds.getX() + 30.0f;
+    const float startY = bounds.getCentreY();
+    const float endX = bounds.getRight() - 30.0f;
+    const float aY = bounds.getY() + 7.0f;
+    const float bY = bounds.getBottom() - 7.0f;
+
+    auto drawRoute = [&](float endY, bool muted)
+    {
+        Path route;
+        route.startNewSubPath(startX, startY);
+        route.cubicTo(startX + 52.0f, startY, endX - 62.0f, endY, endX, endY);
+        g.setColour(accent.withAlpha(muted ? 0.16f : 0.42f));
+        g.strokePath(route, PathStrokeType(muted ? 1.1f : 1.8f, PathStrokeType::curved, PathStrokeType::rounded));
+    };
+
+    drawRoute(aY, muteA);
+    drawRoute(bY, muteB);
+
+    g.setColour(accent.withAlpha(0.78f));
+    g.fillEllipse(startX - 3.0f, startY - 3.0f, 6.0f, 6.0f);
+}
+
+static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    ColourGradient deck(colours["Plugin Background"].brighter(0.07f), bounds.getX(), bounds.getY(),
+                        colours["Plugin Background"].darker(0.15f), bounds.getX(), bounds.getBottom(), false);
+    deck.addColour(0.54, colours["Plugin Background"].darker(0.03f));
+    g.setGradientFill(deck);
+    g.fillRoundedRectangle(bounds, 7.0f);
+
+    g.setColour(accent.withAlpha(0.38f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 1.0f);
+    g.setColour(Colours::white.withAlpha(0.045f));
+    g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.0f, bounds.getRight() - 7.0f, bounds.getY() + 1.0f);
+
+    ignoreUnused(label);
+}
+
+static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    if (bounds.isEmpty())
+        return;
+
+    g.setColour(colours["Plugin Background"].darker(0.34f));
+    g.fillRoundedRectangle(bounds, 3.0f);
+    g.setColour(accent.withAlpha(0.26f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 3.0f, 0.8f);
+
+    const float dotX = jmap(jlimit(-1.0f, 1.0f, pan), -1.0f, 1.0f, bounds.getX() + 4.0f, bounds.getRight() - 4.0f);
+    auto dot = Rectangle<float>(dotX - 3.0f, bounds.getCentreY() - 3.0f, 6.0f, 6.0f);
+    g.setColour(accent.withAlpha(0.26f));
+    g.fillEllipse(dot.expanded(3.0f));
+    g.setColour(accent);
+    g.fillEllipse(dot);
+}
+
+static void styleRoutingButton(TextButton& button, Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    button.setColour(TextButton::buttonColourId, colours["Plugin Background"].brighter(0.06f));
+    button.setColour(TextButton::buttonOnColourId, accent.withAlpha(0.82f));
+    button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.75f));
+    button.setColour(TextButton::textColourOnId, Colours::black.withAlpha(0.90f));
+}
+
 //==============================================================================
 // Controls for Splitter
 class SplitterControl : public Component, public Button::Listener
@@ -24,15 +187,17 @@ class SplitterControl : public Component, public Button::Listener
     SplitterControl(SplitterProcessor* proc) : processor(proc)
     {
         addAndMakeVisible(muteA);
-        muteA.setButtonText("A");
+        muteA.setButtonText("1");
         muteA.setClickingTogglesState(true);
         muteA.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
+        styleRoutingButton(muteA, getRoutingNodeAccent());
         muteA.addListener(this);
 
         addAndMakeVisible(muteB);
-        muteB.setButtonText("B");
+        muteB.setButtonText("2");
         muteB.setClickingTogglesState(true);
         muteB.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
+        styleRoutingButton(muteB, getRoutingNodeAccent());
         muteB.addListener(this);
 
         // Update state
@@ -42,10 +207,25 @@ class SplitterControl : public Component, public Button::Listener
 
     void resized() override
     {
-        auto area = getLocalBounds().reduced(4);
-        auto top = area.removeFromTop(area.getHeight() / 2);
-        muteA.setBounds(top.reduced(2));
-        muteB.setBounds(area.reduced(2));
+        auto area = getLocalBounds().reduced(10, 9);
+        area.removeFromTop(28);
+
+        auto inputRow = area.removeFromTop(28);
+        inBadge = inputRow.removeFromLeft(36).reduced(1, 4);
+        inputMeter = inputRow.reduced(8, 11);
+
+        fanoutArea = area.removeFromTop(34);
+
+        auto outputA = area.removeFromTop(28);
+        outBadgeA = outputA.removeFromLeft(28).reduced(1, 4);
+        muteA.setBounds(outputA.removeFromRight(42).reduced(2, 3));
+        laneA = outputA.reduced(8, 8);
+
+        area.removeFromTop(4);
+        auto outputB = area.removeFromTop(28);
+        outBadgeB = outputB.removeFromLeft(28).reduced(1, 4);
+        muteB.setBounds(outputB.removeFromRight(42).reduced(2, 3));
+        laneB = outputB.reduced(8, 8);
     }
 
     void buttonClicked(Button* b) override
@@ -58,15 +238,30 @@ class SplitterControl : public Component, public Button::Listener
 
     void paint(Graphics& g) override
     {
-        g.fillAll(ColourScheme::getInstance().colours["Plugin Background"]);
-        g.setColour(ColourScheme::getInstance().colours["Plugin Border"]);
-        g.drawRect(getLocalBounds(), 1);
+        paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});
+
+        auto accent = getRoutingNodeAccent();
+        paintRoutingBadge(g, inBadge.toFloat(), "IN", accent, true);
+        paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState());
+        paintRoutingBadge(g, outBadgeA.toFloat(), getRoutingVisualLabel(0), accent, !muteA.getToggleState());
+        paintRoutingBadge(g, outBadgeB.toFloat(), getRoutingVisualLabel(1), accent, !muteB.getToggleState());
+
+        paintRoutingMeterTrack(g, inputMeter.toFloat(), 0.62f, accent, false);
+        paintRoutingMeterTrack(g, laneA.toFloat(), 0.72f, accent, muteA.getToggleState());
+        paintRoutingMeterTrack(g, laneB.toFloat(), 0.38f, accent, muteB.getToggleState());
     }
 
   private:
     SplitterProcessor* processor;
     TextButton muteA;
     TextButton muteB;
+    Rectangle<int> inBadge;
+    Rectangle<int> outBadgeA;
+    Rectangle<int> outBadgeB;
+    Rectangle<int> inputMeter;
+    Rectangle<int> laneA;
+    Rectangle<int> laneB;
+    Rectangle<int> fanoutArea;
 };
 
 //==============================================================================
@@ -288,6 +483,7 @@ Component* MixerProcessor::getControls()
                 m.setButtonText("M");
                 m.setClickingTogglesState(true);
                 m.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
+                styleRoutingButton(m, ColourScheme::getInstance().colours["Danger Colour"]);
                 m.setToggleState(processor->getChannelMute(ch), dontSendNotification);
                 m.onClick = [this, ch]() { processor->setChannelMute(ch, muteButtons[ch].getToggleState()); };
                 addAndMakeVisible(m);
@@ -297,6 +493,7 @@ Component* MixerProcessor::getControls()
                 s.setButtonText("S");
                 s.setClickingTogglesState(true);
                 s.setColour(TextButton::buttonOnColourId, Colour(0xFFCCAA00));
+                styleRoutingButton(s, Colour(0xFFCCAA00));
                 s.setToggleState(processor->getChannelSolo(ch), dontSendNotification);
                 s.onClick = [this, ch]() { processor->setChannelSolo(ch, soloButtons[ch].getToggleState()); };
                 addAndMakeVisible(s);
@@ -306,6 +503,7 @@ Component* MixerProcessor::getControls()
                 ph.setButtonText(CharPointer_UTF8("\xc3\x98")); // O-slash as phase symbol
                 ph.setClickingTogglesState(true);
                 ph.setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
+                styleRoutingButton(ph, Colour(0xFFFF8800));
                 ph.setToggleState(processor->getChannelPhaseInvert(ch), dontSendNotification);
                 ph.onClick = [this, ch]() { processor->setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
                 addAndMakeVisible(ph);
@@ -318,30 +516,31 @@ Component* MixerProcessor::getControls()
 
         void resized() override
         {
-            auto area = getLocalBounds().reduced(4);
+            auto area = getLocalBounds().reduced(8, 8);
+            area.removeFromTop(28);
             int stripW = area.getWidth() / 2;
 
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
             {
-                auto strip = area.removeFromLeft(stripW).reduced(2);
+                auto strip = area.removeFromLeft(stripW).reduced(4, 0);
+                stripDecks[ch] = strip;
 
-                // Phase button at top
-                phaseButtons[ch].setBounds(strip.removeFromTop(22).reduced(2, 0));
+                auto top = strip.removeFromTop(22);
+                badgeAreas[ch] = top.removeFromLeft(26).reduced(1, 3);
+                phaseButtons[ch].setBounds(top.removeFromRight(28).reduced(2, 2));
                 strip.removeFromTop(2);
 
-                // VU meter area (reserved for paint)
-                vuAreas[ch] = strip.removeFromTop(100);
+                vuAreas[ch] = strip.removeFromTop(54).reduced(12, 2);
                 strip.removeFromTop(2);
 
-                // Gain fader
-                faders[ch].setBounds(strip.removeFromTop(110));
+                faders[ch].setBounds(strip.removeFromTop(88).reduced(6, 0));
                 strip.removeFromTop(2);
 
-                // Pan knob
-                panKnobs[ch].setBounds(strip.removeFromTop(42));
+                panRails[ch] = strip.removeFromTop(12).reduced(12, 3);
                 strip.removeFromTop(2);
+                panKnobs[ch].setBounds(strip.removeFromTop(34).withSizeKeepingCentre(34, 34));
 
-                // Mute + Solo in a row
+                strip.removeFromTop(2);
                 auto btnRow = strip.removeFromTop(24);
                 int btnW = btnRow.getWidth() / 2;
                 muteButtons[ch].setBounds(btnRow.removeFromLeft(btnW).reduced(2, 0));
@@ -354,17 +553,17 @@ Component* MixerProcessor::getControls()
         void paint(Graphics& g) override
         {
             auto& cs = ColourScheme::getInstance();
+            const auto accent = getRoutingNodeAccent();
+            paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});
 
-            // Draw channel labels at bottom
-            g.setFont(12.0f);
-            g.setColour(cs.colours["Text Colour"]);
-            int stripW = (getWidth() - 8) / 2;
-            g.drawText("A", 4, getHeight() - 18, stripW, 16, Justification::centred);
-            g.drawText("B", 4 + stripW, getHeight() - 18, stripW, 16, Justification::centred);
-
-            // Draw VU meters for each channel
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            {
+                paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));
+                auto badge = badgeAreas[ch];
+                paintRoutingBadge(g, badge.toFloat(), getRoutingVisualLabel(ch), accent, true);
+                paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
                 drawVuMeter(g, ch, cs);
+            }
         }
 
       private:
@@ -375,6 +574,9 @@ Component* MixerProcessor::getControls()
         TextButton soloButtons[MixerProcessor::NumChannels];
         TextButton phaseButtons[MixerProcessor::NumChannels];
         Rectangle<int> vuAreas[MixerProcessor::NumChannels];
+        Rectangle<int> stripDecks[MixerProcessor::NumChannels];
+        Rectangle<int> badgeAreas[MixerProcessor::NumChannels];
+        Rectangle<int> panRails[MixerProcessor::NumChannels];
 
         void drawVuMeter(Graphics& g, int ch, ColourScheme& cs)
         {
@@ -382,9 +584,8 @@ Component* MixerProcessor::getControls()
             if (area.isEmpty())
                 return;
 
-            // Background
-            g.setColour(Colour(0xFF0A0A14));
-            g.fillRect(area);
+            g.setColour(cs.colours["Plugin Background"].darker(0.35f));
+            g.fillRoundedRectangle(area.toFloat(), 4.0f);
 
             // Draw L and R bars
             int barW = (area.getWidth() - 6) / 2;
@@ -411,9 +612,8 @@ Component* MixerProcessor::getControls()
                 g.drawHorizontalLine(y, static_cast<float>(area.getRight() - 3), static_cast<float>(area.getRight()));
             }
 
-            // Border
-            g.setColour(cs.colours["Plugin Border"]);
-            g.drawRect(area, 1);
+            g.setColour(getRoutingNodeAccent().withAlpha(0.24f));
+            g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
         }
 
         void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)

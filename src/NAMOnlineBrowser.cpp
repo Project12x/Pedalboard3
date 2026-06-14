@@ -131,6 +131,60 @@ BrowserPalette makeOnlineBrowserPalette()
     return {top, bottom, accent, accent2, colours["Success Colour"], colours["Text Colour"], face, face2, inset, edge,
             edge.brighter(0.2f)};
 }
+
+class OnlineBrowserActionButtonLookAndFeel : public juce::LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& /*backgroundColour*/,
+                              bool isMouseOverButton, bool isButtonDown) override
+    {
+        const auto palette = makeOnlineBrowserPalette();
+        auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
+        const auto baseColour = button.findColour(juce::TextButton::buttonColourId);
+        auto base = baseColour.interpolatedWith(palette.inset, button.isEnabled() ? 0.30f : 0.72f);
+
+        if (!button.isEnabled())
+            base = palette.face.withMultipliedSaturation(0.45f).withAlpha(0.62f);
+        else if (isButtonDown)
+            base = base.darker(0.14f);
+        else if (isMouseOverButton)
+            base = base.brighter(0.12f);
+
+        const auto radius = juce::jmin(9.0f, bounds.getHeight() * 0.30f);
+        if (button.isEnabled())
+        {
+            g.setColour(juce::Colours::black.withAlpha(isButtonDown ? 0.12f : 0.24f));
+            g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.8f : 2.0f), radius);
+        }
+
+        juce::ColourGradient fill(base.brighter(0.13f), bounds.getX(), bounds.getY(), base.darker(0.16f),
+                                  bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill(fill);
+        g.fillRoundedRectangle(bounds, radius);
+
+        g.setColour(juce::Colours::white.withAlpha(button.isEnabled() ? 0.14f : 0.05f));
+        g.drawLine(bounds.getX() + 6.0f, bounds.getY() + 1.5f, bounds.getRight() - 6.0f, bounds.getY() + 1.5f, 1.0f);
+        g.setColour(baseColour.withAlpha(button.isEnabled() ? 0.58f : 0.18f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, button.isEnabled() ? 1.25f : 1.0f);
+    }
+
+    void drawButtonText(juce::Graphics& g, juce::TextButton& button, bool /*isMouseOverButton*/,
+                        bool /*isButtonDown*/) override
+    {
+        const auto palette = makeOnlineBrowserPalette();
+        auto text = button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId
+                                                              : juce::TextButton::textColourOffId);
+        if (!button.isEnabled())
+            text = palette.text.withAlpha(0.34f);
+
+        g.setFont(FontManager::getInstance().getBodyBoldFont());
+        g.setColour(text);
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(8, 2), juce::Justification::centred,
+                         1);
+    }
+};
+
+static OnlineBrowserActionButtonLookAndFeel onlineBrowserActionButtonLookAndFeel;
 } // namespace
 
 //==============================================================================
@@ -372,11 +426,12 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     searchButton = std::make_unique<juce::TextButton>("Search");
     searchButton->addListener(this);
+    searchButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     const auto searchFill = colours["Accent Colour"];
     searchButton->setColour(juce::TextButton::buttonColourId, searchFill);
     searchButton->setColour(juce::TextButton::buttonOnColourId, searchFill.brighter(0.15f));
-    searchButton->setColour(juce::TextButton::textColourOffId, searchFill.contrasting(0.96f));
-    searchButton->setColour(juce::TextButton::textColourOnId, searchFill.contrasting(0.96f));
+    searchButton->setColour(juce::TextButton::textColourOffId, searchFill.brighter(0.18f));
+    searchButton->setColour(juce::TextButton::textColourOnId, searchFill.brighter(0.28f));
     addAndMakeVisible(searchButton.get());
 
     // Filter controls
@@ -424,10 +479,17 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     addAndMakeVisible(resultsList.get());
 
     // Details panel
+    detailsContent = std::make_unique<juce::Component>("tone3000DetailsContent");
+    detailsViewport = std::make_unique<juce::Viewport>("tone3000DetailsViewport");
+    detailsViewport->setViewedComponent(detailsContent.get(), false);
+    detailsViewport->setScrollBarsShown(true, false);
+    detailsViewport->setScrollOnDragMode(juce::Viewport::ScrollOnDragMode::all);
+    addAndMakeVisible(detailsViewport.get());
+
     detailsTitle = std::make_unique<juce::Label>("detailsTitle", "Details");
     detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
     detailsTitle->setColour(juce::Label::textColourId, palette.text);
-    addAndMakeVisible(detailsTitle.get());
+    detailsContent->addAndMakeVisible(detailsTitle.get());
 
     auto createDetailLabel = [&palette](const juce::String& text)
     {
@@ -449,55 +511,57 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     };
 
     nameLabel = createDetailLabel("Name:");
-    addAndMakeVisible(nameLabel.get());
+    detailsContent->addAndMakeVisible(nameLabel.get());
     nameValue = createValueLabel();
-    addAndMakeVisible(nameValue.get());
+    detailsContent->addAndMakeVisible(nameValue.get());
 
     authorLabel = createDetailLabel("Author:");
-    addAndMakeVisible(authorLabel.get());
+    detailsContent->addAndMakeVisible(authorLabel.get());
     authorValue = createValueLabel();
-    addAndMakeVisible(authorValue.get());
+    detailsContent->addAndMakeVisible(authorValue.get());
 
     architectureLabel = createDetailLabel("Architecture:");
-    addAndMakeVisible(architectureLabel.get());
+    detailsContent->addAndMakeVisible(architectureLabel.get());
     architectureValue = createValueLabel();
-    addAndMakeVisible(architectureValue.get());
+    detailsContent->addAndMakeVisible(architectureValue.get());
 
     downloadsLabel = createDetailLabel("Downloads:");
-    addAndMakeVisible(downloadsLabel.get());
+    detailsContent->addAndMakeVisible(downloadsLabel.get());
     downloadsValue = createValueLabel();
-    addAndMakeVisible(downloadsValue.get());
+    detailsContent->addAndMakeVisible(downloadsValue.get());
 
     sizeLabel = createDetailLabel("Size:");
-    addAndMakeVisible(sizeLabel.get());
+    detailsContent->addAndMakeVisible(sizeLabel.get());
     sizeValue = createValueLabel();
-    addAndMakeVisible(sizeValue.get());
+    detailsContent->addAndMakeVisible(sizeValue.get());
 
     gearLabel = createDetailLabel("Type:");
-    addAndMakeVisible(gearLabel.get());
+    detailsContent->addAndMakeVisible(gearLabel.get());
     gearValue = createValueLabel();
-    addAndMakeVisible(gearValue.get());
+    detailsContent->addAndMakeVisible(gearValue.get());
 
     // Action buttons
     downloadButton = std::make_unique<juce::TextButton>("Download");
     downloadButton->addListener(this);
+    downloadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     downloadButton->setEnabled(false);
     const auto downloadFill = colours["Accent Colour"];
     downloadButton->setColour(juce::TextButton::buttonColourId, downloadFill);
     downloadButton->setColour(juce::TextButton::buttonOnColourId, downloadFill.brighter(0.15f));
-    downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill.contrasting(0.96f));
-    downloadButton->setColour(juce::TextButton::textColourOnId, downloadFill.contrasting(0.96f));
-    addAndMakeVisible(downloadButton.get());
+    downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill.brighter(0.18f));
+    downloadButton->setColour(juce::TextButton::textColourOnId, downloadFill.brighter(0.28f));
+    detailsContent->addAndMakeVisible(downloadButton.get());
 
     loadButton = std::make_unique<juce::TextButton>("Load");
     loadButton->addListener(this);
+    loadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     loadButton->setEnabled(false);
     const auto loadFill = colours["Parameter Connection"];
     loadButton->setColour(juce::TextButton::buttonColourId, loadFill);
     loadButton->setColour(juce::TextButton::buttonOnColourId, loadFill.brighter(0.2f));
-    loadButton->setColour(juce::TextButton::textColourOffId, loadFill.contrasting(0.96f));
-    loadButton->setColour(juce::TextButton::textColourOnId, loadFill.contrasting(0.96f));
-    addAndMakeVisible(loadButton.get());
+    loadButton->setColour(juce::TextButton::textColourOffId, loadFill.brighter(0.14f));
+    loadButton->setColour(juce::TextButton::textColourOnId, loadFill.brighter(0.24f));
+    detailsContent->addAndMakeVisible(loadButton.get());
 
     // Status bar
     statusLabel = std::make_unique<juce::Label>("status", "Not logged in");
@@ -507,31 +571,41 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     loginButton = std::make_unique<juce::TextButton>("Login");
     loginButton->addListener(this);
-    loginButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
-    loginButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
-    loginButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
+    loginButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
+    loginButton->setColour(juce::TextButton::buttonColourId, palette.face2);
+    loginButton->setColour(juce::TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    loginButton->setColour(juce::TextButton::textColourOffId, palette.text.withAlpha(0.86f));
+    loginButton->setColour(juce::TextButton::textColourOnId, palette.text);
     addAndMakeVisible(loginButton.get());
 
     logoutButton = std::make_unique<juce::TextButton>("Logout");
     logoutButton->addListener(this);
+    logoutButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     logoutButton->setVisible(false);
-    logoutButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
-    logoutButton->setColour(juce::TextButton::buttonOnColourId, colours["Button Highlight"]);
-    logoutButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
+    logoutButton->setColour(juce::TextButton::buttonColourId, palette.face2);
+    logoutButton->setColour(juce::TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    logoutButton->setColour(juce::TextButton::textColourOffId, palette.text.withAlpha(0.86f));
+    logoutButton->setColour(juce::TextButton::textColourOnId, palette.text);
     addAndMakeVisible(logoutButton.get());
 
     prevPageButton = std::make_unique<juce::TextButton>("<");
     prevPageButton->addListener(this);
+    prevPageButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     prevPageButton->setEnabled(false);
-    prevPageButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
-    prevPageButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
+    prevPageButton->setColour(juce::TextButton::buttonColourId, palette.face2);
+    prevPageButton->setColour(juce::TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    prevPageButton->setColour(juce::TextButton::textColourOffId, palette.text.withAlpha(0.82f));
+    prevPageButton->setColour(juce::TextButton::textColourOnId, palette.text);
     addAndMakeVisible(prevPageButton.get());
 
     nextPageButton = std::make_unique<juce::TextButton>(">");
     nextPageButton->addListener(this);
+    nextPageButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     nextPageButton->setEnabled(false);
-    nextPageButton->setColour(juce::TextButton::buttonColourId, colours["Button Colour"]);
-    nextPageButton->setColour(juce::TextButton::textColourOffId, colours["Text Colour"]);
+    nextPageButton->setColour(juce::TextButton::buttonColourId, palette.face2);
+    nextPageButton->setColour(juce::TextButton::buttonOnColourId, palette.face2.brighter(0.12f));
+    nextPageButton->setColour(juce::TextButton::textColourOffId, palette.text.withAlpha(0.82f));
+    nextPageButton->setColour(juce::TextButton::textColourOnId, palette.text);
     addAndMakeVisible(nextPageButton.get());
 
     pageLabel = std::make_unique<juce::Label>("page", "");
@@ -555,6 +629,13 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 NAMOnlineBrowserComponent::~NAMOnlineBrowserComponent()
 {
     spdlog::info("[NAMOnlineBrowser] Component destructor called, this={}", (void*)this);
+    searchButton->setLookAndFeel(nullptr);
+    downloadButton->setLookAndFeel(nullptr);
+    loadButton->setLookAndFeel(nullptr);
+    loginButton->setLookAndFeel(nullptr);
+    logoutButton->setLookAndFeel(nullptr);
+    prevPageButton->setLookAndFeel(nullptr);
+    nextPageButton->setLookAndFeel(nullptr);
     Tone3000DownloadManager::getInstance().removeListener(this);
     spdlog::debug("[NAMOnlineBrowser] Removed download listener");
 }
@@ -584,7 +665,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     }
 
     auto outer = getLocalBounds().reduced(8);
-    auto toolbarBounds = outer.removeFromTop(compactLayout ? 74 : 82).toFloat();
+    auto toolbarBounds = outer.removeFromTop(compactLayout ? 100 : 112).toFloat();
     auto footerArea = getLocalBounds().reduced(8);
     auto footerBounds = footerArea.removeFromBottom(28).toFloat();
 
@@ -619,17 +700,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.setColour(palette.edge.withAlpha(0.64f));
     g.drawRoundedRectangle(footerBounds.reduced(0.5f), 7.0f, 1.0f);
 
-    // Calculate panel areas
-    auto bounds = getLocalBounds().reduced(8);
-    bounds.removeFromTop(compactLayout ? 82 : 90); // Search + filters
-    bounds.removeFromBottom(32); // Status bar
-
-    int listWidth = static_cast<int>(bounds.getWidth() * 0.55f);
-    auto listArea = bounds.removeFromLeft(listWidth);
-    bounds.removeFromLeft(16); // Gap
-
     // Draw rounded list background
-    auto listBounds = listArea.toFloat();
+    auto listBounds = resultsList != nullptr ? resultsList->getBounds().toFloat() : juce::Rectangle<float>();
     juce::ColourGradient listFill(palette.inset.brighter(0.03f), listBounds.getX(),
                                   listBounds.getY(), palette.inset.darker(0.05f),
                                   listBounds.getX(), listBounds.getBottom(), false);
@@ -642,7 +714,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
     // Draw card-style details panel with shadow
-    auto detailsBounds = bounds.toFloat();
+    auto detailsBounds = detailsViewport != nullptr ? detailsViewport->getBounds().toFloat() : juce::Rectangle<float>();
     juce::Path detailsPath;
     detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
@@ -697,8 +769,20 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     // Detail panel section separators
     if (nameLabel && nameValue)
     {
-        int sepLeft = nameLabel->getX();
-        int sepRight = nameValue->getRight();
+        auto boundsInBrowser = [this](const juce::Component* component)
+        {
+            if (component == nullptr)
+                return juce::Rectangle<int>();
+            if (detailsContent != nullptr && detailsViewport != nullptr && component->getParentComponent() == detailsContent.get())
+            {
+                return component->getBounds().translated(detailsViewport->getX() - detailsViewport->getViewPositionX(),
+                                                         detailsViewport->getY() - detailsViewport->getViewPositionY());
+            }
+
+            return component->getBounds();
+        };
+        int sepLeft = boundsInBrowser(nameLabel.get()).getX();
+        int sepRight = boundsInBrowser(nameValue.get()).getRight();
         g.setColour(palette.text.withAlpha(0.08f));
 
         const juce::Label* values[] = {nameValue.get(), authorValue.get(), gearValue.get(), architectureValue.get(),
@@ -707,7 +791,9 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         {
             if (value == nullptr)
                 continue;
-            float sepY = static_cast<float>(value->getBottom()) + 2.0f;
+            float sepY = static_cast<float>(boundsInBrowser(value).getBottom()) + 2.0f;
+            if (sepY < detailsBounds.getY() || sepY > detailsBounds.getBottom())
+                continue;
             g.drawLine(static_cast<float>(sepLeft), sepY, static_cast<float>(sepRight), sepY, 1.0f);
         }
     }
@@ -763,13 +849,15 @@ void NAMOnlineBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(8);
 
     // Search row
-    bounds.removeFromTop(compactLayout ? 8 : 12);
-    auto searchRow = bounds.removeFromTop(compactLayout ? 30 : 34);
-    const int searchButtonWidth = compactLayout ? 68 : 70;
-    const int searchButtonGap = compactLayout ? 8 : 10;
+    bounds.removeFromTop(compactLayout ? 22 : 30);
+    auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);
+    const int searchButtonWidth = compactLayout ? 76 : 86;
+    const int searchButtonGap = compactLayout ? 10 : 12;
     searchButton->setBounds(searchRow.removeFromRight(juce::jmin(searchButtonWidth, searchRow.getWidth())));
     searchRow.removeFromRight(juce::jmin(searchButtonGap, searchRow.getWidth()));
-    searchBox->setBounds(searchRow);
+    const int maxSearchBoxWidth = compactLayout ? 292 : 340;
+    const int searchBoxWidth = juce::jmin(maxSearchBoxWidth, searchRow.getWidth());
+    searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));
 
     bounds.removeFromTop(8);
 
@@ -805,7 +893,10 @@ void NAMOnlineBrowserComponent::resized()
     bounds.removeFromLeft(16); // Gap
 
     // Details panel
-    auto detailsArea = bounds;
+    auto detailsViewportBounds = bounds;
+    detailsViewport->setBounds(detailsViewportBounds);
+    const int detailsContentWidth = juce::jmax(1, detailsViewportBounds.getWidth() - 12);
+    auto detailsArea = juce::Rectangle<int>(0, 0, detailsContentWidth, 1);
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
     detailsArea.removeFromTop(selectedTone != nullptr ? 92 : 8);
 
@@ -846,10 +937,13 @@ void NAMOnlineBrowserComponent::resized()
     detailsArea.removeFromTop(12);
 
     // Action buttons
-    auto buttonRow = detailsArea.removeFromTop(28);
-    downloadButton->setBounds(buttonRow.removeFromLeft(90));
-    buttonRow.removeFromLeft(8);
-    loadButton->setBounds(buttonRow.removeFromLeft(70));
+    auto buttonRow = detailsArea.removeFromTop(compactLayout ? 30 : 32);
+    downloadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 106 : 124));
+    buttonRow.removeFromLeft(compactLayout ? 8 : 10);
+    loadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 82 : 92));
+
+    detailsContent->setSize(detailsContentWidth,
+                            juce::jmax(detailsViewportBounds.getHeight(), buttonRow.getBottom() + 16));
 }
 
 void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)

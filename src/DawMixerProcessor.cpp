@@ -352,6 +352,112 @@ static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, f
     drawBar(barR, peakR);
 }
 
+static Colour getRoutingAccent()
+{
+    return ColourScheme::getInstance().colours["Graph Category Dynamics"];
+}
+
+static float normalisePeakForMeter(float peak)
+{
+    const float dbVal = Decibels::gainToDecibels(jmax(0.0f, peak), -60.0f);
+    return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
+}
+
+static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto bg = primary ? accent.withAlpha(0.20f) : colours["Plugin Background"].brighter(0.10f);
+    ColourGradient fill(bg.brighter(0.12f), bounds.getX(), bounds.getY(), bg.darker(0.26f), bounds.getX(),
+                        bounds.getBottom(), false);
+    fill.addColour(0.48, bg);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(bounds, 5.0f);
+
+    g.setColour(accent.withAlpha(primary ? 0.72f : 0.42f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, 1.0f);
+
+    g.setColour((primary ? accent : colours["Text Colour"]).withAlpha(primary ? 0.95f : 0.72f));
+    g.setFont(Font(10.5f, Font::bold));
+    g.drawText(text, bounds.toNearestInt(), Justification::centred, false);
+}
+
+static void paintRoutingShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto outer = bounds;
+    const auto base = colours["Plugin Background"];
+    ColourGradient shell(base.brighter(0.10f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
+                         bounds.getBottom(), false);
+    shell.addColour(0.32, base.brighter(0.03f));
+    shell.addColour(0.74, base.darker(0.08f));
+    g.setGradientFill(shell);
+    g.fillRoundedRectangle(bounds.reduced(0.5f), 8.0f);
+
+    auto header = bounds.removeFromTop(25.0f).reduced(5.0f, 4.0f);
+    ColourGradient headerFill(accent.withAlpha(0.20f), header.getX(), header.getY(), colours["Plugin Background"],
+                              header.getX(), header.getBottom(), false);
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(header, 6.0f);
+
+    g.setColour(accent.withAlpha(0.46f));
+    g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f, 1.15f);
+    g.setColour(Colours::white.withAlpha(0.06f));
+    g.drawRoundedRectangle(outer.reduced(1.5f), 7.0f, 0.8f);
+
+    if (title.isNotEmpty())
+    {
+        g.setColour(accent.withAlpha(0.88f));
+        g.setFont(Font(11.0f, Font::bold));
+        g.drawText(title, header.reduced(8.0f, 0.0f).toNearestInt(), Justification::centredLeft, false);
+    }
+}
+
+static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float peak, Colour accent, bool stereo)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    if (bounds.isEmpty())
+        return;
+
+    g.setColour(colours["Plugin Background"].darker(0.35f));
+    g.fillRoundedRectangle(bounds, 4.0f);
+    g.setColour(Colours::black.withAlpha(0.45f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 4.0f, 1.0f);
+
+    const auto norm = normalisePeakForMeter(peak);
+    auto fill = bounds.reduced(1.5f).withWidth(bounds.reduced(1.5f).getWidth() * norm);
+    ColourGradient meter(accent.withAlpha(0.62f), fill.getX(), fill.getCentreY(),
+                         ColourScheme::getInstance().colours["Warning Colour"].withAlpha(0.74f), fill.getRight(),
+                         fill.getCentreY(), false);
+    meter.addColour(0.76, accent.withAlpha(0.72f));
+    g.setGradientFill(meter);
+    g.fillRoundedRectangle(fill, 3.0f);
+
+    if (stereo)
+    {
+        g.setColour(Colours::white.withAlpha(0.15f));
+        g.drawLine(bounds.getX() + 2.0f, bounds.getCentreY(), bounds.getRight() - 2.0f, bounds.getCentreY(), 0.7f);
+    }
+}
+
+static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    if (bounds.isEmpty())
+        return;
+
+    g.setColour(colours["Plugin Background"].darker(0.32f));
+    g.fillRoundedRectangle(bounds, 3.0f);
+    g.setColour(accent.withAlpha(0.26f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 3.0f, 0.8f);
+
+    const float x = jmap(jlimit(-1.0f, 1.0f, pan), -1.0f, 1.0f, bounds.getX() + 4.0f, bounds.getRight() - 4.0f);
+    auto dot = Rectangle<float>(x - 3.0f, bounds.getCentreY() - 3.0f, 6.0f, 6.0f);
+    g.setColour(accent.withAlpha(0.28f));
+    g.fillEllipse(dot.expanded(3.0f));
+    g.setColour(accent);
+    g.fillEllipse(dot);
+}
+
 //==============================================================================
 // UI -- Horizontal Strip Row
 //==============================================================================
@@ -466,37 +572,45 @@ class DawStripRow : public Component
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(2, 1);
-        int halfH = r.getHeight() / 2;
-        auto row1 = r.removeFromTop(halfH);
-        auto row2 = r;
+        auto r = getLocalBounds().reduced(7, 5);
+        auto top = r.removeFromTop(19);
+        badgeArea = top.removeFromLeft(25).reduced(1);
+        panRail = top.removeFromLeft(58).reduced(6, 7);
 
-        // Row 1: [name 30] [ST 24] [Ph 22] [M 22] [S 22] [gap 4] [VU rest]
-        nameLabel.setBounds(row1.removeFromLeft(30));
-        stereoBtn.setBounds(row1.removeFromLeft(28));
-        phaseBtn.setBounds(row1.removeFromLeft(22));
-        muteBtn.setBounds(row1.removeFromLeft(22));
-        soloBtn.setBounds(row1.removeFromLeft(22));
-        row1.removeFromLeft(4);
-        vuArea = row1;
+        auto buttons = top.removeFromRight(92);
+        stereoBtn.setBounds(buttons.removeFromLeft(25).reduced(1));
+        phaseBtn.setBounds(buttons.removeFromLeft(21).reduced(1));
+        muteBtn.setBounds(buttons.removeFromLeft(22).reduced(1));
+        soloBtn.setBounds(buttons.removeFromLeft(22).reduced(1));
+        nameLabel.setBounds(top.reduced(4, 0));
 
-        // Row 2: [fader rest] [pan 28]
-        panKnob.setBounds(row2.removeFromRight(28));
-        fader.setBounds(row2);
+        auto meter = r.removeFromTop(12);
+        vuArea = meter.reduced(31, 3);
+
+        auto bottom = r;
+        panKnob.setBounds(bottom.removeFromRight(30).reduced(1));
+        fader.setBounds(bottom.reduced(1, 2));
     }
 
     void paint(Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat().reduced(0.5f);
         auto& colours = ColourScheme::getInstance().colours;
-        const auto accent = colours["Graph Category Dynamics"];
+        const auto accent = getRoutingAccent();
         ColourGradient stripFill(colours["Plugin Background"].brighter(0.07f), bounds.getX(), bounds.getY(),
                                  colours["Plugin Background"].darker(0.10f), bounds.getX(), bounds.getBottom(),
                                  false);
+        stripFill.addColour(0.45, colours["Plugin Background"].brighter(0.01f));
         g.setGradientFill(stripFill);
         g.fillRoundedRectangle(bounds, 6.0f);
         g.setColour(accent.withAlpha(0.42f));
         g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.0f);
+        g.setColour(Colours::white.withAlpha(0.045f));
+        g.drawLine(bounds.getX() + 8.0f, bounds.getY() + 1.0f, bounds.getRight() - 8.0f, bounds.getY() + 1.0f);
+
+        auto badge = badgeArea;
+        paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);
+        paintMixerPanRail(g, panRail.toFloat(), static_cast<float>(panKnob.getValue()), accent);
 
         auto* s = processor->getStrip(index);
         if (!s)
@@ -514,16 +628,19 @@ class DawStripRow : public Component
         {
             bool isStereo = s->stereo.load(std::memory_order_relaxed);
             float peakL = s->peakL.load(std::memory_order_relaxed);
+            float peakForInset = peakL;
 
             if (isStereo)
             {
                 float peakR = s->peakR.load(std::memory_order_relaxed);
+                peakForInset = jmax(peakL, peakR);
                 paintStereoVUHelper(g, vuArea, peakL, peakR);
             }
             else
             {
                 paintMonoVU(g, vuArea, peakL);
             }
+            paintInsetMeterTrack(g, vuArea.toFloat(), peakForInset, accent, isStereo);
         }
     }
 
@@ -558,6 +675,8 @@ class DawStripRow : public Component
     Slider fader, panKnob;
     Label nameLabel;
     Rectangle<int> vuArea;
+    Rectangle<int> badgeArea;
+    Rectangle<int> panRail;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawStripRow)
 };
 
@@ -594,26 +713,34 @@ class DawMasterRow : public Component
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced(2, 1);
-        int halfH = r.getHeight() / 2;
-        auto row1 = r.removeFromTop(halfH);
-        auto row2 = r;
-        nameLabel.setBounds(row1.removeFromLeft(46));
-        muteBtn.setBounds(row1.removeFromLeft(22));
-        row1.removeFromLeft(4);
-        vuArea = row1;
-        fader.setBounds(row2);
+        auto r = getLocalBounds().reduced(7, 5);
+        auto top = r.removeFromTop(19);
+        badgeArea = top.removeFromLeft(25).reduced(1);
+        nameLabel.setBounds(top.removeFromLeft(72).reduced(5, 0));
+        muteBtn.setBounds(top.removeFromRight(24).reduced(1));
+        auto meter = r.removeFromTop(12);
+        vuArea = meter.reduced(31, 3);
+        fader.setBounds(r.reduced(1, 2));
     }
 
     void paint(Graphics& g) override
     {
-        g.setColour(Colour(0xFF333333));
-        g.fillRect(getLocalBounds());
-        g.setColour(Colour(0xFF606060));
-        g.drawHorizontalLine(0, 0.0f, static_cast<float>(getWidth()));
+        auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+        auto accent = getRoutingAccent();
+        auto& colours = ColourScheme::getInstance().colours;
+        ColourGradient stripFill(colours["Plugin Background"].brighter(0.12f), bounds.getX(), bounds.getY(),
+                                 colours["Plugin Background"].darker(0.13f), bounds.getX(), bounds.getBottom(),
+                                 false);
+        g.setGradientFill(stripFill);
+        g.fillRoundedRectangle(bounds, 6.0f);
+        g.setColour(accent.withAlpha(0.55f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 6.0f, 1.1f);
+
+        auto badge = badgeArea;
+        paintRoutingBadge(g, badge.toFloat(), "M", accent, true);
         float peakL = processor->masterPeakL.load(std::memory_order_relaxed);
         float peakR = processor->masterPeakR.load(std::memory_order_relaxed);
-        paintStereoVUHelper(g, vuArea, peakL, peakR);
+        paintInsetMeterTrack(g, vuArea.toFloat(), jmax(peakL, peakR), accent, true);
     }
 
   private:
@@ -622,6 +749,7 @@ class DawMasterRow : public Component
     Slider fader;
     Label nameLabel;
     Rectangle<int> vuArea;
+    Rectangle<int> badgeArea;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DawMasterRow)
 };
 
@@ -632,12 +760,6 @@ class DawMixerControl : public Component, private Timer
   public:
     DawMixerControl(DawMixerProcessor* proc) : processor(proc)
     {
-        titleLabel.setText("DAW Mixer", dontSendNotification);
-        titleLabel.setFont(Font(13.0f, Font::bold));
-        titleLabel.setColour(Label::textColourId, Colours::white);
-        titleLabel.setJustificationType(Justification::centredLeft);
-        addAndMakeVisible(titleLabel);
-
         addBtn.setButtonText("+");
         addBtn.onClick = [this]() { addStripClicked(); };
         addAndMakeVisible(addBtn);
@@ -679,18 +801,16 @@ class DawMixerControl : public Component, private Timer
         auto header = r.removeFromTop(24);
         removeBtn.setBounds(header.removeFromRight(24));
         addBtn.setBounds(header.removeFromRight(24));
-        titleLabel.setBounds(header);
         masterRow->setBounds(r.removeFromBottom(stripRowHeight));
         for (auto* row : stripRows)
             row->setBounds(r.removeFromTop(stripRowHeight));
     }
 
-    void paint(Graphics& g) override { g.fillAll(Colour(0xFF222222)); }
+    void paint(Graphics& g) override { paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {}); }
 
   private:
-    static constexpr int stripRowHeight = 52;
+    static constexpr int stripRowHeight = 58;
     DawMixerProcessor* processor;
-    Label titleLabel;
     TextButton addBtn, removeBtn;
     OwnedArray<DawStripRow> stripRows;
     std::unique_ptr<DawMasterRow> masterRow;
@@ -734,8 +854,8 @@ Component* DawMixerProcessor::getControls()
 Point<int> DawMixerProcessor::getSize()
 {
     int n = numStrips_.load(std::memory_order_acquire);
-    int height = 24 + (n + 1) * 52; // header + strips + master
-    return Point<int>(340, jmax(160, height));
+    int height = 24 + (n + 1) * 58; // header + strips + master
+    return Point<int>(360, jmax(170, height));
 }
 
 //==============================================================================
@@ -822,25 +942,25 @@ PedalboardProcessor::PinLayout DawMixerProcessor::getInputPinLayout() const
 {
     // Pin coordinates are in PluginComponent space.
     // PC title=24, control placed at PC Y=24, control header=24
-    // => strip row i top in PC coords = 48 + i * 52
-    // Within a 52px row:
-    //   mono pin center = row + 26   => pin top = row + 18
-    //   stereo L center = row + 14   => pin top = row + 6
-    //   stereo R center = row + 38   => pin top = row + 30
+    // => strip row i top in PC coords = 48 + i * 58
+    // Within a 58px row:
+    //   mono pin center = row + 29   => pin top = row + 21
+    //   stereo L center = row + 16   => pin top = row + 8
+    //   stereo R center = row + 42   => pin top = row + 34
     PinLayout layout;
     int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < n; ++i)
     {
-        int rowTop = 48 + i * 52;
+        int rowTop = 48 + i * 58;
         bool isStereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
         if (isStereo)
         {
-            layout.pinY.push_back(rowTop + 6);  // L
-            layout.pinY.push_back(rowTop + 30); // R
+            layout.pinY.push_back(rowTop + 8);  // L
+            layout.pinY.push_back(rowTop + 34); // R
         }
         else
         {
-            layout.pinY.push_back(rowTop + 18); // Mono centered
+            layout.pinY.push_back(rowTop + 21); // Mono centered
         }
     }
     return layout;
@@ -849,12 +969,12 @@ PedalboardProcessor::PinLayout DawMixerProcessor::getInputPinLayout() const
 PedalboardProcessor::PinLayout DawMixerProcessor::getOutputPinLayout() const
 {
     // Master row is after all strip rows.
-    // master row top in PC coords = 48 + numStrips * 52
+    // master row top in PC coords = 48 + numStrips * 58
     PinLayout layout;
     int n = numStrips_.load(std::memory_order_acquire);
-    int masterTop = 48 + n * 52;
-    layout.pinY.push_back(masterTop + 6);  // L
-    layout.pinY.push_back(masterTop + 30); // R
+    int masterTop = 48 + n * 58;
+    layout.pinY.push_back(masterTop + 8);  // L
+    layout.pinY.push_back(masterTop + 34); // R
     return layout;
 }
 
