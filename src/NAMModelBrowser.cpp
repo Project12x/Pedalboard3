@@ -657,7 +657,7 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
         // Title text
         g.setColour(text.withAlpha(0.9f));
         g.setFont(FontManager::getInstance().getSubheadingFont());
-        g.drawText(window.getName(), titleSpaceX, 0, titleSpaceW, h, Justification::centredLeft, true);
+        g.drawText(window.getName(), titleSpaceX, 0, titleSpaceW, h, Justification::centred, true);
     }
 
     Button* createDocumentWindowButton(int buttonType) override
@@ -719,7 +719,7 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
     static constexpr float cornerRadius = 10.0f;
 
   private:
-    // Custom close button with themed X
+    // Plain close mark. The content window already carries the styled Close action.
     class CloseButton : public Button
     {
       public:
@@ -728,22 +728,13 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
         void paintButton(Graphics& g, bool isMouseOverButton, bool isButtonDown) override
         {
             const auto palette = makeBrowserPalette();
-            auto area = getLocalBounds().toFloat().reduced(4.0f);
+            auto area = getLocalBounds().toFloat().reduced(5.0f);
 
-            if (isMouseOverButton || isButtonDown)
-            {
-                const auto fill = isButtonDown ? palette.face2.darker(0.12f) : palette.face2.brighter(0.08f);
-                g.setColour(fill.withAlpha(0.84f));
-                g.fillRoundedRectangle(area, 4.0f);
-                g.setColour(palette.edge.withAlpha(0.54f));
-                g.drawRoundedRectangle(area.reduced(0.5f), 4.0f, 0.8f);
-            }
-
-            // X symbol
             auto cross = area.reduced(area.getWidth() * 0.25f);
-            g.setColour(isMouseOverButton ? palette.text : palette.text.withAlpha(0.62f));
-            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.35f);
-            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.35f);
+            g.setColour(isButtonDown ? palette.accent.withAlpha(0.86f)
+                                      : palette.text.withAlpha(isMouseOverButton ? 0.78f : 0.46f));
+            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.25f);
+            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.25f);
         }
     };
 };
@@ -2087,17 +2078,12 @@ void NAMModelBrowserComponent::resized()
     const int onlineTabWidth = compactLayout ? 64 : 70;
     const int irTabWidth = compactLayout ? 44 : 55;
     const int tabStripWidth = localTabWidth + 2 + onlineTabWidth + 2 + irTabWidth;
-    const int reservedTabWidth = tabStripWidth + titleGap;
-    const int availableTitleWidth = titleRow.getWidth() - reservedTabWidth;
-    const int titleWidth = availableTitleWidth >= (compactLayout ? 96 : 150)
-                               ? jlimit(compactLayout ? 96 : 150, compactLayout ? 190 : 220, availableTitleWidth)
-                               : 0;
-    titleLabel->setBounds(titleRow.removeFromLeft(titleWidth));
-    titleLabel->setVisible(titleWidth > 0);
-
     // The tabs are primary navigation and must remain visible at high app scale.
-    if (titleWidth > 0)
-        titleRow.removeFromLeft(titleGap);
+    const int tabLeftInset = jmax(0, (titleRow.getWidth() - tabStripWidth) / 2);
+    auto titleTextRow = titleRow.withWidth(jmax(0, tabLeftInset - titleGap));
+    titleLabel->setBounds(titleTextRow);
+    titleLabel->setVisible(titleTextRow.getWidth() >= (compactLayout ? 150 : 220));
+    titleRow.removeFromLeft(tabLeftInset);
     localTabButton->setBounds(titleRow.removeFromLeft(localTabWidth));
     titleRow.removeFromLeft(2);
     onlineTabButton->setBounds(titleRow.removeFromLeft(onlineTabWidth));

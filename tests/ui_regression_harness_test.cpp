@@ -296,11 +296,14 @@ TEST_CASE("Daylight theme uses layered off-white surfaces instead of plain white
         INFO("role: " << role);
         REQUIRE(colourScheme.colours.find(key) != colourScheme.colours.end());
         CHECK(colourScheme.colours[key].getARGB() != 0xFFFFFFFF);
-        CHECK(maxChannel(colourScheme.colours[key]) <= 244);
+        CHECK(maxChannel(colourScheme.colours[key]) <= 238);
     }
 
     CHECK(colourScheme.colours["Plugin Background"].getBrightness() <
           colourScheme.colours["Field Background"].getBrightness());
+    CHECK(colourScheme.colours["Dialog Inner Background"].getBrightness() <
+          colourScheme.colours["Field Background"].getBrightness());
+    CHECK(colourScheme.colours["Plugin Border"].getBrightness() < 0.70f);
     CHECK(colourScheme.colours["Text Colour"].getBrightness() < 0.20f);
 }
 
@@ -1097,8 +1100,15 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
           std::string::npos);
     CHECK(browserSource->find("const int headerGap = compactLayout ? 10 : 14;") != std::string::npos);
     CHECK(browserSource->find("const int searchHeight = compactLayout ? 32 : 34;") != std::string::npos);
-    CHECK(browserSource->find("auto titleTextRow = titleRow;") != std::string::npos);
+    CHECK(browserSource->find("const int tabLeftInset = jmax(0, (titleRow.getWidth() - tabStripWidth) / 2);") !=
+          std::string::npos);
+    CHECK(browserSource->find("auto titleTextRow = titleRow.withWidth(jmax(0, tabLeftInset - titleGap));") !=
+          std::string::npos);
     CHECK(browserSource->find("titleLabel->setBounds(titleTextRow);") != std::string::npos);
+    CHECK(browserSource->find("g.drawText(window.getName(), titleSpaceX, 0, titleSpaceW, h, Justification::centred, true);") !=
+          std::string::npos);
+    CHECK(browserSource->find("Plain close mark. The content window already carries the styled Close action.") !=
+          std::string::npos);
     CHECK(browserSource->find("bool NAMModelBrowserComponent::syncIRDirectoryFromSettingsIfAllowed()") !=
           std::string::npos);
     CHECK(browserSource->find("if (irDirectoryManuallySelected)") != std::string::npos);
@@ -1146,7 +1156,7 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
           std::string::npos);
     CHECK(onlineSource->find("const auto palette = makeOnlineBrowserPalette();") != std::string::npos);
     CHECK(onlineSource->find("visual sync with makeBrowserPalette() in NAMModelBrowser.cpp") != std::string::npos);
-    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 22 : 30);") != std::string::npos);
+    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 26 : 34);") != std::string::npos);
     CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);") !=
           std::string::npos);
     CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 76 : 86;") != std::string::npos);
@@ -1156,10 +1166,13 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
     REQUIRE(searchButtonLayout != std::string::npos);
     REQUIRE(searchBoxLayout != std::string::npos);
     CHECK(searchButtonLayout < searchBoxLayout);
-    CHECK(onlineSource->find("auto toolbarBounds = outer.removeFromTop(compactLayout ? 100 : 112).toFloat();") !=
+    CHECK(onlineSource->find("auto toolbarBounds = outer.removeFromTop(compactLayout ? 106 : 118).toFloat();") !=
           std::string::npos);
-    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 292 : 340;") != std::string::npos);
+    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 250 : 300;") != std::string::npos);
     CHECK(onlineSource->find("class OnlineBrowserActionButtonLookAndFeel") != std::string::npos);
+    CHECK(onlineSource->find("const auto searchFill = palette.accent;") != std::string::npos);
+    CHECK(onlineSource->find("const auto downloadFill = palette.accent;") != std::string::npos);
+    CHECK(onlineSource->find("const auto loadFill = palette.accent2;") != std::string::npos);
     CHECK(onlineSource->find("searchButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=
           std::string::npos);
     CHECK(onlineSource->find("downloadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);") !=

@@ -1284,7 +1284,7 @@ void PluginComponent::paint(Graphics& g)
 
     // === BORDER (thin mockup-style chrome) ===
     g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, highlighted ? 0.34f : 0.18f));
-    const float nodeBorderWidth = highlighted ? 1.15f : 0.9f;
+    const float nodeBorderWidth = highlighted ? 0.95f : 0.72f;
     g.drawRoundedRectangle(2.0f, 2.0f, w - 4.0f, h - 4.0f, cornerRadius, nodeBorderWidth);
 
     // === HEADER BAR (title area with gradient) ===
@@ -1325,8 +1325,8 @@ void PluginComponent::paint(Graphics& g)
     g.drawHorizontalLine(3, 4.0f, w - 4.0f);
 
     // Separator line at bottom of header
-    g.setColour(colours["Plugin Border"].brighter(0.15f));
-    g.drawHorizontalLine((int)(headerHeight + 1.0f), 3.0f, w - 3.0f);
+    g.setColour(colours["Plugin Border"].interpolatedWith(accentColour, 0.12f).withAlpha(0.58f));
+    g.drawLine(3.0f, headerHeight + 1.0f, w - 3.0f, headerHeight + 1.0f, 0.75f);
 
     // === ICON for Audio I/O nodes ===
     if (isAudioIONode())
@@ -1368,8 +1368,8 @@ void PluginComponent::paint(Graphics& g)
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
         float footerY = h - 36.0f;
-        g.setColour(colours["Plugin Border"].withAlpha(0.4f));
-        g.drawHorizontalLine((int)footerY, 6.0f, w - 6.0f);
+        g.setColour(colours["Plugin Border"].withAlpha(0.28f));
+        g.drawLine(6.0f, footerY, w - 6.0f, footerY, 0.75f);
     }
 
     if (bypassed)
@@ -1384,7 +1384,7 @@ void PluginComponent::paint(Graphics& g)
     {
         g.setColour(accentColour.withAlpha(beingDragged ? 0.46f : 0.24f));
         g.drawRoundedRectangle(1.0f, 1.0f, w - 2.0f, h - 2.0f, cornerRadius + 1.0f,
-                               beingDragged ? 1.8f : 1.15f);
+                               beingDragged ? 1.35f : 0.9f);
     }
 
     // Draw port label backplates before the existing glyph arrangements.

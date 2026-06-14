@@ -262,11 +262,6 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
         g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.0f);
     }
 
-    // Left-edge gear/category rail.
-    g.setColour(gearAccent.withAlpha(rowIsSelected ? 0.95f : 0.68f));
-    g.fillRoundedRectangle(itemBounds.getX() + 1.0f, itemBounds.getY() + 5.0f, 3.0f, itemBounds.getHeight() - 10.0f,
-                           1.5f);
-
     int rightEdge = width - margin - 10;
     const int badgeHeight = 17;
     auto& fm = FontManager::getInstance();
@@ -427,7 +422,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     searchButton = std::make_unique<juce::TextButton>("Search");
     searchButton->addListener(this);
     searchButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
-    const auto searchFill = colours["Accent Colour"];
+    const auto searchFill = palette.accent;
     searchButton->setColour(juce::TextButton::buttonColourId, searchFill);
     searchButton->setColour(juce::TextButton::buttonOnColourId, searchFill.brighter(0.15f));
     searchButton->setColour(juce::TextButton::textColourOffId, searchFill.brighter(0.18f));
@@ -545,7 +540,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     downloadButton->addListener(this);
     downloadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     downloadButton->setEnabled(false);
-    const auto downloadFill = colours["Accent Colour"];
+    const auto downloadFill = palette.accent;
     downloadButton->setColour(juce::TextButton::buttonColourId, downloadFill);
     downloadButton->setColour(juce::TextButton::buttonOnColourId, downloadFill.brighter(0.15f));
     downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill.brighter(0.18f));
@@ -556,7 +551,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     loadButton->addListener(this);
     loadButton->setLookAndFeel(&onlineBrowserActionButtonLookAndFeel);
     loadButton->setEnabled(false);
-    const auto loadFill = colours["Parameter Connection"];
+    const auto loadFill = palette.accent2;
     loadButton->setColour(juce::TextButton::buttonColourId, loadFill);
     loadButton->setColour(juce::TextButton::buttonOnColourId, loadFill.brighter(0.2f));
     loadButton->setColour(juce::TextButton::textColourOffId, loadFill.brighter(0.14f));
@@ -665,7 +660,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     }
 
     auto outer = getLocalBounds().reduced(8);
-    auto toolbarBounds = outer.removeFromTop(compactLayout ? 100 : 112).toFloat();
+    auto toolbarBounds = outer.removeFromTop(compactLayout ? 106 : 118).toFloat();
     auto footerArea = getLocalBounds().reduced(8);
     auto footerBounds = footerArea.removeFromBottom(28).toFloat();
 
@@ -674,9 +669,6 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
                                      toolbarBounds.getX(), toolbarBounds.getBottom(), false);
     g.setGradientFill(toolbarFill);
     g.fillRoundedRectangle(toolbarBounds, 8.0f);
-    g.setColour(palette.accent.withAlpha(0.26f));
-    g.fillRoundedRectangle(toolbarBounds.getX() + 1.0f, toolbarBounds.getY() + 6.0f, 3.0f,
-                           toolbarBounds.getHeight() - 12.0f, 1.5f);
     g.setColour(palette.edge.withAlpha(0.75f));
     g.drawRoundedRectangle(toolbarBounds.reduced(0.5f), 8.0f, 1.0f);
 
@@ -849,17 +841,17 @@ void NAMOnlineBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(8);
 
     // Search row
-    bounds.removeFromTop(compactLayout ? 22 : 30);
+    bounds.removeFromTop(compactLayout ? 26 : 34);
     auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);
     const int searchButtonWidth = compactLayout ? 76 : 86;
     const int searchButtonGap = compactLayout ? 10 : 12;
     searchButton->setBounds(searchRow.removeFromRight(juce::jmin(searchButtonWidth, searchRow.getWidth())));
     searchRow.removeFromRight(juce::jmin(searchButtonGap, searchRow.getWidth()));
-    const int maxSearchBoxWidth = compactLayout ? 292 : 340;
+    const int maxSearchBoxWidth = compactLayout ? 250 : 300;
     const int searchBoxWidth = juce::jmin(maxSearchBoxWidth, searchRow.getWidth());
     searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));
 
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(compactLayout ? 10 : 12);
 
     // Filter row
     auto filterRow = bounds.removeFromTop(28);
@@ -869,7 +861,7 @@ void NAMOnlineBrowserComponent::resized()
     sortLabel->setBounds(filterRow.removeFromLeft(35));
     sortCombo->setBounds(filterRow.removeFromLeft(120));
 
-    bounds.removeFromTop(8);
+    bounds.removeFromTop(compactLayout ? 10 : 12);
 
     // Status bar at bottom
     auto statusRow = bounds.removeFromBottom(28);

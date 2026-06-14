@@ -227,12 +227,12 @@ void PluginField::paint(Graphics& g)
     const auto gridStyle = getGraphGridStyle();
     if (gridStyle != "off")
     {
-        const float gridSize = 24.0f;
+        const float gridSize = 20.0f;
         const float majorGridSize = gridSize * 4.0f;
         auto clip = g.getClipBounds().toFloat().getIntersection(bounds);
-        const auto gridAccent = canvasAccent;
-        Colour gridCol = gridAccent.withAlpha(gridStyle == "dots" ? 0.080f : 0.052f);
-        Colour majorGridCol = gridAccent.withAlpha(0.090f);
+        const auto gridAccent = canvasAccent.interpolatedWith(colours["Text Colour"], 0.10f);
+        Colour gridCol = gridAccent.withAlpha(gridStyle == "dots" ? 0.070f : 0.038f);
+        Colour majorGridCol = gridAccent.withAlpha(0.062f);
 
         auto firstX = std::floor(clip.getX() / gridSize) * gridSize;
         auto firstY = std::floor(clip.getY() / gridSize) * gridSize;
@@ -241,7 +241,7 @@ void PluginField::paint(Graphics& g)
 
         if (gridStyle == "dots")
         {
-            const auto dotSize = 1.5f;
+            const auto dotSize = 1.15f;
             g.setColour(gridCol);
             for (float y = firstY; y < clip.getBottom(); y += gridSize)
                 for (float x = firstX; x < clip.getRight(); x += gridSize)
@@ -251,17 +251,17 @@ void PluginField::paint(Graphics& g)
         {
             g.setColour(gridCol);
             for (float x = firstX; x < clip.getRight(); x += gridSize)
-                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
+                g.drawLine(x, clip.getY(), x, clip.getBottom(), 0.55f);
 
             for (float y = firstY; y < clip.getBottom(); y += gridSize)
-                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+                g.drawLine(clip.getX(), y, clip.getRight(), y, 0.55f);
 
             g.setColour(majorGridCol);
             for (float x = firstMajorX; x < clip.getRight(); x += majorGridSize)
-                g.drawVerticalLine(roundToInt(x), clip.getY(), clip.getBottom());
+                g.drawLine(x, clip.getY(), x, clip.getBottom(), 0.85f);
 
             for (float y = firstMajorY; y < clip.getBottom(); y += majorGridSize)
-                g.drawHorizontalLine(roundToInt(y), clip.getX(), clip.getRight());
+                g.drawLine(clip.getX(), y, clip.getRight(), y, 0.85f);
         }
     }
 
