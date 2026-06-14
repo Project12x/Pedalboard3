@@ -398,10 +398,15 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find(
               "return name.equalsIgnoreCase(\"Label\") || name.equalsIgnoreCase(\"Label Node\");") !=
           std::string::npos);
+    CHECK(pluginSource->find("bool usesCompactHostPinLabels(const String& pluginName)") != std::string::npos);
+    CHECK(pluginSource->find("return pluginName == \"Splitter\" || pluginName == \"Mixer\";") !=
+          std::string::npos);
+    CHECK(pluginSource->find("bool shouldDrawHostPinText(const String& pluginName)") != std::string::npos);
+    CHECK(pluginSource->find("return !usesCompactHostPinLabels(pluginName);") != std::string::npos);
     CHECK(pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);") != std::string::npos);
     CHECK(pluginSource->find("const bool tunerNode = pluginName == \"Tuner\";") != std::string::npos);
     CHECK(pluginSource->find("if (!labelNode && !tunerNode)") != std::string::npos);
-    CHECK(pluginSource->find("if (!labelNode)\n        {\n            bypassButton = new DrawableButton") !=
+    CHECK(pluginSource->find("if (!labelNode && !tunerNode)\n        {\n            bypassButton = new DrawableButton") !=
           std::string::npos);
     const auto labelNodeMarker = pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);");
     REQUIRE(labelNodeMarker != std::string::npos);
@@ -412,6 +417,14 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     const auto optionalButtonSection = pluginSource->substr(labelNodeMarker, deleteButtonMarker - labelNodeMarker);
     CHECK(optionalButtonSection.find("deleteButton =") == std::string::npos);
     CHECK(pluginSource->find("if (bypassable != nullptr && bypassButton != nullptr)") != std::string::npos);
+    CHECK(pluginSource->find("bool showLabels = (!proc) || shouldDrawHostPinText(pluginName);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const bool compactPinLabels = usesCompactHostPinLabels(pluginName);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("bool useNumberedNames = compactPinLabels || ignorePinNames || (pluginName == \"Audio Output\");") !=
+          std::string::npos);
+    CHECK(pluginSource->find("bool useNumberedNames = compactPinLabels || ignorePinNames || (pluginName == \"Audio Input\");") !=
+          std::string::npos);
 
     CHECK(labelSource->find("const auto paper = colours[\"Warning Colour\"].withMultipliedSaturation(0.32f).brighter(1.24f);") !=
           std::string::npos);
@@ -427,7 +440,8 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
 
     CHECK(tunerSource->find("auto tunerAccent = colours[\"Tuner Active Colour\"];") != std::string::npos);
     CHECK(tunerSource->find("ColourGradient panelFill(") != std::string::npos);
-    CHECK(tunerSource->find("drawTunerGlassPanel(g, panel);") != std::string::npos);
+    CHECK(tunerSource->find("drawTunerGlassPanel(g, bounds);") != std::string::npos);
+    CHECK(tunerSource->find("drawTunerHeader(g, headerArea);") != std::string::npos);
 
     const std::array<const std::string*, 2> stripSources{&*mixerSource, &*splitterSource};
     for (const auto* source : stripSources)
@@ -452,7 +466,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(mixerSource->find("paintRoutingBadge(g, badge.toFloat(), \"M\", accent, true);") != std::string::npos);
     CHECK(mixerSource->find("paintMixerPanRail(g, panRail.toFloat(), static_cast<float>(panKnob.getValue()), accent);") !=
           std::string::npos);
-    CHECK(mixerSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), \"DAW MIXER\");") !=
+    CHECK(mixerSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});") !=
           std::string::npos);
 
     CHECK(splitterSource->find("static void paintSplitterFanout(Graphics& g, Rectangle<float> bounds, int outputs, Colour accent)") !=
@@ -462,7 +476,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(splitterSource->find("paintSplitterFanout(g, fanArea.toFloat(), processor->getNumStrips(), getRoutingAccent());") !=
           std::string::npos);
-    CHECK(splitterSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), \"DAW SPLITTER\");") !=
+    CHECK(splitterSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});") !=
           std::string::npos);
 }
 
@@ -478,6 +492,10 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("static Colour getRoutingNodeAccent()") != std::string::npos);
     CHECK(routingSource->find("static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") !=
           std::string::npos);
+    CHECK(routingSource->find("g.fillRoundedRectangle(outer.reduced(0.5f), 8.0f);") == std::string::npos);
+    CHECK(routingSource->find("g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f") == std::string::npos);
+    CHECK(routingSource->find("g.fillRoundedRectangle(header.withHeight(4.0f).withY(header.getCentreY() - 2.0f), 2.0f);") !=
+          std::string::npos);
     CHECK(routingSource->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
           std::string::npos);
     CHECK(routingSource->find("static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour accent, bool muteA, bool muteB)") !=
@@ -486,6 +504,8 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float level, Colour accent, bool muted)") !=
           std::string::npos);
     CHECK(routingSource->find("static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)") !=
+          std::string::npos);
+    CHECK(routingSource->find("g.drawVerticalLine(roundToInt(bounds.getX()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);") !=
           std::string::npos);
     CHECK(routingSource->find("static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)") !=
           std::string::npos);
@@ -512,7 +532,7 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);") !=
           std::string::npos);
-    CHECK(routingSource->find("paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), \"MIXER\");") !=
+    CHECK(routingSource->find("paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});") !=
           std::string::npos);
 
     CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 180); }") !=
@@ -1286,6 +1306,8 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
 
     CHECK(tunerHeader->find("void drawTunerGlassPanel(Graphics& g, Rectangle<float> bounds);") !=
           std::string::npos);
+    CHECK(tunerHeader->find("void drawTunerHeader(Graphics& g, Rectangle<float> bounds);") !=
+          std::string::npos);
     CHECK(tunerHeader->find("void drawNoteGlyph(Graphics& g, Rectangle<float> bounds, const String& noteName, Colour noteColour);") !=
           std::string::npos);
     CHECK(tunerHeader->find("void drawNeedleArcBackdrop(Graphics& g, Point<float> centre, float radius);") !=
@@ -1306,8 +1328,12 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
           std::string::npos);
     CHECK(tunerSource->find("strobeModeButton = std::make_unique<TextButton>(\"STROBE\");") !=
           std::string::npos);
-    CHECK(tunerSource->find("setSize(340, 220);") != std::string::npos);
-    CHECK(tunerSource->find("drawTunerGlassPanel(g, panel);") != std::string::npos);
+    CHECK(tunerSource->find("setSize(360, 268);") != std::string::npos);
+    CHECK(tunerSource->find("drawTunerGlassPanel(g, bounds);") != std::string::npos);
+    CHECK(tunerSource->find("drawTunerHeader(g, headerArea);") != std::string::npos);
+    CHECK(tunerSource->find("bounds.removeFromTop(43);") != std::string::npos);
+    CHECK(tunerSource->find("bypassButton = std::make_unique<TextButton>(\"BYPASS\");") !=
+          std::string::npos);
     CHECK(tunerSource->find("drawModeSegmentedControl(g, modeArea);") != std::string::npos);
     CHECK(tunerSource->find("drawNoteGlyph(g, bounds, noteName, noteCol);") != std::string::npos);
     CHECK(tunerSource->find("drawCoarseDeviationStrip(g, coarseArea);") != std::string::npos);
@@ -1322,6 +1348,6 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerSource->find("strobeModeButton->setBounds") != std::string::npos);
     CHECK(tunerSource->find("modeButton") == std::string::npos);
     CHECK(tunerSource->find("polyModeButton") == std::string::npos);
-    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(340, 220); }") !=
+    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(360, 268); }") !=
           std::string::npos);
 }

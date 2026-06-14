@@ -42,7 +42,7 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     // 60 fps for smooth animation
     startTimerHz(60);
 
-    setSize(340, 220);
+    setSize(360, 268);
 }
 
 TunerControl::~TunerControl()
@@ -124,6 +124,11 @@ void TunerControl::paint(Graphics& g)
 
     auto area = bounds.reduced(8, 6);
 
+    auto headerArea = area.removeFromTop(34);
+    drawTunerHeader(g, headerArea);
+
+    area.removeFromTop(9);
+
     auto modeArea = area.removeFromTop(25);
     drawModeSegmentedControl(g, modeArea);
 
@@ -180,6 +185,66 @@ void TunerControl::drawTunerGlassPanel(Graphics& g, Rectangle<float> bounds)
     g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.1f);
     g.setColour(colours["Plugin Border"].withAlpha(0.44f));
     g.drawRoundedRectangle(bounds.reduced(2.0f), 6.5f, 0.65f);
+}
+
+void TunerControl::drawTunerHeader(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto tunerAccent = colours["Tuner Active Colour"];
+    const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
+
+    ColourGradient headerFill(colours["Plugin Background"].interpolatedWith(tunerAccent, 0.20f).brighter(0.06f),
+                              bounds.getX(), bounds.getY(),
+                              colours["Plugin Background"].interpolatedWith(colours["Field Background"], 0.16f),
+                              bounds.getX(), bounds.getBottom(), false);
+    headerFill.addColour(0.52, colours["Plugin Background"].interpolatedWith(tunerAccent, 0.11f));
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(bounds, 7.0f);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.06f));
+    for (float y = bounds.getY() + 5.0f; y < bounds.getBottom() - 3.0f; y += 4.0f)
+        g.drawHorizontalLine(roundToInt(y), bounds.getX() + 10.0f, bounds.getRight() - 10.0f);
+
+    g.setColour(tunerAccent.withAlpha(0.38f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 0.9f);
+    g.setColour(tunerAccent.withAlpha(0.72f));
+    g.fillRoundedRectangle(bounds.withHeight(2.0f).withY(bounds.getBottom() - 2.0f).reduced(9.0f, 0.0f), 1.0f);
+
+    auto icon = bounds.withWidth(24.0f).reduced(5.0f);
+    g.setColour(tunerAccent.withAlpha(0.16f));
+    g.fillEllipse(icon);
+    g.setColour(tunerAccent.withAlpha(0.88f));
+    g.fillEllipse(icon.reduced(4.5f));
+
+    auto textArea = bounds.withTrimmedLeft(31.0f).withTrimmedRight(98.0f).reduced(0.0f, 4.0f);
+    g.setColour(tunerAccent.brighter(0.18f));
+    g.setFont(fonts.getBadgeFont().withHeight(10.5f));
+    g.drawText("TUNER", textArea.removeFromTop(12.0f), Justification::centredLeft, true);
+
+    const String statusText = bypassed ? "Bypassed" : detected ? getNoteName(tunerProcessor->getDetectedNote()) : "Waiting";
+    g.setColour(colours["Text Colour"].withAlpha(0.88f));
+    g.setFont(fonts.getSubheadingFont().withHeight(15.5f));
+    g.drawText(statusText, textArea, Justification::centredLeft, true);
+
+    auto statePill = bounds.removeFromRight(88.0f).reduced(6.0f, 7.0f);
+    const auto stateColour = bypassed ? colours["Danger Colour"] : detected ? tunerAccent : colours["Text Colour"].withAlpha(0.44f);
+    g.setColour(colours["Field Background"].interpolatedWith(stateColour, bypassed || detected ? 0.13f : 0.05f));
+    g.fillRoundedRectangle(statePill, 9.0f);
+    g.setColour(stateColour.withAlpha(0.52f));
+    g.drawRoundedRectangle(statePill.reduced(0.5f), 9.0f, 0.8f);
+
+    auto led = Rectangle<float>(7.0f, 7.0f).withCentre({statePill.getX() + 12.0f, statePill.getCentreY()});
+    g.setColour(stateColour.withAlpha(bypassed || detected ? 0.24f : 0.10f));
+    g.fillEllipse(led.expanded(3.0f));
+    g.setColour(stateColour);
+    g.fillEllipse(led);
+
+    g.setColour(colours["Text Colour"].withAlpha(0.72f));
+    g.setFont(fonts.getBadgeFont().withHeight(10.0f));
+    g.drawText(bypassed ? "BYPASS" : detected ? "ACTIVE" : "EMPTY", statePill.withTrimmedLeft(23.0f).withTrimmedRight(6.0f),
+               Justification::centredLeft, true);
 }
 
 void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds)
@@ -767,6 +832,7 @@ void TunerControl::resized()
     auto& colours = ColourScheme::getInstance().colours;
 
     auto bounds = getLocalBounds().reduced(8, 6);
+    bounds.removeFromTop(43);
     auto modeArea = bounds.removeFromTop(25);
     modeArea.removeFromRight(18);
     auto bypassArea = modeArea.removeFromRight(72).reduced(2, 2);

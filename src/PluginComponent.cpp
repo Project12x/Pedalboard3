@@ -278,6 +278,16 @@ bool isDirectPaintedEmbeddedNodeName(const String& pluginName)
     return pluginName == "Tuner";
 }
 
+bool usesCompactHostPinLabels(const String& pluginName)
+{
+    return pluginName == "Splitter" || pluginName == "Mixer";
+}
+
+bool shouldDrawHostPinText(const String& pluginName)
+{
+    return !usesCompactHostPinLabels(pluginName);
+}
+
 bool shouldShowHostTitleLabel(const String& pluginName)
 {
     return !isHeroChassisNodeName(pluginName) && !isDirectPaintedEmbeddedNodeName(pluginName);
@@ -2001,7 +2011,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     inputText.clear();
     outputText.clear();
 
-    bool showLabels = (!proc) || (pluginName == "Splitter") || (pluginName == "Mixer");
+    bool showLabels = (!proc) || shouldDrawHostPinText(pluginName);
+    const bool compactPinLabels = usesCompactHostPinLabels(pluginName);
 
     // Use larger spacing for Audio I/O nodes (40px for VU + slider per channel)
     const float pinSpacing = isAudioIONode() ? 40.0f : 22.0f;
@@ -2017,7 +2028,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         for (i = 0; i < numIn; ++i)
         {
             // Use numbered names for Audio Output (its inputs are device output channels)
-            bool useNumberedNames = ignorePinNames || (pluginName == "Audio Output");
+            bool useNumberedNames = compactPinLabels || ignorePinNames || (pluginName == "Audio Output");
 
             if (!useNumberedNames)
             {
@@ -2037,7 +2048,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                 GlyphArrangement* g = new GlyphArrangement;
 
                 // For Audio Output, just show channel number
-                if (pluginName == "Audio Output")
+                if (compactPinLabels)
+                    tempstr << i + 1;
+                else if (pluginName == "Audio Output")
                     tempstr << i + 1;
                 else
                     tempstr << "Input " << i + 1;
@@ -2080,7 +2093,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         for (i = 0; i < numOut; ++i)
         {
             // Use numbered names for Audio Input (its outputs are device input channels)
-            bool useNumberedNames = ignorePinNames || (pluginName == "Audio Input");
+            bool useNumberedNames = compactPinLabels || ignorePinNames || (pluginName == "Audio Input");
 
             if (!useNumberedNames)
             {
@@ -2102,7 +2115,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
                 GlyphArrangement* g = new GlyphArrangement;
 
                 // For Audio Input, just show channel number
-                if (pluginName == "Audio Input")
+                if (compactPinLabels)
+                    tempstr << i + 1;
+                else if (pluginName == "Audio Input")
                     tempstr << i + 1;
                 else
                     tempstr << "Output " << i + 1;

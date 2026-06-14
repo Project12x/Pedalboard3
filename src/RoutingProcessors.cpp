@@ -29,27 +29,21 @@ static String getRoutingVisualLabel(int index)
 static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    const auto outer = bounds;
     const auto base = colours["Plugin Background"];
 
-    ColourGradient body(base.brighter(0.10f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
-                        bounds.getBottom(), false);
-    body.addColour(0.36, base.brighter(0.02f));
-    body.addColour(0.78, base.darker(0.08f));
-    g.setGradientFill(body);
-    g.fillRoundedRectangle(outer.reduced(0.5f), 8.0f);
-
-    auto header = bounds.removeFromTop(25.0f).reduced(5.0f, 4.0f);
-    ColourGradient headerFill(accent.withAlpha(0.20f), header.getX(), header.getY(), base.darker(0.06f),
-                              header.getX(), header.getBottom(), false);
-    headerFill.addColour(0.48, base.interpolatedWith(accent, 0.10f));
+    auto header = bounds.removeFromTop(24.0f).reduced(8.0f, 6.0f);
+    ColourGradient headerFill(accent.withAlpha(0.24f), header.getX(), header.getY(),
+                              base.interpolatedWith(accent, 0.08f).withAlpha(0.58f), header.getX(),
+                              header.getBottom(), false);
+    headerFill.addColour(0.52, accent.withAlpha(0.12f));
     g.setGradientFill(headerFill);
-    g.fillRoundedRectangle(header, 6.0f);
+    g.fillRoundedRectangle(header.withHeight(4.0f).withY(header.getCentreY() - 2.0f), 2.0f);
 
-    g.setColour(accent.withAlpha(0.48f));
-    g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f, 1.15f);
-    g.setColour(Colours::white.withAlpha(0.06f));
-    g.drawRoundedRectangle(outer.reduced(1.5f), 7.0f, 0.8f);
+    g.setColour(Colours::white.withAlpha(0.035f));
+    g.drawLine(bounds.getX() + 12.0f, bounds.getY() + 1.0f, bounds.getRight() - 12.0f, bounds.getY() + 1.0f, 0.7f);
+    g.setColour(accent.withAlpha(0.10f));
+    g.drawLine(bounds.getX() + 10.0f, bounds.getBottom() - 1.0f, bounds.getRight() - 10.0f, bounds.getBottom() - 1.0f,
+               0.7f);
 
     if (title.isNotEmpty())
     {
@@ -107,7 +101,7 @@ static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour acce
 
     auto& colours = ColourScheme::getInstance().colours;
     auto well = bounds.reduced(6.0f, 2.0f);
-    g.setColour(colours["Plugin Background"].darker(0.22f));
+    g.setColour(colours["Plugin Background"].darker(0.16f).withAlpha(0.62f));
     g.fillRoundedRectangle(well, 6.0f);
     g.setColour(accent.withAlpha(0.16f));
     g.drawRoundedRectangle(well.reduced(0.5f), 6.0f, 0.8f);
@@ -137,16 +131,18 @@ static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour acce
 static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    ColourGradient deck(colours["Plugin Background"].brighter(0.07f), bounds.getX(), bounds.getY(),
-                        colours["Plugin Background"].darker(0.15f), bounds.getX(), bounds.getBottom(), false);
+    ColourGradient deck(colours["Plugin Background"].brighter(0.05f).withAlpha(0.54f), bounds.getX(), bounds.getY(),
+                        colours["Plugin Background"].darker(0.12f).withAlpha(0.44f), bounds.getX(),
+                        bounds.getBottom(), false);
     deck.addColour(0.54, colours["Plugin Background"].darker(0.03f));
     g.setGradientFill(deck);
-    g.fillRoundedRectangle(bounds, 7.0f);
+    g.fillRoundedRectangle(bounds.reduced(1.0f, 0.0f), 5.0f);
 
-    g.setColour(accent.withAlpha(0.38f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 1.0f);
+    g.setColour(accent.withAlpha(0.18f));
+    g.drawVerticalLine(roundToInt(bounds.getX()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);
+    g.drawVerticalLine(roundToInt(bounds.getRight()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);
     g.setColour(Colours::white.withAlpha(0.045f));
-    g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.0f, bounds.getRight() - 7.0f, bounds.getY() + 1.0f);
+    g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.0f, bounds.getRight() - 7.0f, bounds.getY() + 1.0f, 0.7f);
 
     ignoreUnused(label);
 }
