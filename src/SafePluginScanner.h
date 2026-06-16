@@ -14,6 +14,7 @@
 #include "PluginScannerClient.h"
 
 #include <JuceHeader.h>
+#include <atomic>
 
 /**
  * @class SafePluginScanner
@@ -92,7 +93,8 @@ class SafePluginScanner
 class SafePluginListComponent : public juce::Component,
                                 public juce::TableListBoxModel,
                                 public juce::Button::Listener,
-                                private juce::Timer
+                                private juce::Timer,
+                                private juce::Thread
 {
   public:
     SafePluginListComponent(juce::AudioPluginFormatManager& formatManager, juce::KnownPluginList& listToRepresent,
@@ -130,6 +132,7 @@ class SafePluginListComponent : public juce::Component,
     bool isScanning() const { return scanning; }
 
   private:
+    void run() override;
     void timerCallback() override;
     void updateList();
     void scanFinished();
@@ -146,6 +149,12 @@ class SafePluginListComponent : public juce::Component,
     std::unique_ptr<juce::ProgressBar> progressBar;
 
     std::unique_ptr<SafePluginScanner> scanner;
+    mutable juce::CriticalSection scanStateLock;
+    juce::String pluginBeingScanned;
+    std::atomic<double> workerScanProgress{0.0};
+    std::atomic<bool> scannerThreadFinished{false};
+    std::atomic<bool> scanCancellationRequested{false};
+    std::atomic<bool> pendingListUpdate{false};
     double scanProgress = 0.0;
     bool scanning = false;
 

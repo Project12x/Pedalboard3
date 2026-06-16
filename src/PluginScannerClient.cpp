@@ -15,12 +15,113 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-    #define WIN32_LEAN_AND_MEAN
-    #define NOMINMAX
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
     #include <windows.h>
 #endif
 
 using namespace PluginScannerIPC;
+
+#ifdef _WIN32
+namespace
+{
+constexpr int kScannerStartupTimeoutMs = 5000;
+constexpr uint32_t kMaxScannerPayloadBytes = 16u * 1024u * 1024u;
+constexpr DWORD kPipePollIntervalMs = 10;
+
+bool waitForScannerConnection(HANDLE pipe, HANDLE process, int timeoutMs)
+{
+    const auto deadline = GetTickCount64() + static_cast<ULONGLONG>(timeoutMs);
+
+    for (;;)
+    {
+        if (ConnectNamedPipe(pipe, nullptr))
+            return true;
+
+        const auto error = GetLastError();
+        if (error == ERROR_PIPE_CONNECTED)
+            return true;
+
+        if (error != ERROR_PIPE_LISTENING)
+            return false;
+
+        if (process != nullptr && WaitForSingleObject(process, 0) != WAIT_TIMEOUT)
+            return false;
+
+        if (GetTickCount64() >= deadline)
+            return false;
+
+        Sleep(kPipePollIntervalMs);
+    }
+}
+
+bool waitForPipeBytes(HANDLE pipe, HANDLE process, DWORD bytesNeeded, int timeoutMs)
+{
+    const auto deadline = GetTickCount64() + static_cast<ULONGLONG>(timeoutMs);
+
+    for (;;)
+    {
+        DWORD bytesAvailable = 0;
+        if (!PeekNamedPipe(pipe, nullptr, 0, nullptr, &bytesAvailable, nullptr))
+            return false;
+
+        if (bytesAvailable >= bytesNeeded)
+            return true;
+
+        if (process != nullptr && WaitForSingleObject(process, 0) != WAIT_TIMEOUT)
+            return false;
+
+        if (GetTickCount64() >= deadline)
+            return false;
+
+        Sleep(kPipePollIntervalMs);
+    }
+}
+
+bool readExactWithTimeout(HANDLE pipe, HANDLE process, void* destination, DWORD bytesToRead, int timeoutMs)
+{
+    auto* cursor = static_cast<char*>(destination);
+    DWORD totalRead = 0;
+
+    while (totalRead < bytesToRead)
+    {
+        const auto remaining = bytesToRead - totalRead;
+        if (!waitForPipeBytes(pipe, process, remaining, timeoutMs))
+            return false;
+
+        DWORD bytesRead = 0;
+        if (!ReadFile(pipe, cursor + totalRead, remaining, &bytesRead, nullptr) || bytesRead == 0)
+            return false;
+
+        totalRead += bytesRead;
+    }
+
+    return true;
+}
+
+bool writeExact(HANDLE pipe, const void* source, DWORD bytesToWrite)
+{
+    const auto* cursor = static_cast<const char*>(source);
+    DWORD totalWritten = 0;
+
+    while (totalWritten < bytesToWrite)
+    {
+        DWORD bytesWritten = 0;
+        if (!WriteFile(pipe, cursor + totalWritten, bytesToWrite - totalWritten, &bytesWritten, nullptr) ||
+            bytesWritten == 0)
+            return false;
+
+        totalWritten += bytesWritten;
+    }
+
+    return true;
+}
+} // namespace
+#endif
 
 //------------------------------------------------------------------------------
 PluginScannerClient::PluginScannerClient()
@@ -80,7 +181,7 @@ bool PluginScannerClient::startScanner()
     // Create the named pipe for communication
     HANDLE hPipe = CreateNamedPipeA(PIPE_NAME,
                                     PIPE_ACCESS_DUPLEX,
-                                    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT,
                                     1,       // Max instances
                                     65536,   // Output buffer size
                                     65536,   // Input buffer size
@@ -128,28 +229,26 @@ bool PluginScannerClient::startScanner()
     // Wait for scanner to connect to our pipe
     spdlog::debug("[PluginScannerClient] Waiting for scanner to connect...");
 
-    if (!ConnectNamedPipe(hPipe, nullptr))
+    if (!waitForScannerConnection(hPipe, static_cast<HANDLE>(scannerProcess), kScannerStartupTimeoutMs))
     {
-        DWORD err = GetLastError();
-        if (err != ERROR_PIPE_CONNECTED)
-        {
-            spdlog::error("[PluginScannerClient] Scanner failed to connect: {}", err);
-            stopScanner();
-            return false;
-        }
+        spdlog::error("[PluginScannerClient] Scanner failed to connect within {}ms", kScannerStartupTimeoutMs);
+        stopScanner();
+        return false;
+    }
+
+    DWORD pipeMode = PIPE_READMODE_BYTE | PIPE_WAIT;
+    if (!SetNamedPipeHandleState(hPipe, &pipeMode, nullptr, nullptr))
+    {
+        spdlog::error("[PluginScannerClient] Failed to switch scanner pipe to blocking reads: {}", GetLastError());
+        stopScanner();
+        return false;
     }
 
     // Wait for Ready message
     MessageHeader header;
-    juce::String payload;
 
-    // Set a timeout for reading
-    COMMTIMEOUTS timeouts = {};
-    timeouts.ReadTotalTimeoutConstant = 5000;  // 5 second timeout
-    SetCommTimeouts(hPipe, &timeouts);
-
-    DWORD bytesRead;
-    if (!ReadFile(hPipe, &header, sizeof(header), &bytesRead, nullptr) || bytesRead != sizeof(header))
+    if (!readExactWithTimeout(hPipe, static_cast<HANDLE>(scannerProcess), &header, sizeof(header),
+                              kScannerStartupTimeoutMs))
     {
         spdlog::error("[PluginScannerClient] Failed to read Ready message from scanner");
         stopScanner();
@@ -186,8 +285,7 @@ void PluginScannerClient::stopScanner()
         MessageHeader header;
         header.type = MessageType::Shutdown;
         header.payloadSize = 0;
-        DWORD bytesWritten;
-        WriteFile(hPipe, &header, sizeof(header), &bytesWritten, nullptr);
+        writeExact(hPipe, &header, sizeof(header));
 
         CloseHandle(hPipe);
         pipeHandle = nullptr;
@@ -251,8 +349,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     header.type = MessageType::ScanPlugin;
     header.payloadSize = static_cast<uint32_t>(payload.toUTF8().length());
 
-    DWORD bytesWritten;
-    if (!WriteFile(hPipe, &header, sizeof(header), &bytesWritten, nullptr))
+    if (!writeExact(hPipe, &header, sizeof(header)))
     {
         spdlog::error("[PluginScannerClient] Failed to send scan request header");
         handleScannerCrash();
@@ -262,20 +359,13 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     if (header.payloadSize > 0)
     {
         auto payloadBytes = payload.toUTF8();
-        if (!WriteFile(hPipe, payloadBytes.getAddress(), header.payloadSize, &bytesWritten, nullptr))
+        if (!writeExact(hPipe, payloadBytes.getAddress(), header.payloadSize))
         {
             spdlog::error("[PluginScannerClient] Failed to send scan request payload");
             handleScannerCrash();
             return false;
         }
     }
-
-    FlushFileBuffers(hPipe);
-
-    // Wait for response with timeout
-    COMMTIMEOUTS timeouts = {};
-    timeouts.ReadTotalTimeoutConstant = SCAN_TIMEOUT_MS;
-    SetCommTimeouts(hPipe, &timeouts);
 
     // Check if scanner is still running
     if (!isScannerRunning())
@@ -286,8 +376,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     }
 
     // Read response header
-    DWORD bytesRead;
-    if (!ReadFile(hPipe, &header, sizeof(header), &bytesRead, nullptr) || bytesRead != sizeof(header))
+    if (!readExactWithTimeout(hPipe, static_cast<HANDLE>(scannerProcess), &header, sizeof(header), SCAN_TIMEOUT_MS))
     {
         if (!isScannerRunning())
         {
@@ -304,12 +393,20 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         return false;
     }
 
+    if (header.payloadSize > kMaxScannerPayloadBytes)
+    {
+        spdlog::error("[PluginScannerClient] Scanner response payload too large: {} bytes", header.payloadSize);
+        handleScannerCrash();
+        return false;
+    }
+
     // Read response payload
     juce::String responsePayload;
     if (header.payloadSize > 0)
     {
         juce::HeapBlock<char> buffer(header.payloadSize + 1);
-        if (!ReadFile(hPipe, buffer.get(), header.payloadSize, &bytesRead, nullptr))
+        if (!readExactWithTimeout(hPipe, static_cast<HANDLE>(scannerProcess), buffer.get(), header.payloadSize,
+                                  SCAN_TIMEOUT_MS))
         {
             spdlog::error("[PluginScannerClient] Failed to read response payload");
             return false;

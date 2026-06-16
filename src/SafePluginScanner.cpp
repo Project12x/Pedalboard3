@@ -161,7 +161,8 @@ SafePluginListComponent::SafePluginListComponent(juce::AudioPluginFormatManager&
                                                  juce::KnownPluginList& listToRepresent,
                                                  const juce::File& deadMansPedalFile,
                                                  juce::PropertiesFile* /*propertiesToUse*/)
-    : formatManager(fm), pluginList(listToRepresent), deadMansPedal(deadMansPedalFile)
+    : juce::Thread("Safe Plugin Scanner"),
+      formatManager(fm), pluginList(listToRepresent), deadMansPedal(deadMansPedalFile)
 {
     // Create table
     table = std::make_unique<juce::TableListBox>("plugins", this);
@@ -199,6 +200,10 @@ SafePluginListComponent::SafePluginListComponent(juce::AudioPluginFormatManager&
 SafePluginListComponent::~SafePluginListComponent()
 {
     cancelScan();
+    signalThreadShouldExit();
+    waitForThreadToExit(-1);
+    stopTimer();
+    scanner.reset();
 }
 
 void SafePluginListComponent::resized()
@@ -319,11 +324,24 @@ void SafePluginListComponent::startScan()
     if (scanning)
         return;
 
+    signalThreadShouldExit();
+    waitForThreadToExit(-1);
+
     scanning = true;
     scanButton->setButtonText("Cancel scan");
+    scanButton->setEnabled(true);
     progressBar->setVisible(true);
     scanProgress = 0.0;
+    workerScanProgress.store(0.0, std::memory_order_release);
+    scannerThreadFinished.store(false, std::memory_order_release);
+    scanCancellationRequested.store(false, std::memory_order_release);
+    pendingListUpdate.store(false, std::memory_order_release);
     progressLabel->setText("Starting scan...", juce::dontSendNotification);
+
+    {
+        const juce::ScopedLock lock(scanStateLock);
+        pluginBeingScanned.clear();
+    }
 
     // Create scanner for VST3 format
     for (int i = 0; i < formatManager.getNumFormats(); ++i)
@@ -337,7 +355,7 @@ void SafePluginListComponent::startScan()
         }
     }
 
-    if (scanner)
+    if (scanner && startThread())
         startTimer(100);
     else
         scanFinished();
@@ -348,9 +366,36 @@ void SafePluginListComponent::cancelScan()
     if (!scanning)
         return;
 
-    stopTimer();
-    scanner.reset();
-    scanFinished();
+    scanCancellationRequested.store(true, std::memory_order_release);
+    signalThreadShouldExit();
+    scanButton->setEnabled(false);
+    progressLabel->setText("Cancelling scan...", juce::dontSendNotification);
+}
+
+void SafePluginListComponent::run()
+{
+    while (!threadShouldExit())
+    {
+        auto* activeScanner = scanner.get();
+        if (activeScanner == nullptr)
+            break;
+
+        juce::String pluginName;
+        const bool hasMore = activeScanner->scanNextFile(true, pluginName);
+
+        {
+            const juce::ScopedLock lock(scanStateLock);
+            pluginBeingScanned = pluginName;
+        }
+
+        workerScanProgress.store(static_cast<double>(activeScanner->getProgress()), std::memory_order_release);
+        pendingListUpdate.store(true, std::memory_order_release);
+
+        if (!hasMore)
+            break;
+    }
+
+    scannerThreadFinished.store(true, std::memory_order_release);
 }
 
 void SafePluginListComponent::timerCallback()
@@ -362,17 +407,25 @@ void SafePluginListComponent::timerCallback()
     }
 
     juce::String pluginName;
-    bool hasMore = scanner->scanNextFile(true, pluginName);
+    {
+        const juce::ScopedLock lock(scanStateLock);
+        pluginName = pluginBeingScanned;
+    }
 
-    scanProgress = static_cast<double>(scanner->getProgress());
-    progressLabel->setText("Scanning: " + pluginName, juce::dontSendNotification);
+    scanProgress = workerScanProgress.load(std::memory_order_acquire);
 
-    if (!hasMore)
+    if (scanCancellationRequested.load(std::memory_order_acquire))
+        progressLabel->setText("Cancelling scan...", juce::dontSendNotification);
+    else if (pluginName.isNotEmpty())
+        progressLabel->setText("Scanning: " + pluginName, juce::dontSendNotification);
+
+    if (pendingListUpdate.exchange(false, std::memory_order_acq_rel))
+        updateList();
+
+    if (scannerThreadFinished.load(std::memory_order_acquire) && !isThreadRunning())
     {
         scanFinished();
     }
-
-    updateList();
 }
 
 void SafePluginListComponent::updateList()
@@ -383,13 +436,23 @@ void SafePluginListComponent::updateList()
 
 void SafePluginListComponent::scanFinished()
 {
+    if (isThreadRunning())
+        return;
+
+    const bool wasCancelled = scanCancellationRequested.load(std::memory_order_acquire);
+
     scanning = false;
     scanner.reset();
     stopTimer();
+    scanCancellationRequested.store(false, std::memory_order_release);
+    scannerThreadFinished.store(false, std::memory_order_release);
+    pendingListUpdate.store(false, std::memory_order_release);
 
     scanButton->setButtonText("Scan for new plugins...");
+    scanButton->setEnabled(true);
     progressBar->setVisible(false);
-    progressLabel->setText("Scan complete. Found " + juce::String(pluginList.getNumTypes()) + " plugins.",
+    progressLabel->setText(wasCancelled ? "Scan cancelled."
+                                         : "Scan complete. Found " + juce::String(pluginList.getNumTypes()) + " plugins.",
                            juce::dontSendNotification);
 
     updateList();
