@@ -151,10 +151,13 @@ class BypassableInstance : public AudioPluginInstance
 
     // Modern JUCE 8 parameter access via AudioProcessorParameter array
     ///	Returns the number of parameters the plugin has.
-    int getNumPluginParameters() const { return plugin->getParameters().size(); };
+    int getNumPluginParameters() const { return plugin != nullptr ? plugin->getParameters().size() : 0; };
     ///	Returns the indexed parameter object.
-    AudioProcessorParameter* getPluginParameter(int index)
+    AudioProcessorParameter* getPluginParameter(int index) const
     {
+        if (plugin == nullptr)
+            return nullptr;
+
         auto& params = plugin->getParameters();
         return (index >= 0 && index < params.size()) ? params[index] : nullptr;
     };
@@ -183,12 +186,12 @@ class BypassableInstance : public AudioPluginInstance
     void setPluginParameterValue(int parameterIndex, float newValue)
     {
         if (auto* param = getPluginParameter(parameterIndex))
-            param->setValue(newValue);
+            param->setValueNotifyingHost(juce::jlimit(0.0f, 1.0f, newValue));
     };
     ///	Returns true if the indexed parameter is automatable.
     bool isPluginParameterAutomatable(int parameterIndex) const
     {
-        if (auto* param = plugin->getParameters()[parameterIndex])
+        if (auto* param = getPluginParameter(parameterIndex))
             return param->isAutomatable();
         return false;
     };
@@ -224,10 +227,10 @@ class BypassableInstance : public AudioPluginInstance
     {
         return isPluginParameterAutomatable(parameterIndex);
     }
-    [[deprecated("Use plugin->getParameters()[parameterIndex]->isMetaParameter() instead")]]
+    [[deprecated("Use getPluginParameter(parameterIndex)->isMetaParameter() after a null check instead")]]
     bool isMetaParameter(int parameterIndex) const
     {
-        if (auto* param = plugin->getParameters()[parameterIndex])
+        if (auto* param = getPluginParameter(parameterIndex))
             return param->isMetaParameter();
         return false;
     }
@@ -274,6 +277,8 @@ class BypassableInstance : public AudioPluginInstance
 
     ///	Buffer used to store the plugin's audio.
     AudioSampleBuffer tempBuffer;
+    /// Dry/original audio used for bypass crossfade on both direct and temp-buffer paths.
+    AudioSampleBuffer bypassDryBuffer;
 
     ///	Whether we are currently bypassing the plugin or not (set from UI, read from audio thread).
     std::atomic<bool> bypass{false};

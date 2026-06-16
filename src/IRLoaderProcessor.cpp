@@ -188,8 +188,8 @@ void IRLoaderProcessor::updateFilters()
 
     if (currentLowCut != lastLowCut || currentHighCut != lastHighCut)
     {
-        *lowCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, currentLowCut);
-        *highCutFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, currentHighCut);
+        *lowCutFilter.state = juce::dsp::IIR::ArrayCoefficients<float>::makeHighPass(currentSampleRate, currentLowCut);
+        *highCutFilter.state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(currentSampleRate, currentHighCut);
         lastLowCut = currentLowCut;
         lastHighCut = currentHighCut;
     }

@@ -23,7 +23,8 @@
 #include <spdlog/spdlog.h>
 
 //------------------------------------------------------------------------------
-BypassableInstance::BypassableInstance(AudioPluginInstance* plug) : plugin(plug), tempBuffer(2, 4096), bypassRamp(0.0f)
+BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
+    : plugin(plug), tempBuffer(2, 4096), bypassDryBuffer(2, 4096), bypassRamp(0.0f)
 {
     jassert(plugin);
 
@@ -127,6 +128,7 @@ void BypassableInstance::prepareToPlay(double sampleRate, int estimatedSamplesPe
     // Since we only get an estimate of the number of samples per block, multiply
     // that number by 2 to ensure we don't run out of space.
     tempBuffer.setSize(numChannels, (estimatedSamplesPerBlock * 2));
+    bypassDryBuffer.setSize(numChannels, (estimatedSamplesPerBlock * 2));
 
     spdlog::info("[BypassableInstance::prepareToPlay] tempBuffer: ch={} samples={}, plugin: in={} out={}",
                  tempBuffer.getNumChannels(), tempBuffer.getNumSamples(), numInputs, numOutputs);
@@ -165,6 +167,7 @@ void BypassableInstance::resyncChannelCount()
             numSamples = 1024; // fallback
 
         tempBuffer.setSize(numChannels, numSamples, false, true, true);
+        bypassDryBuffer.setSize(numChannels, numSamples, false, true, true);
 
         spdlog::info("[BypassableInstance::resyncChannelCount] Resized tempBuffer to {}ch x {} samples", numChannels,
                      numSamples);
@@ -203,8 +206,14 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     const bool needTempForPlugin = (bufferChannels < pluginChannels);
 
     // Hard bounds check on sample count
-    if (bufferSamples > tempBuffer.getNumSamples())
+    if (bufferSamples > tempBuffer.getNumSamples() || bufferSamples > bypassDryBuffer.getNumSamples())
         return;
+
+    const int safeDryChannels = jmin(bufferChannels, bypassDryBuffer.getNumChannels());
+    for (i = 0; i < safeDryChannels; ++i)
+        bypassDryBuffer.copyFrom(i, 0, buffer, i, 0, bufferSamples);
+    for (i = safeDryChannels; i < bypassDryBuffer.getNumChannels(); ++i)
+        bypassDryBuffer.clear(i, 0, bufferSamples);
 
     // Pass on any MIDI messages received via OSC.
     midiCollector.removeNextBlockOfMessages(tempMidi, bufferSamples);
@@ -240,13 +249,6 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     else
     {
         // Normal path: buffer has enough channels
-        // Save original audio for bypass crossfade
-        // Clamp to tempBuffer's capacity to prevent overrun if plugin changed
-        // its channel count after prepareToPlay
-        const int safeCopyChannels = jmin(bufferChannels, pluginChannels);
-        for (i = 0; i < safeCopyChannels; ++i)
-            tempBuffer.copyFrom(i, 0, buffer, i, 0, bufferSamples);
-
         // Get the plugin's audio.
         plugin->processBlock(buffer, tempMidi);
     }
@@ -256,32 +258,30 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         midiMessages.swapWith(tempMidi);
 
     // Add the correct (bypassed or un-bypassed) audio back to the buffer.
-    // Only apply bypass crossfade when we have the original audio saved
-    if (!needTempForPlugin)
+    const int safeCrossfadeChannels = jmin(bufferChannels, bypassDryBuffer.getNumChannels());
+    if (safeCrossfadeChannels > 0)
     {
-        const int safeCrossfadeChannels = jmin(bufferChannels, pluginChannels);
-        for (j = 0; j < safeCrossfadeChannels; ++j)
+        rampVal = bypassRamp;
+        for (i = 0; i < bufferSamples; ++i)
         {
-            float* origData = tempBuffer.getWritePointer(j);
-            float* newData = buffer.getWritePointer(j);
-
-            rampVal = bypassRamp;
-            for (i = 0; i < bufferSamples; ++i)
+            for (j = 0; j < safeCrossfadeChannels; ++j)
             {
-                newData[i] = (origData[i] * rampVal) + (newData[i] * (1.0f - rampVal));
+                const float origSample = bypassDryBuffer.getReadPointer(j)[i];
+                float* newData = buffer.getWritePointer(j);
+                newData[i] = (origSample * rampVal) + (newData[i] * (1.0f - rampVal));
+            }
 
-                if (bypass && (rampVal < 1.0f))
-                {
-                    rampVal += 0.001f;
-                    if (rampVal > 1.0f)
-                        rampVal = 1.0f;
-                }
-                else if (!bypass && (rampVal > 0.0f))
-                {
-                    rampVal -= 0.001f;
-                    if (rampVal < 0.0f)
-                        rampVal = 0.0f;
-                }
+            if (bypass && (rampVal < 1.0f))
+            {
+                rampVal += 0.001f;
+                if (rampVal > 1.0f)
+                    rampVal = 1.0f;
+            }
+            else if (!bypass && (rampVal > 0.0f))
+            {
+                rampVal -= 0.001f;
+                if (rampVal < 0.0f)
+                    rampVal = 0.0f;
             }
         }
         bypassRamp = rampVal;

@@ -117,11 +117,12 @@ class IRLoaderProcessor : public PedalboardProcessor
     juce::dsp::Convolution convolver2;
     juce::dsp::ProcessSpec spec;
 
-    // Pre/post filters for tone shaping (coefficients updated on audio thread only)
+    // Pre/post filters for tone shaping. The audio callback updates coefficients
+    // in place without replacing the shared coefficient state object.
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> lowCutFilter;
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> highCutFilter;
 
-    // Audio-thread-only tracking for lazy coefficient updates
+    // Coefficient update tracking
     float lastLowCut = 0.0f;
     float lastHighCut = 0.0f;
 

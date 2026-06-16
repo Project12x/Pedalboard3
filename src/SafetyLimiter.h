@@ -61,7 +61,7 @@ class SafetyLimiterProcessor : public AudioProcessor
     bool isLimiting() const { return limiting.load(); }
 
     // Manual unmute (called from Panic)
-    void unmute() { muted.store(false); }
+    void unmute();
 
     // Check if mute was triggered since last check (for toast notification)
     bool checkAndClearMuteTriggered()
@@ -113,6 +113,8 @@ class SafetyLimiterProcessor : public AudioProcessor
     static void setInstance(SafetyLimiterProcessor* inst) { instance = inst; }
 
   private:
+    void resetRuntimeState() noexcept;
+
     //==============================================================================
     // Thresholds
     static constexpr float softLimitThreshold = 0.944f;   // -0.5 dBFS
@@ -135,11 +137,13 @@ class SafetyLimiterProcessor : public AudioProcessor
     int dcOffsetCounter = 0;
     int ultrasonicCounter = 0;
 
-    // DC blocker state (per channel)
-    float dcBlockerState[2] = {0.0f, 0.0f};
+    // DC blocker state (per channel): y[n] = x[n] - x[n-1] + R * y[n-1]
+    float dcBlockerPreviousInput[2] = {0.0f, 0.0f};
+    float dcBlockerPreviousOutput[2] = {0.0f, 0.0f};
     float dcBlockerCoeff = 0.995f;
 
     // Ultrasonic detection (simple high-pass energy tracker)
+    float ultrasonicPreviousSample[2] = {0.0f, 0.0f};
     float ultrasonicEnergy = 0.0f;
     float ultrasonicDecay = 0.99f;
 

@@ -34,13 +34,7 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     double samplesFor300ms = sampleRate * 0.3;
     outputDecayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
 
-    // Reset state
-    currentGain = 1.0f;
-    dangerousGainCounter = 0;
-    dcOffsetCounter = 0;
-    ultrasonicCounter = 0;
-    ultrasonicEnergy = 0.0f;
-    dcBlockerState[0] = dcBlockerState[1] = 0.0f;
+    resetRuntimeState();
     outputLevels[0].store(0.0f, std::memory_order_relaxed);
     outputLevels[1].store(0.0f, std::memory_order_relaxed);
     inputLevels[0].store(0.0f, std::memory_order_relaxed);
@@ -56,6 +50,25 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     }
 
     setInstance(this);
+}
+
+void SafetyLimiterProcessor::resetRuntimeState() noexcept
+{
+    currentGain = 1.0f;
+    dangerousGainCounter = 0;
+    dcOffsetCounter = 0;
+    ultrasonicCounter = 0;
+    ultrasonicEnergy = 0.0f;
+    dcBlockerPreviousInput[0] = dcBlockerPreviousInput[1] = 0.0f;
+    dcBlockerPreviousOutput[0] = dcBlockerPreviousOutput[1] = 0.0f;
+    ultrasonicPreviousSample[0] = ultrasonicPreviousSample[1] = 0.0f;
+    limiting.store(false, std::memory_order_relaxed);
+}
+
+void SafetyLimiterProcessor::unmute()
+{
+    resetRuntimeState();
+    muted.store(false, std::memory_order_release);
 }
 
 void SafetyLimiterProcessor::releaseResources()
@@ -74,86 +87,93 @@ void SafetyLimiterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer
 
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
+    const int chCount = jmin(numChannels, 2);
+
+    if (chCount <= 0 || numSamples <= 0)
+        return;
 
     bool limitingThisBlock = false;
-    bool dangerousDetected = false;
-    bool dcDetected = false;
+
+    auto triggerMuteAndClear = [&buffer, this]()
+    {
+        muted.store(true, std::memory_order_release);
+        muteTriggered.store(true, std::memory_order_release);
+        buffer.clear();
+    };
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
         float maxPeak = 0.0f;
         float dcSum = 0.0f;
+        float dcBlockedSamples[2] = {0.0f, 0.0f};
 
-        // Process each channel
-        for (int ch = 0; ch < jmin(numChannels, 2); ++ch)
+        for (int ch = 0; ch < chCount; ++ch)
         {
             float* channelData = buffer.getWritePointer(ch);
             float inputSample = channelData[sample];
 
+            if (!std::isfinite(inputSample))
+            {
+                triggerMuteAndClear();
+                return;
+            }
+
             // DC Blocker (high-pass filter)
-            float dcBlockedSample = inputSample - dcBlockerState[ch] + dcBlockerCoeff * dcBlockerState[ch];
-            dcBlockerState[ch] = inputSample;
+            const float dcBlockedSample =
+                inputSample - dcBlockerPreviousInput[ch] + dcBlockerCoeff * dcBlockerPreviousOutput[ch];
+            dcBlockerPreviousInput[ch] = inputSample;
+            dcBlockerPreviousOutput[ch] = dcBlockedSample;
+            dcBlockedSamples[ch] = dcBlockedSample;
 
             // Track DC offset (before blocking)
             dcSum += std::abs(inputSample - dcBlockedSample);
 
-            // Use DC-blocked signal
-            inputSample = dcBlockedSample;
-
             // Track peak for limiting/danger detection
-            float absSample = std::abs(inputSample);
+            float absSample = std::abs(dcBlockedSample);
             maxPeak = jmax(maxPeak, absSample);
 
             // Simple ultrasonic detection (track high-frequency energy)
             // This is a rough approximation - we detect large sample-to-sample changes
-            if (sample > 0)
-            {
-                float prevSample = channelData[sample - 1];
-                float delta = std::abs(inputSample - prevSample);
-                ultrasonicEnergy = ultrasonicEnergy * ultrasonicDecay + delta * delta;
-            }
+            float delta = std::abs(dcBlockedSample - ultrasonicPreviousSample[ch]);
+            ultrasonicPreviousSample[ch] = dcBlockedSample;
+            ultrasonicEnergy = ultrasonicEnergy * ultrasonicDecay + delta * delta;
+        }
 
-            // Apply limiting
-            float outputSample = inputSample;
+        if (maxPeak > softLimitThreshold)
+        {
+            // Linked output protection: one gain value is applied to every active
+            // channel so stereo image and phase relationships stay intact.
+            const float excess = maxPeak - softLimitThreshold;
+            const float reduction = excess / (1.0f + excess);
+            const float targetGain = (softLimitThreshold + reduction) / maxPeak;
+            currentGain = jmin(currentGain, targetGain);
+            limitingThisBlock = true;
+        }
+        else
+        {
+            // Release gain back to 1.0
+            currentGain = currentGain * releaseCoeff + (1.0f - releaseCoeff);
+        }
 
-            if (absSample > softLimitThreshold)
-            {
-                // Soft knee limiting
-                float excess = absSample - softLimitThreshold;
-                float reduction = excess / (1.0f + excess);
-                float targetGain = (softLimitThreshold + reduction) / absSample;
-                currentGain = jmin(currentGain, targetGain);
-                limitingThisBlock = true;
-            }
-            else
-            {
-                // Release gain back to 1.0
-                currentGain = currentGain * releaseCoeff + (1.0f - releaseCoeff);
-            }
-
-            outputSample = inputSample * currentGain;
-
-            // Final hard clip at 1.0 (safety net)
-            outputSample = jlimit(-1.0f, 1.0f, outputSample);
-
-            channelData[sample] = outputSample;
+        for (int ch = 0; ch < chCount; ++ch)
+        {
+            float* channelData = buffer.getWritePointer(ch);
+            channelData[sample] = jlimit(-1.0f, 1.0f, dcBlockedSamples[ch] * currentGain);
         }
 
         // Check for dangerous conditions
         if (maxPeak > dangerousGainThreshold)
         {
             dangerousGainCounter++;
-            dangerousDetected = true;
         }
         else
         {
             dangerousGainCounter = jmax(0, dangerousGainCounter - 1);
         }
 
-        if ((dcSum / numChannels) > dcOffsetThreshold)
+        if ((dcSum / static_cast<float>(chCount)) > dcOffsetThreshold)
         {
             dcOffsetCounter++;
-            dcDetected = true;
         }
         else
         {
@@ -174,14 +194,12 @@ void SafetyLimiterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer
         if (dangerousGainCounter > dangerousGainHoldSamples || dcOffsetCounter > dcOffsetHoldSamples ||
             ultrasonicCounter > ultrasonicHoldSamples)
         {
-            muted.store(true);
-            muteTriggered.store(true);
-            buffer.clear();
+            triggerMuteAndClear();
             return;
         }
     }
 
-    limiting.store(limitingThisBlock);
+    limiting.store(limitingThisBlock, std::memory_order_relaxed);
 
     // Note: Output level metering for the Audio Output VU is handled by
     // MeteringProcessorPlayer::audioDeviceIOCallbackWithContext, which taps

@@ -2837,9 +2837,26 @@ void MainPanel::timerCallback(int timerId)
                     else
                     {
                         auto* processor = node->getProcessor();
-                        const int numParams = processor->getNumParameters();
-                        if (pc.paramIndex >= 0 && pc.paramIndex < numParams)
-                            processor->setParameter(pc.paramIndex, pc.value);
+                        if (auto* bypassable = dynamic_cast<BypassableInstance*>(processor))
+                        {
+                            if (pc.paramIndex >= 0 && pc.paramIndex < bypassable->getNumPluginParameters())
+                                bypassable->setPluginParameterValue(pc.paramIndex, pc.value);
+                        }
+                        else
+                        {
+                            const auto& params = processor->getParameters();
+                            if (pc.paramIndex >= 0 && pc.paramIndex < params.size())
+                            {
+                                if (auto* param = params[pc.paramIndex])
+                                    param->setValueNotifyingHost(juce::jlimit(0.0f, 1.0f, pc.value));
+                            }
+                            else
+                            {
+                                const int numParams = processor->getNumParameters();
+                                if (pc.paramIndex >= 0 && pc.paramIndex < numParams)
+                                    processor->setParameter(pc.paramIndex, pc.value);
+                            }
+                        }
                     }
                 }
             }

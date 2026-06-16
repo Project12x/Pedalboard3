@@ -578,8 +578,11 @@ void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut, bool 
 
     // PluginWindow::closeAllCurrentlyOpenWindows();
 
-    graph.clear();
-    createInfrastructureNodes();
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        graph.clear();
+        createInfrastructureNodes();
+    }
 
     // Add nodes with temporary Y positions (will be repositioned below)
     if (addAudioIn)
@@ -770,7 +773,6 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     String midiAddress;
     String errorMessage;
     PluginDescription pd;
-    AudioPluginInstance* instance = 0;
     BypassableInstance* bypassable = 0;
     std::unique_ptr<AudioPluginInstance> tempInstance;
 
@@ -816,8 +818,30 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
         return;
     }
 
+    const XmlElement* const state = xml.getChildByName("STATE");
+
+    if (state != 0)
+    {
+        MemoryBlock m;
+        m.fromBase64Encoding(state->getAllSubText());
+
+        instancePtr->setStateInformation(m.getData(), m.getSize());
+    }
+
+    if (bypassable)
+    {
+        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
+        bypassable->setBypass(xml.getBoolAttribute("bypass", false));
+    }
+
+    instancePtr->setCurrentProgram(xml.getIntAttribute("program"));
+
     // JUCE 8: addNode takes unique_ptr and NodeID
-    AudioProcessorGraph::Node::Ptr node(graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(uid)));
+    AudioProcessorGraph::Node::Ptr node;
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        node = graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(uid));
+    }
 
     if (!node)
     {
@@ -826,16 +850,6 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     }
 
     spdlog::debug("[createNodeFromXml] SUCCESS node uid={} actual_uid={}", uid, (int)node->nodeID.uid);
-
-    const XmlElement* const state = xml.getChildByName("STATE");
-
-    if (state != 0)
-    {
-        MemoryBlock m;
-        m.fromBase64Encoding(state->getAllSubText());
-
-        node->getProcessor()->setStateInformation(m.getData(), m.getSize());
-    }
 
     node->properties.set("x", xml.getDoubleAttribute("x"));
     node->properties.set("y", xml.getDoubleAttribute("y"));
@@ -850,12 +864,7 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     {
         if (!midiAddress.isEmpty())
             oscManager.registerMIDIProcessor(midiAddress, bypassable);
-
-        bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
-        bypassable->setBypass(xml.getBoolAttribute("bypass", false));
     }
-
-    node->getProcessor()->setCurrentProgram(xml.getIntAttribute("program"));
 }
 
 XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
@@ -901,13 +910,16 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
 
 void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager)
 {
-    clear(false, false, false, false);
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        graph.clear();
+        createInfrastructureNodes();
+    }
 
     int nodeCount = 0;
     forEachXmlChildElementWithTagName(xml, e, "FILTER")
     {
         createNodeFromXml(*e, oscManager);
-        changed();
         nodeCount++;
     }
 
@@ -922,8 +934,12 @@ void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscMa
         spdlog::debug("[restoreFromXml] Adding connection: src={}/{} -> dst={}/{}", (int)srcFilter.uid, srcChannel,
                       (int)dstFilter.uid, dstChannel);
 
-        // Use addConnectionRaw to bypass undo manager during restore
-        bool success = addConnectionRaw(srcFilter, srcChannel, dstFilter, dstChannel);
+        AudioProcessorGraph::Connection conn{{srcFilter, srcChannel}, {dstFilter, dstChannel}};
+        bool success = false;
+        {
+            const juce::ScopedLock sl(graph.getCallbackLock());
+            success = graph.addConnection(conn);
+        }
         spdlog::debug("[restoreFromXml] Connection add result: {}", success ? "SUCCESS" : "FAILED");
 
         connectionCount++;
@@ -931,10 +947,17 @@ void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscMa
 
     spdlog::info("[FilterGraph::restoreFromXml] Loaded {} nodes, {} connections from XML", nodeCount, connectionCount);
 
-    auto beforeRemove = graph.getConnections().size();
-    graph.removeIllegalConnections();
-    auto afterRemove = graph.getConnections().size();
+    size_t beforeRemove = 0;
+    size_t afterRemove = 0;
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        beforeRemove = graph.getConnections().size();
+        graph.removeIllegalConnections();
+        afterRemove = graph.getConnections().size();
+    }
 
     spdlog::info("[FilterGraph::restoreFromXml] After removeIllegalConnections: {} -> {} connections", beforeRemove,
                  afterRemove);
+
+    changed();
 }

@@ -12,7 +12,7 @@
 #include <spdlog/spdlog.h>
 
 // Static instance pointer
-VirtualMidiInputProcessor* VirtualMidiInputProcessor::instance = nullptr;
+std::atomic<VirtualMidiInputProcessor*> VirtualMidiInputProcessor::instance{nullptr};
 
 //==============================================================================
 VirtualMidiInputProcessor::VirtualMidiInputProcessor()
@@ -24,8 +24,8 @@ VirtualMidiInputProcessor::VirtualMidiInputProcessor()
 
 VirtualMidiInputProcessor::~VirtualMidiInputProcessor()
 {
-    if (instance == this)
-        instance = nullptr;
+    auto* expected = this;
+    instance.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);
 }
 
 //==============================================================================
@@ -48,15 +48,8 @@ void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
     // Retrieve any MIDI messages that were added from the UI thread
     midiCollector.removeNextBlockOfMessages(midiMessages, buffer.getNumSamples());
 
-    // DEBUG: Periodic confirmation that processBlock is being called
-    ++processBlockCallCount;
-    if (processBlockCallCount == 1 || processBlockCallCount % 5000 == 0)
-    {
-        spdlog::info("[VirtualMidiInput] processBlock alive (call #{}, bufSamples={}, instance={})",
-                     processBlockCallCount, buffer.getNumSamples(), (instance == this) ? "CURRENT" : "STALE");
-    }
+    processBlockCallCount.fetch_add(1, std::memory_order_relaxed);
 
-    // DEBUG: Log when MIDI messages are produced
     if (!midiMessages.isEmpty())
     {
         int count = 0;
@@ -65,8 +58,7 @@ void VirtualMidiInputProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuf
             ignoreUnused(metadata);
             ++count;
         }
-        spdlog::info("[VirtualMidiInput] processBlock output {} MIDI messages, bufSamples={}", count,
-                     buffer.getNumSamples());
+        producedMidiMessageCount.fetch_add(count, std::memory_order_relaxed);
     }
 }
 
@@ -224,10 +216,10 @@ void VirtualMidiInputProcessor::fillInPluginDescription(PluginDescription& descr
 //==============================================================================
 VirtualMidiInputProcessor* VirtualMidiInputProcessor::getInstance()
 {
-    return instance;
+    return instance.load(std::memory_order_acquire);
 }
 
 void VirtualMidiInputProcessor::setInstance(VirtualMidiInputProcessor* inst)
 {
-    instance = inst;
+    instance.store(inst, std::memory_order_release);
 }

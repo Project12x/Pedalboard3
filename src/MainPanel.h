@@ -35,6 +35,7 @@
 #include "ScratchRecorder.h"
 
 #include <JuceHeader.h>
+#include <array>
 #include <atomic>
 
 class PluginListWindow;
@@ -51,6 +52,12 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 {
   public:
     static constexpr int MaxChannels = 16;
+    static constexpr int MaxCallbackBlockSize = 8192;
+
+    int getCallbackBoundsRejectCount() const noexcept
+    {
+        return callbackBoundsRejectCount.load(std::memory_order_relaxed);
+    }
 
     void setScratchRecorder(ScratchRecorder* recorderToUse) noexcept
     {
@@ -83,6 +90,18 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         auto& gainState = MasterGainState::getInstance();
         auto* recorder = scratchRecorder.load(std::memory_order_acquire);
 
+        if (numSamples <= 0)
+            return;
+
+        if (numSamples > MaxCallbackBlockSize)
+        {
+            callbackBoundsRejectCount.fetch_add(1, std::memory_order_relaxed);
+            for (int ch = 0; ch < numOutputChannels; ++ch)
+                if (outputChannelData[ch] != nullptr)
+                    FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+            return;
+        }
+
         if (recorder != nullptr)
             recorder->writeRawBlock(inputChannelData, numInputChannels, numSamples);
 
@@ -92,14 +111,13 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         // Pre-compute smoothed master input gain ramp (one value per sample).
         // This ensures the ramp advances at the correct rate regardless of
         // how many channels reference it.
-        float smoothedInputRamp[8192];
-        jassert(numSamples <= 8192);
         for (int i = 0; i < numSamples; ++i)
             smoothedInputRamp[i] = gainState.smoothedInputGain.getNextValue();
 
         // Apply per-channel input gain. inputChannelData is const, so we copy
         // to a pre-allocated buffer and multiply by smoothed master * channel gain.
         const float* const* actualInput = inputChannelData;
+        int actualInputChannels = numInputChannels;
         {
             bool anyInputGain = false;
             int chCount = jmin(numInputChannels, (int)MaxChannels);
@@ -123,14 +141,17 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
                     gainedInputPtrs[ch] = inputChannelData[ch];
                 }
             }
-            for (int ch = chCount; ch < numInputChannels; ++ch)
-                gainedInputPtrs[ch] = inputChannelData[ch];
             if (anyInputGain)
+            {
                 actualInput = gainedInputPtrs;
+                actualInputChannels = chCount;
+                if (numInputChannels > MaxChannels)
+                    callbackBoundsRejectCount.fetch_add(1, std::memory_order_relaxed);
+            }
         }
 
         // Process graph with (possibly gained) input
-        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(actualInput, numInputChannels, outputChannelData,
+        AudioProcessorPlayer::audioDeviceIOCallbackWithContext(actualInput, actualInputChannels, outputChannelData,
                                                                numOutputChannels, numSamples, context);
 
         // Process master bus insert rack (between graph output and output gain)
@@ -143,24 +164,31 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             {
                 // Copy output to pre-allocated buffer for processBlock
                 for (int ch = 0; ch < chCount; ++ch)
-                    masterBusBuffer.copyFrom(ch, 0, outputChannelData[ch], numSamples);
+                {
+                    if (outputChannelData[ch] != nullptr)
+                        masterBusBuffer.copyFrom(ch, 0, outputChannelData[ch], numSamples);
+                    else
+                        masterBusBuffer.clear(ch, 0, numSamples);
+                }
 
                 MidiBuffer emptyMidi;
                 masterBus.processBlock(masterBusBuffer, emptyMidi);
 
                 // Copy processed data back to output
                 for (int ch = 0; ch < chCount; ++ch)
-                    FloatVectorOperations::copy(outputChannelData[ch], masterBusBuffer.getReadPointer(ch), numSamples);
+                    if (outputChannelData[ch] != nullptr)
+                        FloatVectorOperations::copy(outputChannelData[ch], masterBusBuffer.getReadPointer(ch),
+                                                    numSamples);
             }
         }
 
         // Pre-compute smoothed master output gain ramp (same pattern as input)
-        float smoothedOutputRamp[8192];
         for (int i = 0; i < numSamples; ++i)
             smoothedOutputRamp[i] = gainState.smoothedOutputGain.getNextValue();
 
         // Apply per-channel output gain with smoothing. Output buffers are writable.
-        for (int ch = 0; ch < numOutputChannels; ++ch)
+        const int outputGainChannels = jmin(numOutputChannels, (int)MaxChannels);
+        for (int ch = 0; ch < outputGainChannels; ++ch)
         {
             float channelGain = gainState.getOutputChannelGainLinear(ch);
             bool needsGain = gainState.smoothedOutputGain.isSmoothing() ||
@@ -180,7 +208,7 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
         {
-            limiter->updateInputLevelsFromDevice(actualInput, numInputChannels, numSamples);
+            limiter->updateInputLevelsFromDevice(actualInput, actualInputChannels, numSamples);
             limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
         }
     }
@@ -188,7 +216,10 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
   private:
     AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
     AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
+    std::array<float, MaxCallbackBlockSize> smoothedInputRamp{};
+    std::array<float, MaxCallbackBlockSize> smoothedOutputRamp{};
     const float* gainedInputPtrs[MaxChannels] = {};
+    std::atomic<int> callbackBoundsRejectCount{0};
     std::atomic<ScratchRecorder*> scratchRecorder{nullptr};
 };
 

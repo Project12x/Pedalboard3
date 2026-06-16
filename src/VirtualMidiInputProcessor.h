@@ -100,6 +100,9 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
     static VirtualMidiInputProcessor* getInstance();
     static void setInstance(VirtualMidiInputProcessor* instance);
 
+    int getProcessBlockCallCount() const noexcept { return processBlockCallCount.load(std::memory_order_relaxed); }
+    int getProducedMidiMessageCount() const noexcept { return producedMidiMessageCount.load(std::memory_order_relaxed); }
+
   private:
     // Thread-safe MIDI message collection
     MidiMessageCollector midiCollector;
@@ -110,11 +113,12 @@ class VirtualMidiInputProcessor : public PedalboardProcessor
     std::atomic<int> fixedVelocity{100}; // 1-127
     std::atomic<bool> sustainHeld{false};
 
-    // DEBUG: processBlock call counter for periodic logging
-    int processBlockCallCount = 0;
+    // RT-safe diagnostics. Drained by non-audio code when needed.
+    std::atomic<int> processBlockCallCount{0};
+    std::atomic<int> producedMidiMessageCount{0};
 
     // Static instance pointer for keyboard routing
-    static VirtualMidiInputProcessor* instance;
+    static std::atomic<VirtualMidiInputProcessor*> instance;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VirtualMidiInputProcessor)
 };
