@@ -118,12 +118,65 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
         effectsLoop->prepareToPlay(sampleRate, estimatedSamplesPerBlock);
     }
 
-    isPrepared = true;
+    applyDeferredHeavyStateChanges();
+
+    isPrepared.store(true, std::memory_order_release);
 }
 
 void NAMProcessor::releaseResources()
 {
-    isPrepared = false;
+    isPrepared.store(false, std::memory_order_release);
+}
+
+void NAMProcessor::applyDeferredHeavyStateChanges()
+{
+    if (hasDeferredModelClear)
+    {
+        namCore->clearModel();
+        modelLoaded.store(false);
+        currentModelFile = juce::File();
+        hasDeferredModelClear = false;
+    }
+
+    if (hasDeferredModelLoad)
+    {
+        auto file = deferredModelFile;
+        deferredModelFile = juce::File();
+        hasDeferredModelLoad = false;
+        loadModel(file);
+    }
+
+    if (hasDeferredIRClear)
+    {
+        convolver->reset();
+        irLoaded.store(false);
+        currentIRFile = juce::File();
+        hasDeferredIRClear = false;
+    }
+
+    if (hasDeferredIRLoad)
+    {
+        auto file = deferredIRFile;
+        deferredIRFile = juce::File();
+        hasDeferredIRLoad = false;
+        loadIR(file);
+    }
+
+    if (hasDeferredIR2Clear)
+    {
+        convolver2->reset();
+        ir2Loaded.store(false);
+        currentIRFile2 = juce::File();
+        hasDeferredIR2Clear = false;
+    }
+
+    if (hasDeferredIR2Load)
+    {
+        auto file = deferredIR2File;
+        deferredIR2File = juce::File();
+        hasDeferredIR2Load = false;
+        loadIR2(file);
+    }
 }
 
 //==============================================================================
@@ -135,6 +188,16 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
         return false;
     }
 
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        deferredModelFile = modelFile;
+        hasDeferredModelLoad = true;
+        hasDeferredModelClear = false;
+        spdlog::warn("NAMProcessor: Deferred model load until processor is inactive: {}",
+                     modelFile.getFullPathName().toStdString());
+        return false;
+    }
+
     spdlog::info("NAMProcessor: Loading model: {}", modelFile.getFullPathName().toStdString());
 
     bool success = namCore->loadModel(modelFile.getFullPathName().toStdString());
@@ -143,6 +206,8 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
     {
         currentModelFile = modelFile;
         modelLoaded.store(true);
+        hasDeferredModelLoad = false;
+        hasDeferredModelClear = false;
         spdlog::info("NAMProcessor: Model loaded successfully");
     }
     else
@@ -155,9 +220,19 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
 
 void NAMProcessor::clearModel()
 {
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        hasDeferredModelClear = true;
+        hasDeferredModelLoad = false;
+        deferredModelFile = juce::File();
+        spdlog::warn("NAMProcessor: Deferred model clear until processor is inactive");
+        return;
+    }
+
     namCore->clearModel();
     modelLoaded.store(false);
     currentModelFile = juce::File();
+    hasDeferredModelClear = false;
 }
 
 juce::String NAMProcessor::getModelName() const
@@ -178,6 +253,16 @@ bool NAMProcessor::loadIR(const juce::File& irFile)
         return false;
     }
 
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        deferredIRFile = irFile;
+        hasDeferredIRLoad = true;
+        hasDeferredIRClear = false;
+        spdlog::warn("NAMProcessor: Deferred IR load until processor is inactive: {}",
+                     irFile.getFullPathName().toStdString());
+        return false;
+    }
+
     spdlog::info("NAMProcessor: Loading IR: {}", irFile.getFullPathName().toStdString());
 
     try
@@ -186,6 +271,8 @@ bool NAMProcessor::loadIR(const juce::File& irFile)
 
         currentIRFile = irFile;
         irLoaded.store(true);
+        hasDeferredIRLoad = false;
+        hasDeferredIRClear = false;
 
         spdlog::info("NAMProcessor: IR loaded successfully");
         return true;
@@ -200,9 +287,19 @@ bool NAMProcessor::loadIR(const juce::File& irFile)
 
 void NAMProcessor::clearIR()
 {
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        hasDeferredIRClear = true;
+        hasDeferredIRLoad = false;
+        deferredIRFile = juce::File();
+        spdlog::warn("NAMProcessor: Deferred IR clear until processor is inactive");
+        return;
+    }
+
     convolver->reset();
     irLoaded.store(false);
     currentIRFile = juce::File();
+    hasDeferredIRClear = false;
 }
 
 juce::String NAMProcessor::getIRName() const
@@ -223,6 +320,16 @@ bool NAMProcessor::loadIR2(const juce::File& irFile)
         return false;
     }
 
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        deferredIR2File = irFile;
+        hasDeferredIR2Load = true;
+        hasDeferredIR2Clear = false;
+        spdlog::warn("NAMProcessor: Deferred IR2 load until processor is inactive: {}",
+                     irFile.getFullPathName().toStdString());
+        return false;
+    }
+
     spdlog::info("NAMProcessor: Loading IR2: {}", irFile.getFullPathName().toStdString());
 
     try
@@ -230,6 +337,8 @@ bool NAMProcessor::loadIR2(const juce::File& irFile)
         convolver2->loadIR(irFile);
         currentIRFile2 = irFile;
         ir2Loaded.store(true);
+        hasDeferredIR2Load = false;
+        hasDeferredIR2Clear = false;
         spdlog::info("NAMProcessor: IR2 loaded successfully");
         return true;
     }
@@ -243,9 +352,19 @@ bool NAMProcessor::loadIR2(const juce::File& irFile)
 
 void NAMProcessor::clearIR2()
 {
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        hasDeferredIR2Clear = true;
+        hasDeferredIR2Load = false;
+        deferredIR2File = juce::File();
+        spdlog::warn("NAMProcessor: Deferred IR2 clear until processor is inactive");
+        return;
+    }
+
     convolver2->reset();
     ir2Loaded.store(false);
     currentIRFile2 = juce::File();
+    hasDeferredIR2Clear = false;
 }
 
 juce::String NAMProcessor::getIR2Name() const
@@ -472,7 +591,7 @@ void NAMProcessor::applyParametricEq(float* data, int numSamples)
 
 void NAMProcessor::updateParametricEqCoefficients()
 {
-    if (!isPrepared)
+    if (!isPrepared.load(std::memory_order_acquire))
         return;
 
     const double sr = currentSampleRate > 1.0 ? currentSampleRate : 44100.0;
@@ -658,7 +777,7 @@ void NAMProcessor::setIRHighCut(float freqHz)
 
 void NAMProcessor::updateIRFilters()
 {
-    if (!isPrepared)
+    if (!isPrepared.load(std::memory_order_acquire))
         return;
 
     // Only recompute coefficients when values actually changed (audio thread only)

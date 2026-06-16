@@ -26,7 +26,6 @@
 struct NAMCore::Impl
 {
     std::unique_ptr<ResamplingNAM> model;
-    std::unique_ptr<ResamplingNAM> stagedModel;
     std::unique_ptr<dsp::tone_stack::BasicNamToneStack> toneStack;
     std::unique_ptr<dsp::noise_gate::Trigger> noiseGateTrigger;
     std::unique_ptr<dsp::noise_gate::Gain> noiseGateGain;
@@ -71,12 +70,12 @@ bool NAMCore::loadModel(const std::string& modelPath)
         auto resamplingModel = std::make_unique<ResamplingNAM>(std::move(dspModel), impl->sampleRate);
         resamplingModel->Reset(impl->sampleRate, impl->blockSize);
 
-        impl->stagedModel = std::move(resamplingModel);
+        impl->model = std::move(resamplingModel);
+        impl->modelLoaded = true;
         return true;
     }
     catch (const std::exception&)
     {
-        impl->stagedModel = nullptr;
         return false;
     }
 }
@@ -84,7 +83,6 @@ bool NAMCore::loadModel(const std::string& modelPath)
 void NAMCore::clearModel()
 {
     impl->model = nullptr;
-    impl->stagedModel = nullptr;
     impl->modelLoaded = false;
 }
 
@@ -123,14 +121,6 @@ void NAMCore::prepare(double sampleRate, int blockSize)
 
 void NAMCore::process(float* input, float* output, int numSamples)
 {
-    // Apply staged model if available
-    if (impl->stagedModel)
-    {
-        impl->model = std::move(impl->stagedModel);
-        impl->stagedModel = nullptr;
-        impl->modelLoaded = true;
-    }
-
     if (impl->model)
     {
         impl->model->process(input, output, numSamples);

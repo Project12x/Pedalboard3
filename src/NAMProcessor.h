@@ -212,6 +212,7 @@ class NAMProcessor : public PedalboardProcessor
     void resetParametricEqState();
     void updateIRFilters();
     void normalizeModelOutput(float* output, int numSamples);
+    void applyDeferredHeavyStateChanges();
     static float dBToLinear(float dB);
 
     struct ParamEqBandRuntime
@@ -245,6 +246,16 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<bool> ir2Loaded{false};
     std::atomic<bool> ir2Enabled{true};
     juce::File currentIRFile2;
+
+    juce::File deferredModelFile;
+    juce::File deferredIRFile;
+    juce::File deferredIR2File;
+    bool hasDeferredModelLoad = false;
+    bool hasDeferredIRLoad = false;
+    bool hasDeferredIR2Load = false;
+    bool hasDeferredModelClear = false;
+    bool hasDeferredIRClear = false;
+    bool hasDeferredIR2Clear = false;
 
     // IR blend (0 = IR1 only, 1 = IR2 only)
     std::atomic<float> irBlend{0.0f};
@@ -288,7 +299,7 @@ class NAMProcessor : public PedalboardProcessor
     // State
     double currentSampleRate = 44100.0;
     int currentBlockSize = 512;
-    bool isPrepared = false;
+    std::atomic<bool> isPrepared{false};
     std::array<ParamEqBandRuntime, kParamEqBandCount> paramEqBands;
     int lastAppliedToneEqMode = -1;
 
