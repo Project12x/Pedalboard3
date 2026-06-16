@@ -20,6 +20,7 @@ add_executable(Pedalboard3_Tests
     patch_switch_test.cpp
     vst3_loading_test.cpp
     scratch_recorder_test.cpp
+    rt_hosting_sprint_test.cpp
     midi_mapping_test.cpp
     mixer_splitter_test.cpp
     master_bus_test.cpp
@@ -30,6 +31,8 @@ add_executable(Pedalboard3_Tests
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
+    ../src/SafetyLimiter.cpp
+    ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp
     ../src/FontManager.cpp
     ../src/StageLayout.cpp
@@ -47,6 +50,7 @@ target_link_libraries(Pedalboard3_Tests PRIVATE
     juce::juce_audio_processors
     juce::juce_audio_formats
     juce::juce_audio_utils
+    juce::juce_dsp
     juce::juce_gui_basics
     Pedalboard3_fonts
 )
@@ -64,6 +68,7 @@ target_compile_features(Pedalboard3_Tests PRIVATE cxx_std_17)
 
 target_compile_definitions(Pedalboard3_Tests PRIVATE
     PEDALBOARD3_TESTS
+    PEDALBOARD3_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_PLUGINHOST_VST3=1
