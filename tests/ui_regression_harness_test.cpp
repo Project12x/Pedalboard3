@@ -471,6 +471,10 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find(
               "return name.equalsIgnoreCase(\"Notes\") || name.equalsIgnoreCase(\"Note\");") !=
           std::string::npos);
+    CHECK(pluginSource->find("std::unique_ptr<Drawable> createNoteCloseDrawable") != std::string::npos);
+    CHECK(pluginSource->find("const bool stickyNoteNode = isStickyNoteNodeName(pluginName);") != std::string::npos);
+    CHECK(pluginSource->find("closeUp = createNoteCloseDrawable(Colour(0xFF9A4A16), 0.76f);") !=
+          std::string::npos);
     CHECK(pluginSource->find("return pluginName == \"Tuner\" || pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\" ||") !=
           std::string::npos);
     CHECK(pluginSource->find("isStickyNoteNodeName(pluginName);") !=
@@ -592,6 +596,15 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(notesProcessorImplSource->find("xml.setAttribute(\"editorW\", size.getX());") != std::string::npos);
     CHECK(notesSource->find("int parentWidth = newWidth + 20;") == std::string::npos);
+
+    const auto namSource = loadSourceFile("src/NAMControl.cpp");
+    REQUIRE(namSource.has_value());
+    CHECK(namSource->find("std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow)") !=
+          std::string::npos);
+    CHECK(namSource->find("void NAMControl::layoutParamEqBandDeck(Rectangle<int> deckBounds, bool embedded)") !=
+          std::string::npos);
+    CHECK(namSource->find("slider->setSliderStyle(Slider::LinearVertical);") != std::string::npos);
+    CHECK(namSource->find("frequency->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);") != std::string::npos);
 
     CHECK(tunerSource->find("auto tunerAccent = colours[\"Tuner Active Colour\"];") != std::string::npos);
     CHECK(tunerSource->find("ColourGradient panelFill(") != std::string::npos);

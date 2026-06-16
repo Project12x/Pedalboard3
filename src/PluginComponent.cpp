@@ -126,6 +126,20 @@ constexpr int kNodeParameterControlHeight = 24;
 constexpr int kNodeParameterControlGap = 4;
 constexpr int kNodeParameterControlVerticalPadding = 8;
 
+std::unique_ptr<Drawable> createNoteCloseDrawable(Colour colour, float alpha)
+{
+    auto drawable = std::make_unique<DrawablePath>();
+    Path path;
+    path.startNewSubPath(3.0f, 3.0f);
+    path.lineTo(9.0f, 9.0f);
+    path.startNewSubPath(9.0f, 3.0f);
+    path.lineTo(3.0f, 9.0f);
+    drawable->setPath(path);
+    drawable->setStrokeType(PathStrokeType(2.1f, PathStrokeType::curved, PathStrokeType::rounded));
+    drawable->setStrokeFill(colour.withAlpha(alpha));
+    return drawable;
+}
+
 bool containsAnyToken(const String& text, std::initializer_list<const char*> tokens)
 {
     for (auto* token : tokens)
@@ -1037,12 +1051,25 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
-        std::unique_ptr<Drawable> closeUp(
-            JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbutton_svg, Vectors::closefilterbutton_svgSize));
-        std::unique_ptr<Drawable> closeOver(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttonover_svg,
-                                                                               Vectors::closefilterbuttonover_svgSize));
-        std::unique_ptr<Drawable> closeDown(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttondown_svg,
-                                                                               Vectors::closefilterbuttondown_svgSize));
+        const bool stickyNoteNode = isStickyNoteNodeName(pluginName);
+        std::unique_ptr<Drawable> closeUp;
+        std::unique_ptr<Drawable> closeOver;
+        std::unique_ptr<Drawable> closeDown;
+        if (stickyNoteNode)
+        {
+            closeUp = createNoteCloseDrawable(Colour(0xFF9A4A16), 0.76f);
+            closeOver = createNoteCloseDrawable(Colour(0xFFD97706), 0.94f);
+            closeDown = createNoteCloseDrawable(Colour(0xFF7C2D12), 0.98f);
+        }
+        else
+        {
+            closeUp.reset(
+                JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbutton_svg, Vectors::closefilterbutton_svgSize));
+            closeOver.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttonover_svg,
+                                                               Vectors::closefilterbuttonover_svgSize));
+            closeDown.reset(JuceHelperStuff::loadSVGFromMemory(Vectors::closefilterbuttondown_svg,
+                                                               Vectors::closefilterbuttondown_svgSize));
+        }
         std::unique_ptr<Drawable> bypassOff(
             JuceHelperStuff::loadSVGFromMemory(Vectors::bypassbuttonoff_svg, Vectors::bypassbuttonoff_svgSize));
         std::unique_ptr<Drawable> bypassOn(

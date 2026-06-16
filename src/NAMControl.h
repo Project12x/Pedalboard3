@@ -106,6 +106,9 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     void resizedEmbeddedGraphNode(Rectangle<int> bounds);
     bool isEmbeddedInGraphNode() const;
     void updateEqModeVisibility();
+    int getParamEqDeckHeight(bool embedded) const;
+    void configureParamEqSliderPresentation(bool embedded);
+    void layoutParamEqBandDeck(Rectangle<int> deckBounds, bool embedded);
 
     NAMProcessor* namProcessor;
     NAMLookAndFeel namLookAndFeel;

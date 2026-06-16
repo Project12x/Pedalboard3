@@ -15,6 +15,14 @@
 #include "PluginComponent.h"
 #include "SubGraphProcessor.h"
 
+namespace
+{
+constexpr int kEmbeddedParamEqSingleRowDeckHeight = 88;
+constexpr int kEmbeddedParamEqDoubleRowDeckHeight = 128;
+constexpr int kStandaloneParamEqSingleRowDeckHeight = 118;
+constexpr int kStandaloneParamEqDoubleRowDeckHeight = 160;
+}
+
 //==============================================================================
 // NAMLookAndFeel Implementation
 //==============================================================================
@@ -777,7 +785,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
         paramEqBandLabels[band]->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
         addAndMakeVisible(paramEqBandLabels[band].get());
 
-        paramEqFrequencySliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqFrequencySliders[band] = std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow);
         paramEqFrequencySliders[band]->setRange(20.0, 20000.0, 1.0);
         paramEqFrequencySliders[band]->setSkewFactorFromMidPoint(800.0);
         paramEqFrequencySliders[band]->setValue(namProcessor->getParamEqBandFrequency(band));
@@ -785,14 +793,14 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
         paramEqFrequencySliders[band]->addListener(this);
         addAndMakeVisible(paramEqFrequencySliders[band].get());
 
-        paramEqGainSliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqGainSliders[band] = std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow);
         paramEqGainSliders[band]->setRange(-18.0, 18.0, 0.1);
         paramEqGainSliders[band]->setValue(namProcessor->getParamEqBandGain(band));
         paramEqGainSliders[band]->setTextValueSuffix(" dB");
         paramEqGainSliders[band]->addListener(this);
         addAndMakeVisible(paramEqGainSliders[band].get());
 
-        paramEqQSliders[band] = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+        paramEqQSliders[band] = std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow);
         paramEqQSliders[band]->setRange(0.1, 10.0, 0.01);
         paramEqQSliders[band]->setSkewFactorFromMidPoint(1.0);
         paramEqQSliders[band]->setValue(namProcessor->getParamEqBandQ(band));
@@ -1139,6 +1147,35 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.strokePath(eqPath, PathStrokeType(1.4f, PathStrokeType::curved, PathStrokeType::rounded));
     };
 
+    auto drawParamEqDeck = [&](Rectangle<int> deckBounds)
+    {
+        const int activeBandCount = jlimit(1, NAMProcessor::kParamEqBandCount, namProcessor->getActiveParamEqBandCount());
+        const int rows = activeBandCount > 4 ? 2 : 1;
+        const int columns = jmax(1, (activeBandCount + rows - 1) / rows);
+        const int gap = 4;
+        const int rowGap = 5;
+        const int bandW = jmax(1, (deckBounds.getWidth() - gap * (columns - 1)) / columns);
+        const int bandH = jmax(1, (deckBounds.getHeight() - rowGap * (rows - 1)) / rows);
+
+        for (int band = 0; band < activeBandCount; ++band)
+        {
+            const int row = band / columns;
+            const int column = band % columns;
+            auto strip = Rectangle<int>(deckBounds.getX() + column * (bandW + gap),
+                                        deckBounds.getY() + row * (bandH + rowGap), bandW, bandH)
+                             .reduced(1);
+
+            const auto accent = laf.ampAccent.interpolatedWith(
+                laf.ampAccentSecondary, activeBandCount > 1 ? (float)band / (float)(activeBandCount - 1) : 0.0f);
+            ColourGradient fill(laf.ampInsetBg.withAlpha(0.78f), strip.getX(), strip.getY(),
+                                laf.ampSurface.withAlpha(0.56f), strip.getX(), strip.getBottom(), false);
+            g.setGradientFill(fill);
+            g.fillRoundedRectangle(strip.toFloat(), 5.0f);
+            g.setColour(accent.withAlpha(0.28f));
+            g.drawRoundedRectangle(strip.toFloat().reduced(0.5f), 5.0f, 0.8f);
+        }
+    };
+
     auto captureSection = area.removeFromTop(66);
     drawSectionHeader(captureSection.removeFromTop(18), "Capture", laf.ampAccent);
     auto metaRow = captureSection.removeFromTop(22).reduced(6, 0);
@@ -1211,7 +1248,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     {
         drawEmbeddedEqCurve(curveArea);
         toneSection.removeFromTop(6);
-        toneSection.removeFromTop((18 + 3) * namProcessor->getActiveParamEqBandCount());
+        drawParamEqDeck(toneSection.removeFromTop(getParamEqDeckHeight(true)));
     }
     else
     {
@@ -1369,6 +1406,95 @@ void NAMControl::paint(Graphics& g)
                                                                                             : "TONE");
 }
 
+int NAMControl::getParamEqDeckHeight(bool embedded) const
+{
+    const bool doubleRow = namProcessor != nullptr && namProcessor->getActiveParamEqBandCount() > 4;
+    if (embedded)
+        return doubleRow ? kEmbeddedParamEqDoubleRowDeckHeight : kEmbeddedParamEqSingleRowDeckHeight;
+
+    return doubleRow ? kStandaloneParamEqDoubleRowDeckHeight : kStandaloneParamEqSingleRowDeckHeight;
+}
+
+void NAMControl::configureParamEqSliderPresentation(bool embedded)
+{
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        auto* frequency = paramEqFrequencySliders[band].get();
+        auto* gain = paramEqGainSliders[band].get();
+        auto* q = paramEqQSliders[band].get();
+
+        for (auto* slider : {frequency, gain, q})
+        {
+            slider->setSliderStyle(Slider::LinearVertical);
+            slider->setPopupDisplayEnabled(true, true, this);
+        }
+
+        if (embedded)
+        {
+            frequency->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            gain->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            q->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+        }
+        else
+        {
+            frequency->setTextBoxStyle(Slider::TextBoxBelow, false, 54, 16);
+            gain->setTextBoxStyle(Slider::TextBoxBelow, false, 46, 16);
+            q->setTextBoxStyle(Slider::TextBoxBelow, false, 36, 16);
+        }
+
+        frequency->setTooltip("Band " + String(band + 1) + " frequency");
+        gain->setTooltip("Band " + String(band + 1) + " gain");
+        q->setTooltip("Band " + String(band + 1) + " Q");
+    }
+}
+
+void NAMControl::layoutParamEqBandDeck(Rectangle<int> deckBounds, bool embedded)
+{
+    const int activeBandCount = jlimit(1, NAMProcessor::kParamEqBandCount, namProcessor->getActiveParamEqBandCount());
+    const int rows = activeBandCount > 4 ? 2 : 1;
+    const int columns = jmax(1, (activeBandCount + rows - 1) / rows);
+    const int gap = embedded ? 4 : 6;
+    const int rowGap = embedded ? 5 : 7;
+    const int labelH = embedded ? 11 : 14;
+    const int sliderGap = embedded ? 1 : 2;
+    const int bandW = jmax(1, (deckBounds.getWidth() - gap * (columns - 1)) / columns);
+    const int bandH = jmax(1, (deckBounds.getHeight() - rowGap * (rows - 1)) / rows);
+
+    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
+    {
+        if (band >= activeBandCount)
+        {
+            paramEqBandLabels[band]->setBounds(Rectangle<int>());
+            paramEqFrequencySliders[band]->setBounds(Rectangle<int>());
+            paramEqGainSliders[band]->setBounds(Rectangle<int>());
+            paramEqQSliders[band]->setBounds(Rectangle<int>());
+            continue;
+        }
+
+        const int row = band / columns;
+        const int column = band % columns;
+        auto bandArea = Rectangle<int>(deckBounds.getX() + column * (bandW + gap),
+                                       deckBounds.getY() + row * (bandH + rowGap), bandW, bandH)
+                            .reduced(2, embedded ? 2 : 3);
+
+        auto labelArea = bandArea.removeFromTop(labelH);
+        paramEqBandLabels[band]->setJustificationType(Justification::centred);
+        paramEqBandLabels[band]->setBounds(labelArea);
+        bandArea.removeFromTop(1);
+
+        const int sliderW = jmax(6, (bandArea.getWidth() - sliderGap * 2) / 3);
+        auto freqArea = bandArea.removeFromLeft(sliderW);
+        bandArea.removeFromLeft(sliderGap);
+        auto gainArea = bandArea.removeFromLeft(sliderW);
+        bandArea.removeFromLeft(sliderGap);
+        auto qArea = bandArea;
+
+        paramEqFrequencySliders[band]->setBounds(freqArea);
+        paramEqGainSliders[band]->setBounds(gainArea);
+        paramEqQSliders[band]->setBounds(qArea);
+    }
+}
+
 void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
 {
     cabinetIrCollapsed = namProcessor->isEmbeddedCabinetIrCollapsed();
@@ -1381,12 +1507,7 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
         slider->setTextBoxStyle(Slider::TextBoxRight, false, 42, 17);
     for (auto* slider : {inputGainSlider.get(), outputGainSlider.get(), noiseGateSlider.get()})
         slider->setTextBoxStyle(Slider::TextBoxRight, false, 46, 17);
-    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
-    {
-        paramEqFrequencySliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 44, 14);
-        paramEqGainSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 38, 14);
-        paramEqQSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 30, 14);
-    }
+    configureParamEqSliderPresentation(true);
     fxLoopEnabledButton->setButtonText("FX");
     normalizeButton->setButtonText("Norm");
     cabinetIrCollapseButton->setVisible(true);
@@ -1510,20 +1631,7 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
     {
         toneArea.removeFromTop(58);
         toneArea.removeFromTop(6);
-        for (int band = 0; band < namProcessor->getActiveParamEqBandCount(); ++band)
-        {
-            auto row = toneArea.removeFromTop(18);
-            paramEqBandLabels[band]->setBounds(row.removeFromLeft(20));
-            row.removeFromLeft(gap);
-            const int freqW = jlimit(66, 92, row.getWidth() / 3 + 12);
-            paramEqFrequencySliders[band]->setBounds(row.removeFromLeft(freqW));
-            row.removeFromLeft(gap);
-            const int gainW = jlimit(56, 82, row.getWidth() / 2);
-            paramEqGainSliders[band]->setBounds(row.removeFromLeft(gainW));
-            row.removeFromLeft(gap);
-            paramEqQSliders[band]->setBounds(row);
-            toneArea.removeFromTop(3);
-        }
+        layoutParamEqBandDeck(toneArea.removeFromTop(getParamEqDeckHeight(true)), true);
     }
     else
     {
@@ -1598,12 +1706,7 @@ void NAMControl::resized()
     modelNameLabel->setVisible(true);
     modelArchLabel->setVisible(true);
 
-    for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
-    {
-        paramEqFrequencySliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 62, 18);
-        paramEqGainSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 54, 18);
-        paramEqQSliders[band]->setTextBoxStyle(Slider::TextBoxRight, false, 44, 18);
-    }
+    configureParamEqSliderPresentation(false);
 
     // ===================== SIGNAL CHAIN section =====================
     auto signalArea = bounds.removeFromTop(signalH).reduced(sectionPad, 2);
@@ -1742,20 +1845,7 @@ void NAMControl::resized()
 
     if (namProcessor->getToneEqMode() == NAMProcessor::ToneEqMode::Parametric)
     {
-        for (int band = 0; band < namProcessor->getActiveParamEqBandCount(); ++band)
-        {
-            auto row = eqArea.removeFromTop(20);
-            paramEqBandLabels[band]->setBounds(row.removeFromLeft(28));
-            row.removeFromLeft(spacing);
-            const int freqW = jlimit(112, 148, row.getWidth() / 3 + 20);
-            paramEqFrequencySliders[band]->setBounds(row.removeFromLeft(freqW));
-            row.removeFromLeft(spacing);
-            const int gainW = jlimit(86, 116, row.getWidth() / 2);
-            paramEqGainSliders[band]->setBounds(row.removeFromLeft(gainW));
-            row.removeFromLeft(spacing);
-            paramEqQSliders[band]->setBounds(row);
-            eqArea.removeFromTop(2);
-        }
+        layoutParamEqBandDeck(eqArea.removeFromTop(getParamEqDeckHeight(false)), false);
     }
     else
     {
