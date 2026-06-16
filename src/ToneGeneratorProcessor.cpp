@@ -11,6 +11,12 @@
 
 #include "ToneGeneratorControl.h"
 
+namespace
+{
+constexpr int kToneGeneratorLeftOutputPinY = 34;
+constexpr int kToneGeneratorRightOutputPinY = 56;
+}
+
 //==============================================================================
 ToneGeneratorProcessor::ToneGeneratorProcessor()
 {
@@ -268,6 +274,14 @@ AudioProcessorEditor* ToneGeneratorProcessor::createEditor()
 void ToneGeneratorProcessor::updateEditorBounds(const Rectangle<int>& bounds)
 {
     editorBounds = bounds;
+}
+
+PedalboardProcessor::PinLayout ToneGeneratorProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kToneGeneratorLeftOutputPinY);
+    layout.pinY.push_back(kToneGeneratorRightOutputPinY);
+    return layout;
 }
 
 //==============================================================================

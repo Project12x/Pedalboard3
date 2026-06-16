@@ -30,6 +30,8 @@ class TunerProcessor : public PedalboardProcessor
     // PedalboardProcessor interface
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(360, 268); }
+    PinLayout getInputPinLayout() const override;
+    PinLayout getOutputPinLayout() const override;
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 

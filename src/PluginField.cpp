@@ -210,13 +210,14 @@ void PluginField::paint(Graphics& g)
     // === Mockup-style graphpaper canvas ===
     Colour bgCol = colours["Field Background"];
     const auto canvasAccent = colours["Accent Colour"];
-    ColourGradient bgGrad(bgCol.brighter(0.06f).interpolatedWith(canvasAccent, 0.035f), 0.0f, 0.0f,
-                          bgCol.darker(0.16f), 0.0f, bounds.getHeight(), false);
-    bgGrad.addColour(0.42, bgCol.interpolatedWith(canvasAccent, 0.018f));
+    ColourGradient bgGrad(bgCol.brighter(0.045f).interpolatedWith(canvasAccent, 0.030f), 0.0f, 0.0f,
+                          bgCol.darker(0.18f), 0.0f, bounds.getHeight(), false);
+    bgGrad.addColour(0.38, bgCol.interpolatedWith(canvasAccent, 0.014f));
+    bgGrad.addColour(0.74, bgCol.darker(0.055f).interpolatedWith(canvasAccent, 0.012f));
     g.setGradientFill(bgGrad);
     g.fillRect(bounds);
 
-    ColourGradient radialTint(canvasAccent.withAlpha(0.030f), bounds.getCentreX(),
+    ColourGradient radialTint(canvasAccent.withAlpha(0.024f), bounds.getCentreX(),
                               bounds.getY() - bounds.getHeight() * 0.18f,
                               colours["Window Background"].withAlpha(0.0f), bounds.getCentreX(),
                               bounds.getBottom(), true);
@@ -227,17 +228,13 @@ void PluginField::paint(Graphics& g)
     const auto gridStyle = getGraphGridStyle();
     if (gridStyle != "off")
     {
-        const float gridSize = 20.0f;
-        const float majorGridSize = gridSize * 4.0f;
+        const float gridSize = 24.0f;
         auto clip = g.getClipBounds().toFloat().getIntersection(bounds);
-        const auto gridAccent = canvasAccent.interpolatedWith(colours["Text Colour"], 0.10f);
-        Colour gridCol = gridAccent.withAlpha(gridStyle == "dots" ? 0.070f : 0.038f);
-        Colour majorGridCol = gridAccent.withAlpha(0.062f);
+        const auto gridAccent = canvasAccent.interpolatedWith(colours["Text Colour"], 0.08f);
+        Colour gridCol = gridAccent.withAlpha(gridStyle == "dots" ? 0.060f : 0.030f);
 
         auto firstX = std::floor(clip.getX() / gridSize) * gridSize;
         auto firstY = std::floor(clip.getY() / gridSize) * gridSize;
-        auto firstMajorX = std::floor(clip.getX() / majorGridSize) * majorGridSize;
-        auto firstMajorY = std::floor(clip.getY() / majorGridSize) * majorGridSize;
 
         if (gridStyle == "dots")
         {
@@ -251,17 +248,10 @@ void PluginField::paint(Graphics& g)
         {
             g.setColour(gridCol);
             for (float x = firstX; x < clip.getRight(); x += gridSize)
-                g.drawLine(x, clip.getY(), x, clip.getBottom(), 0.55f);
+                g.drawLine(x, clip.getY(), x, clip.getBottom(), 0.45f);
 
             for (float y = firstY; y < clip.getBottom(); y += gridSize)
-                g.drawLine(clip.getX(), y, clip.getRight(), y, 0.55f);
-
-            g.setColour(majorGridCol);
-            for (float x = firstMajorX; x < clip.getRight(); x += majorGridSize)
-                g.drawLine(x, clip.getY(), x, clip.getBottom(), 0.85f);
-
-            for (float y = firstMajorY; y < clip.getBottom(); y += majorGridSize)
-                g.drawLine(clip.getX(), y, clip.getRight(), y, 0.85f);
+                g.drawLine(clip.getX(), y, clip.getRight(), y, 0.45f);
         }
     }
 

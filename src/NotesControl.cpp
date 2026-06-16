@@ -7,6 +7,39 @@
 
 #include <spdlog/spdlog.h>
 
+namespace
+{
+Colour notePaperColour()
+{
+    return Colour(0xFFFEF7E0);
+}
+
+Colour noteHeaderTopColour()
+{
+    return Colour(0xFFFDE68A);
+}
+
+Colour noteHeaderBottomColour()
+{
+    return Colour(0xFFFEF0B8);
+}
+
+Colour noteEdgeColour()
+{
+    return Colour(0xFFE9C84A);
+}
+
+Colour noteInkColour()
+{
+    return Colour(0xFF5C3D0F);
+}
+
+Colour noteAccentColour()
+{
+    return Colour(0xFFB45309);
+}
+} // namespace
+
 //==============================================================================
 // MarkdownEditor Implementation
 //==============================================================================
@@ -163,9 +196,8 @@ struct RenderContext
 
     RenderContext(AttributedString& s) : attributedString(s)
     {
-        auto& colours = ColourScheme::getInstance().colours;
-        baseFont = FontManager::getInstance().getBodyFont();
-        baseColour = colours["Window Background"].contrasting(0.84f);
+        baseFont = FontManager::getInstance().getBodyFont().withHeight(12.8f);
+        baseColour = noteInkColour();
         stateStack.push_back({baseFont, baseColour});
     }
 
@@ -190,12 +222,12 @@ static int enter_block(MD_BLOCKTYPE type, void* detail, void* userdata)
         if (size < 12.0f)
             size = 12.0f;
         ctx->current().font = ctx->current().font.withHeight(size).withStyle(Font::bold);
-        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"].darker(0.46f);
+        ctx->current().colour = noteAccentColour().darker(0.20f);
         ctx->attributedString.append("\n", ctx->current().font, ctx->current().colour); // Spacing
     }
     else if (type == MD_BLOCK_QUOTE)
     {
-        ctx->current().colour = ColourScheme::getInstance().colours["Window Background"].contrasting(0.56f);
+        ctx->current().colour = noteInkColour().withAlpha(0.74f);
         ctx->current().font = ctx->current().font.withStyle(Font::italic);
     }
     else if (type == MD_BLOCK_LI)
@@ -225,17 +257,17 @@ static int enter_span(MD_SPANTYPE type, void* detail, void* userdata)
     if (type == MD_SPAN_STRONG)
     {
         ctx->current().font = ctx->current().font.boldened();
-        ctx->current().colour = ColourScheme::getInstance().colours["Warning Colour"].darker(0.52f);
+        ctx->current().colour = noteAccentColour().darker(0.14f);
     }
     else if (type == MD_SPAN_EM)
     {
         ctx->current().font = ctx->current().font.italicised();
-        ctx->current().colour = ColourScheme::getInstance().colours["Graph Category Modulation"].darker(0.28f);
+        ctx->current().colour = noteInkColour().withAlpha(0.82f);
     }
     else if (type == MD_SPAN_CODE)
     {
         ctx->current().font = FontManager::getInstance().getMonoFont(13.0f);
-        ctx->current().colour = ColourScheme::getInstance().colours["Graph Category Delay"].darker(0.34f);
+        ctx->current().colour = noteAccentColour().darker(0.08f);
     }
 
     return 0;
@@ -268,15 +300,14 @@ NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(fal
 
     addAndMakeVisible(editor.get());
 
-    auto& colours = ColourScheme::getInstance().colours;
-    const auto paper = colours["Warning Colour"].withMultipliedSaturation(0.30f).brighter(1.26f);
-    const auto ink = colours["Window Background"].contrasting(0.84f);
+    const auto paper = notePaperColour();
+    const auto ink = noteInkColour();
     editor->setColour(CodeEditorComponent::backgroundColourId, paper);
     editor->setColour(CodeEditorComponent::lineNumberBackgroundId, paper.darker(0.03f));
-    editor->setColour(CodeEditorComponent::highlightColourId, colours["Warning Colour"].withAlpha(0.24f));
+    editor->setColour(CodeEditorComponent::highlightColourId, noteAccentColour().withAlpha(0.20f));
     editor->setColour(CodeEditorComponent::defaultTextColourId, ink);
     editor->setColour(CaretComponent::caretColourId, ink);
-    editor->setFont(FontManager::getInstance().getMonoFont(14.0f));
+    editor->setFont(FontManager::getInstance().getBodyFont().withHeight(13.0f));
     editor->setLineNumbersShown(false);
 
     // Wire up Escape key to exit edit mode
@@ -307,17 +338,18 @@ void NotesControl::resized()
         return;
 
     if (editMode)
-        editor->setBounds(getLocalBounds().reduced(10, 8));
+        editor->setBounds(getLocalBounds().withTrimmedTop(35).reduced(13, 9));
     else
         editor->setBounds(0, 0, 0, 0);
 }
 
 void NotesControl::paint(Graphics& g)
 {
-    auto& colours = ColourScheme::getInstance().colours;
     auto bounds = getLocalBounds().toFloat().reduced(2.0f);
-    const auto paper = colours["Warning Colour"].withMultipliedSaturation(0.30f).brighter(1.26f);
-    const auto edge = colours["Warning Colour"].withMultipliedSaturation(0.74f).darker(0.18f);
+    const auto paper = notePaperColour();
+    const auto edge = noteEdgeColour();
+    const auto ink = noteInkColour();
+    const auto accent = noteAccentColour();
 
     g.setColour(Colours::black.withAlpha(0.17f));
     g.fillRoundedRectangle(bounds.translated(2.2f, 3.0f), 7.0f);
@@ -337,13 +369,30 @@ void NotesControl::paint(Graphics& g)
     g.setColour(edge.withAlpha(0.58f));
     g.strokePath(paperPath, PathStrokeType(1.0f));
 
-    g.setColour(Colours::white.withAlpha(0.14f));
-    g.drawLine(bounds.getX() + 9.0f, bounds.getY() + 7.0f, bounds.getRight() - 10.0f, bounds.getY() + 8.0f, 1.0f);
+    auto header = bounds.withHeight(30.0f);
+    ColourGradient headerFill(noteHeaderTopColour(), header.getX(), header.getY(), noteHeaderBottomColour(),
+                              header.getX(), header.getBottom(), false);
+    headerFill.addColour(0.62, noteHeaderBottomColour().brighter(0.03f));
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(header.reduced(0.8f), 6.0f);
+    g.setColour(edge.withAlpha(0.68f));
+    g.drawLine(bounds.getX() + 2.0f, header.getBottom(), bounds.getRight() - 3.0f, header.getBottom(), 1.0f);
+
+    const auto dot = Rectangle<float>(7.0f, 7.0f).withCentre({header.getX() + 16.0f, header.getCentreY()});
+    g.setColour(accent.withAlpha(0.18f));
+    g.fillEllipse(dot.expanded(3.0f));
+    g.setColour(accent.withAlpha(0.92f));
+    g.fillEllipse(dot);
+
+    g.setFont(FontManager::getInstance().getSubheadingFont().withHeight(14.0f).withExtraKerningFactor(0.12f));
+    g.setColour(ink.darker(0.04f));
+    g.drawText("N o t e", header.withTrimmedLeft(29.0f).withTrimmedRight(22.0f),
+               Justification::centredLeft, true);
 
     if (!editMode)
     {
         // View Mode: Rendered rich text
-        renderedText.draw(g, getLocalBounds().reduced(12, 10).toFloat());
+        renderedText.draw(g, getLocalBounds().withTrimmedTop(36).reduced(13, 9).toFloat());
     }
 
     // Draw subtle resize corner indicator.
@@ -415,9 +464,7 @@ void NotesControl::mouseDrag(const MouseEvent& event)
         // Also resize the parent PluginComponent
         if (auto* parent = getParentComponent())
         {
-            int parentWidth = newWidth + 20;
-            int parentHeight = newHeight + 50;
-            parent->setSize(parentWidth, parentHeight);
+            parent->setSize(newWidth, newHeight);
         }
     }
 }
@@ -457,7 +504,7 @@ void NotesControl::setEditMode(bool shouldEdit)
     {
         spdlog::debug("[NotesControl::setEditMode] entering edit mode");
         editor->setVisible(true);
-        editor->setBounds(getLocalBounds().reduced(10, 8));
+        editor->setBounds(getLocalBounds().withTrimmedTop(35).reduced(13, 9));
         repaint();
 
         // Defer focus grab to avoid issues during mouse event handling

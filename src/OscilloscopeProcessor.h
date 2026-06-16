@@ -27,7 +27,9 @@ class OscilloscopeProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(240, 120); }
+    Point<int> getSize() override { return Point<int>(280, 154); }
+    PinLayout getInputPinLayout() const override;
+    PinLayout getOutputPinLayout() const override;
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 

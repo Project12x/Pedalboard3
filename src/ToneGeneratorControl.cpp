@@ -234,7 +234,7 @@ void ToneGeneratorControl::paint(Graphics& g)
     g.drawRect(bounds.reduced(1), 1.0f);
 
     // Frequency display
-    auto displayArea = bounds.removeFromTop(26).reduced(4, 0);
+    auto displayArea = bounds.removeFromTop(26).reduced(10, 0);
     g.setFont(fonts.getMonoDisplayFont(16.0f));
     g.setColour(Colour(0xFF00E676));
     g.drawText(String(displayedFrequency, 1) + " Hz  " + displayedNote, displayArea, Justification::left);
@@ -242,28 +242,28 @@ void ToneGeneratorControl::paint(Graphics& g)
     // Labels
     g.setColour(colours["Text Colour"].withAlpha(0.6f));
     g.setFont(fonts.getBadgeFont());
-    g.drawText("Freq:", Rectangle<float>(4, 28, 30, 14), Justification::left);
-    g.drawText("Detune:", Rectangle<float>(4, 50, 40, 14), Justification::left);
-    g.drawText("Level:", Rectangle<float>(4, 92, 30, 14), Justification::left);
+    g.drawText("Freq:", Rectangle<float>(10, 28, 34, 14), Justification::left);
+    g.drawText("Detune:", Rectangle<float>(10, 50, 44, 14), Justification::left);
+    g.drawText("Level:", Rectangle<float>(10, 92, 34, 14), Justification::left);
 }
 
 void ToneGeneratorControl::resized()
 {
     auto& colours = ColourScheme::getInstance().colours;
-    auto bounds = getLocalBounds().reduced(4);
+    auto bounds = getLocalBounds().reduced(10, 4);
 
     bounds.removeFromTop(26); // Frequency display
 
     // Frequency slider row
     auto freqRow = bounds.removeFromTop(20);
-    freqRow.removeFromLeft(32); // Label space
+    freqRow.removeFromLeft(40); // Label space
     frequencySlider->setBounds(freqRow);
 
     bounds.removeFromTop(2);
 
     // Detune row
     auto detuneRow = bounds.removeFromTop(20);
-    detuneRow.removeFromLeft(44); // Label space
+    detuneRow.removeFromLeft(50); // Label space
 
     // Detune slider takes most of the row
     auto presetArea = detuneRow.removeFromRight(116);
@@ -293,7 +293,7 @@ void ToneGeneratorControl::resized()
 
     // Amplitude slider row
     auto ampRow = bounds.removeFromTop(20);
-    ampRow.removeFromLeft(32); // Label space
+    ampRow.removeFromLeft(40); // Label space
     amplitudeSlider->setBounds(ampRow);
 
     bounds.removeFromTop(4);

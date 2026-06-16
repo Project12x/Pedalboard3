@@ -728,13 +728,17 @@ class BrowserWindowLookAndFeel : public LookAndFeel_V4
         void paintButton(Graphics& g, bool isMouseOverButton, bool isButtonDown) override
         {
             const auto palette = makeBrowserPalette();
-            auto area = getLocalBounds().toFloat().reduced(5.0f);
+            auto area = getLocalBounds().toFloat().withSizeKeepingCentre(16.0f, 16.0f);
 
-            auto cross = area.reduced(area.getWidth() * 0.25f);
+            auto cross = area.reduced(2.0f);
+            Path mark;
+            mark.startNewSubPath(cross.getX(), cross.getY());
+            mark.lineTo(cross.getRight(), cross.getBottom());
+            mark.startNewSubPath(cross.getRight(), cross.getY());
+            mark.lineTo(cross.getX(), cross.getBottom());
             g.setColour(isButtonDown ? palette.accent.withAlpha(0.86f)
-                                      : palette.text.withAlpha(isMouseOverButton ? 0.78f : 0.46f));
-            g.drawLine(cross.getX(), cross.getY(), cross.getRight(), cross.getBottom(), 1.25f);
-            g.drawLine(cross.getRight(), cross.getY(), cross.getX(), cross.getBottom(), 1.25f);
+                                      : palette.text.withAlpha(isMouseOverButton ? 0.78f : 0.50f));
+            g.strokePath(mark, PathStrokeType(1.7f, PathStrokeType::curved, PathStrokeType::rounded));
         }
     };
 };
@@ -1382,9 +1386,9 @@ NAMModelBrowserComponent::NAMModelBrowserComponent(NAMProcessor* processor, std:
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->addListener(this);
     closeButton->setLookAndFeel(nullptr);
-    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
-    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
-    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
+    closeButton->setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.70f));
     closeButton->setColour(TextButton::textColourOnId, palette.text);
     addAndMakeVisible(closeButton.get());
 
@@ -1636,9 +1640,9 @@ void NAMModelBrowserComponent::refreshColours()
     styleButton(loadButton.get(), true);
     styleButton(favoriteButton.get());
     closeButton->setLookAndFeel(nullptr);
-    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
-    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
-    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
+    closeButton->setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.70f));
     closeButton->setColour(TextButton::textColourOnId, palette.text);
 
     // Details panel labels
@@ -3406,9 +3410,9 @@ IRBrowserComponent::IRBrowserComponent(std::function<void(const File&)> onIRSele
 
     closeButton = std::make_unique<TextButton>("Close");
     closeButton->setLookAndFeel(nullptr);
-    closeButton->setColour(TextButton::buttonColourId, palette.inset.withAlpha(0.72f));
-    closeButton->setColour(TextButton::buttonOnColourId, palette.face2.withAlpha(0.92f));
-    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.76f));
+    closeButton->setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+    closeButton->setColour(TextButton::textColourOffId, palette.text.withAlpha(0.70f));
     closeButton->setColour(TextButton::textColourOnId, palette.text);
     closeButton->addListener(this);
     addAndMakeVisible(closeButton.get());

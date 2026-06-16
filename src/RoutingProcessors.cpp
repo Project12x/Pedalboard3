@@ -26,33 +26,6 @@ static String getRoutingVisualLabel(int index)
     return String(index + 1);
 }
 
-static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
-{
-    auto& colours = ColourScheme::getInstance().colours;
-    const auto base = colours["Plugin Background"];
-
-    auto header = bounds.removeFromTop(24.0f).reduced(8.0f, 6.0f);
-    ColourGradient headerFill(accent.withAlpha(0.24f), header.getX(), header.getY(),
-                              base.interpolatedWith(accent, 0.08f).withAlpha(0.58f), header.getX(),
-                              header.getBottom(), false);
-    headerFill.addColour(0.52, accent.withAlpha(0.12f));
-    g.setGradientFill(headerFill);
-    g.fillRoundedRectangle(header.withHeight(4.0f).withY(header.getCentreY() - 2.0f), 2.0f);
-
-    g.setColour(Colours::white.withAlpha(0.035f));
-    g.drawLine(bounds.getX() + 12.0f, bounds.getY() + 1.0f, bounds.getRight() - 12.0f, bounds.getY() + 1.0f, 0.7f);
-    g.setColour(accent.withAlpha(0.10f));
-    g.drawLine(bounds.getX() + 10.0f, bounds.getBottom() - 1.0f, bounds.getRight() - 10.0f, bounds.getBottom() - 1.0f,
-               0.7f);
-
-    if (title.isNotEmpty())
-    {
-        g.setColour(accent.withAlpha(0.88f));
-        g.setFont(Font(11.0f, Font::bold));
-        g.drawText(title, header.reduced(8.0f, 0.0f).toNearestInt(), Justification::centredLeft, false);
-    }
-}
-
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
 {
     auto& colours = ColourScheme::getInstance().colours;
@@ -94,35 +67,29 @@ static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float l
     g.drawRoundedRectangle(track.reduced(0.5f), 3.0f, 0.8f);
 }
 
-static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour accent, bool muteA, bool muteB)
+static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour accent, bool muteA, bool muteB,
+                               int routeCount = 2)
 {
     if (bounds.isEmpty())
         return;
 
-    auto& colours = ColourScheme::getInstance().colours;
-    auto well = bounds.reduced(6.0f, 2.0f);
-    g.setColour(colours["Plugin Background"].darker(0.16f).withAlpha(0.62f));
-    g.fillRoundedRectangle(well, 6.0f);
-    g.setColour(accent.withAlpha(0.16f));
-    g.drawRoundedRectangle(well.reduced(0.5f), 6.0f, 0.8f);
-
     const float startX = bounds.getX() + 30.0f;
     const float startY = bounds.getCentreY();
     const float endX = bounds.getRight() - 30.0f;
-    const float aY = bounds.getY() + 7.0f;
-    const float bY = bounds.getBottom() - 7.0f;
+    const int routes = jmax(2, routeCount);
 
-    auto drawRoute = [&](float endY, bool muted)
+    for (int i = 0; i < routes; ++i)
     {
+        const float t = routes == 1 ? 0.5f : static_cast<float>(i) / static_cast<float>(routes - 1);
+        const float endY = jmap(t, bounds.getY() + 5.0f, bounds.getBottom() - 5.0f);
+        const bool muted = i < 2 ? muteA : muteB;
+
         Path route;
         route.startNewSubPath(startX, startY);
         route.cubicTo(startX + 52.0f, startY, endX - 62.0f, endY, endX, endY);
         g.setColour(accent.withAlpha(muted ? 0.16f : 0.42f));
         g.strokePath(route, PathStrokeType(muted ? 1.1f : 1.8f, PathStrokeType::curved, PathStrokeType::rounded));
-    };
-
-    drawRoute(aY, muteA);
-    drawRoute(bY, muteB);
+    }
 
     g.setColour(accent.withAlpha(0.78f));
     g.fillEllipse(startX - 3.0f, startY - 3.0f, 6.0f, 6.0f);
@@ -130,14 +97,6 @@ static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour acce
 
 static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)
 {
-    auto& colours = ColourScheme::getInstance().colours;
-    ColourGradient deck(colours["Plugin Background"].brighter(0.05f).withAlpha(0.54f), bounds.getX(), bounds.getY(),
-                        colours["Plugin Background"].darker(0.12f).withAlpha(0.44f), bounds.getX(),
-                        bounds.getBottom(), false);
-    deck.addColour(0.54, colours["Plugin Background"].darker(0.03f));
-    g.setGradientFill(deck);
-    g.fillRoundedRectangle(bounds.reduced(1.0f, 0.0f), 5.0f);
-
     g.setColour(accent.withAlpha(0.18f));
     g.drawVerticalLine(roundToInt(bounds.getX()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);
     g.drawVerticalLine(roundToInt(bounds.getRight()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);
@@ -145,6 +104,18 @@ static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour acc
     g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.0f, bounds.getRight() - 7.0f, bounds.getY() + 1.0f, 0.7f);
 
     ignoreUnused(label);
+}
+
+static void paintMixerMasterDeck(Graphics& g, Rectangle<float> bounds, Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto deck = bounds.reduced(1.0f, 0.0f);
+    g.setColour(accent.withAlpha(0.07f));
+    g.fillRect(deck);
+    g.setColour(colours["Plugin Border"].interpolatedWith(accent, 0.38f).withAlpha(0.62f));
+    g.drawVerticalLine(roundToInt(deck.getX()), deck.getY() + 7.0f, deck.getBottom() - 7.0f);
+    g.setColour(Colours::white.withAlpha(0.055f));
+    g.drawLine(deck.getX() + 7.0f, deck.getY() + 1.0f, deck.getRight() - 7.0f, deck.getY() + 1.0f, 0.7f);
 }
 
 static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)
@@ -204,7 +175,7 @@ class SplitterControl : public Component, public Button::Listener
     void resized() override
     {
         auto area = getLocalBounds().reduced(10, 9);
-        area.removeFromTop(28);
+        area.removeFromTop(6);
 
         auto inputRow = area.removeFromTop(28);
         inBadge = inputRow.removeFromLeft(36).reduced(1, 4);
@@ -212,16 +183,21 @@ class SplitterControl : public Component, public Button::Listener
 
         fanoutArea = area.removeFromTop(34);
 
-        auto outputA = area.removeFromTop(28);
-        outBadgeA = outputA.removeFromLeft(28).reduced(1, 4);
-        muteA.setBounds(outputA.removeFromRight(42).reduced(2, 3));
-        laneA = outputA.reduced(8, 8);
+        for (int i = 0; i < 4; ++i)
+        {
+            auto output = area.removeFromTop(22);
+            outBadges[i] = output.removeFromLeft(28).reduced(1, 3);
 
-        area.removeFromTop(4);
-        auto outputB = area.removeFromTop(28);
-        outBadgeB = outputB.removeFromLeft(28).reduced(1, 4);
-        muteB.setBounds(outputB.removeFromRight(42).reduced(2, 3));
-        laneB = outputB.reduced(8, 8);
+            auto muteSlot = output.removeFromRight(34);
+            if (i == 0)
+                muteA.setBounds(muteSlot.reduced(2, 2));
+            else if (i == 2)
+                muteB.setBounds(muteSlot.reduced(2, 2));
+
+            outDbAreas[i] = output.removeFromRight(34).reduced(0, 2);
+            outLanes[i] = output.reduced(7, 7);
+            area.removeFromTop(3);
+        }
     }
 
     void buttonClicked(Button* b) override
@@ -234,17 +210,23 @@ class SplitterControl : public Component, public Button::Listener
 
     void paint(Graphics& g) override
     {
-        paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});
-
         auto accent = getRoutingNodeAccent();
         paintRoutingBadge(g, inBadge.toFloat(), "IN", accent, true);
-        paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState());
-        paintRoutingBadge(g, outBadgeA.toFloat(), getRoutingVisualLabel(0), accent, !muteA.getToggleState());
-        paintRoutingBadge(g, outBadgeB.toFloat(), getRoutingVisualLabel(1), accent, !muteB.getToggleState());
+        paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState(),
+                           4);
 
         paintRoutingMeterTrack(g, inputMeter.toFloat(), 0.62f, accent, false);
-        paintRoutingMeterTrack(g, laneA.toFloat(), 0.72f, accent, muteA.getToggleState());
-        paintRoutingMeterTrack(g, laneB.toFloat(), 0.38f, accent, muteB.getToggleState());
+        const float levels[] = {0.72f, 0.64f, 0.38f, 0.34f};
+        for (int i = 0; i < 4; ++i)
+        {
+            const bool muted = i < 2 ? muteA.getToggleState() : muteB.getToggleState();
+            paintRoutingBadge(g, outBadges[i].toFloat(), getRoutingVisualLabel(i), accent, !muted);
+            paintRoutingMeterTrack(g, outLanes[i].toFloat(), levels[i], accent, muted);
+
+            g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(muted ? 0.30f : 0.56f));
+            g.setFont(Font(9.0f, Font::bold));
+            g.drawText("0.0", outDbAreas[i], Justification::centredRight, true);
+        }
     }
 
   private:
@@ -252,11 +234,10 @@ class SplitterControl : public Component, public Button::Listener
     TextButton muteA;
     TextButton muteB;
     Rectangle<int> inBadge;
-    Rectangle<int> outBadgeA;
-    Rectangle<int> outBadgeB;
     Rectangle<int> inputMeter;
-    Rectangle<int> laneA;
-    Rectangle<int> laneB;
+    Rectangle<int> outBadges[4];
+    Rectangle<int> outLanes[4];
+    Rectangle<int> outDbAreas[4];
     Rectangle<int> fanoutArea;
 };
 
@@ -438,6 +419,9 @@ void MixerProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/)
         channels[ch].vuL.init(static_cast<float>(sampleRate));
         channels[ch].vuR.init(static_cast<float>(sampleRate));
     }
+    smoothedMasterGain.reset(sampleRate, 0.05);
+    smoothedMasterGain.setCurrentAndTargetValue(
+        Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
     // Peak meter decay: ~300ms from peak to -60dB
     double samplesFor300ms = sampleRate * 0.3;
     peakDecayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
@@ -456,11 +440,12 @@ Component* MixerProcessor::getControls()
                 // Gain fader (vertical, dB scale)
                 auto& f = faders[ch];
                 f.setSliderStyle(Slider::LinearVertical);
-                f.setTextBoxStyle(Slider::TextBoxBelow, false, 50, 16);
+                f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
                 f.setRange(-60.0, 12.0, 0.1);
                 f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
                 f.onValueChange = [this, ch]()
                 { processor->setChannelGainDb(ch, static_cast<float>(faders[ch].getValue())); };
+                f.setAlpha(0.01f);
                 addAndMakeVisible(f);
 
                 // Pan knob (rotary)
@@ -472,6 +457,7 @@ Component* MixerProcessor::getControls()
                 p.setValue(processor->getChannelPan(ch), dontSendNotification);
                 p.onValueChange = [this, ch]()
                 { processor->setChannelPan(ch, static_cast<float>(panKnobs[ch].getValue())); };
+                p.setAlpha(0.01f);
                 addAndMakeVisible(p);
 
                 // Mute button
@@ -505,6 +491,23 @@ Component* MixerProcessor::getControls()
                 addAndMakeVisible(ph);
             }
 
+            auto& mf = masterFader;
+            mf.setSliderStyle(Slider::LinearVertical);
+            mf.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            mf.setRange(-60.0, 12.0, 0.1);
+            mf.setValue(processor->getMasterGainDb(), dontSendNotification);
+            mf.onValueChange = [this]() { processor->setMasterGainDb(static_cast<float>(masterFader.getValue())); };
+            mf.setAlpha(0.01f);
+            addAndMakeVisible(mf);
+
+            masterMuteButton.setButtonText("M");
+            masterMuteButton.setClickingTogglesState(true);
+            masterMuteButton.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
+            styleRoutingButton(masterMuteButton, ColourScheme::getInstance().colours["Danger Colour"]);
+            masterMuteButton.setToggleState(processor->getMasterMute(), dontSendNotification);
+            masterMuteButton.onClick = [this]() { processor->setMasterMute(masterMuteButton.getToggleState()); };
+            addAndMakeVisible(masterMuteButton);
+
             startTimerHz(30);
         }
 
@@ -512,36 +515,45 @@ Component* MixerProcessor::getControls()
 
         void resized() override
         {
-            auto area = getLocalBounds().reduced(8, 8);
-            area.removeFromTop(28);
-            int stripW = area.getWidth() / 2;
+            auto area = getLocalBounds().reduced(8, 6);
+            area.removeFromTop(14);
+            int stripW = area.getWidth() / (MixerProcessor::NumChannels + 1);
 
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
             {
                 auto strip = area.removeFromLeft(stripW).reduced(4, 0);
                 stripDecks[ch] = strip;
 
-                auto top = strip.removeFromTop(22);
-                badgeAreas[ch] = top.removeFromLeft(26).reduced(1, 3);
+                auto top = strip.removeFromTop(20);
+                badgeAreas[ch] = top.removeFromLeft(24).reduced(1, 2);
                 phaseButtons[ch].setBounds(top.removeFromRight(28).reduced(2, 2));
-                strip.removeFromTop(2);
 
-                vuAreas[ch] = strip.removeFromTop(54).reduced(12, 2);
-                strip.removeFromTop(2);
+                panRails[ch] = strip.removeFromTop(11).reduced(12, 3);
+                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
 
-                faders[ch].setBounds(strip.removeFromTop(88).reduced(6, 0));
-                strip.removeFromTop(2);
+                strip.removeFromTop(5);
+                vuAreas[ch] = strip.removeFromTop(66).withSizeKeepingCentre(18, 66);
+                faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
 
-                panRails[ch] = strip.removeFromTop(12).reduced(12, 3);
-                strip.removeFromTop(2);
-                panKnobs[ch].setBounds(strip.removeFromTop(34).withSizeKeepingCentre(34, 34));
-
-                strip.removeFromTop(2);
+                valueAreas[ch] = strip.removeFromTop(16).reduced(0, 1);
+                strip.removeFromTop(3);
                 auto btnRow = strip.removeFromTop(24);
                 int btnW = btnRow.getWidth() / 2;
                 muteButtons[ch].setBounds(btnRow.removeFromLeft(btnW).reduced(2, 0));
                 soloButtons[ch].setBounds(btnRow.reduced(2, 0));
             }
+
+            auto masterStrip = area.reduced(4, 0);
+            masterDeck = masterStrip;
+            auto masterTop = masterStrip.removeFromTop(20);
+            masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
+            masterPanRail = masterStrip.removeFromTop(11).reduced(12, 3);
+            masterStrip.removeFromTop(5);
+            masterFaderArea = masterStrip.removeFromTop(66).withSizeKeepingCentre(18, 66);
+            masterFader.setBounds(masterFaderArea.expanded(14, 4));
+            masterValueArea = masterStrip.removeFromTop(16).reduced(0, 1);
+            masterStrip.removeFromTop(3);
+            masterMuteButton.setBounds(masterStrip.removeFromTop(24).withSizeKeepingCentre(30, 22));
         }
 
         void timerCallback() override { repaint(); }
@@ -550,7 +562,6 @@ Component* MixerProcessor::getControls()
         {
             auto& cs = ColourScheme::getInstance();
             const auto accent = getRoutingNodeAccent();
-            paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});
 
             for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
             {
@@ -559,7 +570,18 @@ Component* MixerProcessor::getControls()
                 paintRoutingBadge(g, badge.toFloat(), getRoutingVisualLabel(ch), accent, true);
                 paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
                 drawVuMeter(g, ch, cs);
+                g.setColour(cs.colours["Text Colour"].withAlpha(0.66f));
+                g.setFont(Font(9.0f, Font::bold));
+                g.drawText(String(processor->getChannelGainDb(ch), 1), valueAreas[ch], Justification::centred, true);
             }
+
+            paintMixerMasterDeck(g, masterDeck.toFloat(), accent);
+            paintRoutingBadge(g, masterBadgeArea.toFloat(), "M", accent, true);
+            paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
+            drawMasterFader(g, cs);
+            g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
+            g.setFont(Font(9.0f, Font::bold));
+            g.drawText(String(processor->getMasterGainDb(), 1), masterValueArea, Justification::centred, true);
         }
 
       private:
@@ -569,10 +591,31 @@ Component* MixerProcessor::getControls()
         TextButton muteButtons[MixerProcessor::NumChannels];
         TextButton soloButtons[MixerProcessor::NumChannels];
         TextButton phaseButtons[MixerProcessor::NumChannels];
+        Slider masterFader;
+        TextButton masterMuteButton;
         Rectangle<int> vuAreas[MixerProcessor::NumChannels];
         Rectangle<int> stripDecks[MixerProcessor::NumChannels];
         Rectangle<int> badgeAreas[MixerProcessor::NumChannels];
         Rectangle<int> panRails[MixerProcessor::NumChannels];
+        Rectangle<int> valueAreas[MixerProcessor::NumChannels];
+        Rectangle<int> masterDeck;
+        Rectangle<int> masterBadgeArea;
+        Rectangle<int> masterPanRail;
+        Rectangle<int> masterFaderArea;
+        Rectangle<int> masterValueArea;
+
+        void drawMasterFader(Graphics& g, ColourScheme& cs)
+        {
+            auto area = masterFaderArea;
+            if (area.isEmpty())
+                return;
+
+            g.setColour(cs.colours["Plugin Background"].darker(0.35f));
+            g.fillRoundedRectangle(area.toFloat(), 4.0f);
+            drawFaderFill(g, area, processor->getMasterGainDb(), cs);
+            g.setColour(getRoutingNodeAccent().withAlpha(masterMuteButton.getToggleState() ? 0.12f : 0.30f));
+            g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
+        }
 
         void drawVuMeter(Graphics& g, int ch, ColourScheme& cs)
         {
@@ -582,6 +625,7 @@ Component* MixerProcessor::getControls()
 
             g.setColour(cs.colours["Plugin Background"].darker(0.35f));
             g.fillRoundedRectangle(area.toFloat(), 4.0f);
+            drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);
 
             // Draw L and R bars
             int barW = (area.getWidth() - 6) / 2;
@@ -610,6 +654,32 @@ Component* MixerProcessor::getControls()
 
             g.setColour(getRoutingNodeAccent().withAlpha(0.24f));
             g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
+        }
+
+        void drawFaderFill(Graphics& g, Rectangle<int> area, float gainDb, ColourScheme& cs)
+        {
+            const auto track = area.toFloat().reduced(1.0f);
+            const auto accent = getRoutingNodeAccent();
+            const float normalized = jlimit(0.0f, 1.0f, (gainDb + 60.0f) / 72.0f);
+            auto fill = track.withTop(track.getBottom() - track.getHeight() * normalized);
+
+            ColourGradient faderFill(accent.withAlpha(0.36f), fill.getCentreX(), fill.getBottom(),
+                                     cs.colours["VU Meter Lower Colour"].withAlpha(0.50f), fill.getCentreX(),
+                                     fill.getY(), false);
+            faderFill.addColour(0.62, accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.42f));
+            g.setGradientFill(faderFill);
+            g.fillRoundedRectangle(fill, 3.0f);
+
+            const float thumbY = jlimit(track.getY() + 4.0f, track.getBottom() - 4.0f,
+                                        track.getBottom() - track.getHeight() * normalized);
+            auto thumb = Rectangle<float>(track.getCentreX() - 10.0f, thumbY - 3.0f, 20.0f, 6.0f);
+            ColourGradient thumbFill(cs.colours["Button Highlight"], thumb.getX(), thumb.getY(),
+                                     cs.colours["Button Colour"], thumb.getX(), thumb.getBottom(), false);
+            thumbFill.addColour(0.50, cs.colours["Text Colour"].withAlpha(0.16f));
+            g.setGradientFill(thumbFill);
+            g.fillRoundedRectangle(thumb, 2.0f);
+            g.setColour(accent.withAlpha(0.56f));
+            g.drawRoundedRectangle(thumb.reduced(0.5f), 2.0f, 0.8f);
         }
 
         void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
@@ -705,6 +775,8 @@ void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midi
         float gainLin = Decibels::decibelsToGain(channels[ch].gainDb.load(std::memory_order_relaxed));
         smoothedGain[ch].setTargetValue(gainLin);
     }
+    const bool masterMuted = masterMute.load(std::memory_order_relaxed);
+    smoothedMasterGain.setTargetValue(Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
 
     // Temp buffers for VU metering (per channel, L and R post-processing)
     float vuBufA_L[8192], vuBufA_R[8192];
@@ -758,8 +830,9 @@ void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midi
             }
         }
 
-        outL[i] = sumL;
-        outR[i] = sumR;
+        const float masterGain = smoothedMasterGain.getNextValue();
+        outL[i] = masterMuted ? 0.0f : sumL * masterGain;
+        outR[i] = masterMuted ? 0.0f : sumR * masterGain;
     }
 
     // Feed VU meters (post-gain, pre-mute — shows signal level regardless of mute)
@@ -925,7 +998,9 @@ const String MixerProcessor::getParameterText(int parameterIndex)
 void MixerProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("MixerSettings");
-    xml.setAttribute("version", 2);
+    xml.setAttribute("version", 3);
+    xml.setAttribute("masterGain", static_cast<double>(masterGainDb.load(std::memory_order_relaxed)));
+    xml.setAttribute("masterMute", masterMute.load(std::memory_order_relaxed));
     for (int ch = 0; ch < NumChannels; ++ch)
     {
         String prefix = (ch == 0) ? "A" : "B";
@@ -961,6 +1036,10 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
             channels[ch].phaseInvert.store(xmlState->getBoolAttribute("phase" + prefix, false),
                                            std::memory_order_relaxed);
         }
+
+        masterGainDb.store(static_cast<float>(xmlState->getDoubleAttribute("masterGain", 0.0)),
+                           std::memory_order_relaxed);
+        masterMute.store(xmlState->getBoolAttribute("masterMute", false), std::memory_order_relaxed);
     }
     else
     {

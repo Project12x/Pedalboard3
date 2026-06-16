@@ -28,7 +28,8 @@ $defaultPatchPath = Join-Path $appDataDir "default.pdl"
 $defaultPatchBackup = Join-Path $tmpDir "default.backup.pdl"
 $qaPatch = Join-Path $tmpDir "visual-qa.pdl"
 $nodeSnapshotTempDir = Join-Path $tmpDir "node-snapshots"
-$nodeSnapshotNames = @("nam-loader", "ir-loader", "effect-rack", "tuner", "mixer", "splitter", "notes")
+$mockupNodeSnapshotNames = @("nam-loader", "ir-loader", "effect-rack", "tuner", "mixer", "splitter", "notes")
+$appNodeSnapshotNames = $mockupNodeSnapshotNames + @("oscilloscope", "tone-generator")
 $scaledFooterScales = @(125, 150, 175, 200)
 $scaledFooterCaptureSizes = @(
     [pscustomobject]@{ Name = "normal"; Width = 1280; Height = 820 },
@@ -346,7 +347,7 @@ function Write-CaptureProgress {
 }
 
 function Copy-AppNodeSnapshots {
-    foreach ($nodeName in $nodeSnapshotNames) {
+    foreach ($nodeName in $appNodeSnapshotNames) {
         $source = Join-Path $nodeSnapshotTempDir ("app-node-{0}.png" -f $nodeName)
         $target = Join-Path $outputDir ("app-node-{0}.png" -f $nodeName)
         if (-not (Test-Path $source)) {
@@ -453,12 +454,12 @@ $scaledDialogSpecs = @($dialogSpecs | Where-Object { $scaledDialogSurfaces -cont
 if ($CaptureNodeSnapshots) {
     Write-CaptureProgress "mockup node reference captures"
     $mockupCaptureScript = Join-Path $repoRoot "scripts\capture_mockup_node_refs.mjs"
-    & node $mockupCaptureScript --out $outputDir --nodes ($nodeSnapshotNames -join ",") --browser msedge
+    & node $mockupCaptureScript --out $outputDir --nodes ($mockupNodeSnapshotNames -join ",") --browser msedge
     if ($LASTEXITCODE -ne 0) {
         throw "Mockup node reference capture failed with exit code $LASTEXITCODE."
     }
 
-    foreach ($nodeName in $nodeSnapshotNames) {
+    foreach ($nodeName in $mockupNodeSnapshotNames) {
         $path = Join-Path $outputDir ("mockup-node-{0}.png" -f $nodeName)
         $captures.Add([pscustomobject]@{ Name = "mockup-node-$nodeName"; Path = $path }) | Out-Null
     }

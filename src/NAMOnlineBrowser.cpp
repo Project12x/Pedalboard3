@@ -141,31 +141,44 @@ class OnlineBrowserActionButtonLookAndFeel : public juce::LookAndFeel_V4
         const auto palette = makeOnlineBrowserPalette();
         auto bounds = button.getLocalBounds().toFloat().reduced(1.0f);
         const auto baseColour = button.findColour(juce::TextButton::buttonColourId);
-        auto base = baseColour.interpolatedWith(palette.inset, button.isEnabled() ? 0.30f : 0.72f);
+        const auto label = button.getButtonText();
+        const bool warmPrimary = label == "Search" || label == "Download" || label.startsWith("Downloading");
+        const bool coolAudition = label == "Load";
+        const auto actionAccent = coolAudition ? palette.accent2 : warmPrimary ? palette.accent : baseColour;
+        auto base = palette.face2.interpolatedWith(actionAccent, button.isEnabled() ? 0.16f : 0.05f);
 
         if (!button.isEnabled())
             base = palette.face.withMultipliedSaturation(0.45f).withAlpha(0.62f);
         else if (isButtonDown)
-            base = base.darker(0.14f);
+            base = base.darker(0.10f);
         else if (isMouseOverButton)
-            base = base.brighter(0.12f);
+            base = base.interpolatedWith(actionAccent, warmPrimary || coolAudition ? 0.12f : 0.06f);
+
+        if (button.isEnabled() && warmPrimary)
+            base = palette.inset.interpolatedWith(palette.accent, isMouseOverButton ? 0.24f : 0.16f);
+        else if (button.isEnabled() && coolAudition)
+            base = palette.inset.interpolatedWith(palette.accent2, isMouseOverButton ? 0.22f : 0.14f);
 
         const auto radius = juce::jmin(9.0f, bounds.getHeight() * 0.30f);
         if (button.isEnabled())
         {
-            g.setColour(juce::Colours::black.withAlpha(isButtonDown ? 0.12f : 0.24f));
-            g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.8f : 2.0f), radius);
+            g.setColour(juce::Colours::black.withAlpha(isButtonDown ? 0.08f : 0.18f));
+            g.fillRoundedRectangle(bounds.translated(0.0f, isButtonDown ? 0.6f : 1.4f), radius);
         }
 
-        juce::ColourGradient fill(base.brighter(0.13f), bounds.getX(), bounds.getY(), base.darker(0.16f),
+        juce::ColourGradient fill(base.brighter(warmPrimary || coolAudition ? 0.06f : 0.12f),
+                                  bounds.getX(), bounds.getY(),
+                                  base.darker(warmPrimary || coolAudition ? 0.03f : 0.08f),
                                   bounds.getX(), bounds.getBottom(), false);
+        fill.addColour(0.45, base.brighter(0.02f));
         g.setGradientFill(fill);
         g.fillRoundedRectangle(bounds, radius);
 
-        g.setColour(juce::Colours::white.withAlpha(button.isEnabled() ? 0.14f : 0.05f));
+        g.setColour(palette.text.withAlpha(button.isEnabled() ? 0.08f : 0.04f));
         g.drawLine(bounds.getX() + 6.0f, bounds.getY() + 1.5f, bounds.getRight() - 6.0f, bounds.getY() + 1.5f, 1.0f);
-        g.setColour(baseColour.withAlpha(button.isEnabled() ? 0.58f : 0.18f));
-        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, button.isEnabled() ? 1.25f : 1.0f);
+        g.setColour((warmPrimary || coolAudition ? actionAccent : isMouseOverButton ? baseColour : palette.edge)
+                        .withAlpha(button.isEnabled() ? 0.72f : 0.18f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), radius, button.isEnabled() ? 1.0f : 0.8f);
     }
 
     void drawButtonText(juce::Graphics& g, juce::TextButton& button, bool /*isMouseOverButton*/,
@@ -227,6 +240,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
         return;
 
     auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeOnlineBrowserPalette();
     const auto& tone = tones[rowNumber];
 
     const int margin = 7;
@@ -234,31 +248,31 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     juce::Rectangle<float> itemBounds(static_cast<float>(margin), 2.0f, static_cast<float>(width - margin * 2),
                                       static_cast<float>(height - 4));
     const auto gearAccent = getGearAccentColour(tone.gearType);
-    const auto surface = colours["Dialog Inner Background"].interpolatedWith(colours["Plugin Background"], 0.26f);
+    const auto surface = palette.face.interpolatedWith(palette.inset, 0.18f);
 
     // Background: selection > hover > base card
     if (rowIsSelected)
     {
-        juce::ColourGradient selectedFill(surface.interpolatedWith(colours["Accent Colour"], 0.18f), itemBounds.getX(),
-                                          itemBounds.getY(), surface.interpolatedWith(colours["Accent Colour"], 0.08f),
+        juce::ColourGradient selectedFill(surface.interpolatedWith(palette.accent, 0.16f), itemBounds.getX(),
+                                          itemBounds.getY(), surface.interpolatedWith(palette.accent, 0.08f),
                                           itemBounds.getX(), itemBounds.getBottom(), false);
         g.setGradientFill(selectedFill);
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.62f));
+        g.setColour(palette.accent.withAlpha(0.52f));
         g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.25f);
     }
     else if (rowNumber == hoveredRow)
     {
-        g.setColour(surface.brighter(0.06f));
+        g.setColour(surface.interpolatedWith(palette.text, 0.035f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Accent Colour"].withAlpha(0.28f));
+        g.setColour(palette.accent.withAlpha(0.26f));
         g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.0f);
     }
     else
     {
         g.setColour(surface.withAlpha(0.88f));
         g.fillRoundedRectangle(itemBounds, cornerRadius);
-        g.setColour(colours["Text Colour"].withAlpha(0.08f));
+        g.setColour(palette.edge.withAlpha(0.38f));
         g.drawRoundedRectangle(itemBounds.reduced(0.5f), cornerRadius, 1.0f);
     }
 
@@ -298,12 +312,12 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (tone.isCached())
     {
         statusText = "Cached";
-        statusColour = colours["Success Colour"];
+        statusColour = palette.led;
     }
     else if (progress >= 0.0f && progress <= 1.0f)
     {
         statusText = juce::String(static_cast<int>(progress * 100)) + "%";
-        statusColour = colours["Accent Colour"];
+        statusColour = palette.accent;
     }
     else if (progress > 1.5f)
     {
@@ -318,7 +332,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     else if (tone.fileSize > 0)
     {
         statusText = formatToneFileSize(tone.fileSize);
-        statusColour = colours["Text Colour"].withAlpha(0.46f);
+        statusColour = palette.text.withAlpha(0.46f);
     }
 
     if (statusText.isNotEmpty())
@@ -349,14 +363,14 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     const int textX = margin + 46;
     int textRight = rightEdge - 4;
     textRight = juce::jmax(textX + 48, textRight);
-    g.setColour(colours["Text Colour"]);
+    g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
     g.setFont(fm.getBodyBoldFont());
     g.drawText(juce::String(tone.name), textX, 2, textRight - textX, height / 2, juce::Justification::centredLeft,
                true);
 
     // Author (secondary text)
     g.setFont(fm.getCaptionFont());
-    g.setColour(colours["Text Colour"].withAlpha(rowIsSelected ? 0.62f : 0.48f));
+    g.setColour(palette.text.withAlpha(rowIsSelected ? 0.62f : 0.48f));
     const auto author = juce::String(tone.authorName).isNotEmpty() ? juce::String(tone.authorName) : "unknown author";
     g.drawText("by " + author, textX, height / 2, textRight - textX, height / 2 - 2,
                juce::Justification::centredLeft, true);
@@ -425,8 +439,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     const auto searchFill = palette.accent;
     searchButton->setColour(juce::TextButton::buttonColourId, searchFill);
     searchButton->setColour(juce::TextButton::buttonOnColourId, searchFill.brighter(0.15f));
-    searchButton->setColour(juce::TextButton::textColourOffId, searchFill.brighter(0.18f));
-    searchButton->setColour(juce::TextButton::textColourOnId, searchFill.brighter(0.28f));
+    searchButton->setColour(juce::TextButton::textColourOffId, searchFill);
+    searchButton->setColour(juce::TextButton::textColourOnId, searchFill.brighter(0.10f));
     addAndMakeVisible(searchButton.get());
 
     // Filter controls
@@ -543,8 +557,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     const auto downloadFill = palette.accent;
     downloadButton->setColour(juce::TextButton::buttonColourId, downloadFill);
     downloadButton->setColour(juce::TextButton::buttonOnColourId, downloadFill.brighter(0.15f));
-    downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill.brighter(0.18f));
-    downloadButton->setColour(juce::TextButton::textColourOnId, downloadFill.brighter(0.28f));
+    downloadButton->setColour(juce::TextButton::textColourOffId, downloadFill);
+    downloadButton->setColour(juce::TextButton::textColourOnId, downloadFill.brighter(0.10f));
     detailsContent->addAndMakeVisible(downloadButton.get());
 
     loadButton = std::make_unique<juce::TextButton>("Load");
@@ -554,8 +568,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     const auto loadFill = palette.accent2;
     loadButton->setColour(juce::TextButton::buttonColourId, loadFill);
     loadButton->setColour(juce::TextButton::buttonOnColourId, loadFill.brighter(0.2f));
-    loadButton->setColour(juce::TextButton::textColourOffId, loadFill.brighter(0.14f));
-    loadButton->setColour(juce::TextButton::textColourOnId, loadFill.brighter(0.24f));
+    loadButton->setColour(juce::TextButton::textColourOffId, loadFill);
+    loadButton->setColour(juce::TextButton::textColourOnId, loadFill.brighter(0.10f));
     detailsContent->addAndMakeVisible(loadButton.get());
 
     // Status bar
@@ -818,7 +832,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
 void NAMOnlineBrowserComponent::paintOverChildren(juce::Graphics& g)
 {
     // Draw magnifying glass icon centered in the search pill
-    auto& colours = ColourScheme::getInstance().colours;
+    const auto palette = makeOnlineBrowserPalette();
     auto searchBounds = searchBox->getBounds().toFloat();
 
     float iconSize = 13.0f;
@@ -826,7 +840,7 @@ void NAMOnlineBrowserComponent::paintOverChildren(juce::Graphics& g)
     float iconX = searchBounds.getX() + 10.0f;
     float iconCentreY = searchBounds.getCentreY();
 
-    g.setColour(colours["Text Colour"].withAlpha(0.45f));
+    g.setColour(palette.text.withAlpha(0.45f));
     // Circle part - centered vertically
     g.drawEllipse(iconX, iconCentreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
     // Handle
@@ -842,12 +856,12 @@ void NAMOnlineBrowserComponent::resized()
 
     // Search row
     bounds.removeFromTop(compactLayout ? 26 : 34);
-    auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);
+    auto searchRow = bounds.removeFromTop(compactLayout ? 34 : 38);
     const int searchButtonWidth = compactLayout ? 76 : 86;
     const int searchButtonGap = compactLayout ? 10 : 12;
     searchButton->setBounds(searchRow.removeFromRight(juce::jmin(searchButtonWidth, searchRow.getWidth())));
     searchRow.removeFromRight(juce::jmin(searchButtonGap, searchRow.getWidth()));
-    const int maxSearchBoxWidth = compactLayout ? 250 : 300;
+    const int maxSearchBoxWidth = compactLayout ? 210 : 240;
     const int searchBoxWidth = juce::jmin(maxSearchBoxWidth, searchRow.getWidth());
     searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));
 
@@ -929,7 +943,7 @@ void NAMOnlineBrowserComponent::resized()
     detailsArea.removeFromTop(12);
 
     // Action buttons
-    auto buttonRow = detailsArea.removeFromTop(compactLayout ? 30 : 32);
+    auto buttonRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);
     downloadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 106 : 124));
     buttonRow.removeFromLeft(compactLayout ? 8 : 10);
     loadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 82 : 92));

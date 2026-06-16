@@ -27,7 +27,7 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     strobeModeButton->addListener(this);
     addAndMakeVisible(strobeModeButton.get());
 
-    sixStringModeButton = std::make_unique<TextButton>("6 STR");
+    sixStringModeButton = std::make_unique<TextButton>("POLY");
     sixStringModeButton->setTooltip("Six-string guitar tuner view");
     sixStringModeButton->addListener(this);
     addAndMakeVisible(sixStringModeButton.get());
@@ -295,24 +295,29 @@ void TunerControl::drawSixStringDisplay(Graphics& g, Rectangle<float> bounds)
         const bool likelyActive = detected && strings[i].startsWith(root);
         const auto colour = likelyActive ? activeColour : colours["Text Colour"].withAlpha(0.30f);
 
-        g.setColour(colour.withAlpha(likelyActive ? 0.18f : 0.05f));
-        g.fillRoundedRectangle(slot, 6.0f);
-        g.setColour(colour.withAlpha(likelyActive ? 0.68f : 0.22f));
-        g.drawRoundedRectangle(slot.reduced(0.5f), 6.0f, 0.8f);
+        auto track = Rectangle<float>(16.0f, jmin(64.0f, slot.getHeight() - 17.0f))
+                         .withCentre({slot.getCentreX(), slot.getCentreY() - 4.0f});
+        g.setColour(colours["Field Background"].interpolatedWith(colour, likelyActive ? 0.12f : 0.04f));
+        g.fillRoundedRectangle(track, 5.0f);
+        g.setColour(colours["Plugin Border"].interpolatedWith(colour, likelyActive ? 0.30f : 0.08f).withAlpha(0.70f));
+        g.drawRoundedRectangle(track.reduced(0.5f), 5.0f, 0.8f);
 
-        auto centreLine = slot.withSizeKeepingCentre(2.0f, slot.getHeight() - 18.0f);
-        g.setColour(colour.withAlpha(likelyActive ? 0.72f : 0.20f));
-        g.fillRoundedRectangle(centreLine, 1.0f);
+        auto zone = Rectangle<float>(track.getX(), track.getCentreY() - 6.5f, track.getWidth(), 13.0f);
+        g.setColour((likelyActive ? activeColour : colours["Text Colour"]).withAlpha(likelyActive ? 0.22f : 0.06f));
+        g.fillRoundedRectangle(zone, 2.5f);
+        g.setColour((likelyActive ? activeColour : colours["Text Colour"]).withAlpha(likelyActive ? 0.45f : 0.13f));
+        g.drawLine(zone.getX() + 1.0f, zone.getY(), zone.getRight() - 1.0f, zone.getY(), 0.7f);
+        g.drawLine(zone.getX() + 1.0f, zone.getBottom(), zone.getRight() - 1.0f, zone.getBottom(), 0.7f);
 
         if (likelyActive)
         {
-            const float y = jmap(jlimit(-50.0f, 50.0f, cents), -50.0f, 50.0f, slot.getBottom() - 17.0f,
-                                 slot.getY() + 9.0f);
-            auto dot = Rectangle<float>(10.0f, 10.0f).withCentre({slot.getCentreX(), y});
+            const float y = jmap(jlimit(-50.0f, 50.0f, cents), -50.0f, 50.0f, track.getBottom() - 4.0f,
+                                 track.getY() + 4.0f);
+            auto dot = Rectangle<float>(12.0f, 6.0f).withCentre({track.getCentreX(), y});
             g.setColour(activeColour.withAlpha(0.24f));
-            g.fillEllipse(dot.expanded(4.0f));
+            g.fillRoundedRectangle(dot.expanded(4.0f, 3.0f), 5.0f);
             g.setColour(activeColour);
-            g.fillEllipse(dot);
+            g.fillRoundedRectangle(dot, 3.0f);
         }
 
         g.setColour(colour.withAlpha(likelyActive ? 0.90f : 0.48f));

@@ -91,6 +91,10 @@ String getVisualQaNodeSnapshotName(const String& pluginName)
         return "app-node-effect-rack.png";
     if (pluginName == "Tuner")
         return "app-node-tuner.png";
+    if (pluginName == "Oscilloscope")
+        return "app-node-oscilloscope.png";
+    if (pluginName == "Tone Generator")
+        return "app-node-tone-generator.png";
     if (pluginName == "Mixer")
         return "app-node-mixer.png";
     if (pluginName == "Splitter")

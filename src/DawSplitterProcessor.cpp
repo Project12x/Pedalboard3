@@ -319,9 +319,9 @@ static void paintStereoVUHelper(Graphics& g, Rectangle<int> area, float peakL, f
         else if (dbVal > -6.0f)
             g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
-            g.setColour(Colour(0xFF00CC00));
+            g.setColour(ColourScheme::getInstance().colours["Success Colour"].brighter(0.10f));
         else
-            g.setColour(Colour(0xFF008800));
+            g.setColour(ColourScheme::getInstance().colours["Success Colour"].darker(0.20f));
         g.fillRect(filled);
     };
 
@@ -358,37 +358,6 @@ static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String
     g.drawText(text, bounds.toNearestInt(), Justification::centred, false);
 }
 
-static void paintRoutingShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)
-{
-    auto& colours = ColourScheme::getInstance().colours;
-    const auto outer = bounds;
-    const auto base = colours["Plugin Background"];
-    ColourGradient shell(base.brighter(0.10f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
-                         bounds.getBottom(), false);
-    shell.addColour(0.32, base.brighter(0.03f));
-    shell.addColour(0.74, base.darker(0.08f));
-    g.setGradientFill(shell);
-    g.fillRoundedRectangle(bounds.reduced(0.5f), 8.0f);
-
-    auto header = bounds.removeFromTop(25.0f).reduced(5.0f, 4.0f);
-    ColourGradient headerFill(accent.withAlpha(0.20f), header.getX(), header.getY(), colours["Plugin Background"],
-                              header.getX(), header.getBottom(), false);
-    g.setGradientFill(headerFill);
-    g.fillRoundedRectangle(header, 6.0f);
-
-    g.setColour(accent.withAlpha(0.46f));
-    g.drawRoundedRectangle(outer.reduced(0.5f), 8.0f, 1.15f);
-    g.setColour(Colours::white.withAlpha(0.06f));
-    g.drawRoundedRectangle(outer.reduced(1.5f), 7.0f, 0.8f);
-
-    if (title.isNotEmpty())
-    {
-        g.setColour(accent.withAlpha(0.88f));
-        g.setFont(Font(11.0f, Font::bold));
-        g.drawText(title, header.reduced(8.0f, 0.0f).toNearestInt(), Justification::centredLeft, false);
-    }
-}
-
 static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float peak, Colour accent, bool stereo)
 {
     auto& colours = ColourScheme::getInstance().colours;
@@ -402,10 +371,10 @@ static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float pea
 
     const auto norm = normalisePeakForMeter(peak);
     auto fill = bounds.reduced(1.5f).withWidth(bounds.reduced(1.5f).getWidth() * norm);
-    ColourGradient meter(accent.withAlpha(0.62f), fill.getX(), fill.getCentreY(),
-                         ColourScheme::getInstance().colours["Warning Colour"].withAlpha(0.74f), fill.getRight(),
-                         fill.getCentreY(), false);
-    meter.addColour(0.76, accent.withAlpha(0.72f));
+    ColourGradient meter(colours["Success Colour"].withAlpha(0.64f), fill.getX(), fill.getCentreY(),
+                         colours["Danger Colour"].withAlpha(0.76f), fill.getRight(), fill.getCentreY(), false);
+    meter.addColour(0.58, colours["Success Colour"].withAlpha(0.70f));
+    meter.addColour(0.80, colours["Warning Colour"].withAlpha(0.76f));
     g.setGradientFill(meter);
     g.fillRoundedRectangle(fill, 3.0f);
 
@@ -613,9 +582,9 @@ class SplitterStripRow : public Component
         else if (dbVal > -6.0f)
             g.setColour(ColourScheme::getInstance().colours["Warning Colour"]);
         else if (dbVal > -18.0f)
-            g.setColour(Colour(0xFF00CC00));
+            g.setColour(ColourScheme::getInstance().colours["Success Colour"].brighter(0.10f));
         else
-            g.setColour(Colour(0xFF008800));
+            g.setColour(ColourScheme::getInstance().colours["Success Colour"].darker(0.20f));
         g.fillRect(filled);
     }
 
@@ -740,7 +709,14 @@ class DawSplitterControl : public Component, private Timer
 
     void paint(Graphics& g) override
     {
-        paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});
+        auto bounds = getLocalBounds().toFloat();
+        auto rail = bounds.removeFromTop(20.0f).reduced(7.0f, 8.0f);
+        auto accent = getRoutingAccent();
+        ColourGradient railFill(accent.withAlpha(0.20f), rail.getX(), rail.getCentreY(),
+                                accent.withAlpha(0.06f), rail.getRight(), rail.getCentreY(), false);
+        railFill.addColour(0.56, accent.withAlpha(0.13f));
+        g.setGradientFill(railFill);
+        g.fillRoundedRectangle(rail, 2.0f);
         paintSplitterFanout(g, fanArea.toFloat(), processor->getNumStrips(), getRoutingAccent());
     }
 

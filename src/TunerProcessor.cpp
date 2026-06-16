@@ -13,8 +13,16 @@
 
 #include <cmath>
 
+namespace
+{
+constexpr int kTunerAudioPinY = 78;
+}
+
 //==============================================================================
-TunerProcessor::TunerProcessor() : PedalboardProcessor() {}
+TunerProcessor::TunerProcessor() : PedalboardProcessor()
+{
+    setPlayConfigDetails(1, 1, 0, 0);
+}
 
 TunerProcessor::~TunerProcessor() {}
 
@@ -204,6 +212,20 @@ AudioProcessorEditor* TunerProcessor::createEditor()
 void TunerProcessor::updateEditorBounds(const Rectangle<int>& bounds)
 {
     editorBounds = bounds;
+}
+
+PedalboardProcessor::PinLayout TunerProcessor::getInputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kTunerAudioPinY);
+    return layout;
+}
+
+PedalboardProcessor::PinLayout TunerProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kTunerAudioPinY);
+    return layout;
 }
 
 //==============================================================================

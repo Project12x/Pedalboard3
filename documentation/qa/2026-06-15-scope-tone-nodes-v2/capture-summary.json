@@ -1,0 +1,129 @@
+{
+  "app": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\build\\Pedalboard3_artefacts\\Release\\Pedalboard3.exe",
+  "patch": "C:\\Users\\estee\\AppData\\Local\\Temp\\Pedalboard3VisualQa\\visual-qa.pdl",
+  "output": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2",
+  "uiScalePercent": 100,
+  "scaledFooterMatrixEnabled": false,
+  "scaledFooterRequiredScales": [
+    125,
+    150,
+    175,
+    200
+  ],
+  "scaledFooterCaptureSizes": [
+    {
+      "Name": "normal",
+      "Width": 1280,
+      "Height": 820
+    },
+    {
+      "Name": "narrow",
+      "Width": 960,
+      "Height": 820
+    }
+  ],
+  "scaledFooterControls": [
+    "ui-scale",
+    "patch",
+    "transport",
+    "tempo",
+    "gain-fx",
+    "fit-manage",
+    "cpu"
+  ],
+  "scaledDialogMatrixEnabled": false,
+  "scratchPanelCaptureEnabled": false,
+  "scaledDialogRequiredScales": [
+    150,
+    200
+  ],
+  "scaledDialogCaptureSizes": [
+    {
+      "Name": "normal",
+      "Width": 980,
+      "Height": 740
+    },
+    {
+      "Name": "narrow",
+      "Width": 760,
+      "Height": 680
+    }
+  ],
+  "scaledDialogSurfaces": [
+    "plugin-search",
+    "preferences",
+    "nam-browser",
+    "ir-browser"
+  ],
+  "dpi": 168,
+  "osScalePercent": 175.0,
+  "scalePercent": 175.0,
+  "expectedOsScalePercent": null,
+  "expectedScalePercent": null,
+  "captures": [
+    {
+      "Name": "mockup-node-nam-loader",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-nam-loader.png"
+    },
+    {
+      "Name": "mockup-node-ir-loader",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-ir-loader.png"
+    },
+    {
+      "Name": "mockup-node-effect-rack",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-effect-rack.png"
+    },
+    {
+      "Name": "mockup-node-tuner",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-tuner.png"
+    },
+    {
+      "Name": "mockup-node-mixer",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-mixer.png"
+    },
+    {
+      "Name": "mockup-node-splitter",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-splitter.png"
+    },
+    {
+      "Name": "mockup-node-notes",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\mockup-node-notes.png"
+    },
+    {
+      "Name": "app-node-nam-loader",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-nam-loader.png"
+    },
+    {
+      "Name": "app-node-ir-loader",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-ir-loader.png"
+    },
+    {
+      "Name": "app-node-effect-rack",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-effect-rack.png"
+    },
+    {
+      "Name": "app-node-tuner",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-tuner.png"
+    },
+    {
+      "Name": "app-node-mixer",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-mixer.png"
+    },
+    {
+      "Name": "app-node-splitter",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-splitter.png"
+    },
+    {
+      "Name": "app-node-notes",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-notes.png"
+    },
+    {
+      "Name": "app-node-oscilloscope",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-oscilloscope.png"
+    },
+    {
+      "Name": "app-node-tone-generator",
+      "Path": "C:\\Users\\estee\\Desktop\\My Stuff\\Code\\Antigravity\\Pedalboard2\\documentation\\qa\\2026-06-15-scope-tone-nodes-v2\\app-node-tone-generator.png"
+    }
+  ]
+}

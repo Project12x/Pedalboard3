@@ -10,9 +10,16 @@
 #include "OscilloscopeProcessor.h"
 #include "OscilloscopeControl.h"
 
+namespace
+{
+constexpr int kOscilloscopeUpperAudioPinY = 64;
+constexpr int kOscilloscopeLowerAudioPinY = 106;
+}
+
 //==============================================================================
 OscilloscopeProcessor::OscilloscopeProcessor()
 {
+    setPlayConfigDetails(2, 2, 0, 0);
     circularBuffer.fill(0.0f);
     displayBuffers[0].fill(0.0f);
     displayBuffers[1].fill(0.0f);
@@ -29,6 +36,22 @@ Component* OscilloscopeProcessor::getControls()
 void OscilloscopeProcessor::updateEditorBounds(const Rectangle<int>& bounds)
 {
     editorBounds = bounds;
+}
+
+PedalboardProcessor::PinLayout OscilloscopeProcessor::getInputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kOscilloscopeUpperAudioPinY);
+    layout.pinY.push_back(kOscilloscopeLowerAudioPinY);
+    return layout;
+}
+
+PedalboardProcessor::PinLayout OscilloscopeProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kOscilloscopeUpperAudioPinY);
+    layout.pinY.push_back(kOscilloscopeLowerAudioPinY);
+    return layout;
 }
 
 void OscilloscopeProcessor::getDisplayBuffer(std::array<float, DISPLAY_SAMPLES>& output) const

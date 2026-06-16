@@ -92,7 +92,7 @@ class MixerProcessor : public PedalboardProcessor
 
     // PedalboardProcessor overrides
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(230, 280); }
+    Point<int> getSize() override { return Point<int>(230, 190); }
 
     // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
@@ -152,6 +152,10 @@ class MixerProcessor : public PedalboardProcessor
     void setChannelSolo(int ch, bool s) { channels[ch].solo.store(s, std::memory_order_relaxed); }
     bool getChannelPhaseInvert(int ch) const { return channels[ch].phaseInvert.load(std::memory_order_relaxed); }
     void setChannelPhaseInvert(int ch, bool p) { channels[ch].phaseInvert.store(p, std::memory_order_relaxed); }
+    float getMasterGainDb() const { return masterGainDb.load(std::memory_order_relaxed); }
+    void setMasterGainDb(float db) { masterGainDb.store(db, std::memory_order_relaxed); }
+    bool getMasterMute() const { return masterMute.load(std::memory_order_relaxed); }
+    void setMasterMute(bool m) { masterMute.store(m, std::memory_order_relaxed); }
 
     // Legacy parameter interface (for MIDI mapping compatibility)
     enum Parameters
@@ -171,6 +175,9 @@ class MixerProcessor : public PedalboardProcessor
   private:
     // Gain smoothing (50ms multiplicative ramp)
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> smoothedGain[NumChannels];
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> smoothedMasterGain;
+    std::atomic<float> masterGainDb{0.0f};
+    std::atomic<bool> masterMute{false};
     float peakDecayCoeff = 0.9995f;
 
     Rectangle<int> editorBounds;
