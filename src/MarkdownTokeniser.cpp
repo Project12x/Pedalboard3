@@ -100,14 +100,18 @@ CodeEditorComponent::ColourScheme MarkdownTokeniser::getDefaultColourScheme()
     };
     */
 
-    cs.set("Plain Text", Colours::white);                                  // 0
-    cs.set("Header", Colours::gold);                                       // 1
-    cs.set("Bold", ColourScheme::getInstance().colours["Warning Colour"]); // 2
-    cs.set("Italic", Colours::lightblue);                                  // 3
-    cs.set("Quote", Colours::grey);                                        // 4
-    cs.set("List", Colours::lightgreen);                                   // 5
-    cs.set("Code", Colours::pink);                                         // 6
-    cs.set("Link", Colours::cyan);                                         // 7
+    const auto ink = Colour(0xFF5C3D0F);
+    const auto accent = Colour(0xFFB45309);
+    const auto link = ColourScheme::getInstance().colours["Audio Connection"].interpolatedWith(ink, 0.35f);
+
+    cs.set("Plain Text", ink);                       // 0
+    cs.set("Header", accent.darker(0.12f));          // 1
+    cs.set("Bold", accent.darker(0.08f));            // 2
+    cs.set("Italic", ink.withAlpha(0.82f));          // 3
+    cs.set("Quote", ink.withAlpha(0.68f));           // 4
+    cs.set("List", accent);                          // 5
+    cs.set("Code", accent.darker(0.20f));            // 6
+    cs.set("Link", link.withMultipliedAlpha(0.92f)); // 7
 
     return cs;
 }

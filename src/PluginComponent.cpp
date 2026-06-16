@@ -33,6 +33,7 @@
 #include "MappingsDialog.h"
 #include "MasterGainState.h"
 #include "NAMProcessor.h"
+#include "NotesControl.h"
 #include "PedalboardProcessors.h"
 #include "PluginField.h"
 #include "PresetBar.h"
@@ -333,7 +334,7 @@ int getEmbeddedNodeControlHeightPadding(const String& pluginName)
     if (isDirectPaintedEmbeddedNodeName(pluginName))
         return 0;
     if (pluginName == "NAM Loader")
-        return 116;
+        return 84;
     if (pluginName == "IR Loader")
         return 112;
 
@@ -547,7 +548,7 @@ void drawEffectRackSubgraphPreview(Graphics& g, Rectangle<float> rackPreview, Co
 
     g.setColour(accentColour.withAlpha(0.30f));
     g.drawRoundedRectangle(rackPreview.reduced(0.5f), 9.0f, 1.0f);
-    g.setColour(Colours::black.withAlpha(0.18f));
+    g.setColour(colours["Window Background"].darker(0.55f).withAlpha(0.18f));
     g.drawRoundedRectangle(rackPreview.reduced(2.0f).translated(0.0f, 1.0f), 7.0f, 1.0f);
 
     auto badge = Rectangle<float>(rackPreview.getX() + 8.0f, rackPreview.getY() + 6.0f, 72.0f, 14.0f);
@@ -955,6 +956,23 @@ bool shouldSuppressWholeNodeDragFrom(Component* component)
             dynamic_cast<NodeParameterMiniControl*>(current) != nullptr ||
             dynamic_cast<ResizableBorderComponent*>(current) != nullptr)
             return true;
+    }
+
+    return false;
+}
+
+bool isStickyNoteResizeHandleEvent(const String& pluginName, const MouseEvent& event)
+{
+    if (!isStickyNoteNodeName(pluginName))
+        return false;
+
+    for (auto* current = event.originalComponent; current != nullptr; current = current->getParentComponent())
+    {
+        if (auto* notesControl = dynamic_cast<NotesControl*>(current))
+            return notesControl->isResizeHandleHit(event.getEventRelativeTo(notesControl).getPosition());
+
+        if (dynamic_cast<PluginComponent*>(current) != nullptr)
+            break;
     }
 
     return false;
@@ -1654,7 +1672,8 @@ void PluginComponent::mouseDown(const MouseEvent& e)
 
     auto localEvent = e.getEventRelativeTo(this);
 
-    if (e.mods.isPopupMenu() || shouldSuppressWholeNodeDragFrom(e.originalComponent))
+    if (e.mods.isPopupMenu() || shouldSuppressWholeNodeDragFrom(e.originalComponent) ||
+        isStickyNoteResizeHandleEvent(pluginName, e))
         return;
 
     if (localEvent.y < 21 && e.getNumberOfClicks() == 2)

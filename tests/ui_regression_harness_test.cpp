@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -206,6 +207,36 @@ std::optional<std::string> loadSourceFile(std::string_view relativePath)
 
     return std::nullopt;
 }
+
+double srgbChannelToLinear(uint8 channel)
+{
+    const double srgb = static_cast<double>(channel) / 255.0;
+    return srgb <= 0.03928 ? srgb / 12.92 : std::pow((srgb + 0.055) / 1.055, 2.4);
+}
+
+double relativeLuminance(Colour colour)
+{
+    return 0.2126 * srgbChannelToLinear(colour.getRed()) +
+           0.7152 * srgbChannelToLinear(colour.getGreen()) +
+           0.0722 * srgbChannelToLinear(colour.getBlue());
+}
+
+double contrastRatio(Colour a, Colour b)
+{
+    const auto lumA = relativeLuminance(a);
+    const auto lumB = relativeLuminance(b);
+    const auto lighter = std::max(lumA, lumB);
+    const auto darker = std::min(lumA, lumB);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+Colour alphaComposite(Colour foreground, Colour background, float alpha)
+{
+    return Colour::fromFloatRGBA(foreground.getFloatRed() * alpha + background.getFloatRed() * (1.0f - alpha),
+                                 foreground.getFloatGreen() * alpha + background.getFloatGreen() * (1.0f - alpha),
+                                 foreground.getFloatBlue() * alpha + background.getFloatBlue() * (1.0f - alpha),
+                                 1.0f);
+}
 } // namespace
 
 TEST_CASE("UI polish regression matrix covers required workflows", "[ui][regression][harness]")
@@ -299,18 +330,36 @@ TEST_CASE("Daylight theme uses layered off-white surfaces instead of plain white
         CHECK(maxChannel(colourScheme.colours[key]) <= 243);
     }
 
-    CHECK(colourScheme.colours["Window Background"].getARGB() == 0xFFE7EBEF);
-    CHECK(colourScheme.colours["Field Background"].getARGB() == 0xFFEAF0F3);
-    CHECK(colourScheme.colours["Plugin Background"].getARGB() == 0xFFDCE3E8);
-    CHECK(colourScheme.colours["Plugin Border"].getARGB() == 0xFF98A5AF);
-    CHECK(colourScheme.colours["Button Highlight"].getARGB() == 0xFFECEFF2);
+    CHECK(colourScheme.colours["Window Background"].getARGB() == 0xFFDDE5EA);
+    CHECK(colourScheme.colours["Field Background"].getARGB() == 0xFFE3EBF0);
+    CHECK(colourScheme.colours["Plugin Background"].getARGB() == 0xFFD0DAE2);
+    CHECK(colourScheme.colours["Plugin Border"].getARGB() == 0xFF748390);
+    CHECK(colourScheme.colours["Button Highlight"].getARGB() == 0xFFE6EDF1);
     CHECK(colourScheme.colours["Accent Colour"].getARGB() == 0xFF0077CC);
     CHECK(colourScheme.colours["Plugin Background"].getBrightness() <
           colourScheme.colours["Field Background"].getBrightness());
     CHECK(colourScheme.colours["Dialog Inner Background"].getBrightness() <
           colourScheme.colours["Field Background"].getBrightness());
-    CHECK(colourScheme.colours["Plugin Border"].getBrightness() < 0.70f);
-    CHECK(colourScheme.colours["Text Colour"].getBrightness() < 0.20f);
+    CHECK(colourScheme.colours["Plugin Border"].getBrightness() < 0.58f);
+    CHECK(colourScheme.colours["Text Colour"].getBrightness() < 0.12f);
+
+    const auto text = colourScheme.colours["Text Colour"];
+    constexpr std::array textSurfaces{
+        std::string_view{"Plugin Background"},
+        std::string_view{"Field Background"},
+        std::string_view{"Button Colour"},
+        std::string_view{"Dialog Inner Background"},
+    };
+
+    for (auto role : textSurfaces)
+    {
+        const auto key = toJuceString(role);
+        INFO("contrast role: " << role);
+        const auto surface = colourScheme.colours[key];
+        CHECK(contrastRatio(text, surface) >= 11.0);
+        CHECK(contrastRatio(alphaComposite(text, surface, 0.62f), surface) >= 4.5);
+        CHECK(contrastRatio(alphaComposite(text, surface, 0.46f), surface) >= 3.0);
+    }
 }
 
 TEST_CASE("Token-audited core UI files avoid hardcoded colour and font literals",
@@ -397,6 +446,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
     const auto labelSource = loadSourceFile("src/LabelControl.cpp");
     const auto notesSource = loadSourceFile("src/NotesControl.cpp");
+    const auto markdownTokeniserSource = loadSourceFile("src/MarkdownTokeniser.cpp");
+    const auto notesProcessorSource = loadSourceFile("src/NotesProcessor.h");
+    const auto notesProcessorImplSource = loadSourceFile("src/NotesProcessor.cpp");
     const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
     const auto mixerSource = loadSourceFile("src/DawMixerProcessor.cpp");
     const auto splitterSource = loadSourceFile("src/DawSplitterProcessor.cpp");
@@ -404,6 +456,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     REQUIRE(pluginSource.has_value());
     REQUIRE(labelSource.has_value());
     REQUIRE(notesSource.has_value());
+    REQUIRE(markdownTokeniserSource.has_value());
+    REQUIRE(notesProcessorSource.has_value());
+    REQUIRE(notesProcessorImplSource.has_value());
     REQUIRE(tunerSource.has_value());
     REQUIRE(mixerSource.has_value());
     REQUIRE(splitterSource.has_value());
@@ -471,6 +526,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("comp->addMouseListener(this, true);") != std::string::npos);
     CHECK(pluginSource->find("auto localEvent = e.getEventRelativeTo(this);") != std::string::npos);
     CHECK(pluginSource->find("shouldSuppressWholeNodeDragFrom(e.originalComponent)") != std::string::npos);
+    CHECK(pluginSource->find("isStickyNoteResizeHandleEvent(pluginName, e)") != std::string::npos);
     CHECK(pluginSource->find("dragX = localEvent.getPosition().getX();") != std::string::npos);
     CHECK(pluginSource->find("dragY = localEvent.getPosition().getY();") != std::string::npos);
     CHECK(pluginSource->find("// Title bar drag logic (only for events on PluginComponent itself)") == std::string::npos);
@@ -505,11 +561,36 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(notesSource->find("auto header = bounds.withHeight(30.0f);") != std::string::npos);
     CHECK(notesSource->find("ColourGradient headerFill(noteHeaderTopColour()") != std::string::npos);
     CHECK(notesSource->find("g.drawText(\"N o t e\"") != std::string::npos);
-    CHECK(notesSource->find("renderedText.draw(g, getLocalBounds().withTrimmedTop(36).reduced(13, 9).toFloat());") !=
+    CHECK(notesSource->find("renderedText.draw(g, getTextAreaBounds().toFloat());") !=
           std::string::npos);
-    CHECK(notesSource->find("editor->setBounds(getLocalBounds().withTrimmedTop(35).reduced(13, 9));") !=
+    CHECK(notesSource->find("editor->setMultiLine(true, true);") != std::string::npos);
+    CHECK(notesSource->find("editor->setReturnKeyStartsNewLine(true);") != std::string::npos);
+    CHECK(notesSource->find("editor->setScrollbarsShown(true);") != std::string::npos);
+    CHECK(notesSource->find("editor->onTextChange = [this]()") != std::string::npos);
+    CHECK(notesSource->find("Rectangle<int> NotesControl::getTextAreaBounds() const") != std::string::npos);
+    CHECK(notesSource->find("void NotesControl::refreshWrappedTextLayout()") != std::string::npos);
+    CHECK(notesSource->find("void NotesControl::resized()\n{\n    refreshWrappedTextLayout();\n}") !=
           std::string::npos);
-    CHECK(notesSource->find("parent->setSize(newWidth, newHeight);") != std::string::npos);
+    CHECK(notesSource->find("editor->setBounds(getTextAreaBounds());") !=
+          std::string::npos);
+    CHECK(notesSource->find("editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));") !=
+          std::string::npos);
+    CHECK(notesSource->find("CodeEditorComponent") == std::string::npos);
+    CHECK(notesSource->find("CodeDocument") == std::string::npos);
+    CHECK(notesSource->find("setSize(jmax(kMinNoteNodeWidth, initialSize.getX()), jmax(kMinNoteNodeHeight, initialSize.getY()));") !=
+          std::string::npos);
+    CHECK(notesSource->find("processor->updateEditorBounds(Rectangle<int>(0, 0, newWidth, newHeight));") !=
+          std::string::npos);
+    CHECK(notesSource->find("ctx.appendedAnyText") != std::string::npos);
+    CHECK(notesSource->find("renderedText.setWordWrap(AttributedString::byChar);") != std::string::npos);
+    CHECK(notesSource->find("renderedText.append(markdown, FontManager::getInstance().getBodyFont().withHeight(13.0f), noteInkColour());") !=
+          std::string::npos);
+    CHECK(markdownTokeniserSource->find("Colours::white") == std::string::npos);
+    CHECK(markdownTokeniserSource->find("Colour(0xFF5C3D0F)") != std::string::npos);
+    CHECK(markdownTokeniserSource->find("Colour(0xFFB45309)") != std::string::npos);
+    CHECK(notesProcessorSource->find("if (editorBounds.getWidth() > 0 && editorBounds.getHeight() > 0)") !=
+          std::string::npos);
+    CHECK(notesProcessorImplSource->find("xml.setAttribute(\"editorW\", size.getX());") != std::string::npos);
     CHECK(notesSource->find("int parentWidth = newWidth + 20;") == std::string::npos);
 
     CHECK(tunerSource->find("auto tunerAccent = colours[\"Tuner Active Colour\"];") != std::string::npos);
@@ -605,15 +686,19 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)") !=
           std::string::npos);
-    CHECK(routingSource->find("g.drawVerticalLine(roundToInt(bounds.getX()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);") !=
+    CHECK(routingSource->find("g.fillRect(deck);") != std::string::npos);
+    CHECK(routingSource->find("g.drawVerticalLine(roundToInt(bounds.getRight()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);") !=
           std::string::npos);
     CHECK(routingSource->find("static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)") !=
           std::string::npos);
 
-    CHECK(routingSource->find("muteA.setButtonText(\"1\");") != std::string::npos);
-    CHECK(routingSource->find("muteB.setButtonText(\"2\");") != std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingRow(Graphics& g, Rectangle<float> bounds, Colour accent, bool muted, bool input)") !=
+          std::string::npos);
+    CHECK(routingSource->find("muteA.setButtonText(\"M\");") != std::string::npos);
+    CHECK(routingSource->find("muteB.setButtonText(\"M\");") != std::string::npos);
     CHECK(routingSource->find("paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState(),\n                           4);") !=
           std::string::npos);
+    CHECK(routingSource->find("Rectangle<int> outRows[4];") != std::string::npos);
     CHECK(routingSource->find("Rectangle<int> outBadges[4];") != std::string::npos);
     CHECK(routingSource->find("Rectangle<int> outLanes[4];") != std::string::npos);
     CHECK(routingSource->find("Rectangle<int> outDbAreas[4];") != std::string::npos);
@@ -621,6 +706,8 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("const float levels[] = {0.72f, 0.64f, 0.38f, 0.34f};") !=
           std::string::npos);
     CHECK(routingSource->find("paintRoutingBadge(g, outBadges[i].toFloat(), getRoutingVisualLabel(i), accent, !muted);") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingRow(g, outRows[i].toFloat(), accent, muted, false);") !=
           std::string::npos);
     CHECK(routingSource->find("paintRoutingMeterTrack(g, outLanes[i].toFloat(), levels[i], accent, muted);") !=
           std::string::npos);
@@ -895,6 +982,8 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
           std::string::npos);
     CHECK(pluginSource->find("int getEmbeddedNodeControlHeightPadding(const String& pluginName)") !=
           std::string::npos);
+    CHECK(pluginSource->find("return 84;") != std::string::npos);
+    CHECK(pluginSource->find("return 116;") == std::string::npos);
     CHECK(pluginSource->find("return {520, 704};") == std::string::npos);
     CHECK(pluginSource->find("return {480, 558};") == std::string::npos);
     CHECK(pluginSource->find("class PluginNodeFooterButtonLookAndFeel final : public LookAndFeel_V4") !=
@@ -905,6 +994,11 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(pluginSource->find("IconManager::getInstance().drawDomainGlyphTile") != std::string::npos);
     CHECK(pluginSource->find("IconManager::DomainGlyph::Amp") != std::string::npos);
     CHECK(pluginSource->find("IconManager::DomainGlyph::Cabinet") != std::string::npos);
+    CHECK(namSource->find("Colours::white") == std::string::npos);
+    CHECK(namSource->find("auto area = bounds.reduced(3, 2);") != std::string::npos);
+    CHECK(namSource->find("auto modelButtons = captureSection.removeFromTop(27).reduced(3, 2);") !=
+          std::string::npos);
+    CHECK(namSource->find(".reduced(8, 10)") != std::string::npos);
 
     CHECK(namSource->find("drawSectionHeader") != std::string::npos);
     CHECK(namSource->find("drawInsetField") != std::string::npos);
@@ -938,6 +1032,9 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(irSource->find("loadButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("browseButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("clearButton2->setBounds") != std::string::npos);
+    CHECK(irSource->find("Colours::white") == std::string::npos);
+    CHECK(irSource->find("auto area = bounds.reduced(5, 6);") != std::string::npos);
+    CHECK(irSource->find(".reduced(5, 6)") != std::string::npos);
 
 }
 

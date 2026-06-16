@@ -41,11 +41,12 @@ AudioProcessorEditor* NotesProcessor::createEditor()
 void NotesProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("NotesNodeSettings");
+    const auto size = getSize();
     xml.setAttribute("text", currentText);
     xml.setAttribute("editorX", editorBounds.getX());
     xml.setAttribute("editorY", editorBounds.getY());
-    xml.setAttribute("editorW", editorBounds.getWidth());
-    xml.setAttribute("editorH", editorBounds.getHeight());
+    xml.setAttribute("editorW", size.getX());
+    xml.setAttribute("editorH", size.getY());
     copyXmlToBinary(xml, destData);
 }
 

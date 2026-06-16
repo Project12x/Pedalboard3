@@ -19,8 +19,19 @@ class NotesProcessor : public PedalboardProcessor
 
     // PedalboardProcessor overrides
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(200, 150); } // Default size
-    void updateEditorBounds(const Rectangle<int>& bounds) { editorBounds = bounds; }
+    Point<int> getSize() override
+    {
+        if (editorBounds.getWidth() > 0 && editorBounds.getHeight() > 0)
+            return Point<int>(jmax(120, editorBounds.getWidth()), jmax(90, editorBounds.getHeight()));
+
+        return Point<int>(200, 150);
+    }
+    void updateEditorBounds(const Rectangle<int>& bounds)
+    {
+        editorBounds = bounds;
+        editorBounds.setWidth(jmax(120, editorBounds.getWidth()));
+        editorBounds.setHeight(jmax(90, editorBounds.getHeight()));
+    }
 
     // AudioPluginInstance overrides
     void fillInPluginDescription(PluginDescription& description) const override;

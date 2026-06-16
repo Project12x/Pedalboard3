@@ -9,6 +9,11 @@
 
 namespace
 {
+constexpr int kDefaultNoteNodeWidth = 200;
+constexpr int kDefaultNoteNodeHeight = 150;
+constexpr int kMinNoteNodeWidth = 120;
+constexpr int kMinNoteNodeHeight = 90;
+
 Colour notePaperColour()
 {
     return Colour(0xFFFEF7E0);
@@ -41,16 +46,16 @@ Colour noteAccentColour()
 } // namespace
 
 //==============================================================================
-// MarkdownEditor Implementation
+// NoteTextEditor Implementation
 //==============================================================================
 
-MarkdownEditor::MarkdownEditor(CodeDocument& doc, CodeTokeniser* tokens) : CodeEditorComponent(doc, tokens)
+NoteTextEditor::NoteTextEditor() : TextEditor("NotesEditor")
 {
     // Enable standard key commands
     setWantsKeyboardFocus(true);
 }
 
-bool MarkdownEditor::keyPressed(const KeyPress& key)
+bool NoteTextEditor::keyPressed(const KeyPress& key)
 {
     // Escape: exit edit mode
     if (key == KeyPress::escapeKey)
@@ -76,10 +81,10 @@ bool MarkdownEditor::keyPressed(const KeyPress& key)
         return true;
     }
 
-    return CodeEditorComponent::keyPressed(key);
+    return TextEditor::keyPressed(key);
 }
 
-void MarkdownEditor::mouseDown(const MouseEvent& e)
+void NoteTextEditor::mouseDown(const MouseEvent& e)
 {
     if (e.mods.isPopupMenu())
     {
@@ -87,11 +92,11 @@ void MarkdownEditor::mouseDown(const MouseEvent& e)
     }
     else
     {
-        CodeEditorComponent::mouseDown(e);
+        TextEditor::mouseDown(e);
     }
 }
 
-void MarkdownEditor::wrapSelection(const String& symbol)
+void NoteTextEditor::wrapSelection(const String& symbol)
 {
     Range<int> selection = getHighlightedRegion();
 
@@ -104,19 +109,15 @@ void MarkdownEditor::wrapSelection(const String& symbol)
         return;
     }
 
-    // Get text manually since getTextBetween(Range) isn't direct
-    String total = getDocument().getAllContent();
-    String text = total.substring(selection.getStart(), selection.getEnd());
-
-    insertTextAtCaret(symbol + text + symbol);
+    insertTextAtCaret(symbol + getTextInRange(selection) + symbol);
 }
 
-void MarkdownEditor::toggleList()
+void NoteTextEditor::toggleList()
 {
     insertTextAtCaret("- ");
 }
 
-void MarkdownEditor::performPopup(const MouseEvent& e)
+void NoteTextEditor::performPopup(const MouseEvent& e)
 {
     PopupMenu m;
     m.addItem(1, "Cut");
@@ -134,7 +135,6 @@ void MarkdownEditor::performPopup(const MouseEvent& e)
                             return;
 
                         Range<int> sel = getHighlightedRegion();
-                        String total = getDocument().getAllContent();
 
                         switch (result)
                         {
@@ -142,9 +142,8 @@ void MarkdownEditor::performPopup(const MouseEvent& e)
                         {
                             if (!sel.isEmpty())
                             {
-                                String text = total.substring(sel.getStart(), sel.getEnd());
-                                SystemClipboard::copyTextToClipboard(text);
-                                insertTextAtCaret(""); // Delete
+                                copy();
+                                cut();
                             }
                             break;
                         }
@@ -152,14 +151,13 @@ void MarkdownEditor::performPopup(const MouseEvent& e)
                         {
                             if (!sel.isEmpty())
                             {
-                                String text = total.substring(sel.getStart(), sel.getEnd());
-                                SystemClipboard::copyTextToClipboard(text);
+                                copy();
                             }
                             break;
                         }
                         case 3: // Paste
                         {
-                            insertTextAtCaret(SystemClipboard::getTextFromClipboard());
+                            paste();
                             break;
                         }
                         case 4:
@@ -186,6 +184,7 @@ struct RenderContext
     AttributedString& attributedString;
     Font baseFont;
     Colour baseColour;
+    bool appendedAnyText = false;
 
     struct State
     {
@@ -284,6 +283,7 @@ static int text_callback(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, vo
     auto* ctx = static_cast<RenderContext*>(userdata);
     String s(text, size);
     ctx->attributedString.append(s, ctx->current().font, ctx->current().colour);
+    ctx->appendedAnyText = true;
     return 0;
 }
 } // namespace MarkdownRenderer
@@ -294,37 +294,56 @@ static int text_callback(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, vo
 
 NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(false)
 {
-    // Initialize Code Editor with our custom Markdown subclass
-    codeDocument.addListener(this);
-    editor.reset(new MarkdownEditor(codeDocument, &tokeniser));
+    editor.reset(new NoteTextEditor());
 
     addAndMakeVisible(editor.get());
 
     const auto paper = notePaperColour();
     const auto ink = noteInkColour();
-    editor->setColour(CodeEditorComponent::backgroundColourId, paper);
-    editor->setColour(CodeEditorComponent::lineNumberBackgroundId, paper.darker(0.03f));
-    editor->setColour(CodeEditorComponent::highlightColourId, noteAccentColour().withAlpha(0.20f));
-    editor->setColour(CodeEditorComponent::defaultTextColourId, ink);
+    editor->setMultiLine(true, true);
+    editor->setReturnKeyStartsNewLine(true);
+    editor->setScrollbarsShown(true);
+    editor->setScrollBarThickness(5);
+    editor->setColour(TextEditor::backgroundColourId, paper.withAlpha(0.94f));
+    editor->setColour(TextEditor::textColourId, ink);
+    editor->setColour(TextEditor::highlightColourId, noteAccentColour().withAlpha(0.20f));
+    editor->setColour(TextEditor::highlightedTextColourId, ink.darker(0.12f));
+    editor->setColour(TextEditor::outlineColourId, noteEdgeColour().withAlpha(0.36f));
+    editor->setColour(TextEditor::focusedOutlineColourId, noteAccentColour().withAlpha(0.66f));
+    editor->setColour(TextEditor::shadowColourId, Colours::transparentBlack);
     editor->setColour(CaretComponent::caretColourId, ink);
     editor->setFont(FontManager::getInstance().getBodyFont().withHeight(13.0f));
-    editor->setLineNumbersShown(false);
+    editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
+    editor->applyColourToAllText(ink);
+    editor->setTextToShowWhenEmpty("Double click to edit note...", noteInkColour().withAlpha(0.55f));
 
     // Wire up Escape key to exit edit mode
     editor->onEscapePressed = [this]() { setEditMode(false); };
+    editor->onTextChange = [this]()
+    {
+        if (processor != nullptr)
+            processor->setText(editor->getText());
+    };
+    editor->onFocusLost = [this]()
+    {
+        if (editMode)
+            setEditMode(false);
+    };
 
     // Load text
-    codeDocument.replaceAllContent(processor->getText());
+    editor->setText(processor != nullptr ? processor->getText() : String(), false);
 
     // Start in View Mode
     editor->setVisible(false);
-    renderMarkdown(processor->getText());
+    renderMarkdown(processor != nullptr ? processor->getText() : String());
 
     // Enable mouse/keyboard interaction
     setInterceptsMouseClicks(true, true);
     setWantsKeyboardFocus(true);
 
-    setSize(200, 150);
+    const auto initialSize = processor != nullptr ? processor->getSize()
+                                                  : Point<int>(kDefaultNoteNodeWidth, kDefaultNoteNodeHeight);
+    setSize(jmax(kMinNoteNodeWidth, initialSize.getX()), jmax(kMinNoteNodeHeight, initialSize.getY()));
 }
 
 NotesControl::~NotesControl()
@@ -334,13 +353,7 @@ NotesControl::~NotesControl()
 
 void NotesControl::resized()
 {
-    if (!editor)
-        return;
-
-    if (editMode)
-        editor->setBounds(getLocalBounds().withTrimmedTop(35).reduced(13, 9));
-    else
-        editor->setBounds(0, 0, 0, 0);
+    refreshWrappedTextLayout();
 }
 
 void NotesControl::paint(Graphics& g)
@@ -392,7 +405,7 @@ void NotesControl::paint(Graphics& g)
     if (!editMode)
     {
         // View Mode: Rendered rich text
-        renderedText.draw(g, getLocalBounds().withTrimmedTop(36).reduced(13, 9).toFloat());
+        renderedText.draw(g, getTextAreaBounds().toFloat());
     }
 
     // Draw subtle resize corner indicator.
@@ -405,22 +418,14 @@ void NotesControl::paint(Graphics& g)
     g.fillPath(resizeTriangle);
 }
 
-void NotesControl::codeDocumentTextInserted(const String& newText, int insertIndex)
-{
-    if (processor)
-        processor->setText(codeDocument.getAllContent());
-}
-
-void NotesControl::codeDocumentTextDeleted(int startIndex, int endIndex)
-{
-    if (processor)
-        processor->setText(codeDocument.getAllContent());
-}
-
 void NotesControl::updateText(const String& newText)
 {
-    if (codeDocument.getAllContent() != newText)
-        codeDocument.replaceAllContent(newText);
+    if (editor != nullptr && editor->getText() != newText)
+    {
+        editor->setText(newText, false);
+        editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
+        editor->applyColourToAllText(noteInkColour());
+    }
 
     renderMarkdown(newText);
     repaint();
@@ -455,8 +460,11 @@ void NotesControl::mouseDrag(const MouseEvent& event)
     {
         spdlog::debug("[NotesControl::mouseDrag] resizing");
         auto delta = event.getPosition() - dragStart;
-        int newWidth = jmax(100, boundsAtDragStart.getWidth() + delta.x);
-        int newHeight = jmax(50, boundsAtDragStart.getHeight() + delta.y);
+        int newWidth = jmax(kMinNoteNodeWidth, boundsAtDragStart.getWidth() + delta.x);
+        int newHeight = jmax(kMinNoteNodeHeight, boundsAtDragStart.getHeight() + delta.y);
+
+        if (processor != nullptr)
+            processor->updateEditorBounds(Rectangle<int>(0, 0, newWidth, newHeight));
 
         // Resize this control
         setSize(newWidth, newHeight);
@@ -466,6 +474,8 @@ void NotesControl::mouseDrag(const MouseEvent& event)
         {
             parent->setSize(newWidth, newHeight);
         }
+
+        refreshWrappedTextLayout();
     }
 }
 
@@ -484,9 +494,7 @@ void NotesControl::mouseMove(const MouseEvent& event)
 
 bool NotesControl::isInResizeCorner(const Point<int>& pos) const
 {
-    auto bounds = getLocalBounds();
-    auto corner = Rectangle<int>(bounds.getRight() - 20, bounds.getBottom() - 20, 20, 20);
-    return corner.contains(pos);
+    return isResizeHandleHit(pos);
 }
 
 void NotesControl::setEditMode(bool shouldEdit)
@@ -503,9 +511,11 @@ void NotesControl::setEditMode(bool shouldEdit)
     if (editMode)
     {
         spdlog::debug("[NotesControl::setEditMode] entering edit mode");
+        editor->setText(processor != nullptr ? processor->getText() : editor->getText(), false);
+        editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
+        editor->applyColourToAllText(noteInkColour());
         editor->setVisible(true);
-        editor->setBounds(getLocalBounds().withTrimmedTop(35).reduced(13, 9));
-        repaint();
+        refreshWrappedTextLayout();
 
         // Defer focus grab to avoid issues during mouse event handling
         auto* ed = editor.get();
@@ -519,10 +529,48 @@ void NotesControl::setEditMode(bool shouldEdit)
     else
     {
         spdlog::debug("[NotesControl::setEditMode] exiting edit mode");
+        const auto text = editor->getText();
+        if (processor != nullptr && processor->getText() != text)
+            processor->setText(text);
         editor->setVisible(false);
-        renderMarkdown(codeDocument.getAllContent());
-        repaint();
+        refreshWrappedTextLayout();
     }
+}
+
+Rectangle<int> NotesControl::getTextAreaBounds() const
+{
+    return getLocalBounds().withTrimmedTop(36).reduced(13, 9);
+}
+
+String NotesControl::getCurrentTextForLayout() const
+{
+    if (editMode && editor != nullptr)
+        return editor->getText();
+
+    if (processor != nullptr)
+        return processor->getText();
+
+    return editor != nullptr ? editor->getText() : String();
+}
+
+void NotesControl::refreshWrappedTextLayout()
+{
+    if (editor != nullptr)
+    {
+        if (editMode)
+        {
+            editor->setBounds(getTextAreaBounds());
+            editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
+            editor->applyColourToAllText(noteInkColour());
+        }
+        else
+        {
+            editor->setBounds(0, 0, 0, 0);
+        }
+    }
+
+    renderMarkdown(getCurrentTextForLayout());
+    repaint();
 }
 
 void NotesControl::renderMarkdown(const String& markdown)
@@ -535,6 +583,7 @@ void NotesControl::renderMarkdown(const String& markdown)
 
     renderedText = AttributedString();
     renderedText.setJustification(Justification::topLeft);
+    renderedText.setWordWrap(AttributedString::byChar);
 
     MarkdownRenderer::RenderContext ctx(renderedText);
 
@@ -548,5 +597,19 @@ void NotesControl::renderMarkdown(const String& markdown)
     parser.leave_span = MarkdownRenderer::leave_span;
     parser.text = MarkdownRenderer::text_callback;
 
-    md_parse(markdown.toUTF8(), markdown.getNumBytesAsUTF8(), &parser, &ctx);
+    const auto parseResult = md_parse(markdown.toUTF8(), markdown.getNumBytesAsUTF8(), &parser, &ctx);
+    if (parseResult != 0 || !ctx.appendedAnyText)
+    {
+        renderedText = AttributedString();
+        renderedText.setJustification(Justification::topLeft);
+        renderedText.setWordWrap(AttributedString::byChar);
+        renderedText.append(markdown, FontManager::getInstance().getBodyFont().withHeight(13.0f), noteInkColour());
+    }
+}
+
+bool NotesControl::isResizeHandleHit(const Point<int>& pos) const
+{
+    auto bounds = getLocalBounds();
+    auto corner = Rectangle<int>(bounds.getRight() - 20, bounds.getBottom() - 20, 20, 20);
+    return corner.contains(pos);
 }

@@ -106,7 +106,7 @@ void drawIRLoaderLed(Graphics& g, Rectangle<float> dot, Colour colour, bool acti
     {
         auto spark = dot.withSizeKeepingCentre(dot.getWidth() * 0.32f, dot.getHeight() * 0.32f)
                          .translated(-dot.getWidth() * 0.16f, -dot.getHeight() * 0.16f);
-        g.setColour(Colours::white.withAlpha(0.52f));
+        g.setColour(colour.contrasting(0.96f).withAlpha(0.52f));
         g.fillEllipse(spark);
     }
 }
@@ -186,7 +186,7 @@ void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width,
                                     filledTrack.getBottom(), false);
         g.setGradientFill(fillGradient);
         g.fillRoundedRectangle(filledTrack, 2.0f);
-        g.setColour(Colours::white.withAlpha(0.08f));
+        g.setColour(palette.text.withAlpha(0.08f));
         g.drawLine(filledTrack.getX() + 2.0f, filledTrack.getY() + 1.0f, filledTrack.getRight() - 2.0f,
                    filledTrack.getY() + 1.0f, 1.0f);
     }
@@ -218,7 +218,7 @@ void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width,
     // Thumb highlight
     g.setColour(palette.edgeHi.withAlpha(0.78f));
     g.drawEllipse(thumbX, thumbY, thumbSize, thumbSize, 1.0f);
-    g.setColour(Colours::white.withAlpha(0.12f));
+    g.setColour(palette.text.withAlpha(0.12f));
     g.fillEllipse(thumbX + 4.0f, thumbY + 3.0f, 3.5f, 3.5f);
 }
 
@@ -248,7 +248,7 @@ void IRLoaderLookAndFeel::drawButtonBackground(Graphics& g, Button& button, cons
     g.setGradientFill(buttonGradient);
     g.fillRoundedRectangle(bounds, 5.0f);
 
-    g.setColour(Colours::white.withAlpha(shouldDrawButtonAsHighlighted ? 0.12f : 0.07f));
+    g.setColour(palette.text.withAlpha(shouldDrawButtonAsHighlighted ? 0.12f : 0.07f));
     g.drawLine(bounds.getX() + 4.0f, bounds.getY() + 1.0f, bounds.getRight() - 4.0f, bounds.getY() + 1.0f, 1.0f);
 
     // Border
@@ -408,7 +408,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
 {
     const auto palette = makeIRLoaderPalette();
     auto& fonts = FontManager::getInstance();
-    auto area = bounds.reduced(8, 6);
+    auto area = bounds.reduced(5, 6);
 
     auto drawSectionHeader = [&](Rectangle<int> header, const String& title, Colour accent)
     {
@@ -637,7 +637,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     drawControlRail(filterSection.removeFromTop(18), palette.accent2);
 
     const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
-    auto footer = bounds.reduced(8, 0).removeFromBottom(13);
+    auto footer = bounds.reduced(5, 0).removeFromBottom(13);
     g.setFont(fonts.getBadgeFont());
     g.setColour((anyLoaded ? palette.accent2 : palette.textDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
     g.drawText(anyLoaded ? "CABINET ACTIVE" : "NO CABINET", footer, Justification::centredRight, true);
@@ -795,7 +795,7 @@ void IRLoaderControl::paint(Graphics& g)
 
 void IRLoaderControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
 {
-    auto area = bounds.reduced(8, 6);
+    auto area = bounds.reduced(5, 6);
     constexpr int gap = 3;
 
     for (auto* slider : {blendSlider.get(), mixSlider.get(), lowCutSlider.get(), highCutSlider.get()})
@@ -806,7 +806,7 @@ void IRLoaderControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
     irSection.removeFromTop(16);
     irSection.removeFromTop(5);
 
-    auto row1Slot = irSection.removeFromTop(82).reduced(8, 6);
+    auto row1Slot = irSection.removeFromTop(82).reduced(5, 6);
     row1Slot.removeFromTop(17);
     auto row1 = row1Slot.removeFromTop(22);
     loadButton->setBounds(row1.removeFromLeft(45));
@@ -818,7 +818,7 @@ void IRLoaderControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
     irNameLabel->setBounds(row1.removeFromTop(22));
 
     irSection.removeFromTop(5);
-    auto row2Slot = irSection.removeFromTop(82).reduced(8, 6);
+    auto row2Slot = irSection.removeFromTop(82).reduced(5, 6);
     row2Slot.removeFromTop(17);
     auto row2 = row2Slot.removeFromTop(22);
     loadButton2->setBounds(row2.removeFromLeft(45));

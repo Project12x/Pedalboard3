@@ -945,7 +945,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     auto& fm = FontManager::getInstance();
     cabinetIrCollapsed = namProcessor->isEmbeddedCabinetIrCollapsed();
 
-    auto area = bounds.reduced(5, 2);
+    auto area = bounds.reduced(3, 2);
 
     auto drawSectionHeader = [&](Rectangle<int> header, const String& title, Colour accent)
     {
@@ -1373,7 +1373,7 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
 {
     cabinetIrCollapsed = namProcessor->isEmbeddedCabinetIrCollapsed();
 
-    auto area = bounds.reduced(5, 2);
+    auto area = bounds.reduced(3, 2);
     constexpr int gap = 4;
     constexpr int clearW = 23;
 
@@ -1397,7 +1397,7 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
     auto captureSection = area.removeFromTop(66);
     captureSection.removeFromTop(18);
     captureSection.removeFromTop(22);
-    auto modelButtons = captureSection.removeFromTop(27).reduced(6, 2);
+    auto modelButtons = captureSection.removeFromTop(27).reduced(3, 2);
     loadModelButton->setBounds(modelButtons.removeFromLeft(92));
     modelButtons.removeFromLeft(gap);
     browseModelsButton->setBounds(modelButtons.removeFromLeft(86));
@@ -1424,9 +1424,9 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
         auto irSlots = cabinetSection.removeFromTop(98);
         const int slotGap = 12;
         const int slotW = (irSlots.getWidth() - slotGap) / 2;
-        auto ir1Slot = irSlots.removeFromLeft(slotW).reduced(12, 10);
+        auto ir1Slot = irSlots.removeFromLeft(slotW).reduced(8, 10);
         irSlots.removeFromLeft(slotGap);
-        auto ir2Slot = irSlots.reduced(12, 10);
+        auto ir2Slot = irSlots.reduced(8, 10);
 
         ir1Slot.removeFromTop(24);
         auto ir1Controls = ir1Slot.removeFromTop(24);

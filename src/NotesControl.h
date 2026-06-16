@@ -1,6 +1,5 @@
 #pragma once
 
-#include "MarkdownTokeniser.h"
 #include "PedalboardProcessors.h"
 
 #include <JuceHeader.h>
@@ -12,10 +11,10 @@ class NotesProcessor;
 /**
     Custom CodeEditor with Markdown-specific shortcuts and context menu.
 */
-class MarkdownEditor : public CodeEditorComponent
+class NoteTextEditor : public TextEditor
 {
   public:
-    MarkdownEditor(CodeDocument& doc, CodeTokeniser* tokens);
+    NoteTextEditor();
 
     // Callback for when Escape is pressed (to exit edit mode)
     std::function<void()> onEscapePressed;
@@ -31,7 +30,7 @@ class MarkdownEditor : public CodeEditorComponent
   private:
     void performPopup(const MouseEvent& e);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MarkdownEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NoteTextEditor)
 };
 
 //==============================================================================
@@ -54,7 +53,7 @@ class ResizeCorner : public Component
         g.fillAll();
 
         // Draw diagonal lines for resize indicator
-        g.setColour(Colours::white);
+        g.setColour(Colour(0xFFE9C84A));
         g.drawLine(4, 12, 12, 4, 2.0f);
         g.drawLine(8, 12, 12, 8, 2.0f);
     }
@@ -87,7 +86,7 @@ class ResizeCorner : public Component
 /**
     The UI for the NotesProcessor.
 */
-class NotesControl : public Component, public CodeDocument::Listener
+class NotesControl : public Component
 {
   public:
     NotesControl(NotesProcessor* processor);
@@ -100,19 +99,14 @@ class NotesControl : public Component, public CodeDocument::Listener
     void mouseUp(const MouseEvent& event) override;
     void mouseMove(const MouseEvent& event) override;
 
-    // CodeDocument::Listener helpers
-    void codeDocumentTextInserted(const String& newText, int insertIndex) override;
-    void codeDocumentTextDeleted(int startIndex, int endIndex) override;
-
     void updateText(const String& newText);
+    bool isResizeHandleHit(const Point<int>& pos) const;
 
   private:
     NotesProcessor* processor;
 
-    // Editor components
-    CodeDocument codeDocument;
-    MarkdownTokeniser tokeniser;
-    std::unique_ptr<MarkdownEditor> editor;
+    // Editor component
+    std::unique_ptr<NoteTextEditor> editor;
 
     // View mode state
     bool editMode;
@@ -124,6 +118,9 @@ class NotesControl : public Component, public CodeDocument::Listener
     Rectangle<int> boundsAtDragStart;
 
     void setEditMode(bool shouldEdit);
+    Rectangle<int> getTextAreaBounds() const;
+    String getCurrentTextForLayout() const;
+    void refreshWrappedTextLayout();
     void renderMarkdown(const String& markdown);
     bool isInResizeCorner(const Point<int>& pos) const;
 
