@@ -75,6 +75,51 @@ References already inspected for host architecture lessons:
 
 No upstream source is copied by this plan. During implementation, every nontrivial direct adaptation from permissive source must record repo, commit SHA, license, inspected files, and reuse mode in the commit notes or implementation summary.
 
+## Current Status: 2026-06-17
+
+Branch: `codex/rt-hosting-sprint`
+
+The first implementation pass is committed locally as four focused checkpoints:
+
+| Commit | Scope | Notes |
+| --- | --- | --- |
+| `84ad534` `fix: harden core rt hosting paths` | Core RT host/audio paths | Locks graph clear/restore mutations, hardens callback bounds, removes Virtual MIDI audio-thread logging, removes IR filter allocation, fixes limiter DC/invalid-sample behavior, and applies bypass crossfade to temp-buffer/synth paths. |
+| `bba6eb4` `fix: defer nam model and ir swaps` | NAM lifecycle | Removes `NAMCore` staged-model handoff from `process`, defers model/IR load/clear while prepared, and applies deferred heavy state changes before the processor becomes active again. |
+| `da4f9da` `fix: move plugin scanning off ui timer` | Scanner responsiveness | Moves `SafePluginListComponent` scan progression to a worker thread, keeps the timer as a UI progress pump, replaces fake named-pipe timeouts with bounded exact reads, caps scanner payloads, and removes blocking pipe flushes. |
+| `0dba1a2` `docs: record rt hosting lessons and tests` | Durable docs and regression guards | Adds `LESSONS.md`, peer audit artifacts, this sprint plan, and `tests/rt_hosting_sprint_test.cpp` wired into the existing `Pedalboard3_Tests` target. |
+
+Verification already run on this branch:
+
+```powershell
+cmake --build build --config Debug --target Pedalboard3_Tests
+cmake --build build --config Debug --target Pedalboard3
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[scanner]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
+```
+
+Latest focused results:
+
+- `[rt]`: 33 assertions in 7 test cases.
+- `[scanner]`: 17 assertions in 2 test cases.
+- `[nam]`: 259 assertions in 34 test cases.
+
+Earlier in the same sprint pass, these targeted filters also passed before committing:
+
+- `[bypassable]`: 20 assertions in 3 test cases.
+- `[audio]`: 2,049,353 assertions in 8 test cases.
+- `[patchswitch]`: 572 assertions in 9 test cases.
+- `[protection]`: 186 assertions in 12 test cases.
+
+Known remaining sprint work:
+
+- Define and implement the host MIDI routing contract before changing MIDI filtering semantics.
+- Replace or harden `MidiAppFifo` locking and expose overflow counters.
+- Move MIDI mapping command/settings work fully out of callback-sensitive paths.
+- Add ScratchRecorder stop/restart/writer-failure stress coverage.
+- Add stronger hostile-plugin/end-to-end graph restore and scanner fake-server tests.
+- Run Release build verification; only Debug app/test builds have been verified in this pass.
+
 ## Acceptance Criteria
 
 - Loading/restoring a patch cannot clear or rebuild the live graph while the audio callback is using it.
