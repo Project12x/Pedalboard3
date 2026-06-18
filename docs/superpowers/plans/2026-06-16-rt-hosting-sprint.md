@@ -93,6 +93,7 @@ The implementation pass is committed locally as focused checkpoints:
 | `171dc55` `fix: defer midi mapping app commands` | MIDI mapping RT safety | Caches realtime-safe mapping state and defers command, tempo, and patch-change work through `MidiAppFifo`. |
 | `e80b8e6` `docs: add rt midi routing peer audit` | Peer audit record | Records the 2026-06-17 MIDI routing audit artifact in `audits/`. |
 | `2fba9fe` `fix: make graph restore transactional` | Graph restore RT safety | Prepares plugin instances and state off-graph, then commits clear/add/connect/remove-illegal under one callback-lock window and registers OSC mappings after the lock. |
+| `074331a` `fix: stress scratch recorder stop paths` | ScratchRecorder stress hardening | Adds observable stop/drop/writer diagnostics and stress coverage for restart, post-stop writes, writer open/write failure, and stopping while a write is in flight. |
 
 Verification already run on this branch:
 
@@ -102,6 +103,7 @@ cmake --build build --config Debug --target Pedalboard3
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt][graph-restore]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[patchswitch]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[scratch]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[scanner]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
 ```
@@ -111,6 +113,7 @@ Latest focused results:
 - `[rt]`: 3,209 assertions in 14 test cases.
 - `[rt][graph-restore]`: 39 assertions in 1 test case.
 - `[patchswitch]`: 572 assertions in 9 test cases.
+- `[scratch]`: 201 assertions in 25 test cases.
 - `[midi]`: 3,883 assertions in 24 test cases.
 - `[midi][fifo]`: 3,323 assertions in 6 test cases.
 - `[rt][midi][mapping]`: 12 assertions in 1 test case.
@@ -129,7 +132,6 @@ Known remaining sprint work:
 - Surface `MidiAppFifo` diagnostics in UI/dev telemetry if useful; the RT-safe FIFO core now reports drops and max depth.
 - Replace the remaining message-thread legacy parameter fallback that still calls deprecated `processor->setParameter`.
 - Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
-- Add ScratchRecorder stop/restart/writer-failure stress coverage.
 - Add stronger hostile-plugin/end-to-end patch restore stress and scanner fake-server tests.
 - Run Release build verification; only Debug app/test builds have been verified in this pass.
 
@@ -723,5 +725,5 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 - [x] NAM model handoff avoids unsynchronized `unique_ptr` sharing and audio-thread destruction.
 - [x] Bypass crossfade covers synth/no-input paths.
 - [x] Scanner IPC cannot block the message-thread progress timer.
-- [ ] Scratch recorder stop/restart/failure tests pass.
+- [x] Scratch recorder stop/restart/failure tests pass.
 - [ ] Debug and Release build commands pass.
