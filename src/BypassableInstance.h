@@ -48,7 +48,7 @@ class BypassableInstance : public AudioPluginInstance
 
     ///	Sets the MIDI channel the plugin responds to.
     void setMIDIChannel(int val);
-    ///	Returns the plugin's MIDI channel (-1 == omni).
+    ///	Returns the plugin's MIDI channel (0 == omni).
     int getMIDIChannel() const { return midiChannel.load(); };
     ///	Passes a MIDI message to the plugin from the OSC input.
     void addMidiMessage(const MidiMessage& message);

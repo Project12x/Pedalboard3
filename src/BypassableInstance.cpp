@@ -22,6 +22,19 @@
 
 #include <spdlog/spdlog.h>
 
+namespace
+{
+bool isSafetyBroadcastMidi(const MidiMessage& message) noexcept
+{
+    return message.isAllNotesOff() || message.isAllSoundOff() || message.isResetAllControllers();
+}
+
+bool shouldDeliverMidiToPlugin(const MidiMessage& message, const int targetChannel) noexcept
+{
+    return targetChannel == 0 || message.getChannel() == targetChannel || isSafetyBroadcastMidi(message);
+}
+} // namespace
+
 //------------------------------------------------------------------------------
 BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
     : plugin(plug), tempBuffer(2, 4096), bypassDryBuffer(2, 4096), bypassRamp(0.0f)
@@ -194,6 +207,7 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     int i, j;
     float rampVal = bypassRamp;
     MidiBuffer tempMidi;
+    MidiBuffer forwardedMidi;
     MidiBuffer::Iterator it(midiMessages);
 
     const int bufferChannels = buffer.getNumChannels();
@@ -221,12 +235,18 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     {
         MidiMessage tempMess;
         int tempSample;
+        const int targetMidiChannel = midiChannel.load(std::memory_order_relaxed);
 
         while (it.getNextEvent(tempMess, tempSample))
         {
-            // Filter out any messages on the wrong channel.
-            if ((midiChannel == 0) || (tempMess.getChannel() == midiChannel))
+            const bool isSafetyBroadcast = isSafetyBroadcastMidi(tempMess);
+            const bool deliverToPlugin = shouldDeliverMidiToPlugin(tempMess, targetMidiChannel);
+
+            if (deliverToPlugin)
                 tempMidi.addEvent(tempMess, tempSample);
+
+            if (!deliverToPlugin || isSafetyBroadcast)
+                forwardedMidi.addEvent(tempMess, tempSample);
         }
     }
 
@@ -253,9 +273,11 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         plugin->processBlock(buffer, tempMidi);
     }
 
-    // Add any new midi data to midiMessages.
-    if (!tempMidi.isEmpty())
-        midiMessages.swapWith(tempMidi);
+    // Preserve host-routed MIDI that this wrapper must not consume, then append
+    // the wrapped plugin's resulting MIDI buffer.
+    midiMessages.clear();
+    midiMessages.addEvents(forwardedMidi, 0, -1, 0);
+    midiMessages.addEvents(tempMidi, 0, -1, 0);
 
     // Add the correct (bypassed or un-bypassed) audio back to the buffer.
     const int safeCrossfadeChannels = jmin(bufferChannels, bypassDryBuffer.getNumChannels());

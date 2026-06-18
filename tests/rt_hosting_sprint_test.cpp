@@ -1,3 +1,4 @@
+#include "../src/BypassableInstance.h"
 #include "../src/SafetyLimiter.h"
 #include "../src/VirtualMidiInputProcessor.h"
 
@@ -7,6 +8,88 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
+
+namespace
+{
+struct RecordedMidiEvent
+{
+    int samplePosition = 0;
+    int channel = 0;
+    int noteNumber = -1;
+    int controllerNumber = -1;
+    bool noteOn = false;
+    bool allNotesOff = false;
+    bool allSoundOff = false;
+    bool resetAllControllers = false;
+};
+
+RecordedMidiEvent describeMidiEvent(const juce::MidiMessage& message, int samplePosition)
+{
+    RecordedMidiEvent event;
+    event.samplePosition = samplePosition;
+    event.channel = message.getChannel();
+    event.noteOn = message.isNoteOn();
+    event.noteNumber = message.isNoteOnOrOff() ? message.getNoteNumber() : -1;
+    event.controllerNumber = message.isController() ? message.getControllerNumber() : -1;
+    event.allNotesOff = message.isAllNotesOff();
+    event.allSoundOff = message.isAllSoundOff();
+    event.resetAllControllers = message.isResetAllControllers();
+    return event;
+}
+
+std::vector<RecordedMidiEvent> describeMidiBuffer(const juce::MidiBuffer& midi)
+{
+    std::vector<RecordedMidiEvent> events;
+
+    for (const auto metadata : midi)
+        events.push_back(describeMidiEvent(metadata.getMessage(), metadata.samplePosition));
+
+    return events;
+}
+
+class MidiRoutingProbePlugin final : public juce::AudioPluginInstance
+{
+public:
+    const juce::String getName() const override { return "MidiRoutingProbe"; }
+    void prepareToPlay(double, int) override {}
+    void releaseResources() override {}
+    bool acceptsMidi() const override { return true; }
+    bool producesMidi() const override { return true; }
+    double getTailLengthSeconds() const override { return 0.0; }
+    bool hasEditor() const override { return false; }
+    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram(int) override {}
+    const juce::String getProgramName(int) override { return {}; }
+    void changeProgramName(int, const juce::String&) override {}
+    void getStateInformation(juce::MemoryBlock&) override {}
+    void setStateInformation(const void*, int) override {}
+
+    void fillInPluginDescription(juce::PluginDescription& description) const override
+    {
+        description.name = getName();
+        description.pluginFormatName = "Test";
+    }
+
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override
+    {
+        juce::ignoreUnused(buffer);
+        receivedEvents = describeMidiBuffer(midi);
+
+        if (clearInputDuringProcess)
+            midi.clear();
+
+        if (emitOutputNote)
+            midi.addEvent(juce::MidiMessage::noteOn(10, 72, static_cast<juce::uint8>(100)), 3);
+    }
+
+    std::vector<RecordedMidiEvent> receivedEvents;
+    bool clearInputDuringProcess = true;
+    bool emitOutputNote = false;
+};
+}
 
 static std::string readTextFileForRtTest(const char* path)
 {
@@ -44,6 +127,69 @@ TEST_CASE("Virtual MIDI destructor does not clear a newer active instance", "[rt
 
     REQUIRE(VirtualMidiInputProcessor::getInstance() == &second);
     VirtualMidiInputProcessor::setInstance(nullptr);
+}
+
+TEST_CASE("BypassableInstance forwards nonmatching MIDI channel messages unchanged", "[rt][bypassable][midi]")
+{
+    auto* plugin = new MidiRoutingProbePlugin();
+    plugin->emitOutputNote = true;
+    BypassableInstance wrapper(plugin);
+    wrapper.setMIDIChannel(2);
+    wrapper.prepareToPlay(48000.0, 64);
+
+    juce::AudioBuffer<float> audio(2, 64);
+    audio.clear();
+
+    juce::MidiBuffer midi;
+    midi.addEvent(juce::MidiMessage::noteOn(2, 60, static_cast<juce::uint8>(100)), 1);
+    midi.addEvent(juce::MidiMessage::noteOn(5, 65, static_cast<juce::uint8>(100)), 2);
+
+    wrapper.processBlock(audio, midi);
+
+    REQUIRE(plugin->receivedEvents.size() == 1);
+    REQUIRE(plugin->receivedEvents[0].channel == 2);
+    REQUIRE(plugin->receivedEvents[0].noteNumber == 60);
+
+    const auto outputEvents = describeMidiBuffer(midi);
+    REQUIRE(outputEvents.size() == 2);
+    REQUIRE(outputEvents[0].channel == 5);
+    REQUIRE(outputEvents[0].noteNumber == 65);
+    REQUIRE(outputEvents[0].samplePosition == 2);
+    REQUIRE(outputEvents[1].channel == 10);
+    REQUIRE(outputEvents[1].noteNumber == 72);
+    REQUIRE(outputEvents[1].samplePosition == 3);
+}
+
+TEST_CASE("BypassableInstance broadcasts panic MIDI messages through channel filters", "[rt][bypassable][midi]")
+{
+    auto* plugin = new MidiRoutingProbePlugin();
+    BypassableInstance wrapper(plugin);
+    wrapper.setMIDIChannel(2);
+    wrapper.prepareToPlay(48000.0, 64);
+
+    juce::AudioBuffer<float> audio(2, 64);
+    audio.clear();
+
+    juce::MidiBuffer midi;
+    midi.addEvent(juce::MidiMessage::allNotesOff(5), 4);
+    midi.addEvent(juce::MidiMessage::allSoundOff(6), 5);
+    midi.addEvent(juce::MidiMessage::allControllersOff(7), 6);
+
+    wrapper.processBlock(audio, midi);
+
+    REQUIRE(plugin->receivedEvents.size() == 3);
+    REQUIRE(plugin->receivedEvents[0].allNotesOff);
+    REQUIRE(plugin->receivedEvents[1].allSoundOff);
+    REQUIRE(plugin->receivedEvents[2].resetAllControllers);
+
+    const auto outputEvents = describeMidiBuffer(midi);
+    REQUIRE(outputEvents.size() == 3);
+    REQUIRE(outputEvents[0].allNotesOff);
+    REQUIRE(outputEvents[0].samplePosition == 4);
+    REQUIRE(outputEvents[1].allSoundOff);
+    REQUIRE(outputEvents[1].samplePosition == 5);
+    REQUIRE(outputEvents[2].resetAllControllers);
+    REQUIRE(outputEvents[2].samplePosition == 6);
 }
 
 TEST_CASE("SafetyLimiter mutes invalid samples and unmute resets runtime state", "[rt][safety-limiter]")

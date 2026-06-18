@@ -100,7 +100,8 @@ cmake --build build --config Debug --target Pedalboard3
 
 Latest focused results:
 
-- `[rt]`: 33 assertions in 7 test cases.
+- `[rt]`: 54 assertions in 9 test cases.
+- `[rt][bypassable][midi]`: 21 assertions in 2 test cases.
 - `[scanner]`: 17 assertions in 2 test cases.
 - `[nam]`: 259 assertions in 34 test cases.
 
@@ -113,9 +114,9 @@ Earlier in the same sprint pass, these targeted filters also passed before commi
 
 Known remaining sprint work:
 
-- Define and implement the host MIDI routing contract before changing MIDI filtering semantics.
 - Replace or harden `MidiAppFifo` locking and expose overflow counters.
 - Move MIDI mapping command/settings work fully out of callback-sensitive paths.
+- Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
 - Add ScratchRecorder stop/restart/writer-failure stress coverage.
 - Add stronger hostile-plugin/end-to-end graph restore and scanner fake-server tests.
 - Run Release build verification; only Debug app/test builds have been verified in this pass.
@@ -699,7 +700,7 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 
 ## Completion Checklist
 
-- [ ] `docs/host-midi-routing-contract.md` exists and matches implemented MIDI routing behavior.
+- [x] `docs/host-midi-routing-contract.md` exists and matches implemented MIDI routing behavior.
 - [ ] `tests/rt_hosting_sprint_test.cpp` covers all accepted audit findings.
 - [ ] Graph restore uses preparation plus bounded commit.
 - [ ] Callback bounds reject counters are visible in tests.
