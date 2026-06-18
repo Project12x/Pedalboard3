@@ -100,15 +100,20 @@ Verification already run on this branch:
 ```powershell
 cmake --build build --config Debug --target Pedalboard3_Tests
 cmake --build build --config Debug --target Pedalboard3
+cmake --build build --config Release --target Pedalboard3_Tests
+cmake --build build --config Release --target Pedalboard3
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt][graph-restore]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[patchswitch]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[scratch]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[scanner]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
+.\build\tests\Release\Pedalboard3_Tests.exe "[rt]"
+.\build\tests\Release\Pedalboard3_Tests.exe "[patchswitch]"
+.\build\tests\Release\Pedalboard3_Tests.exe "[scratch]"
 ```
 
-Latest focused results:
+Latest focused Debug results:
 
 - `[rt]`: 3,209 assertions in 14 test cases.
 - `[rt][graph-restore]`: 39 assertions in 1 test case.
@@ -120,6 +125,12 @@ Latest focused results:
 - `[rt][bypassable][midi]`: 37 assertions in 3 test cases.
 - `[scanner]`: 17 assertions in 2 test cases.
 - `[nam]`: 259 assertions in 34 test cases.
+
+Latest focused Release results:
+
+- `[rt]`: 3,209 assertions in 14 test cases.
+- `[patchswitch]`: 572 assertions in 9 test cases.
+- `[scratch]`: 201 assertions in 25 test cases.
 
 Earlier in the same sprint pass, these targeted filters also passed before committing:
 
@@ -133,7 +144,6 @@ Known remaining sprint work:
 - Replace the remaining message-thread legacy parameter fallback that still calls deprecated `processor->setParameter`.
 - Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
 - Add stronger hostile-plugin/end-to-end patch restore stress and scanner fake-server tests.
-- Run Release build verification; only Debug app/test builds have been verified in this pass.
 
 ## Acceptance Criteria
 
@@ -726,4 +736,4 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 - [x] Bypass crossfade covers synth/no-input paths.
 - [x] Scanner IPC cannot block the message-thread progress timer.
 - [x] Scratch recorder stop/restart/failure tests pass.
-- [ ] Debug and Release build commands pass.
+- [x] Debug and Release build commands pass.
