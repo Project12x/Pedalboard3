@@ -75,11 +75,11 @@ References already inspected for host architecture lessons:
 
 No upstream source is copied by this plan. During implementation, every nontrivial direct adaptation from permissive source must record repo, commit SHA, license, inspected files, and reuse mode in the commit notes or implementation summary.
 
-## Current Status: 2026-06-17
+## Current Status: 2026-06-18
 
 Branch: `codex/rt-hosting-sprint`
 
-The first implementation pass is committed locally as four focused checkpoints:
+The implementation pass is committed locally as focused checkpoints:
 
 | Commit | Scope | Notes |
 | --- | --- | --- |
@@ -87,6 +87,12 @@ The first implementation pass is committed locally as four focused checkpoints:
 | `bba6eb4` `fix: defer nam model and ir swaps` | NAM lifecycle | Removes `NAMCore` staged-model handoff from `process`, defers model/IR load/clear while prepared, and applies deferred heavy state changes before the processor becomes active again. |
 | `da4f9da` `fix: move plugin scanning off ui timer` | Scanner responsiveness | Moves `SafePluginListComponent` scan progression to a worker thread, keeps the timer as a UI progress pump, replaces fake named-pipe timeouts with bounded exact reads, caps scanner payloads, and removes blocking pipe flushes. |
 | `0dba1a2` `docs: record rt hosting lessons and tests` | Durable docs and regression guards | Adds `LESSONS.md`, peer audit artifacts, this sprint plan, and `tests/rt_hosting_sprint_test.cpp` wired into the existing `Pedalboard3_Tests` target. |
+| `79fe540` `fix: preserve filtered midi routing` | Host MIDI routing | Preserves nonmatching-channel MIDI while delivering matching messages to the wrapped plugin and preserving plugin MIDI output. |
+| `76bf8cd` `fix: dedupe passthrough midi panic messages` | Host MIDI routing | Ensures pass-through safety broadcasts have one downstream copy while still reaching filtered plugins. |
+| `e4bb5f5` `fix: harden midi app fifo overflow handling` | MIDI app FIFO | Replaces producer-side spin locking with a bounded ring and exposes drop/max-depth counters. |
+| `171dc55` `fix: defer midi mapping app commands` | MIDI mapping RT safety | Caches realtime-safe mapping state and defers command, tempo, and patch-change work through `MidiAppFifo`. |
+| `e80b8e6` `docs: add rt midi routing peer audit` | Peer audit record | Records the 2026-06-17 MIDI routing audit artifact in `audits/`. |
+| `2fba9fe` `fix: make graph restore transactional` | Graph restore RT safety | Prepares plugin instances and state off-graph, then commits clear/add/connect/remove-illegal under one callback-lock window and registers OSC mappings after the lock. |
 
 Verification already run on this branch:
 
@@ -94,13 +100,17 @@ Verification already run on this branch:
 cmake --build build --config Debug --target Pedalboard3_Tests
 cmake --build build --config Debug --target Pedalboard3
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt][graph-restore]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[patchswitch]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[scanner]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
 ```
 
 Latest focused results:
 
-- `[rt]`: 3,170 assertions in 13 test cases.
+- `[rt]`: 3,209 assertions in 14 test cases.
+- `[rt][graph-restore]`: 39 assertions in 1 test case.
+- `[patchswitch]`: 572 assertions in 9 test cases.
 - `[midi]`: 3,883 assertions in 24 test cases.
 - `[midi][fifo]`: 3,323 assertions in 6 test cases.
 - `[rt][midi][mapping]`: 12 assertions in 1 test case.
@@ -112,7 +122,6 @@ Earlier in the same sprint pass, these targeted filters also passed before commi
 
 - `[bypassable]`: 20 assertions in 3 test cases.
 - `[audio]`: 2,049,353 assertions in 8 test cases.
-- `[patchswitch]`: 572 assertions in 9 test cases.
 - `[protection]`: 186 assertions in 12 test cases.
 
 Known remaining sprint work:
@@ -121,7 +130,7 @@ Known remaining sprint work:
 - Replace the remaining message-thread legacy parameter fallback that still calls deprecated `processor->setParameter`.
 - Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
 - Add ScratchRecorder stop/restart/writer-failure stress coverage.
-- Add stronger hostile-plugin/end-to-end graph restore and scanner fake-server tests.
+- Add stronger hostile-plugin/end-to-end patch restore stress and scanner fake-server tests.
 - Run Release build verification; only Debug app/test builds have been verified in this pass.
 
 ## Acceptance Criteria
@@ -704,7 +713,7 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 
 - [x] `docs/host-midi-routing-contract.md` exists and matches implemented MIDI routing behavior.
 - [ ] `tests/rt_hosting_sprint_test.cpp` covers all accepted audit findings.
-- [ ] Graph restore uses preparation plus bounded commit.
+- [x] Graph restore uses preparation plus bounded commit.
 - [ ] Callback bounds reject counters are visible in tests.
 - [x] Virtual MIDI has no audio-thread logging.
 - [x] MIDI FIFO overflow is observable through counters and no producer-side `SpinLock`.
