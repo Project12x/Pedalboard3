@@ -33,6 +33,30 @@ bool shouldDeliverMidiToPlugin(const MidiMessage& message, const int targetChann
 {
     return targetChannel == 0 || message.getChannel() == targetChannel || isSafetyBroadcastMidi(message);
 }
+
+bool isSameSafetyBroadcast(const MidiMessage& a, const MidiMessage& b) noexcept
+{
+    return a.getChannel() == b.getChannel() && a.isAllNotesOff() == b.isAllNotesOff()
+           && a.isAllSoundOff() == b.isAllSoundOff()
+           && a.isResetAllControllers() == b.isResetAllControllers();
+}
+
+bool containsSafetyBroadcast(const MidiBuffer& midi, const MidiMessage& message, const int samplePosition) noexcept
+{
+    if (!isSafetyBroadcastMidi(message))
+        return false;
+
+    for (const auto metadata : midi)
+    {
+        if (metadata.samplePosition == samplePosition
+            && isSameSafetyBroadcast(metadata.getMessage(), message))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 } // namespace
 
 //------------------------------------------------------------------------------
@@ -277,7 +301,13 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     // the wrapped plugin's resulting MIDI buffer.
     midiMessages.clear();
     midiMessages.addEvents(forwardedMidi, 0, -1, 0);
-    midiMessages.addEvents(tempMidi, 0, -1, 0);
+
+    for (const auto metadata : tempMidi)
+    {
+        const auto message = metadata.getMessage();
+        if (!containsSafetyBroadcast(forwardedMidi, message, metadata.samplePosition))
+            midiMessages.addEvent(message, metadata.samplePosition);
+    }
 
     // Add the correct (bypassed or un-bypassed) audio back to the buffer.
     const int safeCrossfadeChannels = jmin(bufferChannels, bypassDryBuffer.getNumChannels());
@@ -325,6 +355,9 @@ void BypassableInstance::setMIDIChannel(int val)
 //------------------------------------------------------------------------------
 void BypassableInstance::addMidiMessage(const MidiMessage& message)
 {
-    if ((midiChannel == 0) || (message.getChannel() == midiChannel))
+    // OSC MIDI is targeted injection for this wrapper, not graph input; keep
+    // the normal channel filter instead of applying graph broadcast rules.
+    const int targetMidiChannel = midiChannel.load(std::memory_order_relaxed);
+    if (targetMidiChannel == 0 || message.getChannel() == targetMidiChannel)
         midiCollector.addMessageToQueue(message);
 }

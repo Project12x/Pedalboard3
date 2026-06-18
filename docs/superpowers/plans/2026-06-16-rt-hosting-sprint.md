@@ -100,8 +100,8 @@ cmake --build build --config Debug --target Pedalboard3
 
 Latest focused results:
 
-- `[rt]`: 54 assertions in 9 test cases.
-- `[rt][bypassable][midi]`: 21 assertions in 2 test cases.
+- `[rt]`: 70 assertions in 10 test cases.
+- `[rt][bypassable][midi]`: 37 assertions in 3 test cases.
 - `[scanner]`: 17 assertions in 2 test cases.
 - `[nam]`: 259 assertions in 34 test cases.
 

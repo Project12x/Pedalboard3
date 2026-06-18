@@ -17,11 +17,11 @@ The host treats these messages as safety broadcasts:
 - All Sound Off
 - Reset All Controllers
 
-Safety broadcasts are delivered to the wrapped plugin even when their MIDI channel does not match the wrapper channel filter. They are also forwarded downstream unchanged so later plugins can receive the same panic/control reset even if an earlier plugin consumes its input buffer.
+Safety broadcasts are delivered to the wrapped plugin even when their MIDI channel does not match the wrapper channel filter. They are also forwarded downstream unchanged so later plugins can receive the same panic/control reset even if an earlier plugin consumes its input buffer. If a plugin passes the exact same safety broadcast through unchanged, the wrapper emits one downstream copy rather than duplicating the idempotent message.
 
 ## OSC MIDI Injection
 
-MIDI injected through `BypassableInstance::addMidiMessage` is queued through the wrapper's `MidiMessageCollector` and delivered only to that wrapped plugin. It is not treated as graph input and is not automatically forwarded downstream.
+MIDI injected through `BypassableInstance::addMidiMessage` is queued through the wrapper's `MidiMessageCollector` and delivered only to that wrapped plugin. It is not treated as graph input and is not automatically forwarded downstream. The OSC path keeps normal target-channel filtering instead of applying graph safety-broadcast rules.
 
 ## Realtime Constraints
 

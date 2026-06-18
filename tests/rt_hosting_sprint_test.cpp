@@ -192,6 +192,45 @@ TEST_CASE("BypassableInstance broadcasts panic MIDI messages through channel fil
     REQUIRE(outputEvents[2].samplePosition == 6);
 }
 
+TEST_CASE("BypassableInstance emits one downstream copy of pass-through panic MIDI", "[rt][bypassable][midi]")
+{
+    auto* plugin = new MidiRoutingProbePlugin();
+    plugin->clearInputDuringProcess = false;
+    BypassableInstance wrapper(plugin);
+    wrapper.setMIDIChannel(2);
+    wrapper.prepareToPlay(48000.0, 64);
+
+    juce::AudioBuffer<float> audio(2, 64);
+    audio.clear();
+
+    juce::MidiBuffer midi;
+    midi.addEvent(juce::MidiMessage::noteOn(2, 60, static_cast<juce::uint8>(100)), 1);
+    midi.addEvent(juce::MidiMessage::allNotesOff(5), 4);
+    midi.addEvent(juce::MidiMessage::allSoundOff(6), 5);
+    midi.addEvent(juce::MidiMessage::allControllersOff(7), 6);
+
+    wrapper.processBlock(audio, midi);
+
+    REQUIRE(plugin->receivedEvents.size() == 4);
+    REQUIRE(plugin->receivedEvents[0].channel == 2);
+    REQUIRE(plugin->receivedEvents[0].noteNumber == 60);
+    REQUIRE(plugin->receivedEvents[1].allNotesOff);
+    REQUIRE(plugin->receivedEvents[2].allSoundOff);
+    REQUIRE(plugin->receivedEvents[3].resetAllControllers);
+
+    const auto outputEvents = describeMidiBuffer(midi);
+    REQUIRE(outputEvents.size() == 4);
+    REQUIRE(outputEvents[0].channel == 2);
+    REQUIRE(outputEvents[0].noteNumber == 60);
+    REQUIRE(outputEvents[0].samplePosition == 1);
+    REQUIRE(outputEvents[1].allNotesOff);
+    REQUIRE(outputEvents[1].samplePosition == 4);
+    REQUIRE(outputEvents[2].allSoundOff);
+    REQUIRE(outputEvents[2].samplePosition == 5);
+    REQUIRE(outputEvents[3].resetAllControllers);
+    REQUIRE(outputEvents[3].samplePosition == 6);
+}
+
 TEST_CASE("SafetyLimiter mutes invalid samples and unmute resets runtime state", "[rt][safety-limiter]")
 {
     SafetyLimiterProcessor limiter;
