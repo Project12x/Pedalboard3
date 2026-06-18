@@ -768,33 +768,25 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
     return e;
 }
 
-void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& oscManager)
+std::unique_ptr<AudioProcessor> FilterGraph::createProcessorForXmlNode(const XmlElement& xml, String& errorMessage)
 {
-    String midiAddress;
-    String errorMessage;
     PluginDescription pd;
-    BypassableInstance* bypassable = 0;
-    std::unique_ptr<AudioPluginInstance> tempInstance;
-
     forEachXmlChildElement(xml, e)
     {
         if (pd.loadFromXml(*e))
             break;
     }
 
-    int uid = xml.getIntAttribute("uid");
-    spdlog::debug("[createNodeFromXml] Creating node uid={} plugin={}", uid, pd.name.toStdString());
+    const int uid = xml.getIntAttribute("uid");
+    spdlog::debug("[prepareRestoreFromXml] Creating node uid={} plugin={}", uid, pd.name.toStdString());
 
-    // JUCE 8: createPluginInstance (not createPluginInstanceSync)
-    tempInstance =
+    auto tempInstance =
         AudioPluginFormatManagerSingleton::getInstance().createPluginInstance(pd, 44100.0, 512, errorMessage);
 
     // VST3 instruments may have disabled output buses by default (confirmed by Carla source).
-    // Enable all buses to ensure output pins are visible for synths.
+    // Enable all buses before graph insertion so synth outputs have pins immediately.
     if (tempInstance)
-    {
         tempInstance->enableAllBuses();
-    }
 
     std::unique_ptr<AudioProcessor> instancePtr;
     if (tempInstance)
@@ -803,68 +795,37 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
             dynamic_cast<MidiInterceptor*>(tempInstance.get()) || dynamic_cast<OscInput*>(tempInstance.get()) ||
             dynamic_cast<SubGraphProcessor*>(tempInstance.get()) ||
             dynamic_cast<VirtualMidiInputProcessor*>(tempInstance.get()))
+        {
             instancePtr = std::move(tempInstance);
+        }
         else
         {
-            bypassable = new BypassableInstance(tempInstance.release());
-            instancePtr.reset(bypassable);
+            instancePtr = std::make_unique<BypassableInstance>(tempInstance.release());
         }
     }
 
     if (!instancePtr)
     {
-        spdlog::error("[createNodeFromXml] FAILED to create plugin uid={} name={} error={}", uid, pd.name.toStdString(),
-                      errorMessage.toStdString());
-        return;
+        spdlog::error("[prepareRestoreFromXml] FAILED to create plugin uid={} name={} error={}", uid,
+                      pd.name.toStdString(), errorMessage.toStdString());
+        return nullptr;
     }
 
-    const XmlElement* const state = xml.getChildByName("STATE");
-
-    if (state != 0)
+    if (const XmlElement* const state = xml.getChildByName("STATE"))
     {
         MemoryBlock m;
         m.fromBase64Encoding(state->getAllSubText());
-
-        instancePtr->setStateInformation(m.getData(), m.getSize());
+        instancePtr->setStateInformation(m.getData(), static_cast<int>(m.getSize()));
     }
 
-    if (bypassable)
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(instancePtr.get()))
     {
         bypassable->setMIDIChannel(xml.getIntAttribute("MIDIChannel"));
         bypassable->setBypass(xml.getBoolAttribute("bypass", false));
     }
 
     instancePtr->setCurrentProgram(xml.getIntAttribute("program"));
-
-    // JUCE 8: addNode takes unique_ptr and NodeID
-    AudioProcessorGraph::Node::Ptr node;
-    {
-        const juce::ScopedLock sl(graph.getCallbackLock());
-        node = graph.addNode(std::move(instancePtr), AudioProcessorGraph::NodeID(uid));
-    }
-
-    if (!node)
-    {
-        spdlog::error("[createNodeFromXml] addNode returned null for uid={}", uid);
-        return;
-    }
-
-    spdlog::debug("[createNodeFromXml] SUCCESS node uid={} actual_uid={}", uid, (int)node->nodeID.uid);
-
-    node->properties.set("x", xml.getDoubleAttribute("x"));
-    node->properties.set("y", xml.getDoubleAttribute("y"));
-    node->properties.set("uiLastX", xml.getIntAttribute("uiLastX"));
-    node->properties.set("uiLastY", xml.getIntAttribute("uiLastY"));
-    node->properties.set("windowOpen", xml.getIntAttribute("windowOpen"));
-    node->properties.set("nodeWidth", xml.getIntAttribute("nodeWidth", 0));
-    node->properties.set("nodeHeight", xml.getIntAttribute("nodeHeight", 0));
-
-    midiAddress = xml.getStringAttribute("oscMIDIAddress");
-    if (bypassable)
-    {
-        if (!midiAddress.isEmpty())
-            oscManager.registerMIDIProcessor(midiAddress, bypassable);
-    }
+    return instancePtr;
 }
 
 XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
@@ -908,56 +869,132 @@ XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
     return xml;
 }
 
-void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager)
+FilterGraph::PreparedGraphRestore FilterGraph::prepareRestoreFromXml(const XmlElement& xml,
+                                                                      OscMappingManager& oscManager)
 {
+    juce::ignoreUnused(oscManager);
+
+    PreparedGraphRestore prepared;
+
+    forEachXmlChildElementWithTagName(xml, e, "FILTER")
+    {
+        ++prepared.requestedNodeCount;
+
+        String errorMessage;
+        auto processor = createProcessorForXmlNode(*e, errorMessage);
+        if (!processor)
+            continue;
+
+        PreparedGraphNode node;
+        node.nodeId = AudioProcessorGraph::NodeID((uint32)e->getIntAttribute("uid"));
+        node.processor = std::move(processor);
+        node.x = e->getDoubleAttribute("x");
+        node.y = e->getDoubleAttribute("y");
+        node.uiLastX = e->getIntAttribute("uiLastX");
+        node.uiLastY = e->getIntAttribute("uiLastY");
+        node.windowOpen = e->getBoolAttribute("windowOpen", false);
+        node.nodeWidth = e->getIntAttribute("nodeWidth", 0);
+        node.nodeHeight = e->getIntAttribute("nodeHeight", 0);
+        node.oscMidiAddress = e->getStringAttribute("oscMIDIAddress");
+
+        prepared.nodes.push_back(std::move(node));
+    }
+
+    forEachXmlChildElementWithTagName(xml, e, "CONNECTION")
+    {
+        auto srcFilter = AudioProcessorGraph::NodeID((uint32)e->getIntAttribute("srcFilter"));
+        auto srcChannel = e->getIntAttribute("srcChannel");
+        auto dstFilter = AudioProcessorGraph::NodeID((uint32)e->getIntAttribute("dstFilter"));
+        auto dstChannel = e->getIntAttribute("dstChannel");
+
+        prepared.connections.push_back({{srcFilter, srcChannel}, {dstFilter, dstChannel}});
+    }
+
+    return prepared;
+}
+
+void FilterGraph::commitPreparedRestore(PreparedGraphRestore&& prepared, OscMappingManager& oscManager)
+{
+    std::vector<std::pair<AudioProcessorGraph::NodeID, String>> oscRegistrations;
+    oscRegistrations.reserve(prepared.nodes.size());
+
+    for (const auto& preparedNode : prepared.nodes)
+    {
+        if (!preparedNode.oscMidiAddress.isEmpty())
+            oscRegistrations.push_back({preparedNode.nodeId, preparedNode.oscMidiAddress});
+    }
+
+    int addedNodeCount = 0;
+    int failedNodeCount = 0;
+    int addedConnectionCount = 0;
+    int failedConnectionCount = 0;
+    size_t beforeRemove = 0;
+    size_t afterRemove = 0;
+
     {
         const juce::ScopedLock sl(graph.getCallbackLock());
         graph.clear();
         createInfrastructureNodes();
-    }
 
-    int nodeCount = 0;
-    forEachXmlChildElementWithTagName(xml, e, "FILTER")
-    {
-        createNodeFromXml(*e, oscManager);
-        nodeCount++;
-    }
-
-    int connectionCount = 0;
-    forEachXmlChildElementWithTagName(xml, e2, "CONNECTION")
-    {
-        auto srcFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("srcFilter"));
-        auto srcChannel = e2->getIntAttribute("srcChannel");
-        auto dstFilter = AudioProcessorGraph::NodeID((uint32)e2->getIntAttribute("dstFilter"));
-        auto dstChannel = e2->getIntAttribute("dstChannel");
-
-        spdlog::debug("[restoreFromXml] Adding connection: src={}/{} -> dst={}/{}", (int)srcFilter.uid, srcChannel,
-                      (int)dstFilter.uid, dstChannel);
-
-        AudioProcessorGraph::Connection conn{{srcFilter, srcChannel}, {dstFilter, dstChannel}};
-        bool success = false;
+        for (auto& preparedNode : prepared.nodes)
         {
-            const juce::ScopedLock sl(graph.getCallbackLock());
-            success = graph.addConnection(conn);
+            auto node = graph.addNode(std::move(preparedNode.processor), preparedNode.nodeId);
+            if (node)
+                ++addedNodeCount;
+            else
+                ++failedNodeCount;
         }
-        spdlog::debug("[restoreFromXml] Connection add result: {}", success ? "SUCCESS" : "FAILED");
 
-        connectionCount++;
-    }
+        for (const auto& connection : prepared.connections)
+        {
+            if (graph.addConnection(connection))
+                ++addedConnectionCount;
+            else
+                ++failedConnectionCount;
+        }
 
-    spdlog::info("[FilterGraph::restoreFromXml] Loaded {} nodes, {} connections from XML", nodeCount, connectionCount);
-
-    size_t beforeRemove = 0;
-    size_t afterRemove = 0;
-    {
-        const juce::ScopedLock sl(graph.getCallbackLock());
         beforeRemove = graph.getConnections().size();
         graph.removeIllegalConnections();
         afterRemove = graph.getConnections().size();
     }
 
+    for (const auto& preparedNode : prepared.nodes)
+    {
+        auto node = graph.getNodeForId(preparedNode.nodeId);
+        if (!node)
+            continue;
+
+        node->properties.set("x", preparedNode.x);
+        node->properties.set("y", preparedNode.y);
+        node->properties.set("uiLastX", preparedNode.uiLastX);
+        node->properties.set("uiLastY", preparedNode.uiLastY);
+        node->properties.set("windowOpen", preparedNode.windowOpen);
+        node->properties.set("nodeWidth", preparedNode.nodeWidth);
+        node->properties.set("nodeHeight", preparedNode.nodeHeight);
+    }
+
+    for (const auto& registration : oscRegistrations)
+    {
+        auto node = graph.getNodeForId(registration.first);
+        if (!node)
+            continue;
+
+        if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))
+            oscManager.registerMIDIProcessor(registration.second, bypassable);
+    }
+
+    spdlog::info("[FilterGraph::restoreFromXml] Prepared {} requested nodes, committed {} nodes ({} failed), {} "
+                 "connections ({} failed)",
+                 prepared.requestedNodeCount, addedNodeCount, failedNodeCount, addedConnectionCount,
+                 failedConnectionCount);
     spdlog::info("[FilterGraph::restoreFromXml] After removeIllegalConnections: {} -> {} connections", beforeRemove,
                  afterRemove);
 
     changed();
+}
+
+void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager)
+{
+    auto prepared = prepareRestoreFromXml(xml, oscManager);
+    commitPreparedRestore(std::move(prepared), oscManager);
 }

@@ -324,6 +324,78 @@ TEST_CASE("Plugin scanner IPC uses bounded named-pipe waits", "[rt][scanner]")
     REQUIRE(source.find("FlushFileBuffers") == std::string::npos);
 }
 
+TEST_CASE("FilterGraph restore prepares nodes before bounded callback-lock commit", "[rt][graph-restore]")
+{
+    const auto header = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/FilterGraph.h");
+    const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/FilterGraph.cpp");
+
+    REQUIRE(header.find("PreparedGraphRestore") != std::string::npos);
+    REQUIRE(header.find("prepareRestoreFromXml") != std::string::npos);
+    REQUIRE(header.find("commitPreparedRestore") != std::string::npos);
+
+    const auto helperStart =
+        source.find("std::unique_ptr<AudioProcessor> FilterGraph::createProcessorForXmlNode");
+    const auto prepareStart = source.find("FilterGraph::PreparedGraphRestore FilterGraph::prepareRestoreFromXml");
+    const auto commitStart = source.find("void FilterGraph::commitPreparedRestore");
+    const auto restoreStart = source.find("void FilterGraph::restoreFromXml");
+
+    REQUIRE(helperStart != std::string::npos);
+    REQUIRE(prepareStart != std::string::npos);
+    REQUIRE(commitStart != std::string::npos);
+    REQUIRE(restoreStart != std::string::npos);
+    REQUIRE(helperStart < prepareStart);
+    REQUIRE(prepareStart < commitStart);
+    REQUIRE(commitStart < restoreStart);
+
+    const auto helperBody = source.substr(helperStart, prepareStart - helperStart);
+    REQUIRE(helperBody.find("setStateInformation") != std::string::npos);
+    REQUIRE(helperBody.find("graph.addNode") == std::string::npos);
+    REQUIRE(helperBody.find("graph.clear") == std::string::npos);
+
+    const auto prepareBody = source.substr(prepareStart, commitStart - prepareStart);
+    REQUIRE(prepareBody.find("createProcessorForXmlNode") != std::string::npos);
+    REQUIRE(prepareBody.find("graph.addNode") == std::string::npos);
+    REQUIRE(prepareBody.find("graph.clear") == std::string::npos);
+
+    const auto commitBody = source.substr(commitStart, restoreStart - commitStart);
+    REQUIRE(commitBody.find("setStateInformation") == std::string::npos);
+
+    const auto lockStart = commitBody.find("const juce::ScopedLock sl(graph.getCallbackLock())");
+    REQUIRE(lockStart != std::string::npos);
+
+    const auto clearPos = commitBody.find("graph.clear()", lockStart);
+    const auto infraPos = commitBody.find("createInfrastructureNodes()", lockStart);
+    const auto addNodePos = commitBody.find("graph.addNode", lockStart);
+    const auto addConnectionPos = commitBody.find("graph.addConnection", lockStart);
+    const auto removeIllegalPos = commitBody.find("graph.removeIllegalConnections()", lockStart);
+    const auto propertiesPos = commitBody.find("node->properties.set", removeIllegalPos);
+    const auto oscRegistrationPos = commitBody.find("registerMIDIProcessor", removeIllegalPos);
+    const auto changedPos = commitBody.find("changed();");
+
+    REQUIRE(clearPos != std::string::npos);
+    REQUIRE(infraPos != std::string::npos);
+    REQUIRE(addNodePos != std::string::npos);
+    REQUIRE(addConnectionPos != std::string::npos);
+    REQUIRE(removeIllegalPos != std::string::npos);
+    REQUIRE(propertiesPos != std::string::npos);
+    REQUIRE(oscRegistrationPos != std::string::npos);
+    REQUIRE(changedPos != std::string::npos);
+
+    REQUIRE(clearPos < infraPos);
+    REQUIRE(infraPos < addNodePos);
+    REQUIRE(addNodePos < addConnectionPos);
+    REQUIRE(addConnectionPos < removeIllegalPos);
+    REQUIRE(removeIllegalPos < propertiesPos);
+    REQUIRE(propertiesPos < oscRegistrationPos);
+    REQUIRE(oscRegistrationPos < changedPos);
+
+    const auto restoreBody = source.substr(restoreStart);
+    REQUIRE(restoreBody.find("prepareRestoreFromXml") != std::string::npos);
+    REQUIRE(restoreBody.find("commitPreparedRestore") != std::string::npos);
+    REQUIRE(restoreBody.find("graph.clear()") == std::string::npos);
+    REQUIRE(restoreBody.find("graph.addNode") == std::string::npos);
+}
+
 TEST_CASE("MidiMappingManager callback defers app work through FIFO", "[rt][midi][mapping]")
 {
     const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/MidiMappingManager.cpp");

@@ -38,6 +38,8 @@
 #include "SafetyLimiter.h"
 
 #include <JuceHeader.h>
+#include <memory>
+#include <vector>
 
 using juce::uint32;
 
@@ -227,6 +229,9 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     //==============================================================================
 
     XmlElement* createXml(const OscMappingManager& oscManager) const;
+
+    /// Restores a graph by preparing plugin instances and state off-graph, then
+    /// committing clear/add/connect/remove-illegal under one callback-lock window.
     void restoreFromXml(const XmlElement& xml, OscMappingManager& oscManager);
 
     //==============================================================================
@@ -262,11 +267,34 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     uint32 lastUID;
     uint32 getNextUID() throw();
 
+    struct PreparedGraphNode
+    {
+        AudioProcessorGraph::NodeID nodeId;
+        std::unique_ptr<AudioProcessor> processor;
+        double x = 0.0;
+        double y = 0.0;
+        int uiLastX = 0;
+        int uiLastY = 0;
+        bool windowOpen = false;
+        int nodeWidth = 0;
+        int nodeHeight = 0;
+        String oscMidiAddress;
+    };
+
+    struct PreparedGraphRestore
+    {
+        std::vector<PreparedGraphNode> nodes;
+        std::vector<AudioProcessorGraph::Connection> connections;
+        int requestedNodeCount = 0;
+    };
+
     /// Recreates hidden infrastructure processors (SafetyLimiter/CrossfadeMixer)
     /// after graph resets and refreshes cached raw pointers.
     void createInfrastructureNodes();
 
-    void createNodeFromXml(const XmlElement& xml, OscMappingManager& oscManager);
+    PreparedGraphRestore prepareRestoreFromXml(const XmlElement& xml, OscMappingManager& oscManager);
+    void commitPreparedRestore(PreparedGraphRestore&& prepared, OscMappingManager& oscManager);
+    std::unique_ptr<AudioProcessor> createProcessorForXmlNode(const XmlElement& xml, String& errorMessage);
 
     FilterGraph(const FilterGraph&);
     const FilterGraph& operator=(const FilterGraph&);
