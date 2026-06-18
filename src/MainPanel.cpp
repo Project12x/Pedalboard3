@@ -784,6 +784,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Wire the lock-free FIFO so MIDI/OSC mapping parameter changes are
     // deferred from the audio thread to this timer on the message thread.
     Mapping::setParamFifo(&midiAppFifo);
+    refreshMidiMappingRealtimeSettings();
 
     // Load master gain state from settings and sync footer sliders
     MasterGainState::getInstance().loadFromSettings();
@@ -2666,6 +2667,16 @@ void MainPanel::invokeCommandFromOtherThread(CommandID commandID)
 void MainPanel::updateTempoFromOtherThread(double tempo)
 {
     midiAppFifo.writeTempo(tempo);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::refreshMidiMappingRealtimeSettings()
+{
+    if (auto* midiManager = getMidiMappingManager())
+    {
+        midiManager->setAppFifo(&midiAppFifo);
+        midiManager->refreshRealtimeSettingsFromSettings();
+    }
 }
 
 //------------------------------------------------------------------------------

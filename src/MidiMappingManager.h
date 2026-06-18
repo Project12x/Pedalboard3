@@ -26,6 +26,7 @@
 
 #include <map>
 
+class MidiAppFifo;
 class MidiMappingManager;
 
 //------------------------------------------------------------------------------
@@ -163,6 +164,15 @@ class MidiMappingManager
 	///	Called when a MIDI CC message is received.
 	void midiCcReceived(const MidiMessage& message, double secondsSinceStart);
 
+	///	Sets the FIFO used for app command, tempo, and patch-change messages.
+	void setAppFifo(MidiAppFifo* fifo) noexcept;
+	///	Refreshes callback-safe MIDI preference flags from SettingsManager.
+	void refreshRealtimeSettingsFromSettings();
+	///	Sets whether MMC transport messages should produce command tokens.
+	void setMmcTransportEnabled(bool enabled) noexcept;
+	///	Sets whether MIDI program changes should produce patch-change tokens.
+	void setMidiProgramChangeEnabled(bool enabled) noexcept;
+
 	///	Registers a MidiMapping with the manager.
 	void registerMapping(int midiCc, MidiMapping *mapping);
 	///	Unregisters a MidiMapping with the manager.
@@ -217,8 +227,12 @@ class MidiMappingManager
 
 	///	Holds any MIDI CC->ApplicationCommand mappings.
 	std::multimap<int, MidiAppMapping *> appMappings;
-	///	Holds a copy of the app's ApplicationCommandManager so we can invoke ApplicationCommands.
-	ApplicationCommandManager *appManager;
+	///	FIFO drained by MainPanel on the message thread for app-facing MIDI work.
+	std::atomic<MidiAppFifo*> appFifo{nullptr};
+	///	Cached message-thread setting for MMC transport handling.
+	std::atomic<bool> mmcTransportEnabled{false};
+	///	Cached message-thread setting for program-change patch switching.
+	std::atomic<bool> midiProgramChangeEnabled{false};
 
 	///	Used for tap tempo.
 	TapTempoHelper tapHelper;

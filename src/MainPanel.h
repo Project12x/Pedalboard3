@@ -373,6 +373,8 @@ class MainPanel : public Component,
     void revealScratchTake(const ScratchTake& take);
     void refreshScratchControls();
     ScratchRecorderStatus getScratchRecorderStatus() const;
+    /// Refreshes MIDI mapping settings cached for callback-safe dispatch.
+    void refreshMidiMappingRealtimeSettings();
 
     ///	Toggles Stage Mode (fullscreen performance view).
     void toggleStageMode();

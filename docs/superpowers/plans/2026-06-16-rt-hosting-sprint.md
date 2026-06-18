@@ -100,9 +100,10 @@ cmake --build build --config Debug --target Pedalboard3
 
 Latest focused results:
 
-- `[rt]`: 3,158 assertions in 12 test cases.
-- `[midi]`: 3,871 assertions in 23 test cases.
+- `[rt]`: 3,170 assertions in 13 test cases.
+- `[midi]`: 3,883 assertions in 24 test cases.
 - `[midi][fifo]`: 3,323 assertions in 6 test cases.
+- `[rt][midi][mapping]`: 12 assertions in 1 test case.
 - `[rt][bypassable][midi]`: 37 assertions in 3 test cases.
 - `[scanner]`: 17 assertions in 2 test cases.
 - `[nam]`: 259 assertions in 34 test cases.
@@ -116,8 +117,8 @@ Earlier in the same sprint pass, these targeted filters also passed before commi
 
 Known remaining sprint work:
 
-- Move MIDI mapping command/settings work fully out of callback-sensitive paths.
 - Surface `MidiAppFifo` diagnostics in UI/dev telemetry if useful; the RT-safe FIFO core now reports drops and max depth.
+- Replace the remaining message-thread legacy parameter fallback that still calls deprecated `processor->setParameter`.
 - Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
 - Add ScratchRecorder stop/restart/writer-failure stress coverage.
 - Add stronger hostile-plugin/end-to-end graph restore and scanner fake-server tests.
@@ -383,7 +384,7 @@ Files:
 Current evidence:
 
 - `MidiAppFifo` previously used `SpinLock::ScopedLockType` in push/pop paths and dropped overflow silently. This slice replaces it with a bounded atomic ring and exposes drop/max-depth diagnostics.
-- `MidiMappingManager::midiCcReceived` calls `appManager->getFirstCommandTarget`, performs dynamic casts, and reads settings through `SettingsManager`.
+- `MidiMappingManager::midiCcReceived` previously called `appManager->getFirstCommandTarget`, performed dynamic casts, and read settings through `SettingsManager`. This slice defers app work through `MidiAppFifo` and caches MMC/program-change settings in atomics refreshed on the message thread.
 - Parameter access uses `plugin->getParameters()[parameterIndex]` without bounds.
 - `MainPanel.cpp` uses deprecated `processor->setParameter`.
 
@@ -707,7 +708,7 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 - [ ] Callback bounds reject counters are visible in tests.
 - [x] Virtual MIDI has no audio-thread logging.
 - [x] MIDI FIFO overflow is observable through counters and no producer-side `SpinLock`.
-- [ ] MIDI mapping uses cached realtime-safe state and deferred app commands.
+- [x] MIDI mapping uses cached realtime-safe state and deferred app commands.
 - [x] IR filter updates are not allocated in `processBlock`.
 - [x] Safety limiter DC blocker and gain behavior are documented and tested.
 - [x] NAM model handoff avoids unsynchronized `unique_ptr` sharing and audio-thread destruction.

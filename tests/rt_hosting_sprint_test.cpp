@@ -323,3 +323,25 @@ TEST_CASE("Plugin scanner IPC uses bounded named-pipe waits", "[rt][scanner]")
     REQUIRE(source.find("SetCommTimeouts") == std::string::npos);
     REQUIRE(source.find("FlushFileBuffers") == std::string::npos);
 }
+
+TEST_CASE("MidiMappingManager callback defers app work through FIFO", "[rt][midi][mapping]")
+{
+    const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/MidiMappingManager.cpp");
+
+    const auto callbackStart = source.find("void MidiMappingManager::midiCcReceived");
+    REQUIRE(callbackStart != std::string::npos);
+    const auto nextFunction = source.find("void MidiMappingManager::setAppFifo", callbackStart);
+    REQUIRE(nextFunction != std::string::npos);
+
+    const auto callbackBody = source.substr(callbackStart, nextFunction - callbackStart);
+    REQUIRE(callbackBody.find("SettingsManager::getInstance()") == std::string::npos);
+    REQUIRE(callbackBody.find("getFirstCommandTarget") == std::string::npos);
+    REQUIRE(callbackBody.find("dynamic_cast<MainPanel*>") == std::string::npos);
+    REQUIRE(callbackBody.find("invokeCommandFromOtherThread") == std::string::npos);
+    REQUIRE(callbackBody.find("updateTempoFromOtherThread") == std::string::npos);
+    REQUIRE(callbackBody.find("switchPatchFromProgramChange") == std::string::npos);
+
+    REQUIRE(callbackBody.find("writeID") != std::string::npos);
+    REQUIRE(callbackBody.find("writeTempo") != std::string::npos);
+    REQUIRE(callbackBody.find("writePatchChange") != std::string::npos);
+}

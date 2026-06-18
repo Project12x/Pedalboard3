@@ -22,6 +22,7 @@
 
 #include "LogFile.h"
 #include "MainPanel.h"
+#include "MidiAppFifo.h"
 #include "SettingsManager.h"
 
 #include <spdlog/spdlog.h>
@@ -195,8 +196,10 @@ XmlElement* MidiAppMapping::getXml() const
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-MidiMappingManager::MidiMappingManager(ApplicationCommandManager* manager) : appManager(manager)
+MidiMappingManager::MidiMappingManager(ApplicationCommandManager* manager)
 {
+    juce::ignoreUnused(manager);
+    refreshRealtimeSettingsFromSettings();
 }
 
 //------------------------------------------------------------------------------
@@ -233,6 +236,7 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
 
     if (message.isController())
     {
+        auto* fifo = appFifo.load(std::memory_order_relaxed);
         int mappingChan;
         multimap<int, MidiMapping*>::iterator it;
         multimap<int, MidiAppMapping*>::iterator it2;
@@ -263,21 +267,19 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
             for (it2 = appMappings.lower_bound(cc); it2 != appMappings.upper_bound(cc); ++it2)
             {
                 CommandID id = it2->second->getId();
-                MainPanel* panel =
-                    dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
-                if (panel)
+                if (fifo)
                 {
                     if (id != MainPanel::TransportTapTempo)
                     {
-                        panel->invokeCommandFromOtherThread(id);
+                        fifo->writeID(id);
                     }
                     else
                     {
                         double tempo = tapHelper.updateTempo(secondsSinceStart);
 
                         if (tempo > 0.0)
-                            panel->updateTempoFromOtherThread(tempo);
+                            fifo->writeTempo(tempo);
                     }
                 }
             }
@@ -285,10 +287,10 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
     }
     else if (message.isMidiMachineControlMessage())
     {
-        if (SettingsManager::getInstance().getBool("mmcTransport", false))
+        if (mmcTransportEnabled.load(std::memory_order_relaxed))
         {
+            auto* fifo = appFifo.load(std::memory_order_relaxed);
             CommandID id = -1;
-            MainPanel* panel = dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
 
             switch (message.getMidiMachineControlCommand())
             {
@@ -307,23 +309,45 @@ void MidiMappingManager::midiCcReceived(const MidiMessage& message, double secon
             default:
                 break;
             }
-            if ((id > -1) && panel)
-                panel->invokeCommandFromOtherThread(id);
+            if ((id > -1) && fifo)
+                fifo->writeID(id);
         }
     }
     else if (message.isProgramChange())
     {
-        if (SettingsManager::getInstance().getBool("midiProgramChange", false))
+        if (midiProgramChangeEnabled.load(std::memory_order_relaxed))
         {
-            int newPatch;
-            MainPanel* panel = dynamic_cast<MainPanel*>(appManager->getFirstCommandTarget(MainPanel::TransportPlay));
+            auto* fifo = appFifo.load(std::memory_order_relaxed);
 
-            newPatch = message.getProgramChangeNumber();
-
-            if (panel)
-                panel->switchPatchFromProgramChange(newPatch);
+            if (fifo)
+                fifo->writePatchChange(message.getProgramChangeNumber());
         }
     }
+}
+
+//------------------------------------------------------------------------------
+void MidiMappingManager::setAppFifo(MidiAppFifo* fifo) noexcept
+{
+    appFifo.store(fifo, std::memory_order_relaxed);
+}
+
+//------------------------------------------------------------------------------
+void MidiMappingManager::refreshRealtimeSettingsFromSettings()
+{
+    setMmcTransportEnabled(SettingsManager::getInstance().getBool("mmcTransport", false));
+    setMidiProgramChangeEnabled(SettingsManager::getInstance().getBool("midiProgramChange", false));
+}
+
+//------------------------------------------------------------------------------
+void MidiMappingManager::setMmcTransportEnabled(bool enabled) noexcept
+{
+    mmcTransportEnabled.store(enabled, std::memory_order_relaxed);
+}
+
+//------------------------------------------------------------------------------
+void MidiMappingManager::setMidiProgramChangeEnabled(bool enabled) noexcept
+{
+    midiProgramChangeEnabled.store(enabled, std::memory_order_relaxed);
 }
 
 //------------------------------------------------------------------------------

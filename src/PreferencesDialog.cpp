@@ -626,6 +626,8 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
         //[UserButtonCode_midiProgramChangeButton] -- add your button handler code here..
 
         SettingsManager::getInstance().setValue("midiProgramChange", midiProgramChangeButton->getToggleState());
+        if (mainPanel)
+            mainPanel->refreshMidiMappingRealtimeSettings();
 
         //[/UserButtonCode_midiProgramChangeButton]
     }
@@ -634,6 +636,8 @@ void PreferencesDialog::buttonClicked(Button* buttonThatWasClicked)
         //[UserButtonCode_mmcTransportButton] -- add your button handler code here..
 
         SettingsManager::getInstance().setValue("mmcTransport", mmcTransportButton->getToggleState());
+        if (mainPanel)
+            mainPanel->refreshMidiMappingRealtimeSettings();
 
         //[/UserButtonCode_mmcTransportButton]
     }
