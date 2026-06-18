@@ -7,6 +7,7 @@ namespace
 constexpr int kWavBitDepth = 24;
 constexpr int kThreadedWriterBufferSamples = 32768;
 constexpr int kWriterThreadStopTimeoutMs = 1000;
+constexpr juce::uint32 kActiveWriteDrainWarnMs = 250;
 constexpr size_t kMaxRecentTakes = 8;
 
 ScratchRecorderState loadState(const std::atomic<int>& state) noexcept
@@ -163,6 +164,7 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         rawSink.reset();
         wetSink.reset();
 
+        writerFailureCount.fetch_add(1, std::memory_order_relaxed);
         currentTake.failureReason = "Could not create scratch WAV writers";
         currentTake.writeMetadata();
         addRecentTake(currentTake);
@@ -242,6 +244,7 @@ void ScratchRecorder::writeRawBlock(const float* const* inputChannelData, int nu
     if (sink == nullptr || !sink->write(inputChannelData, numInputChannels, numSamples))
     {
         writeError.store(true, std::memory_order_release);
+        writerFailureCount.fetch_add(1, std::memory_order_relaxed);
     }
     else
     {
@@ -260,6 +263,7 @@ void ScratchRecorder::writeWetBlock(float* const* outputChannelData, int numOutp
     if (sink == nullptr || !sink->write(const_cast<const float* const*>(outputChannelData), numOutputChannels, numSamples))
     {
         writeError.store(true, std::memory_order_release);
+        writerFailureCount.fetch_add(1, std::memory_order_relaxed);
     }
     else
     {
@@ -278,6 +282,10 @@ ScratchRecorderStatus ScratchRecorder::getStatus() const
     copy.rawSamplesWritten = rawSamplesWritten.load(std::memory_order_relaxed);
     copy.wetSamplesWritten = wetSamplesWritten.load(std::memory_order_relaxed);
     copy.elapsedSamples = elapsedFromCounts(copy.rawSamplesWritten, copy.wetSamplesWritten);
+    copy.droppedBlocksAfterStop = droppedBlocksAfterStop.load(std::memory_order_relaxed);
+    copy.writerFailureCount = writerFailureCount.load(std::memory_order_relaxed);
+    copy.stopDrainTimeoutCount = stopDrainTimeoutCount.load(std::memory_order_relaxed);
+    copy.maxActiveAudioWrites = maxActiveAudioWrites.load(std::memory_order_relaxed);
     copy.scratchRoot = scratchRoot;
 
     if (copy.state == ScratchRecorderState::Recording)
@@ -345,8 +353,21 @@ void ScratchRecorder::finishStop()
 
     stopRequested.store(true, std::memory_order_release);
 
+    bool drainTimeoutRecorded = false;
+    const auto drainStart = juce::Time::getMillisecondCounter();
     while (activeAudioWrites.load(std::memory_order_acquire) > 0)
-        juce::Thread::yield();
+    {
+        if (!drainTimeoutRecorded &&
+            juce::Time::getMillisecondCounter() - drainStart >= kActiveWriteDrainWarnMs)
+        {
+            drainTimeoutRecorded = true;
+            stopDrainTimeoutCount.fetch_add(1, std::memory_order_relaxed);
+            writerFailureCount.fetch_add(1, std::memory_order_relaxed);
+            writeError.store(true, std::memory_order_release);
+        }
+
+        juce::Thread::sleep(1);
+    }
 
     const juce::ScopedLock lock(stateLock);
 
@@ -369,7 +390,9 @@ void ScratchRecorder::finishStop()
 
     currentTake.durationSamples = durationSamples;
 
-    if (hadWriteError && currentTake.failureReason.isEmpty())
+    if (drainTimeoutRecorded && currentTake.failureReason.isEmpty())
+        currentTake.failureReason = "Scratch capture stop waited too long for audio writes";
+    else if (hadWriteError && currentTake.failureReason.isEmpty())
         currentTake.failureReason = "Scratch capture write failed";
     else if (!countsMatch && currentTake.failureReason.isEmpty())
         currentTake.failureReason = "Scratch capture raw and wet sample counts did not match";
@@ -425,10 +448,15 @@ void ScratchRecorder::failStart(const juce::String& message)
 
 bool ScratchRecorder::beginAudioWrite() noexcept
 {
-    activeAudioWrites.fetch_add(1, std::memory_order_acq_rel);
+    const auto activeWrites = activeAudioWrites.fetch_add(1, std::memory_order_acq_rel) + 1;
+    updateMaxActiveAudioWrites(activeWrites);
 
-    if (!isRecording() || stopRequested.load(std::memory_order_acquire))
+    const bool stopInProgress = stopRequested.load(std::memory_order_acquire);
+    if (!isRecording() || stopInProgress)
     {
+        if (stopInProgress)
+            droppedBlocksAfterStop.fetch_add(1, std::memory_order_relaxed);
+
         endAudioWrite();
         return false;
     }
@@ -439,6 +467,18 @@ bool ScratchRecorder::beginAudioWrite() noexcept
 void ScratchRecorder::endAudioWrite() noexcept
 {
     activeAudioWrites.fetch_sub(1, std::memory_order_acq_rel);
+}
+
+void ScratchRecorder::updateMaxActiveAudioWrites(int activeWrites) noexcept
+{
+    auto previousMax = maxActiveAudioWrites.load(std::memory_order_relaxed);
+    while (activeWrites > previousMax &&
+           !maxActiveAudioWrites.compare_exchange_weak(previousMax,
+                                                       activeWrites,
+                                                       std::memory_order_relaxed,
+                                                       std::memory_order_relaxed))
+    {
+    }
 }
 
 void ScratchRecorder::addRecentTake(const ScratchTake& take)

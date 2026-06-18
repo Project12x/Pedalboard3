@@ -25,6 +25,10 @@ struct ScratchRecorderStatus
     uint64_t elapsedSamples = 0;
     uint64_t rawSamplesWritten = 0;
     uint64_t wetSamplesWritten = 0;
+    uint64_t droppedBlocksAfterStop = 0;
+    uint64_t writerFailureCount = 0;
+    uint64_t stopDrainTimeoutCount = 0;
+    int maxActiveAudioWrites = 0;
     juce::File scratchRoot;
     std::optional<ScratchTakeContext> armedContext;
     std::optional<ScratchTake> activeTake;
@@ -87,6 +91,7 @@ private:
     void failStart(const juce::String& message);
     bool beginAudioWrite() noexcept;
     void endAudioWrite() noexcept;
+    void updateMaxActiveAudioWrites(int activeWrites) noexcept;
     void addRecentTake(const ScratchTake& take);
 
     ScratchAudioSinkFactory& sinkFactory;
@@ -104,4 +109,8 @@ private:
     std::atomic<bool> stopRequested{false};
     std::atomic<bool> writeError{false};
     std::atomic<int> activeAudioWrites{0};
+    std::atomic<uint64_t> droppedBlocksAfterStop{0};
+    std::atomic<uint64_t> writerFailureCount{0};
+    std::atomic<uint64_t> stopDrainTimeoutCount{0};
+    std::atomic<int> maxActiveAudioWrites{0};
 };

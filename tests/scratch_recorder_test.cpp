@@ -7,6 +7,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 namespace
 {
 class ScopedTempDirectory
@@ -31,11 +35,31 @@ private:
     juce::File directory;
 };
 
+struct MemorySinkBehavior
+{
+    bool failOpen = false;
+    bool failWrites = false;
+    bool blockWrites = false;
+    juce::WaitableEvent enteredWrite;
+    juce::WaitableEvent releaseWrite;
+    std::atomic<bool> inWrite{false};
+    std::atomic<bool> closeWhileWriting{false};
+    std::atomic<uint64_t> samplesWritten{0};
+};
+
 class MemoryScratchSink final : public ScratchAudioSink
 {
 public:
+    explicit MemoryScratchSink(MemorySinkBehavior& behaviorToUse)
+        : behavior(behaviorToUse)
+    {
+    }
+
     bool open(const juce::File&, double, int channelsToUse, juce::TimeSliceThread&) override
     {
+        if (behavior.failOpen)
+            return false;
+
         channels = channelsToUse;
         opened = channelsToUse > 0;
         return opened;
@@ -50,30 +74,63 @@ public:
             if (data[channel] == nullptr)
                 return false;
 
+        if (behavior.failWrites)
+            return false;
+
+        if (behavior.blockWrites)
+        {
+            behavior.inWrite.store(true, std::memory_order_release);
+            behavior.enteredWrite.signal();
+            const auto released = behavior.releaseWrite.wait(2000);
+            behavior.inWrite.store(false, std::memory_order_release);
+            if (!released)
+                return false;
+        }
+
         samplesWritten += static_cast<uint64_t>(numSamples);
+        behavior.samplesWritten.store(samplesWritten, std::memory_order_release);
         channels = numChannels;
         return true;
     }
 
-    void close() override { opened = false; }
+    void close() override
+    {
+        if (behavior.inWrite.load(std::memory_order_acquire))
+            behavior.closeWhileWriting.store(true, std::memory_order_release);
+
+        opened = false;
+    }
+
     uint64_t getSamplesWritten() const noexcept override { return samplesWritten; }
 
     bool opened = false;
     int channels = 0;
     uint64_t samplesWritten = 0;
+    MemorySinkBehavior& behavior;
 };
 
 class MemorySinkFactory final : public ScratchAudioSinkFactory
 {
 public:
+    MemorySinkBehavior& behaviorForCreate(int index)
+    {
+        while (behaviors.size() <= static_cast<size_t>(index))
+            behaviors.push_back(std::make_unique<MemorySinkBehavior>());
+
+        return *behaviors[static_cast<size_t>(index)];
+    }
+
     std::unique_ptr<ScratchAudioSink> create() override
     {
-        auto sink = std::make_unique<MemoryScratchSink>();
+        auto& behavior = behaviorForCreate(createCount++);
+        auto sink = std::make_unique<MemoryScratchSink>(behavior);
         sinks.add(sink.get());
         return sink;
     }
 
     juce::Array<MemoryScratchSink*> sinks;
+    int createCount = 0;
+    std::vector<std::unique_ptr<MemorySinkBehavior>> behaviors;
 };
 }
 
@@ -557,4 +614,204 @@ TEST_CASE("ScratchRecorder reports null channel write failures without crashing"
     REQUIRE(status.lastTake.has_value());
     REQUIRE_FALSE(status.lastTake->complete);
     REQUIRE(status.lastTake->failureReason == "Scratch capture write failed");
+}
+
+TEST_CASE("ScratchRecorder restarts without writing to retired sinks", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchRestartTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Restart Test";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    float raw[4] = {0.1f, 0.2f, 0.3f, 0.4f};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
+    float wetR[4] = {0.9f, 1.0f, 0.9f, 0.8f};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    REQUIRE(recorder.start(context));
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    auto firstStatus = recorder.getStatus();
+    REQUIRE(firstStatus.state == ScratchRecorderState::Saved);
+    REQUIRE(firstStatus.lastTake.has_value());
+    const auto firstTakeId = firstStatus.lastTake->takeId;
+
+    REQUIRE(recorder.start(context));
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Saved);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE(status.lastTake->takeId != firstTakeId);
+    REQUIRE(status.recentTakes.size() == 2);
+    REQUIRE(status.writerFailureCount == 0);
+    REQUIRE(status.droppedBlocksAfterStop == 0);
+    REQUIRE(status.maxActiveAudioWrites >= 1);
+
+    REQUIRE(factory.behaviorForCreate(0).samplesWritten.load(std::memory_order_acquire) == 4);
+    REQUIRE(factory.behaviorForCreate(1).samplesWritten.load(std::memory_order_acquire) == 4);
+    REQUIRE(factory.behaviorForCreate(2).samplesWritten.load(std::memory_order_acquire) == 4);
+    REQUIRE(factory.behaviorForCreate(3).samplesWritten.load(std::memory_order_acquire) == 4);
+}
+
+TEST_CASE("ScratchRecorder counts blocks dropped after stop is requested", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchDropAfterStopTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Drop After Stop";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    float raw[4] = {};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {};
+    float wetR[4] = {};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.requestStop();
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.droppedBlocksAfterStop == 2);
+    REQUIRE(status.writerFailureCount == 0);
+    REQUIRE(status.rawSamplesWritten == 0);
+    REQUIRE(status.wetSamplesWritten == 0);
+    REQUIRE(factory.behaviorForCreate(0).samplesWritten.load(std::memory_order_acquire) == 0);
+    REQUIRE(factory.behaviorForCreate(1).samplesWritten.load(std::memory_order_acquire) == 0);
+}
+
+TEST_CASE("ScratchRecorder reports writer open failure diagnostics", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchOpenFailureTest");
+    MemorySinkFactory factory;
+    factory.behaviorForCreate(0).failOpen = true;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Open Failure";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE_FALSE(recorder.start(context));
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Failed);
+    REQUIRE(status.writerFailureCount == 1);
+    REQUIRE(status.message == "Could not create scratch WAV writers");
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE_FALSE(status.lastTake->complete);
+}
+
+TEST_CASE("ScratchRecorder reports writer write failure diagnostics", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchWriteFailureTest");
+    MemorySinkFactory factory;
+    factory.behaviorForCreate(0).failWrites = true;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Write Failure";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    float raw[4] = {};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {};
+    float wetR[4] = {};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    recorder.writeRawBlock(rawPtrs, 1, 4);
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Failed);
+    REQUIRE(status.writerFailureCount == 1);
+    REQUIRE(status.rawSamplesWritten == 0);
+    REQUIRE(status.wetSamplesWritten == 4);
+    REQUIRE(status.lastTake.has_value());
+    REQUIRE_FALSE(status.lastTake->complete);
+    REQUIRE(status.lastTake->failureReason == "Scratch capture write failed");
+}
+
+TEST_CASE("ScratchRecorder waits for in-flight audio writes before closing sinks", "[scratch]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchInflightStopTest");
+    MemorySinkFactory factory;
+    auto& rawBehavior = factory.behaviorForCreate(0);
+    rawBehavior.blockWrites = true;
+    ScratchRecorder recorder(factory);
+
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.patchName = "Inflight Stop";
+    context.sampleRate = 48000.0;
+    context.rawChannelCount = 1;
+    context.wetChannelCount = 2;
+
+    REQUIRE(recorder.start(context));
+
+    float raw[4] = {};
+    const float* rawPtrs[1] = {raw};
+    float wetL[4] = {};
+    float wetR[4] = {};
+    float* wetPtrs[2] = {wetL, wetR};
+
+    std::thread rawWriter([&recorder, &rawPtrs]
+    {
+        recorder.writeRawBlock(rawPtrs, 1, 4);
+    });
+
+    REQUIRE(rawBehavior.enteredWrite.wait(2000));
+
+    recorder.writeWetBlock(wetPtrs, 2, 4);
+    recorder.requestStop();
+
+    std::thread releaseWriter([&rawBehavior]
+    {
+        juce::Thread::sleep(25);
+        rawBehavior.releaseWrite.signal();
+    });
+
+    recorder.finishPendingStopForTests();
+    rawWriter.join();
+    releaseWriter.join();
+
+    const auto status = recorder.getStatus();
+    REQUIRE(status.state == ScratchRecorderState::Saved);
+    REQUIRE(status.rawSamplesWritten == 4);
+    REQUIRE(status.wetSamplesWritten == 4);
+    REQUIRE(status.maxActiveAudioWrites >= 2);
+    REQUIRE(status.stopDrainTimeoutCount == 0);
+    REQUIRE(status.writerFailureCount == 0);
+    REQUIRE_FALSE(rawBehavior.closeWhileWriting.load(std::memory_order_acquire));
 }
