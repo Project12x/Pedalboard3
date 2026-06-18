@@ -737,6 +737,51 @@ TEST_CASE("MidiAppFifo CommandID FIFO", "[midi][fifo][unit]")
     }
 }
 
+TEST_CASE("MidiAppFifo exposes overflow diagnostics", "[midi][fifo][rt]")
+{
+    MidiAppFifo fifo;
+    const int capacity = MidiAppFifo::getCapacity();
+
+    for (int i = 0; i < capacity; ++i)
+        REQUIRE(fifo.writeID(1000 + i));
+
+    REQUIRE(fifo.getNumWaitingID() == capacity);
+    REQUIRE(fifo.getDroppedEventCount() == 0);
+    REQUIRE(fifo.getMaxDepth() == capacity);
+    REQUIRE(fifo.getLastOverflowTick() == 0);
+
+    REQUIRE_FALSE(fifo.writeID(2000));
+    REQUIRE(fifo.getNumWaitingID() == capacity);
+    REQUIRE(fifo.getDroppedEventCount() == 1);
+    REQUIRE(fifo.getLastOverflowTick() > 0);
+
+    for (int i = 0; i < capacity; ++i)
+        REQUIRE(fifo.readID() == 1000 + i);
+}
+
+TEST_CASE("MidiAppFifo resetDiagnostics keeps queued events intact", "[midi][fifo][rt]")
+{
+    MidiAppFifo fifo;
+    const int capacity = MidiAppFifo::getCapacity();
+
+    for (int i = 0; i < capacity; ++i)
+        REQUIRE(fifo.writeParamChange(nullptr, static_cast<uint32_t>(i), i, 0.5f));
+
+    REQUIRE_FALSE(fifo.writeParamChange(nullptr, 9999, 1, 0.25f));
+    REQUIRE(fifo.getDroppedEventCount() == 1);
+    REQUIRE(fifo.getMaxDepth() == capacity);
+
+    fifo.resetDiagnostics();
+
+    REQUIRE(fifo.getDroppedEventCount() == 0);
+    REQUIRE(fifo.getMaxDepth() == fifo.getNumWaitingParamChange());
+    REQUIRE(fifo.getLastOverflowTick() == 0);
+
+    MidiAppFifo::PendingParamChange out{};
+    REQUIRE(fifo.readParamChange(out));
+    REQUIRE(out.pluginId == 0);
+}
+
 TEST_CASE("MidiAppFifo Tempo FIFO", "[midi][fifo][unit]")
 {
     MidiAppFifo fifo;

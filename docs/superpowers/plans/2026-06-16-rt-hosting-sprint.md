@@ -100,7 +100,9 @@ cmake --build build --config Debug --target Pedalboard3
 
 Latest focused results:
 
-- `[rt]`: 70 assertions in 10 test cases.
+- `[rt]`: 3,158 assertions in 12 test cases.
+- `[midi]`: 3,871 assertions in 23 test cases.
+- `[midi][fifo]`: 3,323 assertions in 6 test cases.
 - `[rt][bypassable][midi]`: 37 assertions in 3 test cases.
 - `[scanner]`: 17 assertions in 2 test cases.
 - `[nam]`: 259 assertions in 34 test cases.
@@ -114,8 +116,8 @@ Earlier in the same sprint pass, these targeted filters also passed before commi
 
 Known remaining sprint work:
 
-- Replace or harden `MidiAppFifo` locking and expose overflow counters.
 - Move MIDI mapping command/settings work fully out of callback-sensitive paths.
+- Surface `MidiAppFifo` diagnostics in UI/dev telemetry if useful; the RT-safe FIFO core now reports drops and max depth.
 - Broaden host MIDI routing coverage if future graph nodes need the same broadcast-preservation contract outside `BypassableInstance`.
 - Add ScratchRecorder stop/restart/writer-failure stress coverage.
 - Add stronger hostile-plugin/end-to-end graph restore and scanner fake-server tests.
@@ -380,15 +382,14 @@ Files:
 
 Current evidence:
 
-- `MidiAppFifo` uses `SpinLock::ScopedLockType` in push/pop paths.
-- Overflow drops are not exposed through counters.
+- `MidiAppFifo` previously used `SpinLock::ScopedLockType` in push/pop paths and dropped overflow silently. This slice replaces it with a bounded atomic ring and exposes drop/max-depth diagnostics.
 - `MidiMappingManager::midiCcReceived` calls `appManager->getFirstCommandTarget`, performs dynamic casts, and reads settings through `SettingsManager`.
 - Parameter access uses `plugin->getParameters()[parameterIndex]` without bounds.
 - `MainPanel.cpp` uses deprecated `processor->setParameter`.
 
 Implementation:
 
-1. Replace `MidiAppFifo` locking with `juce::AbstractFifo` plus fixed arrays, or a local single-producer/single-consumer ring buffer.
+1. Replace `MidiAppFifo` locking with `juce::AbstractFifo` plus fixed arrays, or a local bounded atomic ring buffer.
 2. Add atomics for:
    - `droppedEvents`
    - `maxDepth`
@@ -705,6 +706,7 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 - [ ] Graph restore uses preparation plus bounded commit.
 - [ ] Callback bounds reject counters are visible in tests.
 - [x] Virtual MIDI has no audio-thread logging.
+- [x] MIDI FIFO overflow is observable through counters and no producer-side `SpinLock`.
 - [ ] MIDI mapping uses cached realtime-safe state and deferred app commands.
 - [x] IR filter updates are not allocated in `processBlock`.
 - [x] Safety limiter DC blocker and gain behavior are documented and tested.

@@ -21,21 +21,8 @@
 #include "MidiAppFifo.h"
 
 //------------------------------------------------------------------------------
-MidiAppFifo::MidiAppFifo():
-idFifo(BufferSize),
-tempoFifo(BufferSize),
-patchChangeFifo(BufferSize),
-paramChangeFifo(BufferSize)
+MidiAppFifo::MidiAppFifo()
 {
-	int i;
-
-	for(i=0;i<BufferSize;++i)
-	{
-		idBuffer[i] = 0;
-		tempoBuffer[i] = 0;
-		patchChangeBuffer[i] = 0;
-		paramChangeBuffer[i] = {};
-	}
 }
 
 //------------------------------------------------------------------------------
@@ -45,139 +32,113 @@ MidiAppFifo::~MidiAppFifo()
 }
 
 //------------------------------------------------------------------------------
-void MidiAppFifo::writeID(CommandID id)
+bool MidiAppFifo::writeID(CommandID id)
 {
-	const juce::SpinLock::ScopedLockType sl(writeLock);
-	int start1, size1, start2, size2;
-
-    idFifo.prepareToWrite(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		idBuffer[start1] = id;
-    else if(size2 > 0)
-		idBuffer[start2] = id;
-
-    idFifo.finishedWrite(size1 + size2);
+	const bool success = idFifo.tryWrite(id);
+	return recordWriteResult(success, idFifo.getNumReady());
 }
 
 //------------------------------------------------------------------------------
 CommandID MidiAppFifo::readID()
 {
-	int start1, size1, start2, size2;
 	CommandID retval = -1;
 
-    idFifo.prepareToRead(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		retval = idBuffer[start1];
-    else if(size2 > 0)
-        retval = idBuffer[start2];
-
-    idFifo.finishedRead(size1 + size2);
+	idFifo.tryRead(retval);
 
 	return retval;
 }
 
 //------------------------------------------------------------------------------
-void MidiAppFifo::writeTempo(double tempo)
+bool MidiAppFifo::writeTempo(double tempo)
 {
-	const juce::SpinLock::ScopedLockType sl(writeLock);
-	int start1, size1, start2, size2;
-
-    tempoFifo.prepareToWrite(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		tempoBuffer[start1] = tempo;
-    else if(size2 > 0)
-		tempoBuffer[start2] = tempo;
-
-    tempoFifo.finishedWrite(size1 + size2);
+	const bool success = tempoFifo.tryWrite(tempo);
+	return recordWriteResult(success, tempoFifo.getNumReady());
 }
 
 //------------------------------------------------------------------------------
 double MidiAppFifo::readTempo()
 {
-	int start1, size1, start2, size2;
 	double retval = 120.0;
 
-    tempoFifo.prepareToRead(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		retval = tempoBuffer[start1];
-    else if(size2 > 0)
-        retval = tempoBuffer[start2];
-
-    tempoFifo.finishedRead(size1 + size2);
+	tempoFifo.tryRead(retval);
 
 	return retval;
 }
 
 //------------------------------------------------------------------------------
-void MidiAppFifo::writePatchChange(int tempo)
+bool MidiAppFifo::writePatchChange(int tempo)
 {
-	const juce::SpinLock::ScopedLockType sl(writeLock);
-	int start1, size1, start2, size2;
-
-    patchChangeFifo.prepareToWrite(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		patchChangeBuffer[start1] = tempo;
-    else if(size2 > 0)
-		patchChangeBuffer[start2] = tempo;
-
-    patchChangeFifo.finishedWrite(size1 + size2);
+	const bool success = patchChangeFifo.tryWrite(tempo);
+	return recordWriteResult(success, patchChangeFifo.getNumReady());
 }
 
 //------------------------------------------------------------------------------
 int MidiAppFifo::readPatchChange()
 {
-	int start1, size1, start2, size2;
 	int retval = 0;
 
-	patchChangeFifo.prepareToRead(1, start1, size1, start2, size2);
-
-    if(size1 > 0)
-		retval = patchChangeBuffer[start1];
-    else if(size2 > 0)
-        retval = patchChangeBuffer[start2];
-
-    patchChangeFifo.finishedRead(size1 + size2);
+	patchChangeFifo.tryRead(retval);
 
 	return retval;
 }
 
 //------------------------------------------------------------------------------
-void MidiAppFifo::writeParamChange(FilterGraph* graph, uint32 pluginId, int paramIndex, float value)
+bool MidiAppFifo::writeParamChange(FilterGraph* graph, uint32 pluginId, int paramIndex, float value)
 {
-	const juce::SpinLock::ScopedLockType sl(writeLock);
-	int start1, size1, start2, size2;
-
-	paramChangeFifo.prepareToWrite(1, start1, size1, start2, size2);
-
-	if (size1 > 0)
-		paramChangeBuffer[start1] = {graph, pluginId, paramIndex, value};
-	else if (size2 > 0)
-		paramChangeBuffer[start2] = {graph, pluginId, paramIndex, value};
-
-	paramChangeFifo.finishedWrite(size1 + size2);
+	const PendingParamChange change{graph, pluginId, paramIndex, value};
+	const bool success = paramChangeFifo.tryWrite(change);
+	return recordWriteResult(success, paramChangeFifo.getNumReady());
 }
 
 //------------------------------------------------------------------------------
 bool MidiAppFifo::readParamChange(PendingParamChange& out)
 {
-	if (paramChangeFifo.getNumReady() <= 0)
+	return paramChangeFifo.tryRead(out);
+}
+
+//------------------------------------------------------------------------------
+void MidiAppFifo::resetDiagnostics() noexcept
+{
+	droppedEvents.store(0, std::memory_order_relaxed);
+	lastOverflowTick.store(0, std::memory_order_relaxed);
+	maxDepth.store(getCurrentMaxDepth(), std::memory_order_relaxed);
+}
+
+//------------------------------------------------------------------------------
+bool MidiAppFifo::recordWriteResult(bool success, int depth) noexcept
+{
+	const auto tick = writeAttemptTick.fetch_add(1, std::memory_order_relaxed) + 1;
+
+	if (!success)
+	{
+		updateMaxDepth(depth);
+		droppedEvents.fetch_add(1, std::memory_order_relaxed);
+		lastOverflowTick.store(tick, std::memory_order_relaxed);
 		return false;
+	}
 
-	int start1, size1, start2, size2;
+	updateMaxDepth(depth);
+	return true;
+}
 
-	paramChangeFifo.prepareToRead(1, start1, size1, start2, size2);
+//------------------------------------------------------------------------------
+void MidiAppFifo::updateMaxDepth(int depth) noexcept
+{
+	int observed = maxDepth.load(std::memory_order_relaxed);
 
-	if (size1 > 0)
-		out = paramChangeBuffer[start1];
-	else if (size2 > 0)
-		out = paramChangeBuffer[start2];
+	while (depth > observed
+		   && !maxDepth.compare_exchange_weak(observed, depth, std::memory_order_relaxed,
+											  std::memory_order_relaxed))
+	{
+	}
+}
 
-	paramChangeFifo.finishedRead(size1 + size2);
-
-	return (size1 + size2) > 0;
+//------------------------------------------------------------------------------
+int MidiAppFifo::getCurrentMaxDepth() const noexcept
+{
+	int depth = idFifo.getNumReady();
+	depth = juce::jmax(depth, tempoFifo.getNumReady());
+	depth = juce::jmax(depth, patchChangeFifo.getNumReady());
+	depth = juce::jmax(depth, paramChangeFifo.getNumReady());
+	return depth;
 }
