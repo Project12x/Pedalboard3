@@ -33,6 +33,7 @@ add_executable(Pedalboard3_Tests
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
+    ../src/ReverbSCProcessor.cpp
     ../src/SafetyLimiter.cpp
     ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp

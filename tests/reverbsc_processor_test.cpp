@@ -1,5 +1,7 @@
 #include "../src/dsp/ReverbSC.h"
+#include "../src/ReverbSCProcessor.h"
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
@@ -118,4 +120,72 @@ TEST_CASE("ReverbSC core clamps feedback and damping parameters", "[reverbsc][ds
     REQUIRE(reverb.getDampingHz() == 20.0f);
     reverb.setDampingHz(40000.0f);
     REQUIRE(reverb.getDampingHz() == 20000.0f);
+}
+
+TEST_CASE("ReverbSCProcessor exposes stable host metadata", "[reverbsc][processor]")
+{
+    ReverbSCProcessor processor;
+
+    REQUIRE(processor.getName() == "ReverbSC");
+    REQUIRE_FALSE(processor.acceptsMidi());
+    REQUIRE_FALSE(processor.producesMidi());
+    REQUIRE(processor.getNumParameters() == ReverbSCProcessor::NumParameters);
+    REQUIRE(processor.getParameterName(ReverbSCProcessor::MixParam) == "Mix");
+    REQUIRE(processor.getParameterName(ReverbSCProcessor::FeedbackParam) == "Feedback");
+    REQUIRE(processor.getParameterName(ReverbSCProcessor::DampingParam) == "Damping");
+    REQUIRE(processor.getParameterName(ReverbSCProcessor::WidthParam) == "Width");
+    REQUIRE(processor.getParameterName(ReverbSCProcessor::OutputParam) == "Output");
+}
+
+TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
+{
+    ReverbSCProcessor source;
+    source.setParameter(ReverbSCProcessor::MixParam, 0.25f);
+    source.setParameter(ReverbSCProcessor::FeedbackParam, 0.75f);
+    source.setParameter(ReverbSCProcessor::DampingParam, 0.5f);
+    source.setParameter(ReverbSCProcessor::WidthParam, 0.4f);
+    source.setParameter(ReverbSCProcessor::OutputParam, 0.8f);
+
+    juce::MemoryBlock state;
+    source.getStateInformation(state);
+
+    ReverbSCProcessor restored;
+    restored.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+
+    REQUIRE(restored.getParameter(ReverbSCProcessor::MixParam) == Catch::Approx(0.25f));
+    REQUIRE(restored.getParameter(ReverbSCProcessor::FeedbackParam) == Catch::Approx(0.75f));
+    REQUIRE(restored.getParameter(ReverbSCProcessor::DampingParam) == Catch::Approx(0.5f));
+    REQUIRE(restored.getParameter(ReverbSCProcessor::WidthParam) == Catch::Approx(0.4f));
+    REQUIRE(restored.getParameter(ReverbSCProcessor::OutputParam) == Catch::Approx(0.8f));
+}
+
+TEST_CASE("ReverbSCProcessor processes a finite stereo impulse", "[reverbsc][processor]")
+{
+    ReverbSCProcessor processor;
+    processor.prepareToPlay(48000.0, 4096);
+    processor.setParameter(ReverbSCProcessor::MixParam, 1.0f);
+    processor.setParameter(ReverbSCProcessor::FeedbackParam, 0.9f);
+    processor.setParameter(ReverbSCProcessor::DampingParam, 0.7f);
+    processor.setParameter(ReverbSCProcessor::WidthParam, 1.0f);
+    processor.setParameter(ReverbSCProcessor::OutputParam, 0.5f);
+
+    juce::AudioBuffer<float> buffer(2, 4096);
+    juce::MidiBuffer midi;
+    buffer.clear();
+    buffer.setSample(0, 0, 1.0f);
+    buffer.setSample(1, 0, 1.0f);
+
+    processor.processBlock(buffer, midi);
+
+    std::vector<float> left(static_cast<size_t>(buffer.getNumSamples()));
+    std::vector<float> right(static_cast<size_t>(buffer.getNumSamples()));
+    std::copy(buffer.getReadPointer(0), buffer.getReadPointer(0) + buffer.getNumSamples(), left.begin());
+    std::copy(buffer.getReadPointer(1), buffer.getReadPointer(1) + buffer.getNumSamples(), right.begin());
+
+    REQUIRE(isFiniteBuffer(left));
+    REQUIRE(isFiniteBuffer(right));
+    REQUIRE(maxAbs(left) > 0.0001f);
+    REQUIRE(maxAbs(right) > 0.0001f);
+    REQUIRE(maxAbs(left) <= 2.0f);
+    REQUIRE(maxAbs(right) <= 2.0f);
 }

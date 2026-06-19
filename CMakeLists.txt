@@ -238,6 +238,10 @@ target_sources(Pedalboard3 PRIVATE
     src/DawMixerProcessor.h
     src/DawSplitterProcessor.cpp
     src/DawSplitterProcessor.h
+    src/dsp/ReverbSC.cpp
+    src/dsp/ReverbSC.h
+    src/ReverbSCProcessor.cpp
+    src/ReverbSCProcessor.h
     src/IRLoaderProcessor.cpp
     src/IRLoaderProcessor.h
     src/IRLoaderControl.cpp
