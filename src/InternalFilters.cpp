@@ -44,6 +44,7 @@
 #include "OscMappingManager.h"
 #include "OscilloscopeProcessor.h"
 #include "PedalboardProcessors.h"
+#include "ReverbSCProcessor.h"
 #include "RoutingProcessors.h"
 #include "SubGraphProcessor.h"
 #include "ToneGeneratorProcessor.h"
@@ -153,6 +154,12 @@ InternalPluginFormat::InternalPluginFormat()
         IRLoaderProcessor p;
         p.fillInPluginDescription(irLoaderProcDesc);
         irLoaderProcDesc.category = "Effects";
+    }
+
+    {
+        ReverbSCProcessor p;
+        p.fillInPluginDescription(reverbScProcDesc);
+        reverbScProcDesc.category = "Effects";
     }
 
     {
@@ -309,6 +316,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new IRLoaderProcessor();
     }
+    else if (desc.name == reverbScProcDesc.name)
+    {
+        return new ReverbSCProcessor();
+    }
     else if (desc.name == namProcDesc.name)
     {
         return new NAMProcessor();
@@ -391,6 +402,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &mixerProcDesc;
     case irLoaderProcFilter:
         return &irLoaderProcDesc;
+    case reverbScProcFilter:
+        return &reverbScProcDesc;
     case namProcFilter:
         return &namProcDesc;
     case oscilloscopeProcFilter:
@@ -436,7 +449,8 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
                                                          looperProcFilter,        tunerProcFilter,
                                                          toneGenProcFilter,       splitterProcFilter,
                                                          mixerProcFilter,         irLoaderProcFilter,
-                                                         namProcFilter,           oscilloscopeProcFilter,
+                                                         reverbScProcFilter,      namProcFilter,
+                                                         oscilloscopeProcFilter,
                                                          midiTransposeProcFilter, midiRechannelizeProcFilter,
                                                          keyboardSplitProcFilter, notesProcFilter,
                                                          labelProcFilter,         midiFilePlayerProcFilter,

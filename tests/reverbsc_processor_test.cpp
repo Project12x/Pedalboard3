@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <string>
 #include <vector>
 
 namespace
@@ -21,6 +23,14 @@ float maxAbs(const std::vector<float>& buffer)
     for (const auto sample : buffer)
         maximum = std::max(maximum, std::abs(sample));
     return maximum;
+}
+
+std::string readTextFileForReverbScTest(const char* path)
+{
+    std::ifstream file(path, std::ios::binary);
+    REQUIRE(file.is_open());
+
+    return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 } // namespace
 
@@ -188,4 +198,23 @@ TEST_CASE("ReverbSCProcessor processes a finite stereo impulse", "[reverbsc][pro
     REQUIRE(maxAbs(right) > 0.0001f);
     REQUIRE(maxAbs(left) <= 2.0f);
     REQUIRE(maxAbs(right) <= 2.0f);
+}
+
+TEST_CASE("InternalPluginFormat source registers ReverbSC", "[reverbsc][internal-format]")
+{
+    const auto header = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/InternalFilters.h");
+    const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/InternalFilters.cpp");
+
+    REQUIRE(header.find("reverbScProcFilter") != std::string::npos);
+    REQUIRE(header.find("PluginDescription reverbScProcDesc") != std::string::npos);
+    REQUIRE(source.find("#include \"ReverbSCProcessor.h\"") != std::string::npos);
+    REQUIRE(source.find("ReverbSCProcessor p;") != std::string::npos);
+    REQUIRE(source.find("reverbScProcDesc.category = \"Effects\"") != std::string::npos);
+    REQUIRE(source.find("return new ReverbSCProcessor();") != std::string::npos);
+    REQUIRE(source.find("case reverbScProcFilter:") != std::string::npos);
+
+    const auto userFacingStart = source.find("void InternalPluginFormat::getUserFacingTypes");
+    REQUIRE(userFacingStart != std::string::npos);
+    const auto userFacingBody = source.substr(userFacingStart);
+    REQUIRE(userFacingBody.find("reverbScProcFilter") != std::string::npos);
 }
