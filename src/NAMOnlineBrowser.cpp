@@ -51,6 +51,17 @@ juce::String getGearDisplayText(const std::string& gearType)
     return juce::String(gearType);
 }
 
+juce::String getArchitectureDisplayText(const Tone3000::ToneInfo& tone)
+{
+    if (!tone.architecture.empty())
+        return juce::String(tone.architecture);
+
+    if (!Tone3000::isNamPlatform(tone.platform))
+        return {};
+
+    return juce::String(Tone3000::modelArchitectureDisplayName(Tone3000::modelArchitectureForTone(tone)));
+}
+
 IconManager::DomainGlyph getGearGlyph(const std::string& gearType)
 {
     if (gearType == "pedal")
@@ -283,6 +294,25 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     auto glyphTile = itemBounds.withWidth(31.0f).reduced(6.0f, 5.0f);
     IconManager::getInstance().drawDomainGlyphTile(g, glyphTile, getGearGlyph(tone.gearType), gearAccent,
                                                    rowIsSelected || rowNumber == hoveredRow);
+
+    const auto architectureText = getArchitectureDisplayText(tone);
+    if (architectureText.isNotEmpty())
+    {
+        g.setFont(fm.getBadgeFont());
+        const int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(architectureText)) + 13;
+        rightEdge -= badgeW;
+
+        juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
+                                           static_cast<float>(badgeW), static_cast<float>(badgeHeight));
+        g.setColour(palette.accent2.withAlpha(0.15f));
+        g.fillRoundedRectangle(badgeBounds, 5.0f);
+        g.setColour(palette.accent2.withAlpha(0.48f));
+        g.drawRoundedRectangle(badgeBounds.reduced(0.5f), 5.0f, 1.0f);
+        g.setColour(palette.accent2.withAlpha(0.92f));
+        g.drawText(architectureText, badgeBounds, juce::Justification::centred, true);
+
+        rightEdge -= 6;
+    }
 
     // Gear type badge.
     auto gearText = getGearDisplayText(tone.gearType);
@@ -1169,7 +1199,7 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
 
     nameValue->setText(juce::String(tone->name), juce::dontSendNotification);
     authorValue->setText(juce::String(tone->authorName), juce::dontSendNotification);
-    architectureValue->setText(juce::String(tone->architecture), juce::dontSendNotification);
+    architectureValue->setText(getArchitectureDisplayText(*tone), juce::dontSendNotification);
     downloadsValue->setText(juce::String(tone->downloads), juce::dontSendNotification);
     gearValue->setText(juce::String(tone->gearType), juce::dontSendNotification);
 

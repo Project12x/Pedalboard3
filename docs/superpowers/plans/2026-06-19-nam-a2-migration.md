@@ -125,7 +125,7 @@ Steps:
 - [x] Default model download lookup to A2 by passing `architecture=2`.
 - [x] Preserve a legacy/default escape hatch for A1/custom so future UI or fallback logic can still request old models.
 - [x] Parse `architecture_version` into `ToneInfo`.
-- [ ] Display an architecture label in the details/list UI without blocking downloads for legacy tones.
+- [x] Display an architecture label in the details/list UI without blocking downloads for legacy tones.
 - [x] Ensure cache naming does not collide if the same tone ID can download different architectures.
 
 Verification:

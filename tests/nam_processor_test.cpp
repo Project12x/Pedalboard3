@@ -1674,3 +1674,13 @@ TEST_CASE("TONE3000 browser uses architecture-aware cache lookups", "[nam][tone3
     REQUIRE(browserSource.find("downloadManager.getCachedFile(tone)") != std::string::npos);
     REQUIRE(browserSource.find("loadCachedModel(*selectedTone)") != std::string::npos);
 }
+
+TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][a2][ui]")
+{
+    const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.cpp");
+
+    REQUIRE(browserSource.find("getArchitectureDisplayText") != std::string::npos);
+    REQUIRE(browserSource.find("architectureValue->setText(getArchitectureDisplayText(*tone)") != std::string::npos);
+    REQUIRE(browserSource.find("const auto architectureText = getArchitectureDisplayText(tone)") !=
+            std::string::npos);
+}
