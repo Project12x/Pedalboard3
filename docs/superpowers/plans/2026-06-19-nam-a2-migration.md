@@ -143,16 +143,20 @@ Files:
 
 - `CMakeLists.txt`
 - `tests/CMakeLists.txt`
-- `external/NeuralAmpModelerCore/**`
+- `external/NeuralAmpModelerCoreA2/**`
 - `THIRD_PARTY_LICENSES.md`
 
 Steps:
 
-- [ ] Replace the vendored core source list with the `v0.5.3` source layout.
-- [ ] Add upstream license/notice text and source-path notes.
-- [ ] Compile NeuralAmpModelerCore sources as a C++20 island, preferably an object/static library linked by the C++17 app target.
-- [ ] Keep public Pedalboard3 headers C++17-compatible.
-- [ ] Avoid raising the entire application language standard until a clean build shows it is necessary.
+- [x] Stage the `v0.5.3` source layout in a parallel `external/NeuralAmpModelerCoreA2` tree instead of replacing the legacy runtime core in-place.
+- [x] Add upstream license/notice text and source-path notes.
+- [x] Compile NeuralAmpModelerCore sources as a C++20 island, preferably an object/static library linked by the C++17 app target.
+- [x] Keep public Pedalboard3 headers C++17-compatible.
+- [x] Avoid raising the entire application language standard until a clean build shows it is necessary.
+
+Scope note: this task intentionally does not wire A2 into `NAMCore` yet. The
+existing legacy `external/NeuralAmpModelerCore` include/source path remains the
+runtime path until the adapter task has explicit A1/A2 fixture coverage.
 
 Verification:
 

@@ -16,6 +16,7 @@ This document lists all third-party software used by Pedalboard3 and their respe
 | Catch2 | Boost Software License 1.0 | Catch2 Authors |
 | melatonin_blur | MIT | Sudara Williams |
 | CPM.cmake | MIT | Lars Melchior and contributors |
+| NeuralAmpModelerCore A2 | MIT | Steven Atkinson |
 | ReverbSC / Soundpipe revsc / Csound reverbsc | LGPL-2.1-or-later / MIT | Sean Costello, Istvan Varga, Paul Batchelor |
 | NiallsOSCLib | GPLv3+ | Niall Moody |
 | NiallsSocketLib | GPLv3+ | Niall Moody |
@@ -290,6 +291,56 @@ SOFTWARE.
 
 ```
 Copyright (c) 2019-2023 Lars Melchior and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## NeuralAmpModelerCore A2
+
+**License:** MIT License
+
+**Version:** v0.5.3
+
+**Source:** https://github.com/sdatkinson/NeuralAmpModelerCore
+
+**Pinned commit:** `9c7b185de346fe0725dea537bcee4bc38b5bb6d6`
+
+**Reuse mode:** Direct-copy into `external/NeuralAmpModelerCoreA2` for an
+isolated C++20 A2 compile target. The legacy runtime path remains
+`external/NeuralAmpModelerCore` until the A2 adapter has explicit A1/A2 fixture
+coverage.
+
+**Copied files:**
+
+- `NAM/**`
+- `LICENSE`
+
+Upstream NAM includes `json.hpp`; Pedalboard3 resolves that include through the
+existing CPM `nlohmann_json` dependency instead of copying upstream's vendored
+single-header JSON file.
+
+```
+MIT License
+
+Copyright (c) 2023 Steven Atkinson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

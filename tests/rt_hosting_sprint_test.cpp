@@ -291,6 +291,30 @@ TEST_CASE("NAMCore process path does not own model handoff", "[rt][nam]")
     REQUIRE(processorSource.find("Deferred IR load until processor is inactive") != std::string::npos);
 }
 
+TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam][a2]")
+{
+    const auto cmake = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/CMakeLists.txt");
+    const auto namCoreSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
+    const auto a2Version = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR
+                                                 "/external/NeuralAmpModelerCoreA2/NAM/version.h");
+    const auto a2License = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/external/NeuralAmpModelerCoreA2/LICENSE");
+    const auto thirdPartyLicenses = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/THIRD_PARTY_LICENSES.md");
+
+    REQUIRE(cmake.find("add_library(Pedalboard3_NAMCoreA2 STATIC") != std::string::npos);
+    REQUIRE(cmake.find("cxx_std_20") != std::string::npos);
+    REQUIRE(cmake.find("external/NeuralAmpModelerCoreA2") != std::string::npos);
+    REQUIRE(cmake.find("NAM_ENABLE_A2_FAST") != std::string::npos);
+
+    REQUIRE(namCoreSource.find("../external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h") != std::string::npos);
+    REQUIRE(namCoreSource.find("NeuralAmpModelerCoreA2") == std::string::npos);
+
+    REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_MINOR 5") != std::string::npos);
+    REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_PATCH 3") != std::string::npos);
+    REQUIRE(a2License.find("MIT License") != std::string::npos);
+    REQUIRE(thirdPartyLicenses.find("NeuralAmpModelerCore A2") != std::string::npos);
+    REQUIRE(thirdPartyLicenses.find("9c7b185de346fe0725dea537bcee4bc38b5bb6d6") != std::string::npos);
+}
+
 TEST_CASE("SafePluginListComponent keeps plugin scanning off the message timer", "[rt][scanner]")
 {
     const auto header = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/SafePluginScanner.h");

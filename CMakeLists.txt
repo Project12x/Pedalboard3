@@ -111,6 +111,40 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# NeuralAmpModelerCore v0.5.3 requires C++20. Keep it in a separate target so
+# the JUCE app and public Pedalboard3 headers can remain C++17 while the A2
+# runtime adapter is developed behind NAMCore.
+set(PEDALBOARD3_NAM_A2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/NeuralAmpModelerCoreA2")
+file(GLOB PEDALBOARD3_NAM_A2_SOURCES CONFIGURE_DEPENDS
+    "${PEDALBOARD3_NAM_A2_ROOT}/NAM/*.cpp"
+    "${PEDALBOARD3_NAM_A2_ROOT}/NAM/*/*.cpp"
+)
+
+add_library(Pedalboard3_NAMCoreA2 STATIC ${PEDALBOARD3_NAM_A2_SOURCES})
+target_compile_features(Pedalboard3_NAMCoreA2 PUBLIC cxx_std_20)
+target_compile_definitions(Pedalboard3_NAMCoreA2
+    PUBLIC
+        NAM_SAMPLE_FLOAT
+    PRIVATE
+        NAM_ENABLE_A2_FAST
+)
+target_include_directories(Pedalboard3_NAMCoreA2
+    PUBLIC
+        ${PEDALBOARD3_NAM_A2_ROOT}
+        ${PEDALBOARD3_NAM_A2_ROOT}/NAM
+    PRIVATE
+        ${nlohmann_json_SOURCE_DIR}/single_include/nlohmann
+)
+target_link_libraries(Pedalboard3_NAMCoreA2 PUBLIC Eigen3::Eigen nlohmann_json::nlohmann_json)
+
+if(WIN32)
+    target_compile_definitions(Pedalboard3_NAMCoreA2 PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
+
+if(MSVC)
+    target_compile_options(Pedalboard3_NAMCoreA2 PRIVATE /wd4305 /wd4458)
+endif()
+
 # Add JUCE as a subdirectory
 add_subdirectory(JUCE)
 

@@ -81,3 +81,9 @@ JuceLibraryCode/
 # Local archives
 releases/
 temp_nam_juce/
+
+# Vendored source intentionally tracked even when a global ignore excludes external/
+!external/
+external/*
+!external/NeuralAmpModelerCoreA2/
+!external/NeuralAmpModelerCoreA2/**
