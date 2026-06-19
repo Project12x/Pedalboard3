@@ -16,6 +16,7 @@ This document lists all third-party software used by Pedalboard3 and their respe
 | Catch2 | Boost Software License 1.0 | Catch2 Authors |
 | melatonin_blur | MIT | Sudara Williams |
 | CPM.cmake | MIT | Lars Melchior and contributors |
+| ReverbSC / Soundpipe revsc / Csound reverbsc | LGPL-2.1-or-later / MIT | Sean Costello, Istvan Varga, Paul Batchelor |
 | NiallsOSCLib | GPLv3+ | Niall Moody |
 | NiallsSocketLib | GPLv3+ | Niall Moody |
 | JetBrains Mono | SIL Open Font License 1.1 | JetBrains |
@@ -311,6 +312,69 @@ SOFTWARE.
 
 ---
 
+## ReverbSC / Soundpipe revsc / Csound reverbsc
+
+**License:** Csound lineage is LGPL-2.1-or-later; Soundpipe adaptation is MIT.
+
+**Reuse mode:** Close-port reference. Pedalboard3's `src/dsp/ReverbSC.*`
+implements the Costello/Varga ReverbSC algorithm in the native C++ DSP
+architecture, with project-owned buffer/state management and processor
+integration.
+
+**Pinned sources inspected:**
+
+- Csound `Opcodes/reverbsc.c`, commit `2932c7fd14681493b5db83df3efdda175c1eb116`
+  (`COPYING`, LGPL-2.1-or-later per source header)
+- Soundpipe `modules/revsc.c` and `h/revsc.h`, commit
+  `3efb43bdabd0ed23b17c694292b5a79f1692a3ea` (`LICENSE`, MIT)
+
+**Source URLs:**
+
+- https://github.com/csound/csound/blob/2932c7fd14681493b5db83df3efdda175c1eb116/Opcodes/reverbsc.c
+- https://github.com/PaulBatchelor/Soundpipe/blob/3efb43bdabd0ed23b17c694292b5a79f1692a3ea/modules/revsc.c
+
+**Attribution:** Original ReverbSC authors Sean Costello and Istvan Varga.
+Csound orchestra version by Sean Costello, October 1999. C implementation
+copyright 2005 Istvan Varga. Soundpipe adaptation copyright 2020 Paul
+Batchelor.
+
+**Project compatibility note:** Pedalboard3 is distributed as GPLv3 software.
+The LGPL-2.1-or-later Csound lineage and MIT Soundpipe adaptation are compatible
+with this GPLv3 codebase.
+
+Soundpipe MIT notice:
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2020 Paul Batchelor
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+Csound `reverbsc.c` is part of Csound, whose `COPYING` file at the pinned
+commit contains the GNU Lesser General Public License version 2.1 text. The
+source header states that the Csound Library may be redistributed and/or
+modified under LGPL version 2.1 or, at your option, any later version.
+
+---
+
 ## NiallsOSCLib
 
 **License:** GNU General Public License v3 or later (GPLv3+)
@@ -496,4 +560,4 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-06-19*
