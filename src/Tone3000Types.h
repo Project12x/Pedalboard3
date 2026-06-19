@@ -176,6 +176,31 @@ inline std::string modelArchitectureDisplayName(ModelArchitecture architecture)
     }
 }
 
+inline std::string modelArchitectureCacheSuffix(ModelArchitecture architecture)
+{
+    switch (architecture)
+    {
+        case ModelArchitecture::A1:     return "a1";
+        case ModelArchitecture::A2:     return "a2";
+        case ModelArchitecture::Custom: return "custom";
+        default:                        return "";
+    }
+}
+
+inline std::string toneArchitectureCacheKey(const std::string& toneId, ModelArchitecture architecture)
+{
+    const auto suffix = modelArchitectureCacheSuffix(architecture);
+    if (suffix.empty())
+        return toneId;
+
+    return toneId + "_" + suffix;
+}
+
+inline bool isNamPlatform(const std::string& platform)
+{
+    return platform.empty() || platform == "nam" || platform == "NAM";
+}
+
 //==============================================================================
 // Tone/Model Information
 
@@ -211,6 +236,9 @@ struct ToneInfo
 
 inline ModelArchitecture modelArchitectureForTone(const ToneInfo& tone)
 {
+    if (!isNamPlatform(tone.platform))
+        return ModelArchitecture::LegacyDefault;
+
     auto architecture = modelArchitectureFromVersion(tone.architectureVersion);
     if (architecture != ModelArchitecture::LegacyDefault)
         return architecture;

@@ -1603,6 +1603,11 @@ TEST_CASE("TONE3000 model architecture helpers map NAM API values", "[nam][tone3
     REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::A1) == "A1");
     REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::A2) == "A2");
     REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::Custom) == "Custom");
+
+    Tone3000::ToneInfo irTone;
+    irTone.platform = "ir";
+    irTone.architectureVersion = 2;
+    REQUIRE(Tone3000::modelArchitectureForTone(irTone) == Tone3000::ModelArchitecture::LegacyDefault);
 }
 
 TEST_CASE("TONE3000 NAM requests opt in to A2 architecture", "[nam][tone3000][a2]")
@@ -1636,4 +1641,36 @@ TEST_CASE("TONE3000 NAM requests opt in to A2 architecture", "[nam][tone3000][a2
     REQUIRE(downloadBody.find("withParameter(\"tone_id\", toneId)") != std::string::npos);
     REQUIRE(downloadBody.find("withParameter(\"architecture\",") != std::string::npos);
     REQUIRE(downloadBody.find("modelArchitectureToApiValue(architecture)") != std::string::npos);
+}
+
+TEST_CASE("TONE3000 cache keys separate NAM model architectures", "[nam][tone3000][a2][cache]")
+{
+    REQUIRE(Tone3000::modelArchitectureCacheSuffix(Tone3000::ModelArchitecture::LegacyDefault).empty());
+    REQUIRE(Tone3000::modelArchitectureCacheSuffix(Tone3000::ModelArchitecture::A1) == "a1");
+    REQUIRE(Tone3000::modelArchitectureCacheSuffix(Tone3000::ModelArchitecture::A2) == "a2");
+    REQUIRE(Tone3000::modelArchitectureCacheSuffix(Tone3000::ModelArchitecture::Custom) == "custom");
+
+    REQUIRE(Tone3000::toneArchitectureCacheKey("123", Tone3000::ModelArchitecture::LegacyDefault) == "123");
+    REQUIRE(Tone3000::toneArchitectureCacheKey("123", Tone3000::ModelArchitecture::A1) == "123_a1");
+    REQUIRE(Tone3000::toneArchitectureCacheKey("123", Tone3000::ModelArchitecture::A2) == "123_a2");
+    REQUIRE(Tone3000::toneArchitectureCacheKey("123", Tone3000::ModelArchitecture::Custom) == "123_custom");
+}
+
+TEST_CASE("TONE3000 browser uses architecture-aware cache lookups", "[nam][tone3000][a2][cache]")
+{
+    const auto managerHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000DownloadManager.h");
+    const auto managerSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000DownloadManager.cpp");
+    const auto browserHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.h");
+    const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.cpp");
+
+    REQUIRE(managerHeader.find("bool isCached(const Tone3000::ToneInfo& tone) const") != std::string::npos);
+    REQUIRE(managerHeader.find("juce::File getCachedFile(const Tone3000::ToneInfo& tone) const") !=
+            std::string::npos);
+    REQUIRE(managerSource.find("toneArchitectureCacheKey") != std::string::npos);
+    REQUIRE(managerSource.find("getTargetPath(toneId, toneName, platform, architecture)") != std::string::npos);
+
+    REQUIRE(browserHeader.find("void loadCachedModel(const Tone3000::ToneInfo& tone)") != std::string::npos);
+    REQUIRE(browserSource.find("downloadManager.isCached(tone)") != std::string::npos);
+    REQUIRE(browserSource.find("downloadManager.getCachedFile(tone)") != std::string::npos);
+    REQUIRE(browserSource.find("loadCachedModel(*selectedTone)") != std::string::npos);
 }

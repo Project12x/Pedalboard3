@@ -214,9 +214,9 @@ void Tone3000ResultsListModel::setResults(const std::vector<Tone3000::ToneInfo>&
     auto& downloadManager = Tone3000DownloadManager::getInstance();
     for (auto& tone : tones)
     {
-        if (downloadManager.isCached(juce::String(tone.id)))
+        if (downloadManager.isCached(tone))
         {
-            auto cachedFile = downloadManager.getCachedFile(juce::String(tone.id));
+            auto cachedFile = downloadManager.getCachedFile(tone);
             tone.localPath = cachedFile.getFullPathName().toStdString();
         }
     }
@@ -975,9 +975,9 @@ void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)
     }
     else if (button == loadButton.get())
     {
-        if (selectedTone && selectedTone->isCached())
+        if (selectedTone && Tone3000DownloadManager::getInstance().isCached(*selectedTone))
         {
-            loadCachedModel(juce::String(selectedTone->id));
+            loadCachedModel(*selectedTone);
         }
     }
     else if (button == prevPageButton.get())
@@ -1190,7 +1190,7 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
     }
 
     // Update button states
-    bool isCached = tone->isCached();
+    bool isCached = Tone3000DownloadManager::getInstance().isCached(*tone);
     bool isDownloading = Tone3000DownloadManager::getInstance().isDownloading(juce::String(tone->id));
 
     downloadButton->setEnabled(!isCached && !isDownloading && Tone3000Client::getInstance().isAuthenticated());
@@ -1225,13 +1225,13 @@ void NAMOnlineBrowserComponent::downloadSelectedModel()
     downloadButton->setButtonText("Downloading...");
 }
 
-void NAMOnlineBrowserComponent::loadCachedModel(const juce::String& toneId)
+void NAMOnlineBrowserComponent::loadCachedModel(const Tone3000::ToneInfo& tone)
 {
-    auto cachedFile = Tone3000DownloadManager::getInstance().getCachedFile(toneId);
+    auto cachedFile = Tone3000DownloadManager::getInstance().getCachedFile(tone);
 
     if (!cachedFile.existsAsFile())
     {
-        spdlog::error("[NAMOnlineBrowser] Cached file not found for {}", toneId.toStdString());
+        spdlog::error("[NAMOnlineBrowser] Cached file not found for {}", tone.id);
         return;
     }
 
@@ -1295,7 +1295,8 @@ void NAMOnlineBrowserComponent::showLoginDialog()
                         spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState()");
                         safeThis->refreshAuthState();
                         spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
-                        if (safeThis->selectedTone != nullptr && !safeThis->selectedTone->isCached())
+                        if (safeThis->selectedTone != nullptr &&
+                            !Tone3000DownloadManager::getInstance().isCached(*safeThis->selectedTone))
                         {
                             spdlog::debug("[NAMOnlineBrowser] Enabling download button");
                             safeThis->downloadButton->setEnabled(true);
@@ -1340,7 +1341,7 @@ void NAMOnlineBrowserComponent::showLoginDialog()
                                             "[NAMOnlineBrowser] Calling refreshAuthState() after manual auth");
                                         safeThis->refreshAuthState();
                                         if (manualSuccess && safeThis->selectedTone != nullptr &&
-                                            !safeThis->selectedTone->isCached())
+                                            !Tone3000DownloadManager::getInstance().isCached(*safeThis->selectedTone))
                                         {
                                             spdlog::debug(
                                                 "[NAMOnlineBrowser] Enabling download button after manual auth");

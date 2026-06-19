@@ -102,7 +102,7 @@ class NAMOnlineBrowserComponent : public juce::Component,
     void updateDetailsPanel(const Tone3000::ToneInfo* tone);
     void onListSelectionChanged();
     void downloadSelectedModel();
-    void loadCachedModel(const juce::String& toneId);
+    void loadCachedModel(const Tone3000::ToneInfo& tone);
     void updateStatusLabel();
     void showLoginDialog();
     void logout();

@@ -99,8 +99,14 @@ public:
     /// Check if a tone is already cached
     bool isCached(const juce::String& toneId) const;
 
+    /// Check if a tone is already cached for its architecture
+    bool isCached(const Tone3000::ToneInfo& tone) const;
+
     /// Get cached file path for a tone (empty if not cached)
     juce::File getCachedFile(const juce::String& toneId) const;
+
+    /// Get cached file path for a tone architecture (empty if not cached)
+    juce::File getCachedFile(const Tone3000::ToneInfo& tone) const;
 
     /// Clear all cached downloads
     void clearCache();
@@ -134,6 +140,15 @@ private:
     /// Get target file path for a tone
     juce::File getTargetPath(const juce::String& toneId, const juce::String& toneName,
                               const juce::String& platform) const;
+
+    juce::File getTargetPath(const juce::String& toneId, const juce::String& toneName,
+                              const juce::String& platform,
+                              Tone3000::ModelArchitecture architecture) const;
+
+    void queueDownload(const juce::String& toneId, const juce::String& toneName,
+                       const juce::String& url, int64_t expectedSize,
+                       const juce::String& platform,
+                       Tone3000::ModelArchitecture architecture);
 
     //==========================================================================
     // Members

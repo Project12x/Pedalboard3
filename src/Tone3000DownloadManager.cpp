@@ -13,6 +13,23 @@
 
 #include <spdlog/spdlog.h>
 
+namespace
+{
+Tone3000::ModelArchitecture getDownloadArchitecture(const Tone3000::ToneInfo& tone)
+{
+    if (!Tone3000::isNamPlatform(tone.platform))
+        return Tone3000::ModelArchitecture::LegacyDefault;
+
+    const auto architecture = Tone3000::modelArchitectureForTone(tone);
+    return architecture == Tone3000::ModelArchitecture::LegacyDefault ? Tone3000::ModelArchitecture::A2 : architecture;
+}
+
+juce::String getArchitectureCacheKey(const juce::String& toneId, Tone3000::ModelArchitecture architecture)
+{
+    return juce::String(Tone3000::toneArchitectureCacheKey(toneId.toStdString(), architecture));
+}
+} // namespace
+
 //==============================================================================
 Tone3000DownloadManager& Tone3000DownloadManager::getInstance()
 {
@@ -57,6 +74,8 @@ Tone3000DownloadManager::~Tone3000DownloadManager()
 
 void Tone3000DownloadManager::queueDownload(const Tone3000::ToneInfo& tone)
 {
+    const auto architecture = getDownloadArchitecture(tone);
+
     // If we don't have a URL yet, need to fetch it first
     if (tone.modelUrl.empty())
     {
@@ -71,25 +90,36 @@ void Tone3000DownloadManager::queueDownload(const Tone3000::ToneInfo& tone)
                     return;
                 }
 
+                const auto callbackArchitecture = getDownloadArchitecture(tone);
                 queueDownload(juce::String(tone.id), juce::String(tone.name), url, fileSize,
-                              juce::String(tone.platform));
-            });
+                              juce::String(tone.platform), callbackArchitecture);
+            },
+            architecture);
         return;
     }
 
     queueDownload(juce::String(tone.id), juce::String(tone.name),
-                  juce::String(tone.modelUrl), tone.fileSize, juce::String(tone.platform));
+                  juce::String(tone.modelUrl), tone.fileSize, juce::String(tone.platform), architecture);
 }
 
 void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const juce::String& toneName,
                                              const juce::String& url, int64_t expectedSize,
                                              const juce::String& platform)
 {
+    queueDownload(toneId, toneName, url, expectedSize, platform, Tone3000::ModelArchitecture::LegacyDefault);
+}
+
+void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const juce::String& toneName,
+                                             const juce::String& url, int64_t expectedSize,
+                                             const juce::String& platform,
+                                             Tone3000::ModelArchitecture architecture)
+{
     // Check if already cached
-    if (isCached(toneId))
+    const auto cacheKey = getArchitectureCacheKey(toneId, architecture);
+    if (isCached(cacheKey))
     {
         spdlog::info("[Tone3000DownloadManager] Already cached: {}", toneName.toStdString());
-        notifyCompleted(toneId, getCachedFile(toneId));
+        notifyCompleted(toneId, getCachedFile(cacheKey));
         return;
     }
 
@@ -117,7 +147,7 @@ void Tone3000DownloadManager::queueDownload(const juce::String& toneId, const ju
     task.toneId = toneId.toStdString();
     task.toneName = toneName.toStdString();
     task.url = url.toStdString();
-    task.targetPath = getTargetPath(toneId, toneName, platform).getFullPathName().toStdString();
+    task.targetPath = getTargetPath(toneId, toneName, platform, architecture).getFullPathName().toStdString();
     task.state = Tone3000::DownloadState::Pending;
     task.totalBytes = expectedSize;
 
@@ -271,6 +301,11 @@ bool Tone3000DownloadManager::isCached(const juce::String& toneId) const
     return getCachedFile(toneId).existsAsFile();
 }
 
+bool Tone3000DownloadManager::isCached(const Tone3000::ToneInfo& tone) const
+{
+    return getCachedFile(tone).existsAsFile();
+}
+
 juce::File Tone3000DownloadManager::getCachedFile(const juce::String& toneId) const
 {
     // Look for model/IR files in tone's cache folder
@@ -295,6 +330,12 @@ juce::File Tone3000DownloadManager::getCachedFile(const juce::String& toneId) co
     }
 
     return {};
+}
+
+juce::File Tone3000DownloadManager::getCachedFile(const Tone3000::ToneInfo& tone) const
+{
+    const auto cacheKey = getArchitectureCacheKey(juce::String(tone.id), getDownloadArchitecture(tone));
+    return getCachedFile(cacheKey);
 }
 
 void Tone3000DownloadManager::clearCache()
@@ -591,8 +632,16 @@ juce::File Tone3000DownloadManager::getTargetPath(const juce::String& toneId,
                                                    const juce::String& toneName,
                                                    const juce::String& platform) const
 {
+    return getTargetPath(toneId, toneName, platform, Tone3000::ModelArchitecture::LegacyDefault);
+}
+
+juce::File Tone3000DownloadManager::getTargetPath(const juce::String& toneId,
+                                                   const juce::String& toneName,
+                                                   const juce::String& platform,
+                                                   Tone3000::ModelArchitecture architecture) const
+{
     // Create folder for this tone
-    juce::File toneDir = cacheDirectory.getChildFile(toneId);
+    juce::File toneDir = cacheDirectory.getChildFile(getArchitectureCacheKey(toneId, architecture));
 
     // Sanitize filename
     juce::String safeName = toneName.removeCharacters("<>:\"/\\|?*")
