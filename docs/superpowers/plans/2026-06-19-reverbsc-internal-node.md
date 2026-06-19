@@ -4,6 +4,8 @@
 
 **Goal:** Add a GPLv3-compatible built-in stereo `ReverbSC` effect node based on the Costello/Varga ReverbSC algorithm.
 
+**Status:** Complete as of 2026-06-19 on branch `codex/rt-hosting-sprint`.
+
 **Architecture:** Implement a small JUCE-free DSP core in `src/dsp`, wrap it with a `PedalboardProcessor` internal node, and register it through the existing `InternalPluginFormat` path. Keep allocation in `prepare`, keep `processBlock` bounded and non-blocking, and preserve legacy internal-processor parameter compatibility.
 
 **Tech Stack:** C++17, JUCE 8, CMake/MSVC, Catch2, Pedalboard3 internal processor host, Csound/Soundpipe ReverbSC close-port reference.
@@ -29,7 +31,7 @@
 - Create: `tests/reverbsc_processor_test.cpp`
 - Modify: `tests/CMakeLists.txt`
 
-- [ ] **Step 1: Write failing core tests**
+- [x] **Step 1: Write failing core tests**
 
 Add `tests/reverbsc_processor_test.cpp` with tests that include `dsp/ReverbSC.h`, construct `pedalboard3::dsp::ReverbSC`, and assert:
 
@@ -52,11 +54,11 @@ TEST_CASE("ReverbSC core keeps silence silent", "[reverbsc][dsp]")
 
 Also add tests for impulse tail, finite output at several sample rates, and block sizes `1`, `17`, and `256`.
 
-- [ ] **Step 2: Wire the test source**
+- [x] **Step 2: Wire the test source**
 
 Add `reverbsc_processor_test.cpp` to `tests/CMakeLists.txt`.
 
-- [ ] **Step 3: Run test build and verify RED**
+- [x] **Step 3: Run test build and verify RED**
 
 Run: `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`
 
@@ -69,7 +71,7 @@ Expected: compile failure because `dsp/ReverbSC.h` does not exist yet.
 - Create: `src/dsp/ReverbSC.cpp`
 - Modify: `tests/CMakeLists.txt`
 
-- [ ] **Step 1: Add DSP core declaration**
+- [x] **Step 1: Add DSP core declaration**
 
 Create `src/dsp/ReverbSC.h` with namespace `pedalboard3::dsp`, class `ReverbSC`, methods:
 
@@ -83,7 +85,7 @@ float getDampingHz() const noexcept;
 void process(const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept;
 ```
 
-- [ ] **Step 2: Add DSP core implementation**
+- [x] **Step 2: Add DSP core implementation**
 
 Create `src/dsp/ReverbSC.cpp` as a close-port from:
 
@@ -92,11 +94,11 @@ Create `src/dsp/ReverbSC.cpp` as a close-port from:
 
 Use `std::array<DelayLine, 8>`, `std::vector<float>` buffers allocated in `prepare`, fixed delay table values, cubic interpolation, and deterministic random line segments. Clamp feedback to `0.0f..0.99f`, damping to `20.0f..20000.0f`, and invalid samples to `0.0f`.
 
-- [ ] **Step 3: Wire core source into tests**
+- [x] **Step 3: Wire core source into tests**
 
 Add `../src/dsp/ReverbSC.cpp` to `tests/CMakeLists.txt`.
 
-- [ ] **Step 4: Run core tests and verify GREEN**
+- [x] **Step 4: Run core tests and verify GREEN**
 
 Run: `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`
 
@@ -104,7 +106,7 @@ Run: `.\build\tests\Debug\Pedalboard3_Tests.exe "[reverbsc][dsp]"`
 
 Expected: all `[reverbsc][dsp]` tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat: add reverbsc dsp core`
 
@@ -113,7 +115,7 @@ Commit message: `feat: add reverbsc dsp core`
 **Files:**
 - Modify: `tests/reverbsc_processor_test.cpp`
 
-- [ ] **Step 1: Write failing processor tests**
+- [x] **Step 1: Write failing processor tests**
 
 Extend the test file to include `ReverbSCProcessor.h` and assert:
 
@@ -143,7 +145,7 @@ TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processo
 
 Also assert `getName() == "ReverbSC"`, `acceptsMidi() == false`, `producesMidi() == false`, and processing a stereo impulse produces finite output.
 
-- [ ] **Step 2: Run test build and verify RED**
+- [x] **Step 2: Run test build and verify RED**
 
 Run: `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`
 
@@ -157,7 +159,7 @@ Expected: compile failure because `ReverbSCProcessor.h` does not exist yet.
 - Modify: `CMakeLists.txt`
 - Modify: `tests/CMakeLists.txt`
 
-- [ ] **Step 1: Add processor declaration**
+- [x] **Step 1: Add processor declaration**
 
 Create `ReverbSCProcessor` deriving from `PedalboardProcessor`, with enum:
 
@@ -167,19 +169,19 @@ enum Parameters { MixParam = 0, FeedbackParam, DampingParam, WidthParam, OutputP
 
 Store normalized atomics for mix, feedback, damping, width, and output. Add helpers for mapping normalized damping to Hz and output to gain.
 
-- [ ] **Step 2: Add processor implementation**
+- [x] **Step 2: Add processor implementation**
 
 Construct with `setPlayConfigDetails(2, 2, 0, 0)`. In `prepareToPlay`, call `reverb.prepare(sampleRate, estimatedSamplesPerBlock)` and pre-size dry/wet buffers. In `processBlock`, copy dry stereo, call the DSP core into preallocated wet buffers, apply width, linear dry/wet mix, and output gain. No allocation in `processBlock`.
 
-- [ ] **Step 3: Add state serialization**
+- [x] **Step 3: Add state serialization**
 
 Use a versioned XML tag `Pedalboard3ReverbSCSettings` with attributes `mix`, `feedback`, `damping`, `width`, `output`, and editor bounds.
 
-- [ ] **Step 4: Wire sources**
+- [x] **Step 4: Wire sources**
 
 Add `src/dsp/ReverbSC.cpp`, `src/dsp/ReverbSC.h`, `src/ReverbSCProcessor.cpp`, and `src/ReverbSCProcessor.h` to `CMakeLists.txt`. Add processor files to `tests/CMakeLists.txt`.
 
-- [ ] **Step 5: Run processor tests and verify GREEN**
+- [x] **Step 5: Run processor tests and verify GREEN**
 
 Run: `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`
 
@@ -187,7 +189,7 @@ Run: `.\build\tests\Debug\Pedalboard3_Tests.exe "[reverbsc]"`
 
 Expected: all `[reverbsc]` tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Commit message: `feat: add reverbsc processor`
 
@@ -198,21 +200,23 @@ Commit message: `feat: add reverbsc processor`
 - Modify: `src/InternalFilters.cpp`
 - Modify: `tests/reverbsc_processor_test.cpp`
 
-- [ ] **Step 1: Write failing registration test**
+- [x] **Step 1: Write failing registration test**
 
 Add a test that creates `InternalPluginFormat`, calls `getUserFacingTypes`, and finds a description named `ReverbSC` with category `Effects`. Then call `createInstanceFromDescription` and require the returned instance is non-null and named `ReverbSC`.
 
-- [ ] **Step 2: Run registration test and verify RED**
+Implementation note: the test target does not link `InternalFilters.cpp`, so the landed guard follows the existing source-structure test pattern and verifies the `InternalPluginFormat` include, descriptor, factory case, `getDescriptionFor` case, and `getUserFacingTypes` registration directly in `src/InternalFilters.*`.
+
+- [x] **Step 2: Run registration test and verify RED**
 
 Run: `.\build\tests\Debug\Pedalboard3_Tests.exe "[reverbsc][internal-format]"`
 
 Expected: fail because `ReverbSC` is not registered yet.
 
-- [ ] **Step 3: Register descriptor and factory**
+- [x] **Step 3: Register descriptor and factory**
 
 Add `reverbScProcFilter` before `endOfFilterTypes`, a `PluginDescription reverbScProcDesc`, constructor descriptor fill, factory case, `getDescriptionFor` case, and `getUserFacingTypes` entry.
 
-- [ ] **Step 4: Run registration tests and verify GREEN**
+- [x] **Step 4: Run registration tests and verify GREEN**
 
 Run: `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`
 
@@ -220,7 +224,7 @@ Run: `.\build\tests\Debug\Pedalboard3_Tests.exe "[reverbsc]"`
 
 Expected: all `[reverbsc]` tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat: register reverbsc internal node`
 
@@ -229,11 +233,11 @@ Commit message: `feat: register reverbsc internal node`
 **Files:**
 - Modify: `THIRD_PARTY_LICENSES.md`
 
-- [ ] **Step 1: Add license entry**
+- [x] **Step 1: Add license entry**
 
 Add `ReverbSC / Soundpipe revsc / Csound reverbsc` to the summary and a section with source URLs, pinned commits, MIT Soundpipe notice, and Csound LGPL-2.1-or-later lineage.
 
-- [ ] **Step 2: Run focused and app verification**
+- [x] **Step 2: Run focused and app verification**
 
 Run:
 
@@ -245,7 +249,7 @@ cmake --build build --config Debug --target Pedalboard3 -- /m:1
 
 Expected: build succeeds and `[reverbsc]` tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Commit message: `docs: attribute reverbsc sources`
 
