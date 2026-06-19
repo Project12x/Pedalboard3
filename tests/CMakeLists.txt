@@ -21,6 +21,7 @@ add_executable(Pedalboard3_Tests
     vst3_loading_test.cpp
     scratch_recorder_test.cpp
     rt_hosting_sprint_test.cpp
+    reverbsc_processor_test.cpp
     midi_mapping_test.cpp
     mixer_splitter_test.cpp
     master_bus_test.cpp
@@ -31,6 +32,7 @@ add_executable(Pedalboard3_Tests
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
+    ../src/dsp/ReverbSC.cpp
     ../src/SafetyLimiter.cpp
     ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp
