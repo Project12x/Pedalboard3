@@ -158,7 +158,8 @@ void Tone3000Client::search(
     Tone3000::GearType gearType,
     Tone3000::SortOrder sortOrder,
     int page,
-    std::function<void(Tone3000::SearchResult, Tone3000::ApiError)> callback)
+    std::function<void(Tone3000::SearchResult, Tone3000::ApiError)> callback,
+    Tone3000::ModelArchitecture architecture)
 {
     juce::URL url(juce::String(API_BASE_URL) + "/tones/search");
 
@@ -177,16 +178,36 @@ void Tone3000Client::search(
     // Filter to NAM models only
     url = url.withParameter("platform", "nam");
 
+    const auto architectureValue = Tone3000::modelArchitectureToApiValue(architecture);
+    if (!architectureValue.empty())
+        url = url.withParameter("architecture", juce::String(architectureValue));
+
     spdlog::debug("[Tone3000Client] Search: {}", url.toString(true).toStdString());
 
     makeAsyncGetRequest(url,
-        [this, callback](juce::var result, Tone3000::ApiError error) {
+        [this, callback, architecture](juce::var result, Tone3000::ApiError error) {
             if (error.isError())
             {
                 callback({}, error);
                 return;
             }
-            callback(parseSearchResult(result), Tone3000::ApiError::none());
+
+            auto searchResult = parseSearchResult(result);
+            if (architecture != Tone3000::ModelArchitecture::LegacyDefault)
+            {
+                for (auto& tone : searchResult.tones)
+                {
+                    if (tone.architectureVersion == 0 && tone.architecture.empty())
+                    {
+                        tone.architectureVersion = architecture == Tone3000::ModelArchitecture::A1 ? 1
+                                                  : architecture == Tone3000::ModelArchitecture::A2 ? 2
+                                                                                                   : 0;
+                        tone.architecture = Tone3000::modelArchitectureDisplayName(architecture);
+                    }
+                }
+            }
+
+            callback(searchResult, Tone3000::ApiError::none());
         });
 }
 
@@ -220,7 +241,8 @@ void Tone3000Client::getFavorites(
 
 void Tone3000Client::getModelDownloadInfo(
     const juce::String& toneId,
-    std::function<void(juce::String url, int64_t fileSize, Tone3000::ApiError)> callback)
+    std::function<void(juce::String url, int64_t fileSize, Tone3000::ApiError)> callback,
+    Tone3000::ModelArchitecture architecture)
 {
     if (!isAuthenticated())
     {
@@ -230,6 +252,10 @@ void Tone3000Client::getModelDownloadInfo(
 
     juce::URL url(juce::String(API_BASE_URL) + "/models");
     url = url.withParameter("tone_id", toneId);
+
+    const auto architectureValue = Tone3000::modelArchitectureToApiValue(architecture);
+    if (!architectureValue.empty())
+        url = url.withParameter("architecture", juce::String(architectureValue));
 
     spdlog::debug("[Tone3000Client] Getting model info for tone: {}", toneId.toStdString());
 
@@ -454,6 +480,21 @@ Tone3000::ToneInfo Tone3000Client::parseToneInfo(const juce::var& json)
     info.thumbnailUrl = json.getProperty("thumbnail_url", "").toString().toStdString();
     info.createdAt = json.getProperty("created_at", "").toString().toStdString();
     info.licenseType = json.getProperty("license_type", "").toString().toStdString();
+
+    auto architecture = json.getProperty("architecture_version", json.getProperty("architecture", juce::var()));
+    if (!architecture.isVoid())
+    {
+        const auto architectureValue = architecture.toString().toStdString();
+        const auto modelArchitecture = Tone3000::modelArchitectureFromApiValue(architectureValue);
+
+        if (modelArchitecture == Tone3000::ModelArchitecture::A1)
+            info.architectureVersion = 1;
+        else if (modelArchitecture == Tone3000::ModelArchitecture::A2)
+            info.architectureVersion = 2;
+
+        if (modelArchitecture != Tone3000::ModelArchitecture::LegacyDefault)
+            info.architecture = Tone3000::modelArchitectureDisplayName(modelArchitecture);
+    }
 
     // Parse user/author info
     auto user = json.getProperty("user", juce::var());

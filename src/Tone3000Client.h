@@ -60,7 +60,8 @@ public:
         Tone3000::GearType gearType,
         Tone3000::SortOrder sortOrder,
         int page,
-        std::function<void(Tone3000::SearchResult, Tone3000::ApiError)> callback);
+        std::function<void(Tone3000::SearchResult, Tone3000::ApiError)> callback,
+        Tone3000::ModelArchitecture architecture = Tone3000::ModelArchitecture::A2);
 
     /// Get user's favorited tones
     void getFavorites(
@@ -73,7 +74,8 @@ public:
     /// Get download URL and details for a specific tone
     void getModelDownloadInfo(
         const juce::String& toneId,
-        std::function<void(juce::String url, int64_t fileSize, Tone3000::ApiError)> callback);
+        std::function<void(juce::String url, int64_t fileSize, Tone3000::ApiError)> callback,
+        Tone3000::ModelArchitecture architecture = Tone3000::ModelArchitecture::A2);
 
     //==========================================================================
     // Rate Limiting

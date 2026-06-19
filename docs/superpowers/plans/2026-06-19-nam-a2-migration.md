@@ -4,7 +4,7 @@
 
 **Goal:** Add Neural Amp Modeler Architecture 2 support while preserving existing local A1/custom NAM model behavior and the RT-hosting safety improvements already landed in the sprint.
 
-**Status:** Planned as of 2026-06-19 on branch `codex/rt-hosting-sprint`.
+**Status:** In progress as of 2026-06-19 on branch `codex/rt-hosting-sprint`.
 
 **Architecture:** Treat A2 as a two-part migration. First, update TONE3000 discovery/download code so the browser can request A2 models explicitly. Second, replace the vendored NeuralAmpModelerCore integration behind the existing `NAMCore`/`NAMProcessor` boundary, adapting the new multi-channel API, C++20 implementation files, and slimmable model controls without putting model loads, prewarming, or `SetSlimmableSize()` on the audio callback.
 
@@ -94,10 +94,10 @@ Files:
 
 Steps:
 
-- [ ] Add tests or source guards asserting TONE3000 search adds `architecture=2` when requesting NAM models.
-- [ ] Add tests or source guards asserting model download lookup adds `architecture=2`.
-- [ ] Add tests for architecture string conversion: legacy default, A1, A2, custom.
-- [ ] Add tests for parsing `architecture_version` from tone/model JSON where reachable without network.
+- [x] Add tests or source guards asserting TONE3000 search adds `architecture=2` when requesting NAM models.
+- [x] Add tests or source guards asserting model download lookup adds `architecture=2`.
+- [x] Add tests for architecture string conversion: legacy default, A1, A2, custom.
+- [x] Add tests for parsing `architecture_version` from tone/model JSON where reachable without network.
 
 Verification:
 
@@ -120,11 +120,11 @@ Files:
 
 Steps:
 
-- [ ] Add a small architecture enum/helper in `Tone3000Types.h`.
-- [ ] Default NAM search to A2 by passing `architecture=2`.
-- [ ] Default model download lookup to A2 by passing `architecture=2`.
-- [ ] Preserve a legacy/default escape hatch for A1/custom so future UI or fallback logic can still request old models.
-- [ ] Parse `architecture_version` into `ToneInfo`.
+- [x] Add a small architecture enum/helper in `Tone3000Types.h`.
+- [x] Default NAM search to A2 by passing `architecture=2`.
+- [x] Default model download lookup to A2 by passing `architecture=2`.
+- [x] Preserve a legacy/default escape hatch for A1/custom so future UI or fallback logic can still request old models.
+- [x] Parse `architecture_version` into `ToneInfo`.
 - [ ] Display an architecture label in the details/list UI without blocking downloads for legacy tones.
 - [ ] Ensure cache naming does not collide if the same tone ID can download different architectures.
 

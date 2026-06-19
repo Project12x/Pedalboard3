@@ -11,13 +11,25 @@
  * to avoid needing audio initialization.
  */
 
+#include "../src/Tone3000Types.h"
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
 #include <cstring>
+#include <fstream>
+#include <string>
 #include <vector>
 
 using Catch::Matchers::WithinAbs;
+
+static std::string readTextFileForNamTest(const char* path)
+{
+    std::ifstream file(path, std::ios::binary);
+    REQUIRE(file.is_open());
+
+    return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+}
 
 // ============================================================================
 // Standalone utility functions (mirrors NAMProcessor)
@@ -1569,4 +1581,59 @@ TEST_CASE("NAM Mutation - Tone Stack Pre/Post Logic", "[nam][tonestack][mutation
         REQUIRE(boolFromFloat(0.51f));
         REQUIRE(boolFromFloat(1.0f));
     }
+}
+
+// ============================================================================
+// TONE3000 NAM A2 API Contract Tests
+// ============================================================================
+
+TEST_CASE("TONE3000 model architecture helpers map NAM API values", "[nam][tone3000][a2]")
+{
+    REQUIRE(Tone3000::modelArchitectureToApiValue(Tone3000::ModelArchitecture::LegacyDefault).empty());
+    REQUIRE(Tone3000::modelArchitectureToApiValue(Tone3000::ModelArchitecture::A1) == "1");
+    REQUIRE(Tone3000::modelArchitectureToApiValue(Tone3000::ModelArchitecture::A2) == "2");
+    REQUIRE(Tone3000::modelArchitectureToApiValue(Tone3000::ModelArchitecture::Custom) == "custom");
+
+    REQUIRE(Tone3000::modelArchitectureFromApiValue("") == Tone3000::ModelArchitecture::LegacyDefault);
+    REQUIRE(Tone3000::modelArchitectureFromApiValue("1") == Tone3000::ModelArchitecture::A1);
+    REQUIRE(Tone3000::modelArchitectureFromApiValue("2") == Tone3000::ModelArchitecture::A2);
+    REQUIRE(Tone3000::modelArchitectureFromApiValue("custom") == Tone3000::ModelArchitecture::Custom);
+
+    REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::LegacyDefault) == "Legacy A1/Custom");
+    REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::A1) == "A1");
+    REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::A2) == "A2");
+    REQUIRE(Tone3000::modelArchitectureDisplayName(Tone3000::ModelArchitecture::Custom) == "Custom");
+}
+
+TEST_CASE("TONE3000 NAM requests opt in to A2 architecture", "[nam][tone3000][a2]")
+{
+    const auto header = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000Client.h");
+    const auto source = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000Client.cpp");
+    const auto types = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000Types.h");
+
+    REQUIRE(header.find("ModelArchitecture architecture = Tone3000::ModelArchitecture::A2") != std::string::npos);
+    REQUIRE(types.find("int architectureVersion") != std::string::npos);
+    REQUIRE(source.find("architecture_version") != std::string::npos);
+
+    const auto searchStart = source.find("void Tone3000Client::search(");
+    const auto favoritesStart = source.find("void Tone3000Client::getFavorites(");
+    REQUIRE(searchStart != std::string::npos);
+    REQUIRE(favoritesStart != std::string::npos);
+    REQUIRE(searchStart < favoritesStart);
+
+    const auto searchBody = source.substr(searchStart, favoritesStart - searchStart);
+    REQUIRE(searchBody.find("withParameter(\"platform\", \"nam\")") != std::string::npos);
+    REQUIRE(searchBody.find("withParameter(\"architecture\",") != std::string::npos);
+    REQUIRE(searchBody.find("modelArchitectureToApiValue(architecture)") != std::string::npos);
+
+    const auto downloadStart = source.find("void Tone3000Client::getModelDownloadInfo(");
+    const auto rateLimitStart = source.find("// Rate Limiting", downloadStart);
+    REQUIRE(downloadStart != std::string::npos);
+    REQUIRE(rateLimitStart != std::string::npos);
+    REQUIRE(downloadStart < rateLimitStart);
+
+    const auto downloadBody = source.substr(downloadStart, rateLimitStart - downloadStart);
+    REQUIRE(downloadBody.find("withParameter(\"tone_id\", toneId)") != std::string::npos);
+    REQUIRE(downloadBody.find("withParameter(\"architecture\",") != std::string::npos);
+    REQUIRE(downloadBody.find("modelArchitectureToApiValue(architecture)") != std::string::npos);
 }

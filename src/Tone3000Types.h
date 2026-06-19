@@ -124,6 +124,58 @@ inline std::string modelSizeToString(ModelSize size)
     }
 }
 
+enum class ModelArchitecture
+{
+    LegacyDefault,
+    A1,
+    A2,
+    Custom
+};
+
+inline std::string modelArchitectureToApiValue(ModelArchitecture architecture)
+{
+    switch (architecture)
+    {
+        case ModelArchitecture::A1:     return "1";
+        case ModelArchitecture::A2:     return "2";
+        case ModelArchitecture::Custom: return "custom";
+        default:                        return "";
+    }
+}
+
+inline ModelArchitecture modelArchitectureFromApiValue(const std::string& value)
+{
+    if (value == "1" || value == "a1" || value == "A1")
+        return ModelArchitecture::A1;
+    if (value == "2" || value == "a2" || value == "A2")
+        return ModelArchitecture::A2;
+    if (value == "custom" || value == "Custom")
+        return ModelArchitecture::Custom;
+
+    return ModelArchitecture::LegacyDefault;
+}
+
+inline ModelArchitecture modelArchitectureFromVersion(int version)
+{
+    if (version == 1)
+        return ModelArchitecture::A1;
+    if (version == 2)
+        return ModelArchitecture::A2;
+
+    return ModelArchitecture::LegacyDefault;
+}
+
+inline std::string modelArchitectureDisplayName(ModelArchitecture architecture)
+{
+    switch (architecture)
+    {
+        case ModelArchitecture::A1:     return "A1";
+        case ModelArchitecture::A2:     return "A2";
+        case ModelArchitecture::Custom: return "Custom";
+        default:                        return "Legacy A1/Custom";
+    }
+}
+
 //==============================================================================
 // Tone/Model Information
 
@@ -149,12 +201,22 @@ struct ToneInfo
     // Model-specific info (populated when fetching download details)
     std::string modelUrl;
     std::string architecture;
+    int architectureVersion{0};
     int64_t fileSize{0};
 
     // Local cache info
     std::string localPath;      // Empty if not cached
     bool isCached() const { return !localPath.empty(); }
 };
+
+inline ModelArchitecture modelArchitectureForTone(const ToneInfo& tone)
+{
+    auto architecture = modelArchitectureFromVersion(tone.architectureVersion);
+    if (architecture != ModelArchitecture::LegacyDefault)
+        return architecture;
+
+    return modelArchitectureFromApiValue(tone.architecture);
+}
 
 //==============================================================================
 // Search Results
