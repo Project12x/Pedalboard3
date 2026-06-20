@@ -65,6 +65,7 @@ class NAMProcessor : public PedalboardProcessor
     void clearModel();
     bool isModelLoaded() const { return modelLoaded.load(); }
     juce::String getModelName() const;
+    juce::String getModelArchitectureBadge() const;
     const juce::File& getModelFile() const { return currentModelFile; }
     bool isCurrentModelSlimmable() const;
     float getSlimmableSize() const { return slimmableSize.load(); }

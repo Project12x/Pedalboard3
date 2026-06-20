@@ -271,6 +271,27 @@ juce::String NAMProcessor::getModelName() const
     return "No Model";
 }
 
+juce::String NAMProcessor::getModelArchitectureBadge() const
+{
+    if (!modelLoaded.load() || !currentModelFile.existsAsFile())
+        return {};
+
+    NAMModelInfo info;
+    if (!NAMCore::getModelInfo(currentModelFile.getFullPathName().toStdString(), info))
+        return "NAM";
+
+    if (info.architectureVersion == 2)
+        return "A2";
+    if (info.architectureVersion == 1)
+        return "A1";
+
+    const auto architecture = juce::String(info.architecture).trim();
+    if (architecture.isEmpty() || architecture.equalsIgnoreCase("unknown"))
+        return "NAM";
+
+    return architecture.length() > 8 ? architecture.substring(0, 8) : architecture;
+}
+
 bool NAMProcessor::isCurrentModelSlimmable() const
 {
     return modelLoaded.load() && namCore && namCore->isSlimmableModel();

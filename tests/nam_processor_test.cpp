@@ -1725,6 +1725,28 @@ TEST_CASE("NAM local browser surfaces architecture version labels", "[nam][a2][u
     REQUIRE(browserSource.find("archVersion.contains(currentFilter)") != std::string::npos);
     REQUIRE(browserSource.find("colourForNAMArchitecture(getNAMArchitectureDisplay(*selectedModel)") !=
             std::string::npos);
+    REQUIRE(browserSource.find("const bool showArchitectureBadge") != std::string::npos);
+    REQUIRE(browserSource.find("if (showArchitectureBadge)") != std::string::npos);
+    REQUIRE(browserSource.find("float archChipWidth") != std::string::npos);
+    REQUIRE(browserSource.find("drawBrowserChip(g, centredChips.removeFromLeft(archChipWidth)") !=
+            std::string::npos);
+}
+
+TEST_CASE("NAM loader surfaces loaded model architecture badge", "[nam][a2][ui]")
+{
+    const auto processorHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.h");
+    const auto processorSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
+    const auto controlSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMControl.cpp");
+
+    REQUIRE(processorHeader.find("juce::String getModelArchitectureBadge() const") != std::string::npos);
+    REQUIRE(processorSource.find("NAMCore::getModelInfo(currentModelFile.getFullPathName().toStdString(), info)") !=
+            std::string::npos);
+    REQUIRE(processorSource.find("return \"A2\";") != std::string::npos);
+    REQUIRE(processorSource.find("return \"A1\";") != std::string::npos);
+    REQUIRE(controlSource.find("const auto architectureBadge = namProcessor->getModelArchitectureBadge()") !=
+            std::string::npos);
+    REQUIRE(controlSource.find("modelArchLabel->setText(architectureBadge") != std::string::npos);
+    REQUIRE(controlSource.find("modelArchLabel->setText(\"NAM\", dontSendNotification)") == std::string::npos);
 }
 
 TEST_CASE("TONE3000 browser keeps download actions visible for the selected model", "[nam][tone3000][ui]")

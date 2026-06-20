@@ -896,6 +896,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         const int badgeHeight = 18;
         const int badgeSpacing = 5;
         int badgeX = width - margin - 10;
+        const bool showArchitectureBadge = width >= 220;
+        const bool showSupplementalBadges = !compact;
 
         // Architecture badge (rightmost)
         const auto archShort = getNAMArchitectureBadge(model);
@@ -904,21 +906,26 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
                                                 static_cast<int>(
                                                     FontManager::getInstance().getBadgeFont().getStringWidthFloat(archShort))
                                                     + 14);
-        badgeX -= archBadgeWidth;
 
         const auto archColour = colourForNAMArchitecture(archDisplay, palette);
+
+        if (showArchitectureBadge)
+            badgeX -= archBadgeWidth;
 
         drawModelGlyph(g,
                        Rectangle<float>((float)(margin + 12), (height - static_cast<float>(glyphSize)) * 0.5f,
                                         static_cast<float>(glyphSize), static_cast<float>(glyphSize)),
                        archColour, rowIsSelected);
 
-        if (!compact)
+        if (showArchitectureBadge)
         {
             Rectangle<float> archBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                              static_cast<float>(archBadgeWidth), static_cast<float>(badgeHeight));
             drawBrowserChip(g, archBadgeBounds, archShort, archColour, rowIsSelected);
+        }
 
+        if (showSupplementalBadges)
+        {
             // Model type badge (left of architecture badge, if we have type info)
             if (modelType.isNotEmpty())
             {
@@ -951,7 +958,8 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         }
 
         // Model name (top line) - adjust width to not overlap badges
-        const int textEndX = compact ? width - margin - 10 : jmax(textX + 80, badgeX - 8);
+        const int textEndX = showArchitectureBadge || showSupplementalBadges ? jmax(textX + 80, badgeX - 8)
+                                                                             : width - margin - 10;
         const int topPad = compact ? 7 : 10;
         const int nameH = compact ? 17 : 20;
         g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));
@@ -1951,13 +1959,19 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
                 auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(24.0f);
                 const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
+                float archChipWidth = 0.0f;
                 float typeChipWidth = 0.0f;
                 float toneChipWidth = 0.0f;
+                String archChip;
                 String typeChip;
                 String toneTag;
 
                 if (selectedModel != nullptr)
                 {
+                    archChip = getNAMArchitectureBadge(*selectedModel);
+                    archChipWidth =
+                        jlimit(36.0f, 72.0f, FontManager::getInstance().getBadgeFont().getStringWidthFloat(archChip) + 16.0f);
+
                     typeChip = normaliseNAMModelType(fields.modelType);
                     typeChipWidth =
                         jlimit(48.0f, 82.0f, FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeChip) + 16.0f);
@@ -1969,6 +1983,8 @@ void NAMModelBrowserComponent::paint(Graphics& g)
 
                 const float gap = 6.0f;
                 float totalChipWidth = stateChipWidth;
+                if (archChipWidth > 0.0f)
+                    totalChipWidth += gap + archChipWidth;
                 if (typeChipWidth > 0.0f)
                     totalChipWidth += gap + typeChipWidth;
                 if (toneChipWidth > 0.0f)
@@ -1982,6 +1998,13 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                     selectedModel ? (selectedReady ? palette.led : colours["Warning Colour"])
                                                   : palette.text.withAlpha(0.45f),
                                     selectedModel != nullptr);
+
+                if (selectedModel != nullptr && archChipWidth > 0.0f && centredChips.getWidth() > gap + archChipWidth)
+                {
+                    centredChips.removeFromLeft(gap);
+                    drawBrowserChip(g, centredChips.removeFromLeft(archChipWidth), archChip,
+                                    colourForNAMArchitecture(getNAMArchitectureDisplay(*selectedModel), palette), true);
+                }
 
                 if (selectedModel != nullptr && typeChipWidth > 0.0f && centredChips.getWidth() > gap + typeChipWidth)
                 {

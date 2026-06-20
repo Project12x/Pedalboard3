@@ -156,6 +156,12 @@ TEST_CASE("NAMCore runtime loads a generated A2 SlimmableContainer NAM model", "
 {
     TempNamFile model(makeSlimmableContainerNamJson(48000.0));
 
+    NAMModelInfo info;
+    REQUIRE(NAMCore::getModelInfo(model.string(), info));
+    REQUIRE(info.architecture == "SlimmableContainer");
+    REQUIRE(info.architectureVersion == 2);
+    REQUIRE_THAT(info.expectedSampleRate, WithinAbs(48000.0, 0.001));
+
     NAMCore core;
     core.prepare(48000.0, 16);
 

@@ -473,11 +473,19 @@ bool NAMCore::getModelInfo(const std::string& modelPath, NAMModelInfo& info)
         }
 
         info.architectureVersion = readArchitectureVersion(j);
+        if (info.architectureVersion == 0 && shouldTryA2BeforeLegacy(j))
+            info.architectureVersion = 2;
+        if (info.architectureVersion == 0 && info.architecture != "unknown")
+            info.architectureVersion = 1;
 
         // Get expected sample rate from config
         if (j.contains("config") && j["config"].contains("sample_rate"))
         {
             info.expectedSampleRate = j["config"]["sample_rate"].get<double>();
+        }
+        else if (j.contains("sample_rate"))
+        {
+            info.expectedSampleRate = j["sample_rate"].get<double>();
         }
         else
         {

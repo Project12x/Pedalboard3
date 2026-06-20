@@ -1201,7 +1201,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     auto namPill = metaRow.removeFromRight(44).reduced(2, 2);
     metaRow.removeFromRight(6);
     drawMockupPill(namPill, "NAM", laf.ampAccentSecondary, false);
-    drawMockupPill(archPill, modelArchLabel->getText().isNotEmpty() ? modelArchLabel->getText() : "WaveNet",
+    drawMockupPill(archPill, modelArchLabel->getText().isNotEmpty() ? modelArchLabel->getText() : "NAM",
                    laf.ampAccent, false);
     g.setFont(fm.getBadgeFont().withHeight(12.0f));
     g.setColour(laf.ampTextDim.withAlpha(0.72f));
@@ -2190,13 +2190,19 @@ void NAMControl::updateModelDisplay()
 
     if (namProcessor->isModelLoaded())
     {
+        const auto architectureBadge = namProcessor->getModelArchitectureBadge();
+        const auto badgeColour =
+            architectureBadge.equalsIgnoreCase("A2") ? laf.ampAccentSecondary : laf.ampAccent;
+
         modelNameLabel->setText(namProcessor->getModelName(), dontSendNotification);
         modelNameLabel->setColour(Label::textColourId, laf.ampTextBright);
         modelNameLabel->setColour(Label::backgroundColourId, loadedChipBg);
         modelNameLabel->setColour(Label::outlineColourId, loadedChipOutline);
 
-        // Show architecture badge
-        modelArchLabel->setText("NAM", dontSendNotification);
+        modelArchLabel->setText(architectureBadge, dontSendNotification);
+        modelArchLabel->setColour(Label::backgroundColourId, badgeColour.withAlpha(0.18f));
+        modelArchLabel->setColour(Label::outlineColourId, badgeColour.withAlpha(0.42f));
+        modelArchLabel->setColour(Label::textColourId, badgeColour);
     }
     else
     {
