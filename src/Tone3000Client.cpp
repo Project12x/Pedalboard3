@@ -499,8 +499,15 @@ Tone3000::ToneInfo Tone3000Client::parseToneInfo(const juce::var& json)
         info.authorName = json.getProperty("author", "Unknown").toString().toStdString();
     }
 
-    info.downloads = static_cast<int>(json.getProperty("downloads", json.getProperty("download_count", 0)));
-    info.favorites = static_cast<int>(json.getProperty("favorites", json.getProperty("favorite_count", 0)));
+    info.downloads = static_cast<int>(
+        json.getProperty("downloads", json.getProperty("download_count", json.getProperty("downloads_count", 0))));
+    info.favorites = static_cast<int>(
+        json.getProperty("favorites", json.getProperty("favorite_count", json.getProperty("favorites_count", 0))));
+    info.modelsCount = static_cast<int>(json.getProperty("models_count", 0));
+    info.a1ModelsCount = static_cast<int>(json.getProperty("a1_models_count", 0));
+    info.a2ModelsCount = static_cast<int>(json.getProperty("a2_models_count", 0));
+    info.customModelsCount = static_cast<int>(json.getProperty("custom_models_count", 0));
+    info.irsCount = static_cast<int>(json.getProperty("irs_count", 0));
 
     // Parse available sizes
     auto sizes = json.getProperty("sizes", json.getProperty("available_sizes", juce::var()));

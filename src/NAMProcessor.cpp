@@ -203,14 +203,17 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
         return false;
     }
 
-    if (isPrepared.load(std::memory_order_acquire))
+    const bool wasPrepared = isPrepared.load(std::memory_order_acquire);
+    const bool wasSuspended = isSuspended();
+    deferredModelFile = juce::File();
+    hasDeferredModelLoad = false;
+    hasDeferredModelClear = false;
+
+    if (wasPrepared)
     {
-        deferredModelFile = modelFile;
-        hasDeferredModelLoad = true;
-        hasDeferredModelClear = false;
-        spdlog::warn("NAMProcessor: Deferred model load until processor is inactive: {}",
+        spdlog::info("NAMProcessor: Suspending processing for model load: {}",
                      modelFile.getFullPathName().toStdString());
-        return false;
+        suspendProcessing(true);
     }
 
     spdlog::info("NAMProcessor: Loading model: {}", modelFile.getFullPathName().toStdString());
@@ -231,24 +234,32 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
         spdlog::error("NAMProcessor: Failed to load model");
     }
 
+    if (wasPrepared)
+        suspendProcessing(wasSuspended);
+
     return success;
 }
 
 void NAMProcessor::clearModel()
 {
-    if (isPrepared.load(std::memory_order_acquire))
+    const bool wasPrepared = isPrepared.load(std::memory_order_acquire);
+    const bool wasSuspended = isSuspended();
+    deferredModelFile = juce::File();
+    hasDeferredModelLoad = false;
+    hasDeferredModelClear = false;
+
+    if (wasPrepared)
     {
-        hasDeferredModelClear = true;
-        hasDeferredModelLoad = false;
-        deferredModelFile = juce::File();
-        spdlog::warn("NAMProcessor: Deferred model clear until processor is inactive");
-        return;
+        spdlog::info("NAMProcessor: Suspending processing for model clear");
+        suspendProcessing(true);
     }
 
     namCore->clearModel();
     modelLoaded.store(false);
     currentModelFile = juce::File();
-    hasDeferredModelClear = false;
+
+    if (wasPrepared)
+        suspendProcessing(wasSuspended);
 }
 
 juce::String NAMProcessor::getModelName() const
@@ -444,6 +455,13 @@ bool NAMProcessor::hasEffectsLoopContent() const
 void NAMProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
     juce::ignoreUnused(midiMessages);
+
+    if (isSuspended())
+    {
+        buffer.clear();
+        midiMessages.clear();
+        return;
+    }
 
     if (buffer.getNumChannels() == 0 || buffer.getNumSamples() == 0)
         return;

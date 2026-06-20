@@ -219,6 +219,11 @@ struct ToneInfo
 
     int downloads{0};
     int favorites{0};
+    int modelsCount{0};
+    int a1ModelsCount{0};
+    int a2ModelsCount{0};
+    int customModelsCount{0};
+    int irsCount{0};
 
     // Available sizes for this tone
     std::vector<std::string> availableSizes;

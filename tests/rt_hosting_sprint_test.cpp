@@ -282,14 +282,17 @@ TEST_CASE("NAMCore process path does not own model handoff", "[rt][nam]")
 {
     const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
     const auto processorSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
+    const auto bypassableSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/BypassableInstance.cpp");
 
     REQUIRE(source.find("stagedModel") == std::string::npos);
     REQUIRE(source.find("impl->model = std::move(resamplingModel);") != std::string::npos);
     REQUIRE(source.find("impl->a2Model = std::move(a2Model);") != std::string::npos);
     REQUIRE(source.find("impl->model = std::move(impl->stagedModel);") == std::string::npos);
 
-    REQUIRE(processorSource.find("Deferred model load until processor is inactive") != std::string::npos);
+    REQUIRE(processorSource.find("Suspending processing for model load") != std::string::npos);
     REQUIRE(processorSource.find("Deferred IR load until processor is inactive") != std::string::npos);
+    REQUIRE(bypassableSource.find("plugin->isSuspended()") != std::string::npos);
+    REQUIRE(bypassableSource.find("buffer.clear();") != std::string::npos);
 
     const auto processStart = processorSource.find("void NAMProcessor::processBlock");
     REQUIRE(processStart != std::string::npos);

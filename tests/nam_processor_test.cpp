@@ -1695,10 +1695,36 @@ TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][
     REQUIRE(browserSource.find("currentArchitecture);") != std::string::npos);
 
     REQUIRE(typesHeader.find("ModelArchitecture requestedArchitecture") != std::string::npos);
+    REQUIRE(typesHeader.find("int a1ModelsCount") != std::string::npos);
+    REQUIRE(typesHeader.find("int a2ModelsCount") != std::string::npos);
     REQUIRE(clientSource.find("tone.requestedArchitecture = architecture") != std::string::npos);
+    REQUIRE(clientSource.find("downloads_count") != std::string::npos);
+    REQUIRE(clientSource.find("a1_models_count") != std::string::npos);
+    REQUIRE(clientSource.find("a2_models_count") != std::string::npos);
     REQUIRE(clientSource.find("tone.architecture = Tone3000::modelArchitectureDisplayName(architecture)") ==
             std::string::npos);
     REQUIRE(managerSource.find("return tone.requestedArchitecture;") != std::string::npos);
+    REQUIRE(browserSource.find("getModelCountsText") != std::string::npos);
+    REQUIRE(browserSource.find("getCompactModelCountsText") != std::string::npos);
+    REQUIRE(browserSource.find("modelsValue->setText(getModelCountsText(*tone)") != std::string::npos);
+    REQUIRE(browserHeader.find("modelsLabel") != std::string::npos);
+    REQUIRE(browserHeader.find("descriptionValue") != std::string::npos);
+}
+
+TEST_CASE("NAM local browser surfaces architecture version labels", "[nam][a2][ui]")
+{
+    const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMModelBrowser.cpp");
+
+    REQUIRE(browserSource.find("getNAMArchitectureVersionLabel") != std::string::npos);
+    REQUIRE(browserSource.find("return \"A2\";") != std::string::npos);
+    REQUIRE(browserSource.find("return \"A1\";") != std::string::npos);
+    REQUIRE(browserSource.find("getNAMArchitectureDisplay(const NAMModelInfo& model)") != std::string::npos);
+    REQUIRE(browserSource.find("getNAMArchitectureBadge(const NAMModelInfo& model)") != std::string::npos);
+    REQUIRE(browserSource.find("architectureValue->setText(getNAMArchitectureDisplay(*model)") !=
+            std::string::npos);
+    REQUIRE(browserSource.find("archVersion.contains(currentFilter)") != std::string::npos);
+    REQUIRE(browserSource.find("colourForNAMArchitecture(getNAMArchitectureDisplay(*selectedModel)") !=
+            std::string::npos);
 }
 
 TEST_CASE("TONE3000 browser keeps download actions visible for the selected model", "[nam][tone3000][ui]")
@@ -1713,12 +1739,17 @@ TEST_CASE("TONE3000 browser keeps download actions visible for the selected mode
     REQUIRE(firstDetailRow != std::string::npos);
     REQUIRE(actionRow < firstDetailRow);
 
+    REQUIRE(browserHeader.find("detailsViewport") == std::string::npos);
+    REQUIRE(browserSource.find("setViewedComponent(detailsContent.get()") == std::string::npos);
+    REQUIRE(browserSource.find("detailsContent->setInterceptsMouseClicks(false, true)") != std::string::npos);
+    REQUIRE(browserSource.find("detailsContent->addAndMakeVisible(downloadButton.get())") != std::string::npos);
     REQUIRE(browserSource.find("downloadButton->setButtonText(\"Login to Download\")") != std::string::npos);
     REQUIRE(browserSource.find("downloadButton->setEnabled(true);") != std::string::npos);
     REQUIRE(browserSource.find("updateDetailsPanel(selectedTone);") != std::string::npos);
     REQUIRE(browserHeader.find("void selectedRowsChanged(int lastRowSelected) override") != std::string::npos);
     REQUIRE(browserHeader.find("setSelectionChangedCallback") != std::string::npos);
     REQUIRE(browserSource.find("listModel.setSelectionChangedCallback") != std::string::npos);
+    REQUIRE(browserSource.find("Selection changed: row={}") != std::string::npos);
     REQUIRE(browserSource.find("Download button clicked") != std::string::npos);
     REQUIRE(browserSource.find("Select a model first") != std::string::npos);
     REQUIRE(browserSource.find("Download failed: ") != std::string::npos);
@@ -1930,7 +1961,7 @@ TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing mod
     REQUIRE(source.find("return false;", loadCatch) != std::string::npos);
 }
 
-TEST_CASE("NAMProcessor legacy state restore keeps model loads behind the deferred boundary", "[nam][state][rt]")
+TEST_CASE("NAMProcessor active model loads suspend processing instead of deferring forever", "[nam][state][rt]")
 {
     const auto processorSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
 
@@ -1950,14 +1981,15 @@ TEST_CASE("NAMProcessor legacy state restore keeps model loads behind the deferr
     REQUIRE(loadEnd != std::string::npos);
 
     const auto loadBody = processorSource.substr(loadStart, loadEnd - loadStart);
-    const auto preparedCheck = loadBody.find("if (isPrepared.load(std::memory_order_acquire))");
+    const auto preparedCheck = loadBody.find("const bool wasPrepared = isPrepared.load(std::memory_order_acquire)");
     const auto coreLoad = loadBody.find("namCore->loadModel");
     REQUIRE(preparedCheck != std::string::npos);
     REQUIRE(coreLoad != std::string::npos);
     REQUIRE(preparedCheck < coreLoad);
-    REQUIRE(loadBody.find("deferredModelFile = modelFile", preparedCheck) != std::string::npos);
-    REQUIRE(loadBody.find("hasDeferredModelLoad = true", preparedCheck) != std::string::npos);
-    REQUIRE(loadBody.find("return false;", preparedCheck) < coreLoad);
+    REQUIRE(loadBody.find("suspendProcessing(true)", preparedCheck) != std::string::npos);
+    REQUIRE(loadBody.find("suspendProcessing(true)", preparedCheck) < coreLoad);
+    REQUIRE(loadBody.find("suspendProcessing(wasSuspended)", coreLoad) != std::string::npos);
+    REQUIRE(loadBody.find("hasDeferredModelLoad = true") == std::string::npos);
 
     const auto processStart = processorSource.find("void NAMProcessor::processBlock");
     const auto processEnd = processorSource.find("//==============================================================================", processStart + 1);

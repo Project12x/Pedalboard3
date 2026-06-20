@@ -305,6 +305,10 @@ Colour toneColourForTag(const String& tone)
 
 Colour colourForNAMArchitecture(const String& architecture, const BrowserPalette& palette)
 {
+    if (architecture.containsIgnoreCase("A2"))
+        return Colour(0xFF38C8E8);
+    if (architecture.containsIgnoreCase("A1"))
+        return palette.accent;
     if (architecture.containsIgnoreCase("LSTM"))
         return Colour(0xFFE8A838);
     if (architecture.containsIgnoreCase("WaveNet"))
@@ -315,6 +319,45 @@ Colour colourForNAMArchitecture(const String& architecture, const BrowserPalette
         return Colour(0xFFB088E8);
 
     return palette.text.withAlpha(0.48f);
+}
+
+String getNAMArchitectureVersionLabel(int architectureVersion)
+{
+    if (architectureVersion == 2)
+        return "A2";
+    if (architectureVersion == 1)
+        return "A1";
+
+    return {};
+}
+
+String getNAMArchitectureDisplay(const NAMModelInfo& model)
+{
+    const auto versionLabel = getNAMArchitectureVersionLabel(model.architectureVersion);
+    const auto architecture = String(model.architecture).trim();
+    const bool hasArchitectureName = architecture.isNotEmpty() && !architecture.equalsIgnoreCase("unknown");
+
+    if (versionLabel.isNotEmpty() && hasArchitectureName)
+        return versionLabel + " / " + architecture;
+    if (versionLabel.isNotEmpty())
+        return versionLabel;
+    if (hasArchitectureName)
+        return architecture;
+
+    return "Unknown";
+}
+
+String getNAMArchitectureBadge(const NAMModelInfo& model)
+{
+    const auto versionLabel = getNAMArchitectureVersionLabel(model.architectureVersion);
+    if (versionLabel.isNotEmpty())
+        return versionLabel;
+
+    const auto architecture = String(model.architecture).trim();
+    if (architecture.isEmpty() || architecture.equalsIgnoreCase("unknown"))
+        return "NAM";
+
+    return architecture.length() > 10 ? architecture.substring(0, 10) : architecture;
 }
 
 String normaliseNAMModelType(String modelType)
@@ -454,10 +497,7 @@ String makeNAMPreviewSummary(const NAMModelInfo& model, const NAMPreviewFields& 
     else if (fields.modelType != "-")
         parts.add(normaliseNAMModelType(fields.modelType));
 
-    if (model.architecture.empty())
-        parts.add("NAM");
-    else
-        parts.add(String(model.architecture));
+    parts.add(getNAMArchitectureDisplay(model));
 
     if (model.expectedSampleRate > 0.0)
         parts.add(formatNAMSampleRate(model.expectedSampleRate));
@@ -858,11 +898,15 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         int badgeX = width - margin - 10;
 
         // Architecture badge (rightmost)
-        const int archBadgeWidth = 50;
+        const auto archShort = getNAMArchitectureBadge(model);
+        const auto archDisplay = getNAMArchitectureDisplay(model);
+        const int archBadgeWidth = juce::jlimit(34, 72,
+                                                static_cast<int>(
+                                                    FontManager::getInstance().getBadgeFont().getStringWidthFloat(archShort))
+                                                    + 14);
         badgeX -= archBadgeWidth;
 
-        String archShort(model.architecture);
-        const auto archColour = colourForNAMArchitecture(archShort, palette);
+        const auto archColour = colourForNAMArchitecture(archDisplay, palette);
 
         drawModelGlyph(g,
                        Rectangle<float>((float)(margin + 12), (height - static_cast<float>(glyphSize)) * 0.5f,
@@ -973,11 +1017,12 @@ void NAMModelListModel::rebuildFilteredList()
         {
             String name = String(allModels[i].name).toLowerCase();
             String arch = String(allModels[i].architecture).toLowerCase();
+            String archVersion = getNAMArchitectureDisplay(allModels[i]).toLowerCase();
             String metadata = String(allModels[i].metadata).toLowerCase();
             String filePath = String(allModels[i].filePath).toLowerCase();
 
-            if (name.contains(currentFilter) || arch.contains(currentFilter) || metadata.contains(currentFilter) ||
-                filePath.contains(currentFilter))
+            if (name.contains(currentFilter) || arch.contains(currentFilter) || archVersion.contains(currentFilter) ||
+                metadata.contains(currentFilter) || filePath.contains(currentFilter))
             {
                 filteredIndices.push_back(i);
             }
@@ -1898,7 +1943,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                     const float glyphSize = detailsBounds.getWidth() >= 330.0f ? 50.0f : 42.0f;
                     auto glyph = Rectangle<float>(0.0f, previewCard.getY() + 12.0f, glyphSize, glyphSize)
                                      .withCentre({previewCard.getCentreX(), previewCard.getY() + 12.0f + glyphSize * 0.5f});
-                    const auto archColour = selectedModel ? colourForNAMArchitecture(String(selectedModel->architecture), palette)
+                    const auto archColour = selectedModel ? colourForNAMArchitecture(getNAMArchitectureDisplay(*selectedModel), palette)
                                                           : palette.accent2;
                     drawModelGlyph(g, glyph, selectedReady ? archColour : colours["Warning Colour"],
                                    selectedModel != nullptr);
@@ -2774,7 +2819,7 @@ void NAMModelBrowserComponent::updateDetailsPanel(const NAMModelInfo* model)
     {
         const auto fields = extractNAMPreviewFields(*model);
         nameValue->setText(String(model->name), dontSendNotification);
-        architectureValue->setText(String(model->architecture), dontSendNotification);
+        architectureValue->setText(getNAMArchitectureDisplay(*model), dontSendNotification);
         modelDescriptionLabel->setText(makeNAMDetailDescription(*model, fields), dontSendNotification);
 
         sampleRateValue->setText(formatNAMSampleRate(model->expectedSampleRate), dontSendNotification);

@@ -134,7 +134,6 @@ class NAMOnlineBrowserComponent : public juce::Component,
 
     // Details panel
     std::unique_ptr<juce::Component> detailsContent;
-    std::unique_ptr<juce::Viewport> detailsViewport;
     std::unique_ptr<juce::Label> detailsTitle;
     std::unique_ptr<juce::Label> nameLabel;
     std::unique_ptr<juce::Label> nameValue;
@@ -142,12 +141,16 @@ class NAMOnlineBrowserComponent : public juce::Component,
     std::unique_ptr<juce::Label> authorValue;
     std::unique_ptr<juce::Label> architectureLabel;
     std::unique_ptr<juce::Label> architectureValue;
+    std::unique_ptr<juce::Label> modelsLabel;
+    std::unique_ptr<juce::Label> modelsValue;
     std::unique_ptr<juce::Label> downloadsLabel;
     std::unique_ptr<juce::Label> downloadsValue;
     std::unique_ptr<juce::Label> sizeLabel;
     std::unique_ptr<juce::Label> sizeValue;
     std::unique_ptr<juce::Label> gearLabel;
     std::unique_ptr<juce::Label> gearValue;
+    std::unique_ptr<juce::Label> descriptionLabel;
+    std::unique_ptr<juce::Label> descriptionValue;
 
     // Action buttons
     std::unique_ptr<juce::TextButton> downloadButton;

@@ -35,7 +35,7 @@ juce::Colour getGearAccentColour(const std::string& gearType)
         return getBrowserRoleColour("Graph Category Amp", colours["Warning Colour"]);
     if (gearType == "pedal")
         return getBrowserRoleColour("Graph Category Modulation", colours["Audio Connection"]);
-    if (gearType == "full_rig")
+    if (gearType == "full-rig" || gearType == "full_rig")
         return colours["Success Colour"];
     return colours["Parameter Connection"];
 }
@@ -46,9 +46,56 @@ juce::String getGearDisplayText(const std::string& gearType)
         return "Amp";
     if (gearType == "pedal")
         return "Pedal";
-    if (gearType == "full_rig")
+    if (gearType == "full-rig" || gearType == "full_rig")
         return "Full Rig";
     return juce::String(gearType);
+}
+
+juce::String getModelCountsText(const Tone3000::ToneInfo& tone)
+{
+    juce::StringArray parts;
+    if (tone.a2ModelsCount > 0)
+        parts.add("A2 " + juce::String(tone.a2ModelsCount));
+    if (tone.a1ModelsCount > 0)
+        parts.add("A1 " + juce::String(tone.a1ModelsCount));
+    if (tone.customModelsCount > 0)
+        parts.add("Custom " + juce::String(tone.customModelsCount));
+    if (tone.irsCount > 0)
+        parts.add("IR " + juce::String(tone.irsCount));
+    if (parts.isEmpty() && tone.modelsCount > 0)
+        parts.add(juce::String(tone.modelsCount) + " models");
+    return parts.joinIntoString("  ");
+}
+
+juce::String getCompactModelCountsText(const Tone3000::ToneInfo& tone)
+{
+    juce::StringArray parts;
+    if (tone.a2ModelsCount > 0)
+        parts.add("A2 x" + juce::String(tone.a2ModelsCount));
+    if (tone.a1ModelsCount > 0)
+        parts.add("A1 x" + juce::String(tone.a1ModelsCount));
+    if (tone.customModelsCount > 0)
+        parts.add("Custom x" + juce::String(tone.customModelsCount));
+    if (tone.irsCount > 0)
+        parts.add("IR x" + juce::String(tone.irsCount));
+    return parts.joinIntoString(" ");
+}
+
+juce::String getDescriptionSummary(const std::string& description)
+{
+    auto text = juce::String(description).trim();
+    if (text.isEmpty())
+        return "No description";
+
+    text = text.replace("\r\n", "\n").replace("\r", "\n");
+    while (text.contains("\n\n\n"))
+        text = text.replace("\n\n\n", "\n\n");
+
+    constexpr int maxChars = 260;
+    if (text.length() > maxChars)
+        text = text.substring(0, maxChars).trim() + "...";
+
+    return text;
 }
 
 juce::String getArchitectureDisplayText(const Tone3000::ToneInfo& tone)
@@ -89,7 +136,7 @@ IconManager::DomainGlyph getGearGlyph(const std::string& gearType)
 {
     if (gearType == "pedal")
         return IconManager::DomainGlyph::Pedal;
-    if (gearType == "full_rig")
+    if (gearType == "full-rig" || gearType == "full_rig")
         return IconManager::DomainGlyph::FullRig;
     return IconManager::DomainGlyph::Amp;
 }
@@ -337,6 +384,25 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
         rightEdge -= 6;
     }
 
+    const auto modelCountsText = getCompactModelCountsText(tone);
+    if (modelCountsText.isNotEmpty())
+    {
+        g.setFont(fm.getBadgeFont());
+        const int badgeW = juce::jmin(150, static_cast<int>(fm.getBadgeFont().getStringWidthFloat(modelCountsText)) + 13);
+        rightEdge -= badgeW;
+
+        juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
+                                           static_cast<float>(badgeW), static_cast<float>(badgeHeight));
+        g.setColour(palette.accent.withAlpha(0.12f));
+        g.fillRoundedRectangle(badgeBounds, 5.0f);
+        g.setColour(palette.accent.withAlpha(0.42f));
+        g.drawRoundedRectangle(badgeBounds.reduced(0.5f), 5.0f, 1.0f);
+        g.setColour(palette.accent.withAlpha(0.92f));
+        g.drawText(modelCountsText, badgeBounds.reduced(4, 0), juce::Justification::centredLeft, true);
+
+        rightEdge -= 6;
+    }
+
     // Gear type badge.
     auto gearText = getGearDisplayText(tone.gearType);
     if (gearText.isNotEmpty())
@@ -571,11 +637,8 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
 
     // Details panel
     detailsContent = std::make_unique<juce::Component>("tone3000DetailsContent");
-    detailsViewport = std::make_unique<juce::Viewport>("tone3000DetailsViewport");
-    detailsViewport->setViewedComponent(detailsContent.get(), false);
-    detailsViewport->setScrollBarsShown(true, false);
-    detailsViewport->setScrollOnDragMode(juce::Viewport::ScrollOnDragMode::all);
-    addAndMakeVisible(detailsViewport.get());
+    detailsContent->setInterceptsMouseClicks(false, true);
+    addAndMakeVisible(detailsContent.get());
 
     detailsTitle = std::make_unique<juce::Label>("detailsTitle", "Details");
     detailsTitle->setFont(FontManager::getInstance().getSubheadingFont());
@@ -616,6 +679,11 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     architectureValue = createValueLabel();
     detailsContent->addAndMakeVisible(architectureValue.get());
 
+    modelsLabel = createDetailLabel("Models:");
+    detailsContent->addAndMakeVisible(modelsLabel.get());
+    modelsValue = createValueLabel();
+    detailsContent->addAndMakeVisible(modelsValue.get());
+
     downloadsLabel = createDetailLabel("Downloads:");
     detailsContent->addAndMakeVisible(downloadsLabel.get());
     downloadsValue = createValueLabel();
@@ -630,6 +698,13 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     detailsContent->addAndMakeVisible(gearLabel.get());
     gearValue = createValueLabel();
     detailsContent->addAndMakeVisible(gearValue.get());
+
+    descriptionLabel = createDetailLabel("Description:");
+    detailsContent->addAndMakeVisible(descriptionLabel.get());
+    descriptionValue = createValueLabel();
+    descriptionValue->setJustificationType(juce::Justification::topLeft);
+    descriptionValue->setMinimumHorizontalScale(0.64f);
+    detailsContent->addAndMakeVisible(descriptionValue.get());
 
     // Action buttons
     downloadButton = std::make_unique<juce::TextButton>("Download");
@@ -802,7 +877,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(listBounds.reduced(0.5f), 8.0f, 1.0f);
 
     // Draw card-style details panel with shadow
-    auto detailsBounds = detailsViewport != nullptr ? detailsViewport->getBounds().toFloat() : juce::Rectangle<float>();
+    auto detailsBounds = detailsContent != nullptr ? detailsContent->getBounds().toFloat() : juce::Rectangle<float>();
     juce::Path detailsPath;
     detailsPath.addRoundedRectangle(detailsBounds, 8.0f);
 
@@ -855,17 +930,14 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
     }
 
     // Detail panel section separators
-    if (nameLabel && nameValue)
+    if (selectedTone != nullptr && nameLabel && nameValue)
     {
         auto boundsInBrowser = [this](const juce::Component* component)
         {
             if (component == nullptr)
                 return juce::Rectangle<int>();
-            if (detailsContent != nullptr && detailsViewport != nullptr && component->getParentComponent() == detailsContent.get())
-            {
-                return component->getBounds().translated(detailsViewport->getX() - detailsViewport->getViewPositionX(),
-                                                         detailsViewport->getY() - detailsViewport->getViewPositionY());
-            }
+            if (detailsContent != nullptr && component->getParentComponent() == detailsContent.get())
+                return component->getBounds().translated(detailsContent->getX(), detailsContent->getY());
 
             return component->getBounds();
         };
@@ -874,7 +946,8 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         g.setColour(palette.text.withAlpha(0.08f));
 
         const juce::Label* values[] = {nameValue.get(), authorValue.get(), gearValue.get(), architectureValue.get(),
-                                       downloadsValue.get(), sizeValue.get()};
+                                       modelsValue.get(), downloadsValue.get(), sizeValue.get(),
+                                       descriptionValue.get()};
         for (const auto* value : values)
         {
             if (value == nullptr)
@@ -984,12 +1057,47 @@ void NAMOnlineBrowserComponent::resized()
     bounds.removeFromLeft(16); // Gap
 
     // Details panel
-    auto detailsViewportBounds = bounds;
-    detailsViewport->setBounds(detailsViewportBounds);
-    const int detailsContentWidth = juce::jmax(1, detailsViewportBounds.getWidth() - 12);
-    auto detailsArea = juce::Rectangle<int>(0, 0, detailsContentWidth, 1);
-    detailsTitle->setBounds(detailsArea.removeFromTop(24));
-    detailsArea.removeFromTop(selectedTone != nullptr ? 92 : 8);
+    detailsContent->setBounds(bounds);
+    auto detailsArea = detailsContent->getLocalBounds().reduced(compactLayout ? 14 : 18,
+                                                                compactLayout ? 12 : 14);
+    const bool hasSelection = selectedTone != nullptr;
+
+    auto setDetailVisible = [hasSelection](juce::Component* component)
+    {
+        if (component != nullptr)
+            component->setVisible(hasSelection);
+    };
+
+    setDetailVisible(nameLabel.get());
+    setDetailVisible(nameValue.get());
+    setDetailVisible(authorLabel.get());
+    setDetailVisible(authorValue.get());
+    setDetailVisible(gearLabel.get());
+    setDetailVisible(gearValue.get());
+    setDetailVisible(architectureLabel.get());
+    setDetailVisible(architectureValue.get());
+    setDetailVisible(modelsLabel.get());
+    setDetailVisible(modelsValue.get());
+    setDetailVisible(downloadsLabel.get());
+    setDetailVisible(downloadsValue.get());
+    setDetailVisible(sizeLabel.get());
+    setDetailVisible(sizeValue.get());
+    setDetailVisible(descriptionLabel.get());
+    setDetailVisible(descriptionValue.get());
+    setDetailVisible(downloadButton.get());
+    setDetailVisible(loadButton.get());
+
+    detailsTitle->setVisible(!hasSelection);
+    if (!hasSelection)
+    {
+        detailsTitle->setBounds(detailsArea.removeFromTop(24));
+        detailsArea.removeFromTop(8);
+    }
+    else
+    {
+        detailsTitle->setBounds({});
+        detailsArea.removeFromTop(104);
+    }
 
     // Keep the primary model actions visible directly under the selected-model hero.
     auto actionRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);
@@ -1026,6 +1134,10 @@ void NAMOnlineBrowserComponent::resized()
     architectureValue->setBounds(row);
 
     row = detailRow();
+    modelsLabel->setBounds(row.removeFromLeft(labelWidth));
+    modelsValue->setBounds(row);
+
+    row = detailRow();
     downloadsLabel->setBounds(row.removeFromLeft(labelWidth));
     downloadsValue->setBounds(row);
 
@@ -1033,8 +1145,11 @@ void NAMOnlineBrowserComponent::resized()
     sizeLabel->setBounds(row.removeFromLeft(labelWidth));
     sizeValue->setBounds(row);
 
-    detailsContent->setSize(detailsContentWidth,
-                            juce::jmax(detailsViewportBounds.getHeight(), detailsArea.getY() + 16));
+    detailsArea.removeFromTop(2);
+    auto descriptionRow = detailsArea.removeFromTop(compactLayout ? 56 : 72);
+    descriptionLabel->setBounds(descriptionRow.removeFromLeft(labelWidth));
+    descriptionValue->setBounds(descriptionRow);
+
 }
 
 void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)
@@ -1262,9 +1377,11 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
         nameValue->setText("", juce::dontSendNotification);
         authorValue->setText("", juce::dontSendNotification);
         architectureValue->setText("", juce::dontSendNotification);
+        modelsValue->setText("", juce::dontSendNotification);
         downloadsValue->setText("", juce::dontSendNotification);
         sizeValue->setText("", juce::dontSendNotification);
         gearValue->setText("", juce::dontSendNotification);
+        descriptionValue->setText("", juce::dontSendNotification);
 
         downloadButton->setEnabled(false);
         downloadButton->setButtonText("Download");
@@ -1277,8 +1394,10 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
     nameValue->setText(juce::String(tone->name), juce::dontSendNotification);
     authorValue->setText(juce::String(tone->authorName), juce::dontSendNotification);
     architectureValue->setText(getArchitectureDetailText(*tone), juce::dontSendNotification);
+    modelsValue->setText(getModelCountsText(*tone), juce::dontSendNotification);
     downloadsValue->setText(juce::String(tone->downloads), juce::dontSendNotification);
-    gearValue->setText(juce::String(tone->gearType), juce::dontSendNotification);
+    gearValue->setText(getGearDisplayText(tone->gearType), juce::dontSendNotification);
+    descriptionValue->setText(getDescriptionSummary(tone->description), juce::dontSendNotification);
 
     if (tone->fileSize > 0)
     {
@@ -1330,6 +1449,8 @@ void NAMOnlineBrowserComponent::onListSelectionChanged()
 {
     int selectedRow = resultsList->getSelectedRow();
     const Tone3000::ToneInfo* tone = listModel.getToneAt(selectedRow);
+    spdlog::info("[NAMOnlineBrowser] Selection changed: row={}, tone={}",
+                 selectedRow, tone != nullptr ? tone->id : std::string("<none>"));
     updateDetailsPanel(tone);
 }
 

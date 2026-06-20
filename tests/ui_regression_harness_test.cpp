@@ -1490,7 +1490,7 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
     REQUIRE(onlineSource.has_value());
 
     CHECK(onlineHeader->find("std::unique_ptr<juce::Component> detailsContent;") != std::string::npos);
-    CHECK(onlineHeader->find("std::unique_ptr<juce::Viewport> detailsViewport;") != std::string::npos);
+    CHECK(onlineHeader->find("std::unique_ptr<juce::Viewport> detailsViewport;") == std::string::npos);
     CHECK(onlineSource->find("BrowserPalette makeOnlineBrowserPalette()") != std::string::npos);
     CHECK(onlineSource->find("0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57, 0xFF5B4C6E") !=
           std::string::npos);
@@ -1578,9 +1578,11 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
           std::string::npos);
     CHECK(onlineSource->find("loginButton->setLookAndFeel(nullptr);") != std::string::npos);
     CHECK(onlineSource->find("nextPageButton->setLookAndFeel(nullptr);") != std::string::npos);
-    CHECK(onlineSource->find("detailsViewport->setViewedComponent(detailsContent.get(), false);") !=
+    CHECK(onlineSource->find("detailsContent->setInterceptsMouseClicks(false, true);") != std::string::npos);
+    CHECK(onlineSource->find("detailsContent->setBounds(bounds);") != std::string::npos);
+    CHECK(onlineSource->find("detailsContent->addAndMakeVisible(downloadButton.get());") != std::string::npos);
+    CHECK(onlineSource->find("detailsViewport->setViewedComponent(detailsContent.get(), false);") ==
           std::string::npos);
-    CHECK(onlineSource->find("detailsViewport->setScrollBarsShown(true, false);") != std::string::npos);
     CHECK(onlineSource->find("detailsContent->addAndMakeVisible(nameLabel.get());") != std::string::npos);
     CHECK(onlineSource->find("melatonin::DropShadow shadow{juce::Colours::black.withAlpha(0.28f), 10, {0, 4}};") !=
           std::string::npos);

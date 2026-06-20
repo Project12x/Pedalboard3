@@ -228,6 +228,13 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
     if (!prepared.load())
         return;
 
+    if (plugin->isSuspended())
+    {
+        buffer.clear();
+        midiMessages.clear();
+        return;
+    }
+
     int i, j;
     float rampVal = bypassRamp;
     MidiBuffer tempMidi;
