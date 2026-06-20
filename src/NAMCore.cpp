@@ -23,11 +23,23 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 namespace
 {
+struct NamFileVersion
+{
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+    bool valid = false;
+};
+
 int readArchitectureVersion(const nlohmann::json& j)
 {
+    if (!j.is_object())
+        return 0;
+
     const auto architectureVersion = j.find("architecture_version");
     if (architectureVersion == j.end() || architectureVersion->is_null())
         return 0;
@@ -53,15 +65,112 @@ int readArchitectureVersion(const nlohmann::json& j)
     return 0;
 }
 
-bool isArchitecture2Model(const std::filesystem::path& path)
+NamFileVersion readNamFileVersion(const nlohmann::json& j)
+{
+    if (!j.is_object())
+        return {};
+
+    const auto version = j.find("version");
+    if (version == j.end() || !version->is_string())
+        return {};
+
+    NamFileVersion parsed;
+    char dot1 = '\0';
+    char dot2 = '\0';
+    std::istringstream stream(version->get<std::string>());
+    if (!(stream >> parsed.major >> dot1 >> parsed.minor >> dot2 >> parsed.patch))
+        return {};
+
+    if (dot1 != '.' || dot2 != '.' || parsed.major < 0 || parsed.minor < 0 || parsed.patch < 0)
+        return {};
+
+    parsed.valid = true;
+    return parsed;
+}
+
+bool isNamVersionAtLeast(const NamFileVersion& version, int major, int minor, int patch)
+{
+    if (!version.valid)
+        return false;
+
+    if (version.major != major)
+        return version.major > major;
+
+    if (version.minor != minor)
+        return version.minor > minor;
+
+    return version.patch >= patch;
+}
+
+bool hasSlimmableLayerConfig(const nlohmann::json& config)
+{
+    const nlohmann::json* modelConfig = &config;
+    const auto wrappedModel = config.find("model");
+    if (wrappedModel != config.end() && wrappedModel->is_object())
+        modelConfig = &(*wrappedModel);
+
+    const auto layers = modelConfig->find("layers");
+    if (layers == modelConfig->end() || !layers->is_array())
+        return false;
+
+    for (const auto& layer : *layers)
+    {
+        if (!layer.is_object())
+            continue;
+
+        const auto slimmable = layer.find("slimmable");
+        if (slimmable != layer.end() && !slimmable->is_null())
+            return true;
+    }
+
+    return false;
+}
+
+bool usesA2OnlyModelShape(const nlohmann::json& j)
+{
+    if (!j.is_object())
+        return false;
+
+    const auto architecture = j.find("architecture");
+    if (architecture == j.end() || !architecture->is_string())
+        return false;
+
+    const auto architectureName = architecture->get<std::string>();
+    if (architectureName == "SlimmableContainer")
+        return true;
+
+    const auto config = j.find("config");
+    return architectureName == "WaveNet" && config != j.end() && config->is_object() && hasSlimmableLayerConfig(*config);
+}
+
+bool shouldTryA2BeforeLegacy(const nlohmann::json& j)
+{
+    if (readArchitectureVersion(j) == 2 || usesA2OnlyModelShape(j))
+        return true;
+
+    return isNamVersionAtLeast(readNamFileVersion(j), 0, 6, 0);
+}
+
+bool shouldTryA2AfterLegacyFailure(const nlohmann::json& j)
+{
+    return shouldTryA2BeforeLegacy(j) || isNamVersionAtLeast(readNamFileVersion(j), 0, 5, 0);
+}
+
+bool readNamModelJson(const std::filesystem::path& path, nlohmann::json& j)
 {
     std::ifstream file(path);
     if (!file.is_open())
         return false;
 
-    nlohmann::json j;
-    file >> j;
-    return readArchitectureVersion(j) == 2;
+    try
+    {
+        file >> j;
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
 }
 } // namespace
 
@@ -105,7 +214,13 @@ bool NAMCore::loadModel(const std::string& modelPath)
     try
     {
         auto path = std::filesystem::u8path(modelPath);
-        if (isArchitecture2Model(path))
+
+        nlohmann::json modelJson;
+        const bool hasModelJson = readNamModelJson(path, modelJson);
+        const bool tryA2First = hasModelJson && shouldTryA2BeforeLegacy(modelJson);
+        const bool allowA2Fallback = hasModelJson && shouldTryA2AfterLegacyFailure(modelJson);
+
+        const auto loadA2Model = [this, &modelPath]()
         {
             auto a2Model = std::make_unique<NAMCoreA2>();
             if (!a2Model->loadModel(modelPath, impl->sampleRate, impl->blockSize, impl->prepared))
@@ -115,22 +230,39 @@ bool NAMCore::loadModel(const std::string& modelPath)
             impl->a2Model = std::move(a2Model);
             impl->modelLoaded = true;
             return true;
-        }
+        };
 
-        std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);
-
-        if (!dspModel)
+        const auto loadLegacyModel = [this, &path]()
         {
-            return false;
+            std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);
+            if (!dspModel)
+                return false;
+
+            auto resamplingModel = std::make_unique<ResamplingNAM>(std::move(dspModel), impl->sampleRate);
+            resamplingModel->Reset(impl->sampleRate, impl->blockSize);
+
+            impl->model = std::move(resamplingModel);
+            impl->a2Model = nullptr;
+            impl->modelLoaded = true;
+            return true;
+        };
+
+        if (tryA2First)
+            return loadA2Model();
+
+        try
+        {
+            if (loadLegacyModel())
+                return true;
+        }
+        catch (const std::exception&)
+        {
         }
 
-        auto resamplingModel = std::make_unique<ResamplingNAM>(std::move(dspModel), impl->sampleRate);
-        resamplingModel->Reset(impl->sampleRate, impl->blockSize);
+        if (allowA2Fallback)
+            return loadA2Model();
 
-        impl->model = std::move(resamplingModel);
-        impl->a2Model = nullptr;
-        impl->modelLoaded = true;
-        return true;
+        return false;
     }
     catch (const std::exception&)
     {

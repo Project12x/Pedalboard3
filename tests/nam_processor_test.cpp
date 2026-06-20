@@ -1685,7 +1685,7 @@ TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][
             std::string::npos);
 }
 
-TEST_CASE("NAMCore routes explicit A2 models without replacing legacy fallback", "[nam][a2]")
+TEST_CASE("NAMCore routes A2 candidates without replacing legacy fallback", "[nam][a2]")
 {
     const auto header = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.h");
     const auto source = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
@@ -1694,11 +1694,19 @@ TEST_CASE("NAMCore routes explicit A2 models without replacing legacy fallback",
 
     REQUIRE(header.find("int architectureVersion") != std::string::npos);
     REQUIRE(source.find("readArchitectureVersion") != std::string::npos);
+    REQUIRE(source.find("readNamFileVersion") != std::string::npos);
+    REQUIRE(source.find("shouldTryA2BeforeLegacy") != std::string::npos);
+    REQUIRE(source.find("shouldTryA2AfterLegacyFailure") != std::string::npos);
+    REQUIRE(source.find("usesA2OnlyModelShape") != std::string::npos);
+    REQUIRE(source.find("hasSlimmableLayerConfig") != std::string::npos);
     REQUIRE(source.find("architecture_version") != std::string::npos);
-    REQUIRE(source.find("isArchitecture2Model(path)") != std::string::npos);
+    REQUIRE(source.find("readArchitectureVersion(j) == 2") != std::string::npos);
+    REQUIRE(source.find("isNamVersionAtLeast(readNamFileVersion(j), 0, 5, 0)") != std::string::npos);
     REQUIRE(source.find("impl->prepared") != std::string::npos);
     REQUIRE(source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path)") != std::string::npos);
     REQUIRE(source.find("impl->model = std::move(resamplingModel)") != std::string::npos);
+    REQUIRE(source.find("if (tryA2First)") != std::string::npos);
+    REQUIRE(source.find("if (allowA2Fallback)") != std::string::npos);
     REQUIRE(header.find("bool isSlimmableModel() const") != std::string::npos);
     REQUIRE(header.find("bool setSlimmableSize(float size)") != std::string::npos);
     REQUIRE(source.find("impl->a2Model && impl->a2Model->isSlimmableModel()") != std::string::npos);
@@ -1819,12 +1827,12 @@ TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing mod
 {
     const auto source = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
 
-    const auto a2Branch = source.find("if (isArchitecture2Model(path))");
-    REQUIRE(a2Branch != std::string::npos);
+    const auto a2Loader = source.find("const auto loadA2Model");
+    REQUIRE(a2Loader != std::string::npos);
 
     const auto failedA2Load = source.find("if (!a2Model->loadModel(modelPath, impl->sampleRate, impl->blockSize, "
                                          "impl->prepared))",
-                                         a2Branch);
+                                         a2Loader);
     REQUIRE(failedA2Load != std::string::npos);
 
     const auto failedA2Return = source.find("return false;", failedA2Load);
@@ -1837,7 +1845,10 @@ TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing mod
     REQUIRE(failedA2Return < clearLegacyModel);
     REQUIRE(failedA2Return < assignA2Model);
 
-    const auto legacyLoad = source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);", a2Branch);
+    const auto legacyLoader = source.find("const auto loadLegacyModel", a2Loader);
+    REQUIRE(legacyLoader != std::string::npos);
+
+    const auto legacyLoad = source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);", legacyLoader);
     const auto assignLegacyModel = source.find("impl->model = std::move(resamplingModel);", legacyLoad);
     const auto clearA2Model = source.find("impl->a2Model = nullptr;", legacyLoad);
 
@@ -1847,7 +1858,19 @@ TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing mod
     REQUIRE(legacyLoad < assignLegacyModel);
     REQUIRE(assignLegacyModel < clearA2Model);
 
-    const auto loadCatch = source.find("catch (const std::exception&)", a2Branch);
+    const auto tryLegacy = source.find("if (loadLegacyModel())", legacyLoader);
+    const auto legacyCatch = source.find("catch (const std::exception&)", tryLegacy);
+    const auto fallbackCheck = source.find("if (allowA2Fallback)", legacyCatch);
+    const auto fallbackLoad = source.find("return loadA2Model();", fallbackCheck);
+    REQUIRE(tryLegacy != std::string::npos);
+    REQUIRE(legacyCatch != std::string::npos);
+    REQUIRE(fallbackCheck != std::string::npos);
+    REQUIRE(fallbackLoad != std::string::npos);
+    REQUIRE(tryLegacy < legacyCatch);
+    REQUIRE(legacyCatch < fallbackCheck);
+    REQUIRE(fallbackCheck < fallbackLoad);
+
+    const auto loadCatch = source.find("catch (const std::exception&)", fallbackCheck);
     REQUIRE(loadCatch != std::string::npos);
     REQUIRE(source.find("return false;", loadCatch) != std::string::npos);
 }

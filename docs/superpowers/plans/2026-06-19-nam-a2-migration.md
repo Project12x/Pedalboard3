@@ -189,9 +189,10 @@ Steps:
 - [x] Preserve current `NAMCore` outward API where practical so `NAMProcessor` and legacy state stay stable.
 
 Scope note: A2 is now isolated behind `NAMCoreA2` with the upstream namespace
-remapped to `pedalboard3_nam_a2` so it can link beside the legacy core. Only
-models explicitly marked `architecture_version: 2` route to A2. Legacy,
-custom, and unmarked files continue through the existing `ResamplingNAM` path.
+remapped to `pedalboard3_nam_a2` so it can link beside the legacy core. Models
+explicitly marked `architecture_version: 2`, A2-only slimmable shapes, and
+newer NAM file versions route to A2. Unmarked `0.5.x` files keep the legacy
+`ResamplingNAM` path first and fall back to A2 only if legacy parsing fails.
 This commit intentionally rejects A2 sample-rate mismatches instead of adding a
 new RT resampler wrapper; do not call A2 runtime verification complete until a
 real A2 fixture or manual model load confirms the end-to-end path. Loads that
@@ -268,9 +269,10 @@ Fixture provenance findings:
   `REAPER/model.nam`, size 296,243 bytes. The file metadata reports version
   `0.5.2`, top-level `sample_rate` 48000, name `Obsidian`, and no
   `architecture_version` field.
-- That exact upstream `.nam` file would route through Pedalboard's legacy/custom
-  path, not the explicit A2 path. Creating an A2 fixture by adding
-  `architecture_version: 2` would be a derived opaque model, so it is not
+- That exact upstream `.nam` file now exercises the version-supported unmarked
+  compatibility path: legacy parsing is attempted first, and A2 fallback is
+  allowed if the legacy core cannot parse the file. Creating an A2 fixture by
+  adding `architecture_version: 2` would be a derived opaque model, so it is not
   committed in this slice.
 - `Models/*/config.json` plus `weights.npy` samples in the upstream plugin repo
   are not packed `.nam` files and would require a conversion step before they
@@ -317,8 +319,9 @@ cmake --build build --config Debug --target Pedalboard3 -- /m:1
 
 Then run the app against real model files:
 
-- Load an exact A2 `.nam` file that contains `architecture_version: 2`, ideally
-  at the current device sample rate. Record source URL or immutable download ID,
+- Load an exact A2 `.nam` file that either contains `architecture_version: 2` or
+  is an unmarked version-supported file that forces A2 fallback, ideally at the
+  current device sample rate. Record source URL or immutable download ID,
   license, hash, metadata, and whether the compact `SIZE` slider appears.
 - Load a known pre-A2/custom `.nam` file and confirm it still uses the legacy
   path and does not expose the `SIZE` control.

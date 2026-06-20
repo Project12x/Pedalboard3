@@ -332,7 +332,8 @@ TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam
     REQUIRE(cmake.find("NAM_ENABLE_A2_FAST") != std::string::npos);
 
     REQUIRE(namCoreSource.find("../external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h") != std::string::npos);
-    REQUIRE(namCoreSource.find("isArchitecture2Model") != std::string::npos);
+    REQUIRE(namCoreSource.find("shouldTryA2BeforeLegacy") != std::string::npos);
+    REQUIRE(namCoreSource.find("shouldTryA2AfterLegacyFailure") != std::string::npos);
     REQUIRE(namCoreSource.find("architecture_version") != std::string::npos);
     REQUIRE(namCoreSource.find("../external/NeuralAmpModelerCoreA2") == std::string::npos);
 
