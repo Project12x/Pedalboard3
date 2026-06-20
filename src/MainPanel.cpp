@@ -82,6 +82,31 @@ using namespace std;
 
 namespace
 {
+bool isRuntimeInternalPluginXml(const XmlElement& pluginXml)
+{
+    return pluginXml.hasTagName("PLUGIN") &&
+           pluginXml.getStringAttribute("format") == "Internal";
+}
+
+void removeRuntimeInternalPluginsFromPluginListXml(XmlElement& pluginListXml)
+{
+    for (int childIndex = pluginListXml.getNumChildElements(); --childIndex >= 0;)
+    {
+        auto* child = pluginListXml.getChildElement(childIndex);
+        if (child != nullptr && isRuntimeInternalPluginXml(*child))
+            pluginListXml.removeChildElement(child, true);
+    }
+}
+
+std::unique_ptr<XmlElement> createPersistablePluginListXml(const KnownPluginList& pluginList)
+{
+    auto savedPluginList = pluginList.createXml();
+    if (savedPluginList != nullptr)
+        removeRuntimeInternalPluginsFromPluginListXml(*savedPluginList);
+
+    return savedPluginList;
+}
+
 String getVisualQaNodeSnapshotName(const String& pluginName)
 {
     if (pluginName == "NAM Loader")
@@ -542,6 +567,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         SettingsManager::getInstance().getXmlValue("pluginList");
     if (savedPluginList != 0)
     {
+        removeRuntimeInternalPluginsFromPluginListXml(*savedPluginList);
         pluginList.recreateFromXml(*savedPluginList);
         // JUCE 8: unique_ptr auto-deleted
     }
@@ -2841,8 +2867,7 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
     {
         // Save the plugin list every time it gets changed, so that if we're
         // scanning and it crashes, we've still saved the previous ones
-        auto savedPluginList = // JUCE 8: returns unique_ptr
-            pluginList.createXml();
+        auto savedPluginList = createPersistablePluginListXml(pluginList);
 
         if (savedPluginList != nullptr)
         {

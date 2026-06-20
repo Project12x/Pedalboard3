@@ -1070,6 +1070,29 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
 
 }
 
+TEST_CASE("Internal plugin descriptions are runtime catalog entries, not persisted scan results",
+          "[ui][regression][source][plugins]")
+{
+    const auto mainPanelSource = loadSourceFile("src/MainPanel.cpp");
+
+    REQUIRE(mainPanelSource.has_value());
+
+    CHECK(mainPanelSource->find("bool isRuntimeInternalPluginXml(const XmlElement& pluginXml)") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("return pluginXml.hasTagName(\"PLUGIN\") &&\n           pluginXml.getStringAttribute(\"format\") == \"Internal\";") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("void removeRuntimeInternalPluginsFromPluginListXml(XmlElement& pluginListXml)") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("std::unique_ptr<XmlElement> createPersistablePluginListXml(const KnownPluginList& pluginList)") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("removeRuntimeInternalPluginsFromPluginListXml(*savedPluginList);\n        pluginList.recreateFromXml(*savedPluginList);") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("auto savedPluginList = createPersistablePluginListXml(pluginList);") !=
+          std::string::npos);
+    CHECK(mainPanelSource->find("pluginList.createXml();\n    if (savedPluginList != nullptr)\n        removeRuntimeInternalPluginsFromPluginListXml(*savedPluginList);") !=
+          std::string::npos);
+}
+
 TEST_CASE("NAM and IR loader mockup ports cannot remove existing app-only controls",
           "[ui][regression][source][nodes][loader][function-contract]")
 {

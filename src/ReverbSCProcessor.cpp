@@ -60,7 +60,7 @@ class ReverbSCControl final : public Component, private Timer
     explicit ReverbSCControl(ReverbSCProcessor* proc) : processor(proc)
     {
         setName("ReverbSC Node Controls");
-        setSize(308, 166);
+        setSize(308, 154);
 
         for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
         {
@@ -97,14 +97,14 @@ class ReverbSCControl final : public Component, private Timer
     {
         auto area = getLocalBounds().reduced(10, 7);
 
-        auto hero = area.removeFromTop(62);
-        glyphArea = hero.removeFromLeft(62);
+        auto hero = area.removeFromTop(58);
+        glyphArea = hero.removeFromLeft(58);
         hero.removeFromLeft(8);
         parameterAreas[ReverbSCProcessor::MixParam] = hero;
-        area.removeFromTop(7);
+        area.removeFromTop(6);
 
         const int columnGap = 8;
-        const int rowGap = 7;
+        const int rowGap = 6;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
         const int rowHeight = (area.getHeight() - rowGap) / 2;
 

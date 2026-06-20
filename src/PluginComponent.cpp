@@ -357,6 +357,8 @@ int getEmbeddedNodeControlHeightPadding(const String& pluginName)
         return 84;
     if (pluginName == "IR Loader")
         return 112;
+    if (pluginName == "ReverbSC")
+        return 60;
 
     return 64;
 }
@@ -1334,6 +1336,19 @@ void PluginComponent::layoutFooterButtons()
         return;
     }
 
+    if (usesEmbeddedParameterSurface(pluginName))
+    {
+        const int y = getHeight() - 25;
+        const int h = 18;
+
+        if (mappingsButton != nullptr)
+            mappingsButton->setBounds(14, y, 22, h);
+        if (bypassButton != nullptr)
+            bypassButton->setBounds(getWidth() - 28, y, 18, h);
+
+        return;
+    }
+
     if (editButton != nullptr)
         editButton->setBounds(10, getHeight() - 30, 20, 20);
     if (mappingsButton != nullptr)
@@ -1460,7 +1475,7 @@ void PluginComponent::paint(Graphics& g)
     if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
-        float footerY = h - 36.0f;
+        float footerY = usesEmbeddedParameterSurface(pluginName) ? h - 31.0f : h - 36.0f;
         g.setColour(colours["Plugin Border"].withAlpha(0.28f));
         g.drawLine(6.0f, footerY, w - 6.0f, footerY, 0.75f);
     }
