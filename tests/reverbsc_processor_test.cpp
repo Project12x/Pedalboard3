@@ -184,8 +184,8 @@ TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter
     std::unique_ptr<Component> controls(processor.getControls());
 
     REQUIRE(controls != nullptr);
-    REQUIRE(processor.getSize().getX() >= 320);
-    REQUIRE(processor.getSize().getY() >= 178);
+    REQUIRE(processor.getSize().getX() == 308);
+    REQUIRE(processor.getSize().getY() == 166);
     REQUIRE(controls->getNumChildComponents() >= ReverbSCProcessor::NumParameters);
 
     for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
@@ -283,8 +283,9 @@ TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "
     REQUIRE(controlBody.find("paintPanelLighting") != std::string::npos);
     REQUIRE(controlBody.find("paintReverbGlyph") != std::string::npos);
     REQUIRE(controlBody.find("glyphArea") != std::string::npos);
-    REQUIRE(source.find("setSize(320, 178);") != std::string::npos);
-    REQUIRE(header.find("Point<int>(320, 178)") != std::string::npos);
+    REQUIRE(source.find("setSize(308, 166);") != std::string::npos);
+    REQUIRE(header.find("Point<int>(308, 166)") != std::string::npos);
+    REQUIRE(controlBody.find("jmin(10.8f") != std::string::npos);
 }
 
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")

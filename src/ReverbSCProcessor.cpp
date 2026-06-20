@@ -60,7 +60,7 @@ class ReverbSCControl final : public Component, private Timer
     explicit ReverbSCControl(ReverbSCProcessor* proc) : processor(proc)
     {
         setName("ReverbSC Node Controls");
-        setSize(320, 178);
+        setSize(308, 166);
 
         for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
         {
@@ -95,16 +95,16 @@ class ReverbSCControl final : public Component, private Timer
 
     void resized() override
     {
-        auto area = getLocalBounds().reduced(12, 8);
+        auto area = getLocalBounds().reduced(10, 7);
 
-        auto hero = area.removeFromTop(68);
-        glyphArea = hero.removeFromLeft(68).reduced(1);
-        hero.removeFromLeft(10);
+        auto hero = area.removeFromTop(62);
+        glyphArea = hero.removeFromLeft(62);
+        hero.removeFromLeft(8);
         parameterAreas[ReverbSCProcessor::MixParam] = hero;
-        area.removeFromTop(10);
+        area.removeFromTop(7);
 
-        const int columnGap = 10;
-        const int rowGap = 8;
+        const int columnGap = 8;
+        const int rowGap = 7;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
         const int rowHeight = (area.getHeight() - rowGap) / 2;
 
@@ -136,7 +136,7 @@ class ReverbSCControl final : public Component, private Timer
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::WidthParam], ReverbSCProcessor::WidthParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::OutputParam], ReverbSCProcessor::OutputParam);
 
-        auto footer = getLocalBounds().reduced(12, 0).removeFromBottom(6).toFloat();
+        auto footer = getLocalBounds().reduced(10, 0).removeFromBottom(5).toFloat();
         g.setColour(accent.withAlpha(0.42f));
         g.fillRoundedRectangle(footer.withHeight(2.0f), 1.0f);
     }
@@ -216,7 +216,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.12f));
         g.drawRoundedRectangle(tile.reduced(4.0f), 6.0f, 0.9f);
 
-        const auto icon = tile.reduced(12.0f, 10.0f);
+        const auto icon = tile.reduced(10.0f, 8.0f);
         const auto centre = icon.getCentre();
 
         for (int i = 0; i < 4; ++i)
@@ -282,11 +282,11 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
 
-        auto content = area.reduced(12, 0);
-        auto top = content.removeFromTop(24);
+        auto content = area.reduced(10, 0);
+        auto top = content.removeFromTop(22);
         auto labelArea = top.removeFromLeft(62);
-        auto valueArea = top.removeFromRight(66).reduced(0, 5);
-        auto rail = content.reduced(5, 3).withSizeKeepingCentre(content.getWidth() - 10, 11).toFloat();
+        auto valueArea = top.removeFromRight(66).reduced(0, 4);
+        auto rail = content.reduced(5, 2).withSizeKeepingCentre(content.getWidth() - 10, 10).toFloat();
 
         g.setFont(fonts.getBadgeFont().withHeight(10.4f));
         g.setColour(text.withAlpha(0.68f));
@@ -318,7 +318,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.39f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
 
-        auto content = area.reduced(9, 4);
+        auto content = area.reduced(8, 4);
         auto top = content.removeFromTop(16);
         auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 68 : 45);
 
@@ -328,7 +328,7 @@ class ReverbSCControl final : public Component, private Timer
 
         paintValueChip(g, valueArea.reduced(0, 1), processor->getParameterText(parameterIndex), accent);
 
-        auto rail = area.reduced(9, 0).removeFromBottom(8).toFloat().withHeight(5.5f);
+        auto rail = area.reduced(8, 0).removeFromBottom(7).toFloat().withHeight(5.5f);
         paintRail(g, rail, value, accent);
     }
 
@@ -375,7 +375,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.42f));
         g.drawRoundedRectangle(chip, 5.5f, 0.7f);
 
-        g.setFont(fonts.getMonoFont(jmin(9.6f, area.getHeight() * 0.62f)));
+        g.setFont(fonts.getMonoFont(jmin(10.8f, area.getHeight() * 0.78f)));
         g.setColour(colours["Text Colour"].withAlpha(0.88f));
         g.drawFittedText(valueText, area.reduced(4, 0), Justification::centred, 1);
     }
