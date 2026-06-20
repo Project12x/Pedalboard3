@@ -256,9 +256,29 @@ Steps:
 
 - [ ] Add a tiny A1 fixture or existing known-good model fixture.
 - [ ] Add a tiny A2 fixture if the upstream/TONE3000 license permits storing it.
-- [ ] If fixture size or license blocks repo storage, add a documented manual verification command and keep source-structure guards until fixtures are available.
-- [ ] Verify model load failure is clean for unsupported/malformed files.
-- [ ] Verify legacy serialized states still restore paths without forcing loads on the audio callback.
+- [x] If fixture size or license blocks repo storage, add a documented manual verification command and keep source-structure guards until fixtures are available.
+- [x] Verify model load failure is clean for unsupported/malformed files.
+- [x] Verify legacy serialized states still restore paths without forcing loads on the audio callback.
+
+Fixture provenance findings:
+
+- Local repo has no committed `.nam` fixture files as of 2026-06-20.
+- `sdatkinson/NeuralAmpModelerPlugin` `v0.7.15`
+  (`96337e9ab6e3beb619459779bbb5c47e1b04d8c4`, MIT) contains
+  `REAPER/model.nam`, size 296,243 bytes. The file metadata reports version
+  `0.5.2`, top-level `sample_rate` 48000, name `Obsidian`, and no
+  `architecture_version` field.
+- That exact upstream `.nam` file would route through Pedalboard's legacy/custom
+  path, not the explicit A2 path. Creating an A2 fixture by adding
+  `architecture_version: 2` would be a derived opaque model, so it is not
+  committed in this slice.
+- `Models/*/config.json` plus `weights.npy` samples in the upstream plugin repo
+  are not packed `.nam` files and would require a conversion step before they
+  represent user-loadable fixtures.
+- `tests/CMakeLists.txt` does not compile `src/NAMCore.cpp` or
+  `src/NAMCoreA2.cpp`; the current automated safety net is source/contract
+  coverage. Runtime fixture tests should be added with exact redistributable A1
+  and A2 model files or with documented generated fixtures.
 
 Verification:
 
@@ -287,7 +307,25 @@ Verification artifacts:
 
 ## Manual Verification
 
-Pending.
+Pending product-run verification. For the Task 6 fixture gap, use:
+
+```powershell
+cmake --build build --config Debug --target Pedalboard3 -- /m:1
+.\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt][nam]"
+```
+
+Then run the app against real model files:
+
+- Load an exact A2 `.nam` file that contains `architecture_version: 2`, ideally
+  at the current device sample rate. Record source URL or immutable download ID,
+  license, hash, metadata, and whether the compact `SIZE` slider appears.
+- Load a known pre-A2/custom `.nam` file and confirm it still uses the legacy
+  path and does not expose the `SIZE` control.
+- Attempt a malformed or unsupported `.nam` file and confirm load failure leaves
+  the prior model state intact.
+- Switch patches while audio is active with loaded A1 and A2 models and confirm
+  model swaps remain deferred outside `processBlock`.
 
 ## Known Risks
 

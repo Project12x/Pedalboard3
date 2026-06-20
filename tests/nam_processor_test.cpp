@@ -1743,3 +1743,97 @@ TEST_CASE("NAM A2 slimmable size uses state and UI boundaries instead of host au
     REQUIRE(controlSource.find("namProcessor->setSlimmableSize(static_cast<float>(slider->getValue()))") !=
             std::string::npos);
 }
+
+TEST_CASE("NAM A2 fixture coverage gap is documented instead of hidden by a derived sample", "[nam][a2][fixtures]")
+{
+    const auto fixturePolicy = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/tests/fixtures/nam/README.md");
+    const auto plan = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR
+                                             "/docs/superpowers/plans/2026-06-19-nam-a2-migration.md");
+    const auto testsCmake = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/tests/CMakeLists.txt");
+
+    REQUIRE(fixturePolicy.find("No `.nam` fixture is committed yet") != std::string::npos);
+    REQUIRE(fixturePolicy.find("REAPER/model.nam") != std::string::npos);
+    REQUIRE(fixturePolicy.find("96337e9ab6e3beb619459779bbb5c47e1b04d8c4") != std::string::npos);
+    REQUIRE(fixturePolicy.find("no `architecture_version` field") != std::string::npos);
+    REQUIRE(fixturePolicy.find("Do not create a derived A2 fixture") != std::string::npos);
+    REQUIRE(plan.find("Fixture provenance findings") != std::string::npos);
+
+    REQUIRE(testsCmake.find("../src/NAMCore.cpp") == std::string::npos);
+    REQUIRE(testsCmake.find("../src/NAMCoreA2.cpp") == std::string::npos);
+}
+
+TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing model", "[nam][a2][compat]")
+{
+    const auto source = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
+
+    const auto a2Branch = source.find("if (isArchitecture2Model(path))");
+    REQUIRE(a2Branch != std::string::npos);
+
+    const auto failedA2Load = source.find("if (!a2Model->loadModel(modelPath, impl->sampleRate, impl->blockSize, "
+                                         "impl->prepared))",
+                                         a2Branch);
+    REQUIRE(failedA2Load != std::string::npos);
+
+    const auto failedA2Return = source.find("return false;", failedA2Load);
+    const auto clearLegacyModel = source.find("impl->model = nullptr;", failedA2Load);
+    const auto assignA2Model = source.find("impl->a2Model = std::move(a2Model);", failedA2Load);
+
+    REQUIRE(failedA2Return != std::string::npos);
+    REQUIRE(clearLegacyModel != std::string::npos);
+    REQUIRE(assignA2Model != std::string::npos);
+    REQUIRE(failedA2Return < clearLegacyModel);
+    REQUIRE(failedA2Return < assignA2Model);
+
+    const auto legacyLoad = source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);", a2Branch);
+    const auto assignLegacyModel = source.find("impl->model = std::move(resamplingModel);", legacyLoad);
+    const auto clearA2Model = source.find("impl->a2Model = nullptr;", legacyLoad);
+
+    REQUIRE(legacyLoad != std::string::npos);
+    REQUIRE(assignLegacyModel != std::string::npos);
+    REQUIRE(clearA2Model != std::string::npos);
+    REQUIRE(legacyLoad < assignLegacyModel);
+    REQUIRE(assignLegacyModel < clearA2Model);
+
+    const auto loadCatch = source.find("catch (const std::exception&)", a2Branch);
+    REQUIRE(loadCatch != std::string::npos);
+    REQUIRE(source.find("return false;", loadCatch) != std::string::npos);
+}
+
+TEST_CASE("NAMProcessor legacy state restore keeps model loads behind the deferred boundary", "[nam][state][rt]")
+{
+    const auto processorSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
+
+    const auto stateStart = processorSource.find("void NAMProcessor::setStateInformation");
+    const auto stateEnd = processorSource.find("//==============================================================================", stateStart + 1);
+    REQUIRE(stateStart != std::string::npos);
+    REQUIRE(stateEnd != std::string::npos);
+
+    const auto stateBody = processorSource.substr(stateStart, stateEnd - stateStart);
+    REQUIRE(stateBody.find("int version = stream.readInt()") != std::string::npos);
+    REQUIRE(stateBody.find("if (modelFile.existsAsFile())") != std::string::npos);
+    REQUIRE(stateBody.find("loadModel(modelFile);") != std::string::npos);
+
+    const auto loadStart = processorSource.find("bool NAMProcessor::loadModel");
+    const auto loadEnd = processorSource.find("void NAMProcessor::clearModel", loadStart + 1);
+    REQUIRE(loadStart != std::string::npos);
+    REQUIRE(loadEnd != std::string::npos);
+
+    const auto loadBody = processorSource.substr(loadStart, loadEnd - loadStart);
+    const auto preparedCheck = loadBody.find("if (isPrepared.load(std::memory_order_acquire))");
+    const auto coreLoad = loadBody.find("namCore->loadModel");
+    REQUIRE(preparedCheck != std::string::npos);
+    REQUIRE(coreLoad != std::string::npos);
+    REQUIRE(preparedCheck < coreLoad);
+    REQUIRE(loadBody.find("deferredModelFile = modelFile", preparedCheck) != std::string::npos);
+    REQUIRE(loadBody.find("hasDeferredModelLoad = true", preparedCheck) != std::string::npos);
+    REQUIRE(loadBody.find("return false;", preparedCheck) < coreLoad);
+
+    const auto processStart = processorSource.find("void NAMProcessor::processBlock");
+    const auto processEnd = processorSource.find("//==============================================================================", processStart + 1);
+    REQUIRE(processStart != std::string::npos);
+    REQUIRE(processEnd != std::string::npos);
+
+    const auto processBody = processorSource.substr(processStart, processEnd - processStart);
+    REQUIRE(processBody.find("loadModel(") == std::string::npos);
+    REQUIRE(processBody.find("setStateInformation") == std::string::npos);
+}
