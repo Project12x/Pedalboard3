@@ -181,6 +181,28 @@ TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter
     REQUIRE(pluginComponentSource.find("pluginName == \"ReverbSC\"") != std::string::npos);
 }
 
+TEST_CASE("ReverbSC embedded controls do not paint a nested node shell", "[reverbsc][ui]")
+{
+    const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");
+    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
+
+    const auto directPaintStart = pluginComponentSource.find("bool isDirectPaintedEmbeddedNodeName");
+    REQUIRE(directPaintStart != std::string::npos);
+    const auto directPaintEnd = pluginComponentSource.find("bool usesEmbeddedParameterSurface", directPaintStart);
+    REQUIRE(directPaintEnd != std::string::npos);
+    const auto directPaintBody = pluginComponentSource.substr(directPaintStart, directPaintEnd - directPaintStart);
+    REQUIRE(directPaintBody.find("\"ReverbSC\"") == std::string::npos);
+
+    const auto controlStart = source.find("class ReverbSCControl");
+    REQUIRE(controlStart != std::string::npos);
+    const auto controlEnd = source.find("} // namespace", controlStart);
+    REQUIRE(controlEnd != std::string::npos);
+    const auto controlBody = source.substr(controlStart, controlEnd - controlStart);
+
+    REQUIRE(controlBody.find("fillRoundedRectangle(bounds") == std::string::npos);
+    REQUIRE(controlBody.find("drawRoundedRectangle(bounds") == std::string::npos);
+}
+
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
 {
     ReverbSCProcessor source;

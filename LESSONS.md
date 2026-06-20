@@ -1,6 +1,6 @@
 # Pedalboard3 Lessons
 
-Last updated: 2026-06-16
+Last updated: 2026-06-20
 
 This document captures durable lessons from Pedalboard3's own roadmap and from source-led review of Element, Carla, Ardour, Spotify Pedalboard, Ildaeil, and `juce_clap_hosting`. It is intended to survive individual sprints and keep future implementation choices tied to observed host behavior rather than novelty.
 
@@ -9,6 +9,16 @@ This document captures durable lessons from Pedalboard3's own roadmap and from s
 Pedalboard3 should stay focused on immediate musician utility: plug in, hear sound, know signal is flowing, switch patches safely, and capture raw plus wet ideas without setup. Element and Carla prove that modular hosts can grow into deep engineering tools, but Pedalboard3's useful lane is faster and more performance-oriented than a general DAW or plugin laboratory.
 
 P0 work should favor time-to-sound and confidence over breadth: real scratch-capture hardware smoke testing, One-Click Soundcheck, Starter Rig Browser, missing-plugin resilience, and release hardening. Format breadth matters later, but it should not interrupt the current live-use foundation.
+
+## Graph Node UI Contracts
+
+Every custom node UI must choose one chrome owner before implementation. Mixing ownership creates the "node inside a node" failure.
+
+- Full-node controls, like `Tuner` and `Tone Generator`, own the entire visual node. They belong in `isDirectPaintedEmbeddedNodeName()`, use zero embedded control offset/padding, and suppress generic host title/footer chrome.
+- Hosted embedded controls, like `Splitter`, `Mixer`, and `ReverbSC`, live inside the normal `PluginComponent` chrome. Their `getControls()` components should paint only internal rows, meters, lanes, glyphs, and controls, not a full-component rounded chassis from `getLocalBounds()`.
+- Hero-hosted nodes, like `NAM Loader` and `IR Loader`, use host-owned hero chassis chrome plus embedded content below it. Their child controls should not draw another outer node shell.
+
+When a hosted embedded control directly exposes all meaningful parameters, opt it out of generic mini parameter strips with an explicit helper such as `usesEmbeddedParameterSurface()`. Add a source or component regression test that proves the contract: either the plugin is direct-painted by the host, or the child control avoids full-component shell painting.
 
 ## Session And Patch Survival
 

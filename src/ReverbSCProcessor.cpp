@@ -123,27 +123,7 @@ class ReverbSCControl final : public Component, private Timer
     void paint(Graphics& g) override
     {
         auto& colours = ColourScheme::getInstance().colours;
-        auto& fonts = FontManager::getInstance();
-
-        const auto bounds = getLocalBounds().toFloat().reduced(1.0f);
         const auto accent = colours["Graph Category Reverb"];
-        const auto secondary = colours["Graph Category Delay"];
-        const auto base = colours["Plugin Background"].interpolatedWith(accent, 0.055f);
-        const auto text = colours["Text Colour"];
-
-        g.setColour(base.darker(0.42f).withAlpha(0.30f));
-        g.fillRoundedRectangle(bounds.translated(0.0f, 1.5f), 8.0f);
-
-        ColourGradient face(base.brighter(0.075f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
-                            bounds.getBottom(), false);
-        face.addColour(0.48, base.interpolatedWith(secondary, 0.035f));
-        g.setGradientFill(face);
-        g.fillRoundedRectangle(bounds, 8.0f);
-
-        g.setColour(accent.withAlpha(0.52f));
-        g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.0f);
-        g.setColour(text.withAlpha(0.05f));
-        g.drawRoundedRectangle(bounds.reduced(2.0f), 6.0f, 0.7f);
 
         paintHeader(g, headerArea);
         paintParameterLane(g, parameterAreas[ReverbSCProcessor::MixParam], ReverbSCProcessor::MixParam);
@@ -155,8 +135,6 @@ class ReverbSCControl final : public Component, private Timer
         auto footer = getLocalBounds().reduced(12, 0).removeFromBottom(6).toFloat();
         g.setColour(accent.withAlpha(0.42f));
         g.fillRoundedRectangle(footer.withHeight(2.0f), 1.0f);
-
-        ignoreUnused(fonts);
     }
 
   private:
