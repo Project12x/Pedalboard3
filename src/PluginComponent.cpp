@@ -327,7 +327,8 @@ bool shouldShowHostTitleLabel(const String& pluginName)
 
 bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)
 {
-    if (isDirectPaintedEmbeddedNodeName(pluginName) || suppressesHostParamPinForUtilityNode(pluginName))
+    if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName) ||
+        suppressesHostParamPinForUtilityNode(pluginName))
         return false;
 
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
@@ -1086,31 +1087,51 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         titleLabel->setBounds(20, 3, getWidth() - 40, 20);
 
         const bool labelNode = isLabelNodeName(pluginName);
-        const bool suppressHostFooterButtons = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
-        if (!suppressHostFooterButtons)
+        const bool suppressHostEditorButton =
+            labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);
+        const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
+        const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
+        int footerButtonX = 10;
+
+        if (!suppressHostEditorButton)
         {
             editButton = new TextButton("e", "Open plugin editor (right-click for options)");
             editButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
+            int editButtonWidth = 20;
             if (isHeroChassisNodeName(pluginName))
+            {
                 editButton->setButtonText("Edit");
+                editButtonWidth = 44;
+            }
             else if (visualCategoryName == "rack")
+            {
                 editButton->setButtonText("Open");
-            editButton->setBounds(10, getHeight() - 30, 20, 20);
+                editButtonWidth = 48;
+            }
+            editButton->setBounds(footerButtonX, getHeight() - 30, editButtonWidth, 20);
+            footerButtonX += editButtonWidth + 2;
             editButton->addListener(this);
             // Add mouse listener for right-click context menu
             editButton->addMouseListener(this, false);
             addAndMakeVisible(editButton);
+        }
 
+        if (!suppressHostMappingsButton)
+        {
             mappingsButton = new TextButton("m", "Open mappings editor");
             mappingsButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
+            int mappingsButtonWidth = 24;
             if (isHeroChassisNodeName(pluginName) || visualCategoryName == "rack")
+            {
                 mappingsButton->setButtonText("Map");
-            mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
+                mappingsButtonWidth = 42;
+            }
+            mappingsButton->setBounds(footerButtonX, getHeight() - 30, mappingsButtonWidth, 20);
             mappingsButton->addListener(this);
             addAndMakeVisible(mappingsButton);
         }
 
-        if (!suppressHostFooterButtons)
+        if (!suppressHostBypassButton)
         {
             bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
             bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());

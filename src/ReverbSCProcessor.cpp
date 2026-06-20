@@ -12,6 +12,8 @@ constexpr const char* kStateTag = "Pedalboard3ReverbSCSettings";
 constexpr int kStateVersion = 1;
 constexpr float kMinDampingHz = 200.0f;
 constexpr float kMaxDampingHz = 20000.0f;
+constexpr int kReverbSCLeftPinY = 34;
+constexpr int kReverbSCRightPinY = 56;
 
 constexpr double defaultValueForParameter(int parameterIndex) noexcept
 {
@@ -95,13 +97,13 @@ class ReverbSCControl final : public Component, private Timer
     {
         auto area = getLocalBounds().reduced(8, 7);
 
-        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(34);
+        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(40);
         area.removeFromTop(8);
 
         const int columnGap = 7;
         const int rowGap = 8;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
-        const int rowHeight = 41;
+        const int rowHeight = 38;
 
         auto leftColumn = area.removeFromLeft(columnWidth);
         area.removeFromLeft(columnGap);
@@ -123,6 +125,7 @@ class ReverbSCControl final : public Component, private Timer
         auto& colours = ColourScheme::getInstance().colours;
         const auto accent = colours["Graph Category Reverb"];
 
+        paintPanelLighting(g);
         paintParameterLane(g, parameterAreas[ReverbSCProcessor::MixParam], ReverbSCProcessor::MixParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::FeedbackParam], ReverbSCProcessor::FeedbackParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::DampingParam], ReverbSCProcessor::DampingParam);
@@ -163,6 +166,27 @@ class ReverbSCControl final : public Component, private Timer
             repaint();
     }
 
+    void paintPanelLighting(Graphics& g)
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        const auto accent = colours["Graph Category Reverb"];
+        auto bounds = getLocalBounds().toFloat();
+
+        ColourGradient wash(accent.withAlpha(0.11f), bounds.getCentreX(), bounds.getY(),
+                            Colours::transparentBlack, bounds.getCentreX(), bounds.getBottom(), false);
+        wash.addColour(0.42, accent.darker(0.40f).withAlpha(0.045f));
+        wash.addColour(1.0, Colours::black.withAlpha(0.03f));
+        g.setGradientFill(wash);
+        g.fillRect(bounds);
+
+        g.setColour(Colours::white.withAlpha(0.045f));
+        g.drawLine(bounds.getX() + 12.0f, bounds.getY() + 2.0f, bounds.getRight() - 20.0f, bounds.getY() + 2.0f,
+                   1.0f);
+        g.setColour(accent.withAlpha(0.11f));
+        g.drawLine(bounds.getX() + 18.0f, bounds.getBottom() - 4.0f, bounds.getRight() - 18.0f,
+                   bounds.getBottom() - 4.0f, 1.0f);
+    }
+
     void paintParameterLane(Graphics& g, Rectangle<int> area, int parameterIndex)
     {
         auto& colours = ColourScheme::getInstance().colours;
@@ -173,23 +197,30 @@ class ReverbSCControl final : public Component, private Timer
         const float value = processor != nullptr ? processor->getParameter(parameterIndex) : 0.0f;
 
         auto lane = area.toFloat();
-        g.setColour(surface.withAlpha(0.92f));
+        ColourGradient body(surface.brighter(0.08f).withAlpha(0.96f), lane.getX(), lane.getY(),
+                            surface.darker(0.26f).withAlpha(0.96f), lane.getX(), lane.getBottom(), false);
+        body.addColour(0.46, surface.withAlpha(0.95f));
+        body.addColour(1.0, surface.darker(0.34f).interpolatedWith(accent, 0.04f).withAlpha(0.96f));
+        g.setGradientFill(body);
         g.fillRoundedRectangle(lane, 7.0f);
-        g.setColour(accent.withAlpha(0.44f));
+
+        paintDiffusionTexture(g, area.reduced(7, 4), accent, value);
+
+        g.setColour(Colours::white.withAlpha(0.07f));
+        g.drawLine(lane.getX() + 7.0f, lane.getY() + 1.0f, lane.getRight() - 7.0f, lane.getY() + 1.0f, 1.0f);
+        g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
 
         auto content = area.reduced(10, 0);
         auto labelArea = content.removeFromLeft(52);
-        auto valueArea = content.removeFromRight(62);
-        auto rail = content.reduced(5, 0).withSizeKeepingCentre(content.getWidth() - 10, 8).toFloat();
+        auto valueArea = content.removeFromRight(58).reduced(0, 9);
+        auto rail = content.reduced(7, 0).withSizeKeepingCentre(content.getWidth() - 14, 9).toFloat();
 
-        g.setFont(fonts.getBadgeFont().withHeight(10.0f));
-        g.setColour(text.withAlpha(0.62f));
+        g.setFont(fonts.getBadgeFont().withHeight(10.4f));
+        g.setColour(text.withAlpha(0.68f));
         g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), labelArea, Justification::centredLeft, true);
 
-        g.setFont(fonts.getMonoFont(10.5f));
-        g.setColour(text.withAlpha(0.86f));
-        g.drawText(processor->getParameterText(parameterIndex), valueArea, Justification::centredRight, true);
+        paintValueChip(g, valueArea, processor->getParameterText(parameterIndex), accent);
 
         paintRail(g, rail, value, accent);
     }
@@ -204,25 +235,77 @@ class ReverbSCControl final : public Component, private Timer
         const float value = processor != nullptr ? processor->getParameter(parameterIndex) : 0.0f;
 
         auto tile = area.toFloat();
-        g.setColour(surface.withAlpha(0.90f));
+        ColourGradient body(surface.brighter(0.07f).withAlpha(0.94f), tile.getX(), tile.getY(),
+                            surface.darker(0.22f).withAlpha(0.95f), tile.getX(), tile.getBottom(), false);
+        body.addColour(0.52, surface.withAlpha(0.93f));
+        g.setGradientFill(body);
         g.fillRoundedRectangle(tile, 6.0f);
-        g.setColour(accent.withAlpha(0.36f));
+
+        g.setColour(Colours::white.withAlpha(0.055f));
+        g.drawLine(tile.getX() + 6.0f, tile.getY() + 1.0f, tile.getRight() - 6.0f, tile.getY() + 1.0f, 1.0f);
+        g.setColour(accent.withAlpha(0.39f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
 
-        auto content = area.reduced(8, 4);
-        auto top = content.removeFromTop(13);
-        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 68 : 45);
+        auto content = area.reduced(8, 3);
+        auto top = content.removeFromTop(15);
+        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 67 : 44);
 
         g.setFont(fonts.getBadgeFont().withHeight(8.6f));
-        g.setColour(text.withAlpha(0.58f));
+        g.setColour(text.withAlpha(0.64f));
         g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), top, Justification::centredLeft, true);
 
-        g.setFont(fonts.getMonoFont(9.0f));
-        g.setColour(text.withAlpha(0.82f));
-        g.drawText(processor->getParameterText(parameterIndex), valueArea, Justification::centredRight, true);
+        paintValueChip(g, valueArea.reduced(0, 1), processor->getParameterText(parameterIndex), accent);
 
-        auto rail = area.reduced(9, 0).removeFromBottom(8).withHeight(5).toFloat();
+        auto rail = area.reduced(9, 0).removeFromBottom(8).toFloat().withHeight(5.5f);
         paintRail(g, rail, value, accent);
+    }
+
+    void paintDiffusionTexture(Graphics& g, Rectangle<int> area, Colour accent, float energy)
+    {
+        auto textureArea = area.toFloat();
+        const float alpha = 0.065f + 0.055f * jlimit(0.0f, 1.0f, energy);
+
+        for (int i = 0; i < 7; ++i)
+        {
+            const float t = static_cast<float>(i) / 6.0f;
+            const float x = textureArea.getX() + textureArea.getWidth() * t;
+            const float heightScale = 1.0f - std::abs(0.5f - t) * 1.15f;
+            const float top = textureArea.getCentreY() - textureArea.getHeight() * (0.15f + 0.18f * heightScale);
+            const float bottom = textureArea.getCentreY() + textureArea.getHeight() * (0.12f + 0.16f * heightScale);
+
+            g.setColour(accent.withAlpha(alpha * (0.52f + 0.32f * heightScale)));
+            g.drawLine(x, top, x + 9.0f, bottom, 0.75f);
+        }
+
+        Path tail;
+        tail.startNewSubPath(textureArea.getX() + 64.0f, textureArea.getCentreY() + 3.0f);
+        tail.cubicTo(textureArea.getX() + 108.0f, textureArea.getY() - 2.0f, textureArea.getRight() - 90.0f,
+                     textureArea.getBottom() + 4.0f, textureArea.getRight() - 22.0f, textureArea.getCentreY() - 1.0f);
+
+        g.setColour(accent.brighter(0.18f).withAlpha(alpha * 0.78f));
+        g.strokePath(tail, PathStrokeType(1.05f));
+    }
+
+    void paintValueChip(Graphics& g, Rectangle<int> area, const String& valueText, Colour accent)
+    {
+        if (area.isEmpty())
+            return;
+
+        auto& colours = ColourScheme::getInstance().colours;
+        auto& fonts = FontManager::getInstance();
+        auto chip = area.toFloat().reduced(0.5f);
+
+        ColourGradient body(Colours::black.withAlpha(0.19f), chip.getX(), chip.getY(),
+                            accent.darker(0.55f).withAlpha(0.25f), chip.getX(), chip.getBottom(), false);
+        body.addColour(0.45, colours["Plugin Background"].darker(0.45f).interpolatedWith(accent, 0.075f).withAlpha(0.88f));
+        g.setGradientFill(body);
+        g.fillRoundedRectangle(chip, 5.5f);
+        g.setColour(accent.withAlpha(0.42f));
+        g.drawRoundedRectangle(chip, 5.5f, 0.7f);
+
+        g.setFont(fonts.getMonoFont(jmin(9.6f, area.getHeight() * 0.62f)));
+        g.setColour(colours["Text Colour"].withAlpha(0.88f));
+        g.drawFittedText(valueText, area.reduced(4, 0), Justification::centred, 1);
     }
 
     void paintRail(Graphics& g, Rectangle<float> rail, float value, Colour accent)
@@ -231,19 +314,28 @@ class ReverbSCControl final : public Component, private Timer
             return;
 
         value = jlimit(0.0f, 1.0f, value);
-        g.setColour(Colours::black.withAlpha(0.20f));
+        ColourGradient bed(Colours::black.withAlpha(0.34f), rail.getX(), rail.getY(),
+                           Colours::white.withAlpha(0.06f), rail.getX(), rail.getBottom(), false);
+        bed.addColour(0.48, Colours::black.withAlpha(0.20f));
+        g.setGradientFill(bed);
         g.fillRoundedRectangle(rail, 2.5f);
-        g.setColour(accent.withAlpha(0.16f));
+        g.setColour(accent.withAlpha(0.18f));
         g.drawRoundedRectangle(rail.reduced(0.35f), 2.5f, 0.7f);
 
         auto fill = rail.withWidth(rail.getWidth() * value);
         ColourGradient fillGradient(accent.withAlpha(0.78f), fill.getX(), fill.getCentreY(),
                                     accent.brighter(0.40f).withAlpha(0.54f), fill.getRight(), fill.getCentreY(), false);
+        fillGradient.addColour(0.58, accent.brighter(0.18f).withAlpha(0.66f));
         g.setGradientFill(fillGradient);
         g.fillRoundedRectangle(fill, 2.5f);
 
+        g.setColour(Colours::white.withAlpha(0.10f));
+        g.drawLine(rail.getX() + 2.0f, rail.getY() + 1.0f, rail.getRight() - 2.0f, rail.getY() + 1.0f, 0.8f);
+
         const float thumbX = jlimit(rail.getX() + 2.0f, rail.getRight() - 2.0f, rail.getX() + rail.getWidth() * value);
         auto thumb = Rectangle<float>(5.0f, 11.0f).withCentre({thumbX, rail.getCentreY()});
+        g.setColour(accent.withAlpha(0.18f));
+        g.fillEllipse(thumb.expanded(4.0f, 3.0f));
         g.setColour(accent.brighter(0.22f).withAlpha(0.88f));
         g.fillRoundedRectangle(thumb, 2.2f);
         g.setColour(Colours::white.withAlpha(0.16f));
@@ -267,6 +359,22 @@ Component* ReverbSCProcessor::getControls()
 void ReverbSCProcessor::updateEditorBounds(const Rectangle<int>& bounds)
 {
     editorBounds = bounds;
+}
+
+PedalboardProcessor::PinLayout ReverbSCProcessor::getInputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kReverbSCLeftPinY);
+    layout.pinY.push_back(kReverbSCRightPinY);
+    return layout;
+}
+
+PedalboardProcessor::PinLayout ReverbSCProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(kReverbSCLeftPinY);
+    layout.pinY.push_back(kReverbSCRightPinY);
+    return layout;
 }
 
 void ReverbSCProcessor::fillInPluginDescription(PluginDescription& description) const
@@ -348,6 +456,24 @@ void ReverbSCProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midi
 
     for (int channel = 2; channel < numChannels; ++channel)
         buffer.clear(channel, 0, numSamples);
+}
+
+const String ReverbSCProcessor::getInputChannelName(int channelIndex) const
+{
+    if (channelIndex == 0)
+        return "L";
+    if (channelIndex == 1)
+        return "R";
+    return "";
+}
+
+const String ReverbSCProcessor::getOutputChannelName(int channelIndex) const
+{
+    if (channelIndex == 0)
+        return "L";
+    if (channelIndex == 1)
+        return "R";
+    return "";
 }
 
 const String ReverbSCProcessor::getParameterName(int parameterIndex)

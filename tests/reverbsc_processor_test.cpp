@@ -148,6 +148,25 @@ TEST_CASE("ReverbSCProcessor exposes stable host metadata", "[reverbsc][processo
     REQUIRE(processor.getParameterName(ReverbSCProcessor::OutputParam) == "Output");
 }
 
+TEST_CASE("ReverbSCProcessor exposes compact stereo graph pins", "[reverbsc][ui]")
+{
+    ReverbSCProcessor processor;
+
+    REQUIRE(processor.getInputChannelName(0) == "L");
+    REQUIRE(processor.getInputChannelName(1) == "R");
+    REQUIRE(processor.getInputChannelName(2).isEmpty());
+    REQUIRE(processor.getOutputChannelName(0) == "L");
+    REQUIRE(processor.getOutputChannelName(1) == "R");
+    REQUIRE(processor.getOutputChannelName(2).isEmpty());
+
+    const auto inputLayout = processor.getInputPinLayout();
+    const auto outputLayout = processor.getOutputPinLayout();
+    REQUIRE(inputLayout.pinY.size() == 2);
+    REQUIRE(outputLayout.pinY.size() == 2);
+    REQUIRE(inputLayout.pinY[0] < inputLayout.pinY[1]);
+    REQUIRE(outputLayout.pinY[0] < outputLayout.pinY[1]);
+}
+
 TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter", "[reverbsc][ui]")
 {
     ReverbSCProcessor processor;
@@ -179,6 +198,25 @@ TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter
     REQUIRE(source.find("paintParameterTile") != std::string::npos);
     REQUIRE(pluginComponentSource.find("usesEmbeddedParameterSurface") != std::string::npos);
     REQUIRE(pluginComponentSource.find("pluginName == \"ReverbSC\"") != std::string::npos);
+}
+
+TEST_CASE("ReverbSC embedded controls suppress redundant editor and param pin affordances", "[reverbsc][ui]")
+{
+    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
+
+    const auto hostPinStart = pluginComponentSource.find("bool shouldCreateHostMidiOrParamPin");
+    REQUIRE(hostPinStart != std::string::npos);
+    const auto hostPinEnd = pluginComponentSource.find("int getEmbeddedNodeControlTopOffset", hostPinStart);
+    REQUIRE(hostPinEnd != std::string::npos);
+    const auto hostPinBody = pluginComponentSource.substr(hostPinStart, hostPinEnd - hostPinStart);
+    REQUIRE(hostPinBody.find("usesEmbeddedParameterSurface(pluginName)") != std::string::npos);
+
+    const auto editorStart = pluginComponentSource.find("const bool suppressHostEditorButton");
+    REQUIRE(editorStart != std::string::npos);
+    const auto editorEnd = pluginComponentSource.find(";", editorStart);
+    REQUIRE(editorEnd != std::string::npos);
+    const auto editorExpression = pluginComponentSource.substr(editorStart, editorEnd - editorStart);
+    REQUIRE(editorExpression.find("usesEmbeddedParameterSurface(pluginName)") != std::string::npos);
 }
 
 TEST_CASE("ReverbSC embedded controls do not paint a nested node shell", "[reverbsc][ui]")
@@ -216,6 +254,21 @@ TEST_CASE("ReverbSC embedded controls do not duplicate host title chrome", "[rev
     REQUIRE(controlBody.find("\"SC REVERB\"") == std::string::npos);
     REQUIRE(controlBody.find("\"STEREO\"") == std::string::npos);
     REQUIRE(controlBody.find("paintHeader") == std::string::npos);
+}
+
+TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "[reverbsc][ui]")
+{
+    const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");
+
+    const auto controlStart = source.find("class ReverbSCControl");
+    REQUIRE(controlStart != std::string::npos);
+    const auto controlEnd = source.find("} // namespace", controlStart);
+    REQUIRE(controlEnd != std::string::npos);
+    const auto controlBody = source.substr(controlStart, controlEnd - controlStart);
+
+    REQUIRE(controlBody.find("paintDiffusionTexture") != std::string::npos);
+    REQUIRE(controlBody.find("paintValueChip") != std::string::npos);
+    REQUIRE(controlBody.find("paintPanelLighting") != std::string::npos);
 }
 
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")

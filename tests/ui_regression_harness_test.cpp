@@ -511,10 +511,17 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("const float nodeBorderWidth = highlighted ? 0.82f : 0.58f;") != std::string::npos);
     CHECK(pluginSource->find("beingDragged ? 1.12f : 0.72f") != std::string::npos);
     CHECK(pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);") != std::string::npos);
-    CHECK(pluginSource->find("const bool suppressHostFooterButtons = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
+    CHECK(pluginSource->find("const bool suppressHostEditorButton =") != std::string::npos);
+    CHECK(pluginSource->find(
+              "labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (!suppressHostFooterButtons)") != std::string::npos);
-    CHECK(pluginSource->find("if (!suppressHostFooterButtons)\n        {\n            bypassButton = new DrawableButton") !=
+    CHECK(pluginSource->find("const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (!suppressHostEditorButton)") != std::string::npos);
+    CHECK(pluginSource->find("if (!suppressHostMappingsButton)") != std::string::npos);
+    CHECK(pluginSource->find("if (!suppressHostBypassButton)\n        {\n            bypassButton = new DrawableButton") !=
           std::string::npos);
     CHECK(pluginSource->find("bool suppressesHostParamPinForUtilityNode(const String& pluginName)") !=
           std::string::npos);
@@ -522,7 +529,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (isDirectPaintedEmbeddedNodeName(pluginName) || suppressesHostParamPinForUtilityNode(pluginName))") !=
+    CHECK(pluginSource->find("if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName) ||") !=
+          std::string::npos);
+    CHECK(pluginSource->find("suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
     CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))") !=
           std::string::npos);

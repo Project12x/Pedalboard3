@@ -30,6 +30,8 @@ class ReverbSCProcessor : public PedalboardProcessor
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(280, 146); }
     void updateEditorBounds(const Rectangle<int>& bounds);
+    PinLayout getInputPinLayout() const override;
+    PinLayout getOutputPinLayout() const override;
 
     void fillInPluginDescription(PluginDescription& description) const override;
     void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
@@ -38,8 +40,8 @@ class ReverbSCProcessor : public PedalboardProcessor
     void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) override;
     void releaseResources() override {}
 
-    const String getInputChannelName(int channelIndex) const override { return ""; }
-    const String getOutputChannelName(int channelIndex) const override { return ""; }
+    const String getInputChannelName(int channelIndex) const override;
+    const String getOutputChannelName(int channelIndex) const override;
     bool isInputChannelStereoPair(int index) const override { return true; }
     bool isOutputChannelStereoPair(int index) const override { return true; }
     bool silenceInProducesSilenceOut() const override { return false; }
