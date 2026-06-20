@@ -4,6 +4,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <chrono>
+#include <cstdlib>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -68,6 +69,28 @@ std::string makeLinearNamJson(const std::string& version,
     return json.str();
 }
 
+std::string makeSlimmableContainerNamJson(double sampleRate)
+{
+    const auto smallModel = makeLinearNamJson("0.7.0", false, sampleRate);
+    const auto fullModel = makeLinearNamJson("0.7.0", false, sampleRate);
+
+    std::ostringstream json;
+    json << "{\n";
+    json << "  \"version\": \"0.7.0\",\n";
+    json << "  \"architecture\": \"SlimmableContainer\",\n";
+    json << "  \"sample_rate\": " << sampleRate << ",\n";
+    json << "  \"config\": {\n";
+    json << "    \"submodels\": [\n";
+    json << "      {\"max_value\": 0.5, \"model\": " << smallModel << "},\n";
+    json << "      {\"max_value\": 1.0, \"model\": " << fullModel << "}\n";
+    json << "    ]\n";
+    json << "  },\n";
+    json << "  \"metadata\": {},\n";
+    json << "  \"weights\": []\n";
+    json << "}\n";
+    return json.str();
+}
+
 void requireIdentityProcessing(NAMCore& core)
 {
     std::vector<float> input{0.25f, -0.5f, 0.75f, 0.0f, 0.125f, -0.25f};
@@ -81,6 +104,23 @@ void requireIdentityProcessing(NAMCore& core)
         REQUIRE(std::isfinite(output[i]));
         REQUIRE_THAT(output[i], WithinAbs(input[i], 0.0001f));
     }
+}
+
+std::string getManualNamRuntimeModelPath()
+{
+#if defined(_WIN32)
+    char* value = nullptr;
+    size_t length = 0;
+    if (_dupenv_s(&value, &length, "PEDALBOARD3_NAM_RUNTIME_MODEL") != 0 || value == nullptr)
+        return {};
+
+    std::string result(value, length > 0 ? length - 1 : 0);
+    std::free(value);
+    return result;
+#else
+    const char* value = std::getenv("PEDALBOARD3_NAM_RUNTIME_MODEL");
+    return value != nullptr ? std::string(value) : std::string();
+#endif
 }
 } // namespace
 
@@ -110,6 +150,49 @@ TEST_CASE("NAMCore runtime loads a generated explicit A2 Linear NAM model", "[na
     REQUIRE_FALSE(core.isSlimmableModel());
 
     requireIdentityProcessing(core);
+}
+
+TEST_CASE("NAMCore runtime loads a generated A2 SlimmableContainer NAM model", "[nam][runtime][a2][slimmable]")
+{
+    TempNamFile model(makeSlimmableContainerNamJson(48000.0));
+
+    NAMCore core;
+    core.prepare(48000.0, 16);
+
+    REQUIRE(core.loadModel(model.string()));
+    REQUIRE(core.isModelLoaded());
+    REQUIRE(core.isSlimmableModel());
+
+    requireIdentityProcessing(core);
+
+    REQUIRE(core.setSlimmableSize(0.25f));
+    requireIdentityProcessing(core);
+}
+
+TEST_CASE("NAMCore runtime can manually smoke-test a local NAM file", "[nam][runtime][manual]")
+{
+    const auto modelPath = getManualNamRuntimeModelPath();
+    if (modelPath.empty())
+    {
+        SUCCEED("PEDALBOARD3_NAM_RUNTIME_MODEL not set");
+        return;
+    }
+
+    NAMCore core;
+    core.prepare(48000.0, 512);
+
+    REQUIRE(core.loadModel(modelPath));
+    REQUIRE(core.isModelLoaded());
+
+    std::vector<float> input(64, 0.0f);
+    input[0] = 0.05f;
+    std::vector<float> output(input.size(), 0.0f);
+
+    core.process(input.data(), output.data(), static_cast<int>(input.size()));
+    core.finalize(static_cast<int>(input.size()));
+
+    for (float sample : output)
+        REQUIRE(std::isfinite(sample));
 }
 
 TEST_CASE("NAMCore runtime clears an A2 model when prepare sees a sample-rate mismatch", "[nam][runtime][a2]")

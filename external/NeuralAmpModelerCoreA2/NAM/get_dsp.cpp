@@ -5,11 +5,15 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "container.h"
+#include "convnet.h"
 #include "dsp.h"
+#include "lstm.h"
 #include "registry.h"
 #include "json.hpp"
 #include "get_dsp.h"
 #include "model_config.h"
+#include "wavenet/model.h"
 
 namespace nam
 {
@@ -50,6 +54,26 @@ std::mutex& version_support_registry_mutex()
 {
   static std::mutex registry_mutex;
   return registry_mutex;
+}
+
+void register_parser_if_missing(const std::string& name, ConfigParserFunction func)
+{
+  auto& registry = ConfigParserRegistry::instance();
+  if (!registry.has(name))
+    registry.registerParser(name, std::move(func));
+}
+
+void ensure_builtin_config_parsers_registered()
+{
+  static const bool registered = [] {
+    register_parser_if_missing("Linear", linear::create_config);
+    register_parser_if_missing("ConvNet", convnet::create_config);
+    register_parser_if_missing("LSTM", lstm::create_config);
+    register_parser_if_missing("WaveNet", wavenet::create_config);
+    register_parser_if_missing("SlimmableContainer", container::create_config);
+    return true;
+  }();
+  (void)registered;
 }
 
 } // namespace
@@ -201,6 +225,7 @@ std::unique_ptr<DSP> get_dsp(const nlohmann::json& config, dspData& returnedConf
 std::unique_ptr<ModelConfig> parse_model_config_json(const std::string& architecture, const nlohmann::json& config,
                                                      double sample_rate)
 {
+  ensure_builtin_config_parsers_registered();
   return ConfigParserRegistry::instance().parse(architecture, config, sample_rate);
 }
 
@@ -236,6 +261,7 @@ std::unique_ptr<DSP> create_dsp(std::unique_ptr<ModelConfig> config, std::vector
 
 std::unique_ptr<DSP> get_dsp(dspData& conf)
 {
+  ensure_builtin_config_parsers_registered();
   verify_config_version(conf.version);
 
   // Extract metadata from JSON
