@@ -60,7 +60,7 @@ class ReverbSCControl final : public Component, private Timer
     explicit ReverbSCControl(ReverbSCProcessor* proc) : processor(proc)
     {
         setName("ReverbSC Node Controls");
-        setSize(280, 146);
+        setSize(320, 178);
 
         for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
         {
@@ -95,15 +95,18 @@ class ReverbSCControl final : public Component, private Timer
 
     void resized() override
     {
-        auto area = getLocalBounds().reduced(8, 7);
+        auto area = getLocalBounds().reduced(12, 8);
 
-        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(40);
-        area.removeFromTop(8);
+        auto hero = area.removeFromTop(68);
+        glyphArea = hero.removeFromLeft(68).reduced(1);
+        hero.removeFromLeft(10);
+        parameterAreas[ReverbSCProcessor::MixParam] = hero;
+        area.removeFromTop(10);
 
-        const int columnGap = 7;
+        const int columnGap = 10;
         const int rowGap = 8;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
-        const int rowHeight = 38;
+        const int rowHeight = (area.getHeight() - rowGap) / 2;
 
         auto leftColumn = area.removeFromLeft(columnWidth);
         area.removeFromLeft(columnGap);
@@ -126,6 +129,7 @@ class ReverbSCControl final : public Component, private Timer
         const auto accent = colours["Graph Category Reverb"];
 
         paintPanelLighting(g);
+        paintReverbGlyph(g, glyphArea, accent, processor != nullptr ? processor->getParameter(ReverbSCProcessor::MixParam) : 0.0f);
         paintParameterLane(g, parameterAreas[ReverbSCProcessor::MixParam], ReverbSCProcessor::MixParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::FeedbackParam], ReverbSCProcessor::FeedbackParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::DampingParam], ReverbSCProcessor::DampingParam);
@@ -141,6 +145,7 @@ class ReverbSCControl final : public Component, private Timer
     ReverbSCProcessor* processor = nullptr;
     std::array<Slider, ReverbSCProcessor::NumParameters> sliders;
     std::array<Rectangle<int>, ReverbSCProcessor::NumParameters> parameterAreas;
+    Rectangle<int> glyphArea;
     bool syncingFromProcessor = false;
 
     void timerCallback() override
@@ -187,6 +192,72 @@ class ReverbSCControl final : public Component, private Timer
                    bounds.getBottom() - 4.0f, 1.0f);
     }
 
+    void paintReverbGlyph(Graphics& g, Rectangle<int> area, Colour accent, float mixValue)
+    {
+        if (area.isEmpty())
+            return;
+
+        auto& colours = ColourScheme::getInstance().colours;
+        auto tile = area.toFloat();
+        const float active = 0.58f + 0.32f * jlimit(0.0f, 1.0f, mixValue);
+
+        ColourGradient body(colours["Plugin Background"].darker(0.06f).interpolatedWith(accent, 0.16f), tile.getX(),
+                            tile.getY(), colours["Plugin Background"].darker(0.42f).interpolatedWith(accent, 0.07f),
+                            tile.getX(), tile.getBottom(), false);
+        body.addColour(0.36, colours["Plugin Background"].interpolatedWith(accent, 0.10f));
+        body.addColour(1.0, colours["Plugin Background"].darker(0.50f).interpolatedWith(accent, 0.10f));
+        g.setGradientFill(body);
+        g.fillRoundedRectangle(tile, 9.0f);
+
+        g.setColour(Colours::white.withAlpha(0.075f));
+        g.drawLine(tile.getX() + 9.0f, tile.getY() + 1.5f, tile.getRight() - 9.0f, tile.getY() + 1.5f, 1.0f);
+        g.setColour(accent.withAlpha(0.50f));
+        g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.1f);
+        g.setColour(accent.withAlpha(0.12f));
+        g.drawRoundedRectangle(tile.reduced(4.0f), 6.0f, 0.9f);
+
+        const auto icon = tile.reduced(12.0f, 10.0f);
+        const auto centre = icon.getCentre();
+
+        for (int i = 0; i < 4; ++i)
+        {
+            const float size = icon.getWidth() * (0.30f + 0.16f * i);
+            auto ring = Rectangle<float>(size, size).withCentre(centre.translated(1.5f * i, -0.7f * i));
+            g.setColour(accent.withAlpha((0.10f + 0.035f * i) * active));
+            g.drawEllipse(ring, 1.0f);
+        }
+
+        Path spiral;
+        constexpr int kSpiralSteps = 42;
+        for (int i = 0; i < kSpiralSteps; ++i)
+        {
+            const float t = static_cast<float>(i) / static_cast<float>(kSpiralSteps - 1);
+            const float angle = MathConstants<float>::twoPi * (0.12f + 1.75f * t);
+            const float radius = icon.getWidth() * (0.08f + 0.34f * t);
+            const float x = centre.x + std::cos(angle) * radius;
+            const float y = centre.y + std::sin(angle) * radius * 0.72f;
+            if (i == 0)
+                spiral.startNewSubPath(x, y);
+            else
+                spiral.lineTo(x, y);
+        }
+
+        g.setColour(accent.brighter(0.32f).withAlpha(0.86f * active));
+        g.strokePath(spiral, PathStrokeType(2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+
+        for (int i = 0; i < 5; ++i)
+        {
+            const float y = icon.getY() + icon.getHeight() * (0.18f + 0.15f * i);
+            const float x1 = icon.getX() + icon.getWidth() * (0.06f + 0.055f * i);
+            const float x2 = icon.getX() + icon.getWidth() * (0.25f + 0.12f * i);
+            g.setColour(accent.withAlpha((0.16f - 0.017f * i) * active));
+            g.drawLine(x1, y, x2, y + 3.0f, 1.1f);
+        }
+
+        g.setColour(Colours::white.withAlpha(0.20f));
+        g.fillEllipse(centre.x - 2.0f, centre.y - 2.0f, 4.0f, 4.0f);
+    }
+
     void paintParameterLane(Graphics& g, Rectangle<int> area, int parameterIndex)
     {
         auto& colours = ColourScheme::getInstance().colours;
@@ -211,10 +282,11 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
 
-        auto content = area.reduced(10, 0);
-        auto labelArea = content.removeFromLeft(52);
-        auto valueArea = content.removeFromRight(58).reduced(0, 9);
-        auto rail = content.reduced(7, 0).withSizeKeepingCentre(content.getWidth() - 14, 9).toFloat();
+        auto content = area.reduced(12, 0);
+        auto top = content.removeFromTop(24);
+        auto labelArea = top.removeFromLeft(62);
+        auto valueArea = top.removeFromRight(66).reduced(0, 5);
+        auto rail = content.reduced(5, 3).withSizeKeepingCentre(content.getWidth() - 10, 11).toFloat();
 
         g.setFont(fonts.getBadgeFont().withHeight(10.4f));
         g.setColour(text.withAlpha(0.68f));
@@ -246,9 +318,9 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.39f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
 
-        auto content = area.reduced(8, 3);
-        auto top = content.removeFromTop(15);
-        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 67 : 44);
+        auto content = area.reduced(9, 4);
+        auto top = content.removeFromTop(16);
+        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 68 : 45);
 
         g.setFont(fonts.getBadgeFont().withHeight(8.6f));
         g.setColour(text.withAlpha(0.64f));

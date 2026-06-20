@@ -105,7 +105,10 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
             for (int ch = 0; ch < numCh; ++ch)
             {
                 auto chLayout = bus->getCurrentLayout();
-                cachedInputChannelNames.add(chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+                const auto explicitName = plugin->getInputChannelName(cachedInputChannelCount + ch);
+                cachedInputChannelNames.add(explicitName.isNotEmpty()
+                                                ? explicitName
+                                                : chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
             }
             cachedInputChannelCount += numCh;
         }
@@ -122,7 +125,10 @@ BypassableInstance::BypassableInstance(AudioPluginInstance* plug)
             for (int ch = 0; ch < numCh; ++ch)
             {
                 auto chLayout = bus->getCurrentLayout();
-                cachedOutputChannelNames.add(chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
+                const auto explicitName = plugin->getOutputChannelName(cachedOutputChannelCount + ch);
+                cachedOutputChannelNames.add(explicitName.isNotEmpty()
+                                                 ? explicitName
+                                                 : chLayout.getChannelTypeName(chLayout.getTypeOfChannel(ch)));
             }
             cachedOutputChannelCount += numCh;
         }

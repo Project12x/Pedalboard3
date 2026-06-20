@@ -1,4 +1,5 @@
 #include "../src/dsp/ReverbSC.h"
+#include "../src/BypassableInstance.h"
 #include "../src/ReverbSCProcessor.h"
 
 #include <catch2/catch_approx.hpp>
@@ -167,14 +168,24 @@ TEST_CASE("ReverbSCProcessor exposes compact stereo graph pins", "[reverbsc][ui]
     REQUIRE(outputLayout.pinY[0] < outputLayout.pinY[1]);
 }
 
+TEST_CASE("ReverbSC wrapper preserves compact stereo graph pin labels", "[reverbsc][ui]")
+{
+    std::unique_ptr<BypassableInstance> wrapped(new BypassableInstance(new ReverbSCProcessor()));
+
+    REQUIRE(wrapped->getCachedInputChannelName(0) == "L");
+    REQUIRE(wrapped->getCachedInputChannelName(1) == "R");
+    REQUIRE(wrapped->getCachedOutputChannelName(0) == "L");
+    REQUIRE(wrapped->getCachedOutputChannelName(1) == "R");
+}
+
 TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter", "[reverbsc][ui]")
 {
     ReverbSCProcessor processor;
     std::unique_ptr<Component> controls(processor.getControls());
 
     REQUIRE(controls != nullptr);
-    REQUIRE(processor.getSize().getX() >= 280);
-    REQUIRE(processor.getSize().getY() >= 146);
+    REQUIRE(processor.getSize().getX() >= 320);
+    REQUIRE(processor.getSize().getY() >= 178);
     REQUIRE(controls->getNumChildComponents() >= ReverbSCProcessor::NumParameters);
 
     for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
@@ -259,6 +270,7 @@ TEST_CASE("ReverbSC embedded controls do not duplicate host title chrome", "[rev
 TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "[reverbsc][ui]")
 {
     const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");
+    const auto header = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.h");
 
     const auto controlStart = source.find("class ReverbSCControl");
     REQUIRE(controlStart != std::string::npos);
@@ -269,6 +281,10 @@ TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "
     REQUIRE(controlBody.find("paintDiffusionTexture") != std::string::npos);
     REQUIRE(controlBody.find("paintValueChip") != std::string::npos);
     REQUIRE(controlBody.find("paintPanelLighting") != std::string::npos);
+    REQUIRE(controlBody.find("paintReverbGlyph") != std::string::npos);
+    REQUIRE(controlBody.find("glyphArea") != std::string::npos);
+    REQUIRE(source.find("setSize(320, 178);") != std::string::npos);
+    REQUIRE(header.find("Point<int>(320, 178)") != std::string::npos);
 }
 
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
