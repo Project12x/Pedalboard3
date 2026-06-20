@@ -174,17 +174,29 @@ Files:
 
 - `src/NAMCore.h`
 - `src/NAMCore.cpp`
-- `external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h`
+- `src/NAMCoreA2.h`
+- `src/NAMCoreA2.cpp`
+- `CMakeLists.txt`
 - tests added under Task 1 or a new fixture file
 
 Steps:
 
-- [ ] Replace old mono `process(input, output, frames)` calls with the new channel pointer API.
-- [ ] Replace `finalize_` usage with the current reset/prewarm path.
-- [ ] Validate `NumInputChannels()` and `NumOutputChannels()` before accepting a model.
-- [ ] Use `HasLoudness()` and level APIs defensively.
-- [ ] Keep model creation, reset, prewarm, and failed-load destruction outside `processBlock`.
-- [ ] Preserve current `NAMCore` outward API where practical so `NAMProcessor` and legacy state stay stable.
+- [x] Replace old mono `process(input, output, frames)` calls with the new channel pointer API for explicit A2 models.
+- [x] Replace `finalize_` usage with the current reset/prewarm path for explicit A2 models.
+- [x] Validate `NumInputChannels()` and `NumOutputChannels()` before accepting an A2 model.
+- [x] Use `HasLoudness()` and level APIs defensively.
+- [x] Keep model creation, reset, prewarm, and failed-load destruction outside `processBlock`.
+- [x] Preserve current `NAMCore` outward API where practical so `NAMProcessor` and legacy state stay stable.
+
+Scope note: A2 is now isolated behind `NAMCoreA2` with the upstream namespace
+remapped to `pedalboard3_nam_a2` so it can link beside the legacy core. Only
+models explicitly marked `architecture_version: 2` route to A2. Legacy,
+custom, and unmarked files continue through the existing `ResamplingNAM` path.
+This commit intentionally rejects A2 sample-rate mismatches instead of adding a
+new RT resampler wrapper; do not call A2 runtime verification complete until a
+real A2 fixture or manual model load confirms the end-to-end path. Loads that
+happen before `NAMCore::prepare()` defer sample-rate enforcement until the real
+device rate is known.
 
 Verification:
 

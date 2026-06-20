@@ -1684,3 +1684,28 @@ TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][
     REQUIRE(browserSource.find("const auto architectureText = getArchitectureDisplayText(tone)") !=
             std::string::npos);
 }
+
+TEST_CASE("NAMCore routes explicit A2 models without replacing legacy fallback", "[nam][a2]")
+{
+    const auto header = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.h");
+    const auto source = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCore.cpp");
+    const auto adapterHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCoreA2.h");
+    const auto adapterSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCoreA2.cpp");
+
+    REQUIRE(header.find("int architectureVersion") != std::string::npos);
+    REQUIRE(source.find("readArchitectureVersion") != std::string::npos);
+    REQUIRE(source.find("architecture_version") != std::string::npos);
+    REQUIRE(source.find("isArchitecture2Model(path)") != std::string::npos);
+    REQUIRE(source.find("impl->prepared") != std::string::npos);
+    REQUIRE(source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path)") != std::string::npos);
+    REQUIRE(source.find("impl->model = std::move(resamplingModel)") != std::string::npos);
+
+    REQUIRE(adapterHeader.find("class NAMCoreA2") != std::string::npos);
+    REQUIRE(adapterSource.find("pedalboard3_nam_a2") != std::string::npos);
+    REQUIRE(adapterSource.find("NumInputChannels() != 1") != std::string::npos);
+    REQUIRE(adapterSource.find("NumOutputChannels() != 1") != std::string::npos);
+    REQUIRE(adapterSource.find("enforceSampleRate") != std::string::npos);
+    REQUIRE(adapterSource.find("clearModel();") != std::string::npos);
+    REQUIRE(adapterSource.find("impl->model->process(inputs, outputs, numSamples)") != std::string::npos);
+    REQUIRE(adapterSource.find("finalize_") == std::string::npos);
+}

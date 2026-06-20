@@ -285,6 +285,7 @@ TEST_CASE("NAMCore process path does not own model handoff", "[rt][nam]")
 
     REQUIRE(source.find("stagedModel") == std::string::npos);
     REQUIRE(source.find("impl->model = std::move(resamplingModel);") != std::string::npos);
+    REQUIRE(source.find("impl->a2Model = std::move(a2Model);") != std::string::npos);
     REQUIRE(source.find("impl->model = std::move(impl->stagedModel);") == std::string::npos);
 
     REQUIRE(processorSource.find("Deferred model load until processor is inactive") != std::string::npos);
@@ -300,13 +301,25 @@ TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam
     const auto a2License = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/external/NeuralAmpModelerCoreA2/LICENSE");
     const auto thirdPartyLicenses = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/THIRD_PARTY_LICENSES.md");
 
+    const auto a2AdapterSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/NAMCoreA2.cpp");
+
     REQUIRE(cmake.find("add_library(Pedalboard3_NAMCoreA2 STATIC") != std::string::npos);
+    REQUIRE(cmake.find("add_library(Pedalboard3_NAMCoreA2Adapter STATIC") != std::string::npos);
+    REQUIRE(cmake.find("nam=pedalboard3_nam_a2") != std::string::npos);
+    REQUIRE(cmake.find("Pedalboard3_NAMCoreA2Adapter") != std::string::npos);
     REQUIRE(cmake.find("cxx_std_20") != std::string::npos);
     REQUIRE(cmake.find("external/NeuralAmpModelerCoreA2") != std::string::npos);
     REQUIRE(cmake.find("NAM_ENABLE_A2_FAST") != std::string::npos);
 
     REQUIRE(namCoreSource.find("../external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h") != std::string::npos);
-    REQUIRE(namCoreSource.find("NeuralAmpModelerCoreA2") == std::string::npos);
+    REQUIRE(namCoreSource.find("isArchitecture2Model") != std::string::npos);
+    REQUIRE(namCoreSource.find("architecture_version") != std::string::npos);
+    REQUIRE(namCoreSource.find("../external/NeuralAmpModelerCoreA2") == std::string::npos);
+
+    REQUIRE(a2AdapterSource.find("#define nam pedalboard3_nam_a2") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("NumInputChannels() != 1") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("NumOutputChannels() != 1") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("impl->model->process(inputs, outputs, numSamples)") != std::string::npos);
 
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_MINOR 5") != std::string::npos);
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_PATCH 3") != std::string::npos);

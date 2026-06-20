@@ -13,25 +13,70 @@
 #include "NAMCore.h"
 
 // Include AudioDSPTools/NAM headers - NO JUCE headers in this file!
+#include "NAMCoreA2.h"
 #include "../external/AudioDSPTools/dsp/NoiseGate.h"
 #include "../external/NeuralAmpModelerCore/wrapper/ResamplingNAM.h"
 #include "../external/NeuralAmpModelerCore/wrapper/ToneStack.h"
 #include "../external/NeuralAmpModelerCore/NAM/dsp.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+
+namespace
+{
+int readArchitectureVersion(const nlohmann::json& j)
+{
+    const auto architectureVersion = j.find("architecture_version");
+    if (architectureVersion == j.end() || architectureVersion->is_null())
+        return 0;
+
+    if (architectureVersion->is_number_integer())
+        return architectureVersion->get<int>();
+
+    if (architectureVersion->is_number())
+        return static_cast<int>(architectureVersion->get<double>());
+
+    if (architectureVersion->is_string())
+    {
+        try
+        {
+            return std::stoi(architectureVersion->get<std::string>());
+        }
+        catch (const std::exception&)
+        {
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
+bool isArchitecture2Model(const std::filesystem::path& path)
+{
+    std::ifstream file(path);
+    if (!file.is_open())
+        return false;
+
+    nlohmann::json j;
+    file >> j;
+    return readArchitectureVersion(j) == 2;
+}
+} // namespace
 
 //==============================================================================
 struct NAMCore::Impl
 {
     std::unique_ptr<ResamplingNAM> model;
+    std::unique_ptr<NAMCoreA2> a2Model;
     std::unique_ptr<dsp::tone_stack::BasicNamToneStack> toneStack;
     std::unique_ptr<dsp::noise_gate::Trigger> noiseGateTrigger;
     std::unique_ptr<dsp::noise_gate::Gain> noiseGateGain;
 
     double sampleRate = 44100.0;
     int blockSize = 512;
+    bool prepared = false;
     bool modelLoaded = false;
     bool toneStackEnabled = true;
 
@@ -60,6 +105,18 @@ bool NAMCore::loadModel(const std::string& modelPath)
     try
     {
         auto path = std::filesystem::u8path(modelPath);
+        if (isArchitecture2Model(path))
+        {
+            auto a2Model = std::make_unique<NAMCoreA2>();
+            if (!a2Model->loadModel(modelPath, impl->sampleRate, impl->blockSize, impl->prepared))
+                return false;
+
+            impl->model = nullptr;
+            impl->a2Model = std::move(a2Model);
+            impl->modelLoaded = true;
+            return true;
+        }
+
         std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path);
 
         if (!dspModel)
@@ -71,6 +128,7 @@ bool NAMCore::loadModel(const std::string& modelPath)
         resamplingModel->Reset(impl->sampleRate, impl->blockSize);
 
         impl->model = std::move(resamplingModel);
+        impl->a2Model = nullptr;
         impl->modelLoaded = true;
         return true;
     }
@@ -83,6 +141,7 @@ bool NAMCore::loadModel(const std::string& modelPath)
 void NAMCore::clearModel()
 {
     impl->model = nullptr;
+    impl->a2Model = nullptr;
     impl->modelLoaded = false;
 }
 
@@ -93,11 +152,21 @@ bool NAMCore::isModelLoaded() const
 
 bool NAMCore::hasLoudness() const
 {
+    if (impl->a2Model)
+    {
+        return impl->a2Model->hasLoudness();
+    }
+
     return impl->model && impl->model->HasLoudness();
 }
 
 double NAMCore::getLoudness() const
 {
+    if (impl->a2Model)
+    {
+        return impl->a2Model->getLoudness();
+    }
+
     if (impl->model && impl->model->HasLoudness())
     {
         return impl->model->GetLoudness();
@@ -109,6 +178,7 @@ void NAMCore::prepare(double sampleRate, int blockSize)
 {
     impl->sampleRate = sampleRate;
     impl->blockSize = blockSize;
+    impl->prepared = true;
 
     impl->toneStack->Reset(sampleRate, blockSize);
     impl->noiseGateTrigger->SetSampleRate(sampleRate);
@@ -117,10 +187,23 @@ void NAMCore::prepare(double sampleRate, int blockSize)
     {
         impl->model->Reset(sampleRate, blockSize);
     }
+
+    if (impl->a2Model)
+    {
+        impl->a2Model->prepare(sampleRate, blockSize);
+        if (!impl->a2Model->isModelLoaded())
+            impl->modelLoaded = false;
+    }
 }
 
 void NAMCore::process(float* input, float* output, int numSamples)
 {
+    if (impl->a2Model)
+    {
+        impl->a2Model->process(input, output, numSamples);
+        return;
+    }
+
     if (impl->model)
     {
         impl->model->process(input, output, numSamples);
@@ -243,6 +326,8 @@ bool NAMCore::getModelInfo(const std::string& modelPath, NAMModelInfo& info)
         {
             info.architecture = "unknown";
         }
+
+        info.architectureVersion = readArchitectureVersion(j);
 
         // Get expected sample rate from config
         if (j.contains("config") && j["config"].contains("sample_rate"))

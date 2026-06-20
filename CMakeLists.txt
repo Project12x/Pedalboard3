@@ -121,12 +121,12 @@ file(GLOB PEDALBOARD3_NAM_A2_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(Pedalboard3_NAMCoreA2 STATIC ${PEDALBOARD3_NAM_A2_SOURCES})
-target_compile_features(Pedalboard3_NAMCoreA2 PUBLIC cxx_std_20)
+target_compile_features(Pedalboard3_NAMCoreA2 PRIVATE cxx_std_20)
 target_compile_definitions(Pedalboard3_NAMCoreA2
-    PUBLIC
-        NAM_SAMPLE_FLOAT
     PRIVATE
+        NAM_SAMPLE_FLOAT
         NAM_ENABLE_A2_FAST
+        nam=pedalboard3_nam_a2
 )
 target_include_directories(Pedalboard3_NAMCoreA2
     PUBLIC
@@ -143,6 +143,31 @@ endif()
 
 if(MSVC)
     target_compile_options(Pedalboard3_NAMCoreA2 PRIVATE /wd4305 /wd4458)
+endif()
+
+add_library(Pedalboard3_NAMCoreA2Adapter STATIC
+    src/NAMCoreA2.cpp
+    src/NAMCoreA2.h
+)
+target_compile_features(Pedalboard3_NAMCoreA2Adapter PRIVATE cxx_std_20)
+target_compile_definitions(Pedalboard3_NAMCoreA2Adapter
+    PRIVATE
+        NAM_SAMPLE_FLOAT
+        _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING
+)
+target_include_directories(Pedalboard3_NAMCoreA2Adapter
+    PRIVATE
+        ${PEDALBOARD3_NAM_A2_ROOT}
+        ${PEDALBOARD3_NAM_A2_ROOT}/NAM
+        ${nlohmann_json_SOURCE_DIR}/single_include/nlohmann
+)
+target_link_libraries(Pedalboard3_NAMCoreA2Adapter
+    PRIVATE
+        Pedalboard3_NAMCoreA2
+)
+
+if(MSVC)
+    target_compile_options(Pedalboard3_NAMCoreA2Adapter PRIVATE /wd4305 /wd4458)
 endif()
 
 # Add JUCE as a subdirectory
@@ -295,6 +320,7 @@ target_sources(Pedalboard3 PRIVATE
     src/NAMConvolver.h
     src/NAMCore.cpp
     src/NAMCore.h
+    src/NAMCoreA2.h
     src/NAMModelBrowser.cpp
     src/NAMModelBrowser.h
     src/NAMOnlineBrowser.cpp
@@ -572,6 +598,7 @@ target_link_libraries(Pedalboard3 PRIVATE
     nlohmann_json::nlohmann_json
     md4c
     Eigen3::Eigen
+    Pedalboard3_NAMCoreA2Adapter
     
     # UI Effects
     melatonin_blur

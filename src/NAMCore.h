@@ -25,11 +25,13 @@ struct NAMModelInfo
     double loudness;            // dB
     std::string version;        // Model config version
     std::string metadata;       // Raw JSON metadata as string (author, description, etc.)
+    int architectureVersion;    // 0 if unknown, 1 for A1, 2 for A2
 
     NAMModelInfo()
         : expectedSampleRate(-1.0)
         , hasLoudness(false)
         , loudness(0.0)
+        , architectureVersion(0)
     {}
 };
 
