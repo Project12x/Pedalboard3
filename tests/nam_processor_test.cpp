@@ -1731,10 +1731,14 @@ TEST_CASE("NAM local browser surfaces architecture version labels", "[nam][a2][u
     REQUIRE(browserSource.find("drawBrowserChip(g, centredChips.removeFromLeft(archChipWidth)") !=
             std::string::npos);
     REQUIRE(browserSource.find("const auto technicalTop") != std::string::npos);
+    REQUIRE(browserSource.find("const auto minimumPreviewBottom") != std::string::npos);
+    REQUIRE(browserSource.find("jmax(previewCard.getBottom(), minimumPreviewBottom)") != std::string::npos);
     REQUIRE(browserSource.find("previewCard.setBottom(jmin(previewCard.getBottom(), technicalTop - 8.0f))") !=
             std::string::npos);
     REQUIRE(browserSource.find("previewCard.reduced(12.0f, 8.0f).removeFromBottom(22.0f)") !=
             std::string::npos);
+    REQUIRE(browserSource.find("const int heroHeight = compactLayout ? 156 : 184") != std::string::npos);
+    REQUIRE(browserSource.find("auto heroArea = detailsArea.removeFromTop(heroHeight)") != std::string::npos);
 }
 
 TEST_CASE("NAM local browser repaints painted preview badges on selection changes", "[nam][a2][ui]")

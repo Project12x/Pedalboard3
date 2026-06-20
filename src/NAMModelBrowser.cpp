@@ -1935,12 +1935,15 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 const auto technicalTop = modelTypeLabel && modelTypeLabel->isVisible()
                                               ? static_cast<float>(boundsInBrowser(modelTypeLabel.get()).getY())
                                               : detailsBounds.getBottom();
+                const auto minimumPreviewBottom =
+                    boundsInBrowser(modelDescriptionLabel.get()).toFloat().getBottom() + 34.0f;
                 previewCard.setLeft(detailsBounds.getX() + 14.0f);
                 previewCard.setRight(detailsBounds.getRight() - 14.0f);
                 previewCard.setTop(jmax(detailsBounds.getY() + 14.0f,
                                         previewCard.getY() - (detailsBounds.getWidth() >= 250.0f ? 60.0f : 0.0f)));
                 previewCard.setBottom(previewCard.getBottom() + 14.0f);
-                if (technicalTop > previewCard.getY() + 72.0f)
+                previewCard.setBottom(jmax(previewCard.getBottom(), minimumPreviewBottom));
+                if (technicalTop > minimumPreviewBottom + 8.0f)
                     previewCard.setBottom(jmin(previewCard.getBottom(), technicalTop - 8.0f));
 
                 g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
@@ -2457,7 +2460,8 @@ void NAMModelBrowserComponent::resized()
     };
 
     // -- Identity / preview section --
-    auto heroArea = detailsArea.removeFromTop(compactLayout ? 132 : 164);
+    const int heroHeight = compactLayout ? 156 : 184;
+    auto heroArea = detailsArea.removeFromTop(heroHeight);
     auto heroText = heroArea;
     nameLabel->setVisible(false);
     nameLabel->setBounds({});
