@@ -206,6 +206,7 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
     {
         currentModelFile = modelFile;
         modelLoaded.store(true);
+        namCore->setSlimmableSize(slimmableSize.load());
         hasDeferredModelLoad = false;
         hasDeferredModelClear = false;
         spdlog::info("NAMProcessor: Model loaded successfully");
@@ -242,6 +243,20 @@ juce::String NAMProcessor::getModelName() const
         return currentModelFile.getFileNameWithoutExtension();
     }
     return "No Model";
+}
+
+bool NAMProcessor::isCurrentModelSlimmable() const
+{
+    return modelLoaded.load() && namCore && namCore->isSlimmableModel();
+}
+
+void NAMProcessor::setSlimmableSize(float size)
+{
+    const float clamped = juce::jlimit(0.0f, 1.0f, size);
+    slimmableSize.store(clamped);
+
+    if (namCore && isCurrentModelSlimmable())
+        namCore->setSlimmableSize(clamped);
 }
 
 //==============================================================================
@@ -972,7 +987,7 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
 {
     MemoryOutputStream stream(destData, false);
 
-    stream.writeInt(8); // Version (8 = active NAM parametric EQ band count)
+    stream.writeInt(9); // Version (9 = NAM A2 slimmable size)
 
     // Model and IR paths
     stream.writeString(currentModelFile.getFullPathName());
@@ -1026,6 +1041,9 @@ void NAMProcessor::getStateInformation(MemoryBlock& destData)
         stream.writeFloat(getParamEqBandGain(bandIndex));
         stream.writeFloat(getParamEqBandQ(bandIndex));
     }
+
+    // NAM A2 slimmable size (v9+)
+    stream.writeFloat(slimmableSize.load());
 }
 
 void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -1136,6 +1154,12 @@ void NAMProcessor::setStateInformation(const void* data, int sizeInBytes)
 
         resetParametricEqState();
         lastAppliedToneEqMode = -1;
+    }
+
+    // NAM A2 slimmable size (v9+)
+    if (version >= 9 && !stream.isExhausted())
+    {
+        setSlimmableSize(stream.readFloat());
     }
 }
 

@@ -290,6 +290,14 @@ TEST_CASE("NAMCore process path does not own model handoff", "[rt][nam]")
 
     REQUIRE(processorSource.find("Deferred model load until processor is inactive") != std::string::npos);
     REQUIRE(processorSource.find("Deferred IR load until processor is inactive") != std::string::npos);
+
+    const auto processStart = processorSource.find("void NAMProcessor::processBlock");
+    REQUIRE(processStart != std::string::npos);
+    const auto processEnd = processorSource.find("//==============================================================================", processStart + 1);
+    REQUIRE(processEnd != std::string::npos);
+    const auto processBody = processorSource.substr(processStart, processEnd - processStart);
+    REQUIRE(processBody.find("setSlimmableSize") == std::string::npos);
+    REQUIRE(processBody.find("SetSlimmableSize") == std::string::npos);
 }
 
 TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam][a2]")
@@ -320,6 +328,7 @@ TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam
     REQUIRE(a2AdapterSource.find("NumInputChannels() != 1") != std::string::npos);
     REQUIRE(a2AdapterSource.find("NumOutputChannels() != 1") != std::string::npos);
     REQUIRE(a2AdapterSource.find("impl->model->process(inputs, outputs, numSamples)") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("SetSlimmableSize(std::clamp(size, 0.0, 1.0))") != std::string::npos);
 
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_MINOR 5") != std::string::npos);
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_PATCH 3") != std::string::npos);

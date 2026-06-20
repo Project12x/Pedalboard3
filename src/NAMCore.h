@@ -50,8 +50,10 @@ public:
     bool loadModel(const std::string& modelPath);
     void clearModel();
     bool isModelLoaded() const;
+    bool isSlimmableModel() const;
     bool hasLoudness() const;
     double getLoudness() const;
+    bool setSlimmableSize(float size);
 
     // Static metadata extraction - parses .nam file without loading for DSP
     static bool getModelInfo(const std::string& modelPath, NAMModelInfo& info);

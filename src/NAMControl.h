@@ -101,6 +101,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
   private:
     void updateModelDisplay();
     void updateIRDisplay();
+    void updateSlimmableControlState();
     void drawSectionPanel(Graphics& g, const Rectangle<int>& bounds, const String& title);
     void paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds);
     void resizedEmbeddedGraphNode(Rectangle<int> bounds);
@@ -124,6 +125,8 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     std::unique_ptr<TextButton> clearModelButton;
     std::unique_ptr<Label> modelNameLabel;
     std::unique_ptr<Label> modelArchLabel; // Architecture type badge
+    std::unique_ptr<Slider> slimmableSizeSlider;
+    std::unique_ptr<Label> slimmableSizeLabel;
 
     // IR loading
     std::unique_ptr<TextButton> cabinetIrCollapseButton;

@@ -14,6 +14,7 @@
 
 #define nam pedalboard3_nam_a2
 #include "../external/NeuralAmpModelerCoreA2/NAM/get_dsp.h"
+#include "../external/NeuralAmpModelerCoreA2/NAM/slimmable.h"
 #undef nam
 
 #include <algorithm>
@@ -98,6 +99,11 @@ bool NAMCoreA2::isModelLoaded() const
     return impl->modelLoaded;
 }
 
+bool NAMCoreA2::isSlimmableModel() const
+{
+    return impl->model && dynamic_cast<nam_a2::SlimmableModel*>(impl->model.get()) != nullptr;
+}
+
 bool NAMCoreA2::hasLoudness() const
 {
     return impl->model && impl->model->HasLoudness();
@@ -109,6 +115,26 @@ double NAMCoreA2::getLoudness() const
         return impl->model->GetLoudness();
 
     return 0.0;
+}
+
+bool NAMCoreA2::setSlimmableSize(double size)
+{
+    if (!impl->model)
+        return false;
+
+    auto* slimmable = dynamic_cast<nam_a2::SlimmableModel*>(impl->model.get());
+    if (!slimmable)
+        return false;
+
+    try
+    {
+        slimmable->SetSlimmableSize(std::clamp(size, 0.0, 1.0));
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
 }
 
 void NAMCoreA2::prepare(double sampleRate, int blockSize)

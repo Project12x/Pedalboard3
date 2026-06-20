@@ -25,8 +25,10 @@ public:
     void clearModel();
 
     bool isModelLoaded() const;
+    bool isSlimmableModel() const;
     bool hasLoudness() const;
     double getLoudness() const;
+    bool setSlimmableSize(double size);
 
     void prepare(double sampleRate, int blockSize);
     void process(float* input, float* output, int numSamples);

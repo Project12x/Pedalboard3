@@ -1699,13 +1699,47 @@ TEST_CASE("NAMCore routes explicit A2 models without replacing legacy fallback",
     REQUIRE(source.find("impl->prepared") != std::string::npos);
     REQUIRE(source.find("std::unique_ptr<nam::DSP> dspModel = nam::get_dsp(path)") != std::string::npos);
     REQUIRE(source.find("impl->model = std::move(resamplingModel)") != std::string::npos);
+    REQUIRE(header.find("bool isSlimmableModel() const") != std::string::npos);
+    REQUIRE(header.find("bool setSlimmableSize(float size)") != std::string::npos);
+    REQUIRE(source.find("impl->a2Model && impl->a2Model->isSlimmableModel()") != std::string::npos);
 
     REQUIRE(adapterHeader.find("class NAMCoreA2") != std::string::npos);
+    REQUIRE(adapterHeader.find("bool setSlimmableSize(double size)") != std::string::npos);
     REQUIRE(adapterSource.find("pedalboard3_nam_a2") != std::string::npos);
+    REQUIRE(adapterSource.find("NAM/slimmable.h") != std::string::npos);
+    REQUIRE(adapterSource.find("dynamic_cast<nam_a2::SlimmableModel*>") != std::string::npos);
+    REQUIRE(adapterSource.find("SetSlimmableSize(std::clamp(size, 0.0, 1.0))") != std::string::npos);
     REQUIRE(adapterSource.find("NumInputChannels() != 1") != std::string::npos);
     REQUIRE(adapterSource.find("NumOutputChannels() != 1") != std::string::npos);
     REQUIRE(adapterSource.find("enforceSampleRate") != std::string::npos);
     REQUIRE(adapterSource.find("clearModel();") != std::string::npos);
     REQUIRE(adapterSource.find("impl->model->process(inputs, outputs, numSamples)") != std::string::npos);
     REQUIRE(adapterSource.find("finalize_") == std::string::npos);
+}
+
+TEST_CASE("NAM A2 slimmable size uses state and UI boundaries instead of host automation", "[nam][a2][state]")
+{
+    const auto processorHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.h");
+    const auto processorSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
+    const auto controlHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMControl.h");
+    const auto controlSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMControl.cpp");
+
+    REQUIRE(processorHeader.find("std::atomic<float> slimmableSize{1.0f}") != std::string::npos);
+    REQUIRE(processorHeader.find("bool isCurrentModelSlimmable() const") != std::string::npos);
+    REQUIRE(processorHeader.find("void setSlimmableSize(float size)") != std::string::npos);
+    REQUIRE(processorHeader.find("SlimmableSizeParam") == std::string::npos);
+
+    REQUIRE(processorSource.find("stream.writeInt(9)") != std::string::npos);
+    REQUIRE(processorSource.find("stream.writeFloat(slimmableSize.load())") != std::string::npos);
+    REQUIRE(processorSource.find("if (version >= 9 && !stream.isExhausted())") != std::string::npos);
+    REQUIRE(processorSource.find("namCore->setSlimmableSize(slimmableSize.load())") != std::string::npos);
+    REQUIRE(processorSource.find("juce::jlimit(0.0f, 1.0f, size)") != std::string::npos);
+
+    REQUIRE(controlHeader.find("updateSlimmableControlState") != std::string::npos);
+    REQUIRE(controlHeader.find("slimmableSizeSlider") != std::string::npos);
+    REQUIRE(controlSource.find("slimmableSizeSlider->setRange(0.0, 1.0, 0.01)") != std::string::npos);
+    REQUIRE(controlSource.find("slimmableSizeLabel\", \"SIZE\"") != std::string::npos);
+    REQUIRE(controlSource.find("namProcessor->isCurrentModelSlimmable()") != std::string::npos);
+    REQUIRE(controlSource.find("namProcessor->setSlimmableSize(static_cast<float>(slider->getValue()))") !=
+            std::string::npos);
 }

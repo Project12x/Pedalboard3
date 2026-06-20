@@ -67,7 +67,7 @@ Facts that drive this plan:
 | Project | Tag / Commit | License posture | Files inspected | Reuse mode |
 | --- | --- | --- | --- | --- |
 | `sdatkinson/NeuralAmpModelerCore` | `v0.5.3` / `9c7b185de346fe0725dea537bcee4bc38b5bb6d6` | MIT expected; verify license file before vendoring | `CMakeLists.txt`, `NAM/version.h`, `NAM/dsp.h`, `NAM/get_dsp.h`, `NAM/get_dsp.cpp`, `NAM/slimmable.h`, `NAM/container.h`, `NAM/model_config.h`, `NAM/wavenet/*`, `docs/nam_file_version.rst` | direct-copy or close-port for vendored core update, with upstream attribution |
-| `sdatkinson/NeuralAmpModelerPlugin` | `v0.7.15` / `96337e9ab6e3beb619459779bbb5c47e1b04d8c4`; `v0.7.14` / `feb4f8c4fcf4a98be021de1d06cc816642899e50` | Pattern-only unless license permits copying; verify before any source reuse | Release notes for core `0.5.3`, slimmable model support, default `Slim` parameter, A2 support path | pattern-only |
+| `sdatkinson/NeuralAmpModelerPlugin` | `v0.7.15` / `96337e9ab6e3beb619459779bbb5c47e1b04d8c4`; `v0.7.14` / `feb4f8c4fcf4a98be021de1d06cc816642899e50` | Pattern-only unless license permits copying; verify before any source reuse | Release notes for core `0.5.3`; `NeuralAmpModeler/NeuralAmpModeler.cpp`; `NeuralAmpModeler/NeuralAmpModeler.h`; `NeuralAmpModeler/Unserialization.cpp`; slimmable model support, default `Slim` parameter, A2 support path | pattern-only |
 | TONE3000 API docs | 2026-06-19 page read | Documentation | `/tones/search`, `/models`, `Architecture`, `Model` schema | behavioral contract |
 
 Before any source copy or close-port, add the upstream license file and exact source-path notes to `THIRD_PARTY_LICENSES.md` or a dedicated vendored notice.
@@ -221,11 +221,19 @@ Files:
 
 Steps:
 
-- [ ] Detect whether the loaded model implements `nam::SlimmableModel`.
-- [ ] Decide UI semantics after verifying official plugin behavior: quality/CPU, Full/Lite, or raw slim value.
-- [ ] Apply slimmable-size changes only at a non-audio boundary.
-- [ ] Serialize the setting in a backward-compatible state version.
-- [ ] Hide or disable the control for non-slimmable A1/custom models.
+- [x] Detect whether the loaded model implements `nam::SlimmableModel`.
+- [x] Decide UI semantics after verifying official plugin behavior: quality/CPU, Full/Lite, or raw slim value.
+- [x] Apply slimmable-size changes only at a non-audio boundary.
+- [x] Serialize the setting in a backward-compatible state version.
+- [x] Hide or disable the control for non-slimmable A1/custom models.
+
+Scope note: Official NAM Plugin `v0.7.15` exposes this as a `Slim` parameter
+with `0.0..1.0` range and a restored default of `1.0`. Pedalboard now stores
+the setting as state v9 and exposes a compact `SIZE` slider only when the
+loaded explicit A2 model reports `SlimmableModel`. It is intentionally not
+added to the legacy `AudioProcessor` parameter enum in this slice, keeping host
+automation from creating a new possible audio-thread path into
+`SetSlimmableSize()`.
 
 Verification:
 

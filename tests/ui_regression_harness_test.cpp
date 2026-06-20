@@ -1619,9 +1619,10 @@ TEST_CASE("NAM parametric EQ is additive to the existing tone stack",
     CHECK(processorSource->find("void NAMProcessor::applyParametricEq(float* data, int numSamples)") !=
           std::string::npos);
     CHECK(processorSource->find("void NAMProcessor::updateParametricEqCoefficients()") != std::string::npos);
-    CHECK(processorSource->find("stream.writeInt(8); // Version (8 = active NAM parametric EQ band count)") !=
+    CHECK(processorSource->find("stream.writeInt(9); // Version (9 = NAM A2 slimmable size)") !=
           std::string::npos);
     CHECK(processorSource->find("if (version >= 7 && !stream.isExhausted())") != std::string::npos);
+    CHECK(processorSource->find("if (version >= 8 && !stream.isExhausted())") != std::string::npos);
     CHECK(processorSource->find("setActiveParamEqBandCount(stream.readInt())") != std::string::npos);
 
     CHECK(controlHeader->find("void updateEqModeVisibility();") != std::string::npos);

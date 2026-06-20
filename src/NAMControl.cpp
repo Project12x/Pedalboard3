@@ -570,6 +570,20 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     modelArchLabel->setFont(fm.getBadgeFont().withHeight(fm.getBadgeFont().getHeight() + 2.0f));
     addAndMakeVisible(modelArchLabel.get());
 
+    // A2 slimmable model size. Hidden unless the loaded model supports it.
+    slimmableSizeSlider = std::make_unique<Slider>(Slider::LinearHorizontal, Slider::TextBoxRight);
+    slimmableSizeSlider->setRange(0.0, 1.0, 0.01);
+    slimmableSizeSlider->setValue(namProcessor->getSlimmableSize(), dontSendNotification);
+    slimmableSizeSlider->setTextBoxStyle(Slider::TextBoxRight, false, 45, 20);
+    slimmableSizeSlider->setTooltip("NAM A2 model size");
+    slimmableSizeSlider->addListener(this);
+    addAndMakeVisible(slimmableSizeSlider.get());
+
+    slimmableSizeLabel = std::make_unique<Label>("slimmableSizeLabel", "SIZE");
+    slimmableSizeLabel->setJustificationType(Justification::centredRight);
+    slimmableSizeLabel->setFont(fm.getCaptionFont().withHeight(fm.getCaptionFont().getHeight() + 2.0f));
+    addAndMakeVisible(slimmableSizeLabel.get());
+
     // IR loading section
     cabinetIrCollapseButton = std::make_unique<TextButton>("IR -");
     cabinetIrCollapseButton->setTooltip("Collapse or expand the cabinet IR section");
@@ -819,6 +833,7 @@ NAMControl::NAMControl(NAMProcessor* processor) : namProcessor(processor)
     updateModelDisplay();
     updateIRDisplay();
     updateEqModeVisibility();
+    updateSlimmableControlState();
 
     // Start LED pulse timer (30fps)
     startTimerHz(30);
@@ -861,6 +876,7 @@ void NAMControl::refreshColours()
     irLowCutLabel->setColour(Label::textColourId, laf.ampTextDim);
     irHighCutLabel->setColour(Label::textColourId, laf.ampTextDim);
     irBlendLabel->setColour(Label::textColourId, laf.ampTextDim);
+    slimmableSizeLabel->setColour(Label::textColourId, laf.ampTextDim);
     inputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
     outputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
     noiseGateLabel->setColour(Label::textColourId, laf.ampTextDim);
@@ -918,6 +934,7 @@ void NAMControl::setCollapsed(bool shouldCollapse)
     for (auto* child : getChildren())
         child->setVisible(!collapsed);
     updateEqModeVisibility();
+    updateSlimmableControlState();
 
     // Tell the parent PluginComponent to re-query getSize() and resize the node
     if (auto* pc = dynamic_cast<PluginComponent*>(getParentComponent()))
@@ -1524,6 +1541,18 @@ void NAMControl::resizedEmbeddedGraphNode(Rectangle<int> bounds)
     browseModelsButton->setBounds(modelButtons.removeFromLeft(86));
     modelButtons.removeFromLeft(gap);
     clearModelButton->setBounds(modelButtons.removeFromLeft(clearW));
+    if (namProcessor->isCurrentModelSlimmable() && modelButtons.getWidth() > 68)
+    {
+        modelButtons.removeFromLeft(gap);
+        slimmableSizeLabel->setBounds(modelButtons.removeFromLeft(34));
+        modelButtons.removeFromLeft(2);
+        slimmableSizeSlider->setBounds(modelButtons);
+    }
+    else
+    {
+        slimmableSizeLabel->setBounds(Rectangle<int>());
+        slimmableSizeSlider->setBounds(Rectangle<int>());
+    }
 
     area.removeFromTop(8);
     const int cabinetSectionHeight = cabinetIrCollapsed ? 34 : 224;
@@ -1789,6 +1818,18 @@ void NAMControl::resized()
     fxLoopEnabledButton->setBounds(fxRow.removeFromLeft(75));
     fxRow.removeFromLeft(spacing);
     editFxLoopButton->setBounds(fxRow.removeFromLeft(80));
+    if (namProcessor->isCurrentModelSlimmable() && fxRow.getWidth() > 84)
+    {
+        fxRow.removeFromLeft(spacing);
+        slimmableSizeLabel->setBounds(fxRow.removeFromLeft(45));
+        fxRow.removeFromLeft(2);
+        slimmableSizeSlider->setBounds(fxRow);
+    }
+    else
+    {
+        slimmableSizeLabel->setBounds(Rectangle<int>());
+        slimmableSizeSlider->setBounds(Rectangle<int>());
+    }
 
     bounds.removeFromTop(sectionGap);
 
@@ -2101,6 +2142,10 @@ void NAMControl::sliderValueChanged(Slider* slider)
     {
         namProcessor->setIRBlend(static_cast<float>(slider->getValue()));
     }
+    else if (slider == slimmableSizeSlider.get())
+    {
+        namProcessor->setSlimmableSize(static_cast<float>(slider->getValue()));
+    }
 
     for (int band = 0; band < NAMProcessor::kParamEqBandCount; ++band)
     {
@@ -2123,6 +2168,16 @@ void NAMControl::sliderValueChanged(Slider* slider)
             return;
         }
     }
+}
+
+void NAMControl::updateSlimmableControlState()
+{
+    const bool visible = !collapsed && namProcessor->isCurrentModelSlimmable();
+    slimmableSizeSlider->setVisible(visible);
+    slimmableSizeLabel->setVisible(visible);
+    slimmableSizeSlider->setEnabled(visible);
+    slimmableSizeLabel->setEnabled(visible);
+    slimmableSizeSlider->setValue(namProcessor->getSlimmableSize(), dontSendNotification);
 }
 
 //==============================================================================
@@ -2153,6 +2208,7 @@ void NAMControl::updateModelDisplay()
     }
 
     // Relayout to show/hide architecture badge
+    updateSlimmableControlState();
     resized();
 }
 

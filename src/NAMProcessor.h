@@ -66,6 +66,9 @@ class NAMProcessor : public PedalboardProcessor
     bool isModelLoaded() const { return modelLoaded.load(); }
     juce::String getModelName() const;
     const juce::File& getModelFile() const { return currentModelFile; }
+    bool isCurrentModelSlimmable() const;
+    float getSlimmableSize() const { return slimmableSize.load(); }
+    void setSlimmableSize(float size);
 
     //==========================================================================
     // IR (Cabinet) management
@@ -286,6 +289,7 @@ class NAMProcessor : public PedalboardProcessor
     std::atomic<float> bass{5.0f};                 // 0-10
     std::atomic<float> mid{5.0f};                  // 0-10
     std::atomic<float> treble{5.0f};               // 0-10
+    std::atomic<float> slimmableSize{1.0f};        // 0 = smallest A2 model, 1 = full-size A2 model
     std::atomic<bool> toneStackEnabled{true};
     std::atomic<bool> toneStackPre{false};
     std::atomic<int> toneEqMode{static_cast<int>(ToneEqMode::Stack)};

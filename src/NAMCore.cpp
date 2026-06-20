@@ -150,6 +150,11 @@ bool NAMCore::isModelLoaded() const
     return impl->modelLoaded;
 }
 
+bool NAMCore::isSlimmableModel() const
+{
+    return impl->a2Model && impl->a2Model->isSlimmableModel();
+}
+
 bool NAMCore::hasLoudness() const
 {
     if (impl->a2Model)
@@ -172,6 +177,14 @@ double NAMCore::getLoudness() const
         return impl->model->GetLoudness();
     }
     return 0.0;
+}
+
+bool NAMCore::setSlimmableSize(float size)
+{
+    if (!impl->a2Model)
+        return false;
+
+    return impl->a2Model->setSlimmableSize(size);
 }
 
 void NAMCore::prepare(double sampleRate, int blockSize)
