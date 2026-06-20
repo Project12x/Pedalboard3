@@ -53,13 +53,36 @@ juce::String getGearDisplayText(const std::string& gearType)
 
 juce::String getArchitectureDisplayText(const Tone3000::ToneInfo& tone)
 {
-    if (!tone.architecture.empty())
-        return juce::String(tone.architecture);
+    if (!Tone3000::isNamPlatform(tone.platform))
+        return {};
+
+    const auto versionArchitecture = Tone3000::modelArchitectureFromVersion(tone.architectureVersion);
+    if (versionArchitecture != Tone3000::ModelArchitecture::LegacyDefault)
+        return juce::String(Tone3000::modelArchitectureDisplayName(versionArchitecture));
+
+    const auto apiArchitecture = Tone3000::modelArchitectureFromApiValue(tone.architecture);
+    if (apiArchitecture != Tone3000::ModelArchitecture::LegacyDefault)
+        return juce::String(Tone3000::modelArchitectureDisplayName(apiArchitecture));
+
+    return {};
+}
+
+juce::String getArchitectureDetailText(const Tone3000::ToneInfo& tone)
+{
+    auto displayText = getArchitectureDisplayText(tone);
+    if (displayText.isNotEmpty())
+        return displayText;
 
     if (!Tone3000::isNamPlatform(tone.platform))
         return {};
 
-    return juce::String(Tone3000::modelArchitectureDisplayName(Tone3000::modelArchitectureForTone(tone)));
+    if (tone.requestedArchitecture != Tone3000::ModelArchitecture::LegacyDefault)
+    {
+        return juce::String("Filtered ")
+             + juce::String(Tone3000::modelArchitectureDisplayName(tone.requestedArchitecture));
+    }
+
+    return "Unspecified";
 }
 
 IconManager::DomainGlyph getGearGlyph(const std::string& gearType)
@@ -491,6 +514,23 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     gearTypeCombo->addListener(this);
     addAndMakeVisible(gearTypeCombo.get());
 
+    architectureFilterLabel = std::make_unique<juce::Label>("architectureFilterLabel", "Arch:");
+    architectureFilterLabel->setColour(juce::Label::textColourId, palette.text);
+    addAndMakeVisible(architectureFilterLabel.get());
+
+    architectureCombo = std::make_unique<juce::ComboBox>("architectureFilter");
+    architectureCombo->addItem("A2", 1);
+    architectureCombo->addItem("Legacy", 2);
+    architectureCombo->addItem("A1", 3);
+    architectureCombo->addItem("Custom", 4);
+    architectureCombo->setSelectedId(1);
+    architectureCombo->setColour(juce::ComboBox::backgroundColourId, palette.inset);
+    architectureCombo->setColour(juce::ComboBox::textColourId, palette.text);
+    architectureCombo->setColour(juce::ComboBox::outlineColourId, palette.edge);
+    architectureCombo->setColour(juce::ComboBox::arrowColourId, palette.text.withAlpha(0.6f));
+    architectureCombo->addListener(this);
+    addAndMakeVisible(architectureCombo.get());
+
     sortLabel = std::make_unique<juce::Label>("sortLabel", "Sort:");
     sortLabel->setColour(juce::Label::textColourId, palette.text);
     addAndMakeVisible(sortLabel.get());
@@ -900,10 +940,13 @@ void NAMOnlineBrowserComponent::resized()
     // Filter row
     auto filterRow = bounds.removeFromTop(28);
     gearTypeLabel->setBounds(filterRow.removeFromLeft(40));
-    gearTypeCombo->setBounds(filterRow.removeFromLeft(90));
-    filterRow.removeFromLeft(16);
+    gearTypeCombo->setBounds(filterRow.removeFromLeft(compactLayout ? 82 : 90));
+    filterRow.removeFromLeft(compactLayout ? 10 : 14);
+    architectureFilterLabel->setBounds(filterRow.removeFromLeft(42));
+    architectureCombo->setBounds(filterRow.removeFromLeft(compactLayout ? 86 : 104));
+    filterRow.removeFromLeft(compactLayout ? 10 : 14);
     sortLabel->setBounds(filterRow.removeFromLeft(35));
-    sortCombo->setBounds(filterRow.removeFromLeft(120));
+    sortCombo->setBounds(filterRow.removeFromLeft(compactLayout ? 104 : 120));
 
     bounds.removeFromTop(compactLayout ? 10 : 12);
 
@@ -935,6 +978,14 @@ void NAMOnlineBrowserComponent::resized()
     auto detailsArea = juce::Rectangle<int>(0, 0, detailsContentWidth, 1);
     detailsTitle->setBounds(detailsArea.removeFromTop(24));
     detailsArea.removeFromTop(selectedTone != nullptr ? 92 : 8);
+
+    // Keep the primary model actions visible directly under the selected-model hero.
+    auto actionRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);
+    const int downloadWidth = compactLayout ? 136 : 156;
+    downloadButton->setBounds(actionRow.removeFromLeft(juce::jmin(downloadWidth, actionRow.getWidth())));
+    actionRow.removeFromLeft(compactLayout ? 8 : 10);
+    loadButton->setBounds(actionRow.removeFromLeft(juce::jmin(compactLayout ? 82 : 92, actionRow.getWidth())));
+    detailsArea.removeFromTop(selectedTone != nullptr ? 12 : 0);
 
     int labelWidth = 80;
     int rowHeight = 20;
@@ -970,16 +1021,8 @@ void NAMOnlineBrowserComponent::resized()
     sizeLabel->setBounds(row.removeFromLeft(labelWidth));
     sizeValue->setBounds(row);
 
-    detailsArea.removeFromTop(12);
-
-    // Action buttons
-    auto buttonRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);
-    downloadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 106 : 124));
-    buttonRow.removeFromLeft(compactLayout ? 8 : 10);
-    loadButton->setBounds(buttonRow.removeFromLeft(compactLayout ? 82 : 92));
-
     detailsContent->setSize(detailsContentWidth,
-                            juce::jmax(detailsViewportBounds.getHeight(), buttonRow.getBottom() + 16));
+                            juce::jmax(detailsViewportBounds.getHeight(), detailsArea.getY() + 16));
 }
 
 void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)
@@ -1088,6 +1131,27 @@ void NAMOnlineBrowserComponent::comboBoxChanged(juce::ComboBox* comboBox)
             break;
         }
     }
+    else if (comboBox == architectureCombo.get())
+    {
+        switch (architectureCombo->getSelectedId())
+        {
+        case 1:
+            currentArchitecture = Tone3000::ModelArchitecture::A2;
+            break;
+        case 2:
+            currentArchitecture = Tone3000::ModelArchitecture::LegacyDefault;
+            break;
+        case 3:
+            currentArchitecture = Tone3000::ModelArchitecture::A1;
+            break;
+        case 4:
+            currentArchitecture = Tone3000::ModelArchitecture::Custom;
+            break;
+        default:
+            currentArchitecture = Tone3000::ModelArchitecture::A2;
+            break;
+        }
+    }
     else if (comboBox == sortCombo.get())
     {
         int id = sortCombo->getSelectedId();
@@ -1111,12 +1175,8 @@ void NAMOnlineBrowserComponent::comboBoxChanged(juce::ComboBox* comboBox)
         }
     }
 
-    // Re-search with new filters if we have a query
-    if (currentQuery.isNotEmpty())
-    {
-        currentPage = 1;
-        performSearch();
-    }
+    currentPage = 1;
+    performSearch();
 }
 
 void NAMOnlineBrowserComponent::performSearch()
@@ -1174,7 +1234,8 @@ void NAMOnlineBrowserComponent::performSearch()
 
                     spdlog::info("[NAMOnlineBrowser] Found {} results", result.tones.size());
                 });
-        });
+        },
+        currentArchitecture);
 }
 
 void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* tone)
@@ -1191,6 +1252,7 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
         gearValue->setText("", juce::dontSendNotification);
 
         downloadButton->setEnabled(false);
+        downloadButton->setButtonText("Download");
         loadButton->setEnabled(false);
         resized();
         repaint();
@@ -1199,7 +1261,7 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
 
     nameValue->setText(juce::String(tone->name), juce::dontSendNotification);
     authorValue->setText(juce::String(tone->authorName), juce::dontSendNotification);
-    architectureValue->setText(getArchitectureDisplayText(*tone), juce::dontSendNotification);
+    architectureValue->setText(getArchitectureDetailText(*tone), juce::dontSendNotification);
     downloadsValue->setText(juce::String(tone->downloads), juce::dontSendNotification);
     gearValue->setText(juce::String(tone->gearType), juce::dontSendNotification);
 
@@ -1223,8 +1285,27 @@ void NAMOnlineBrowserComponent::updateDetailsPanel(const Tone3000::ToneInfo* ton
     bool isCached = Tone3000DownloadManager::getInstance().isCached(*tone);
     bool isDownloading = Tone3000DownloadManager::getInstance().isDownloading(juce::String(tone->id));
 
-    downloadButton->setEnabled(!isCached && !isDownloading && Tone3000Client::getInstance().isAuthenticated());
-    downloadButton->setButtonText(isDownloading ? "Downloading..." : "Download");
+    if (isCached)
+    {
+        downloadButton->setButtonText("Downloaded");
+        downloadButton->setEnabled(false);
+    }
+    else if (isDownloading)
+    {
+        downloadButton->setButtonText("Downloading...");
+        downloadButton->setEnabled(false);
+    }
+    else if (!Tone3000Client::getInstance().isAuthenticated())
+    {
+        downloadButton->setButtonText("Login to Download");
+        downloadButton->setEnabled(true);
+    }
+    else
+    {
+        downloadButton->setButtonText("Download");
+        downloadButton->setEnabled(true);
+    }
+
     loadButton->setEnabled(isCached);
     resized();
     repaint();
@@ -1325,12 +1406,6 @@ void NAMOnlineBrowserComponent::showLoginDialog()
                         spdlog::debug("[NAMOnlineBrowser] Calling refreshAuthState()");
                         safeThis->refreshAuthState();
                         spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
-                        if (safeThis->selectedTone != nullptr &&
-                            !Tone3000DownloadManager::getInstance().isCached(*safeThis->selectedTone))
-                        {
-                            spdlog::debug("[NAMOnlineBrowser] Enabling download button");
-                            safeThis->downloadButton->setEnabled(true);
-                        }
                         spdlog::info("[NAMOnlineBrowser] UI update complete after successful auth");
                     });
             }
@@ -1370,13 +1445,6 @@ void NAMOnlineBrowserComponent::showLoginDialog()
                                         spdlog::debug(
                                             "[NAMOnlineBrowser] Calling refreshAuthState() after manual auth");
                                         safeThis->refreshAuthState();
-                                        if (manualSuccess && safeThis->selectedTone != nullptr &&
-                                            !Tone3000DownloadManager::getInstance().isCached(*safeThis->selectedTone))
-                                        {
-                                            spdlog::debug(
-                                                "[NAMOnlineBrowser] Enabling download button after manual auth");
-                                            safeThis->downloadButton->setEnabled(true);
-                                        }
                                         spdlog::info("[NAMOnlineBrowser] UI update complete after manual auth");
                                     });
                             });
@@ -1402,7 +1470,6 @@ void NAMOnlineBrowserComponent::logout()
     Tone3000Client::getInstance().logout();
     spdlog::debug("[NAMOnlineBrowser] Tone3000Client logout complete");
     refreshAuthState();
-    downloadButton->setEnabled(false);
     spdlog::info("[NAMOnlineBrowser] Logout complete");
 }
 
@@ -1422,6 +1489,7 @@ void NAMOnlineBrowserComponent::refreshAuthState()
     logoutButton->setVisible(authenticated);
 
     updateStatusLabel();
+    updateDetailsPanel(selectedTone);
     spdlog::debug("[NAMOnlineBrowser] refreshAuthState() complete");
 }
 
@@ -1459,9 +1527,7 @@ void NAMOnlineBrowserComponent::downloadCompleted(const juce::String& toneId, co
     // Update details panel if this is the selected model
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
-        downloadButton->setButtonText("Download");
-        downloadButton->setEnabled(false);
-        loadButton->setEnabled(true);
+        updateDetailsPanel(selectedTone);
     }
 
     spdlog::info("[NAMOnlineBrowser] Download completed: {}", toneId.toStdString());
@@ -1474,8 +1540,7 @@ void NAMOnlineBrowserComponent::downloadFailed(const juce::String& toneId, const
 
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
-        downloadButton->setButtonText("Download");
-        downloadButton->setEnabled(true);
+        updateDetailsPanel(selectedTone);
     }
 
     spdlog::error("[NAMOnlineBrowser] Download failed: {} - {}", toneId.toStdString(), errorMessage.toStdString());
@@ -1488,7 +1553,6 @@ void NAMOnlineBrowserComponent::downloadCancelled(const juce::String& toneId)
 
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
-        downloadButton->setButtonText("Download");
-        downloadButton->setEnabled(true);
+        updateDetailsPanel(selectedTone);
     }
 }

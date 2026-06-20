@@ -1514,8 +1514,15 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
     CHECK(onlineSource->find("auto toolbarBounds = outer.removeFromTop(compactLayout ? 106 : 118).toFloat();") !=
           std::string::npos);
     CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 210 : 240;") != std::string::npos);
-    CHECK(onlineSource->find("auto buttonRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);") !=
+    const auto selectedActionLayout =
+        onlineSource->find("Keep the primary model actions visible directly under the selected-model hero.");
+    const auto selectedDetailRows = onlineSource->find("auto row = detailsArea.removeFromTop(rowHeight);");
+    REQUIRE(selectedActionLayout != std::string::npos);
+    REQUIRE(selectedDetailRows != std::string::npos);
+    CHECK(selectedActionLayout < selectedDetailRows);
+    CHECK(onlineSource->find("auto actionRow = detailsArea.removeFromTop(compactLayout ? 31 : 33);") !=
           std::string::npos);
+    CHECK(onlineSource->find("const int downloadWidth = compactLayout ? 136 : 156;") != std::string::npos);
     CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 32 : 36);") ==
           std::string::npos);
     CHECK(onlineSource->find("auto buttonRow = detailsArea.removeFromTop(compactLayout ? 30 : 32);") ==

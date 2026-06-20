@@ -34,6 +34,7 @@
 #include "FontManager.h"
 #include "IRLoaderProcessor.h"
 #include "Images.h"
+#include "InternalFilters.h"
 #include "JuceHelperStuff.h"
 #include "LabelProcessor.h"
 #include "LogDisplay.h"
@@ -545,95 +546,11 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
         // JUCE 8: unique_ptr auto-deleted
     }
     {
-        LevelProcessor lev;
-        FilePlayerProcessor fPlay;
-        OutputToggleProcessor toggle;
-        VuMeterProcessor vuMeter;
-        RecorderProcessor recorder;
-        MetronomeProcessor metronome;
-        LooperProcessor looper;
-        PluginDescription desc;
-
-        lev.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        fPlay.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        toggle.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        vuMeter.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        recorder.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        metronome.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        looper.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        TunerProcessor tuner;
-        tuner.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        ToneGeneratorProcessor toneGen;
-        toneGen.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        SplitterProcessor splitter;
-        splitter.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        MixerProcessor mixer;
-        mixer.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        NotesProcessor notes;
-        notes.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        LabelProcessor label;
-        label.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        MidiFilePlayerProcessor midiFilePlayer;
-        midiFilePlayer.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        IRLoaderProcessor irLoader;
-        irLoader.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        NAMProcessor nam;
-        nam.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        OscilloscopeProcessor oscilloscope;
-        oscilloscope.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        MidiTransposeProcessor midiTranspose;
-        midiTranspose.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        MidiRechannelizeProcessor midiRechannelize;
-        midiRechannelize.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        KeyboardSplitProcessor keyboardSplit;
-        keyboardSplit.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        DawMixerProcessor dawMixer;
-        dawMixer.fillInPluginDescription(desc);
-        pluginList.addType(desc);
-
-        DawSplitterProcessor dawSplitter;
-        dawSplitter.fillInPluginDescription(desc);
-        pluginList.addType(desc);
+        InternalPluginFormat internalFormat;
+        OwnedArray<PluginDescription> userFacingInternalTypes;
+        internalFormat.getUserFacingTypes(userFacingInternalTypes);
+        for (auto* desc : userFacingInternalTypes)
+            pluginList.addType(*desc);
     }
     pluginList.addChangeListener(this);
 

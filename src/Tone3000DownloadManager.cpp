@@ -21,7 +21,10 @@ Tone3000::ModelArchitecture getDownloadArchitecture(const Tone3000::ToneInfo& to
         return Tone3000::ModelArchitecture::LegacyDefault;
 
     const auto architecture = Tone3000::modelArchitectureForTone(tone);
-    return architecture == Tone3000::ModelArchitecture::LegacyDefault ? Tone3000::ModelArchitecture::A2 : architecture;
+    if (architecture != Tone3000::ModelArchitecture::LegacyDefault)
+        return architecture;
+
+    return tone.requestedArchitecture;
 }
 
 juce::String getArchitectureCacheKey(const juce::String& toneId, Tone3000::ModelArchitecture architecture)

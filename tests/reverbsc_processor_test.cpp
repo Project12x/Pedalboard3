@@ -204,6 +204,9 @@ TEST_CASE("InternalPluginFormat source registers ReverbSC", "[reverbsc][internal
 {
     const auto header = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/InternalFilters.h");
     const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/InternalFilters.cpp");
+    const auto mainPanelSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/MainPanel.cpp");
+    const auto pluginFieldSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginField.cpp");
+    const auto searchOverlaySource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginSearchOverlay.cpp");
 
     REQUIRE(header.find("reverbScProcFilter") != std::string::npos);
     REQUIRE(header.find("PluginDescription reverbScProcDesc") != std::string::npos);
@@ -217,4 +220,13 @@ TEST_CASE("InternalPluginFormat source registers ReverbSC", "[reverbsc][internal
     REQUIRE(userFacingStart != std::string::npos);
     const auto userFacingBody = source.substr(userFacingStart);
     REQUIRE(userFacingBody.find("reverbScProcFilter") != std::string::npos);
+
+    REQUIRE(mainPanelSource.find("#include \"InternalFilters.h\"") != std::string::npos);
+    REQUIRE(mainPanelSource.find("internalFormat.getUserFacingTypes(userFacingInternalTypes)") != std::string::npos);
+    REQUIRE(mainPanelSource.find("for (auto* desc : userFacingInternalTypes)") != std::string::npos);
+
+    REQUIRE(pluginFieldSource.find("addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor("
+                                   "InternalPluginFormat::subGraphProcFilter))") != std::string::npos);
+    REQUIRE(searchOverlaySource.find("addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor("
+                                     "InternalPluginFormat::subGraphProcFilter))") != std::string::npos);
 }

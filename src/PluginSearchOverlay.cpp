@@ -18,6 +18,22 @@
 namespace
 {
 
+bool containsPluginDescription(const Array<PluginDescription>& types, const PluginDescription& description)
+{
+    const auto identifier = description.createIdentifierString();
+    for (int i = 0; i < types.size(); ++i)
+        if (types.getReference(i).createIdentifierString() == identifier)
+            return true;
+
+    return false;
+}
+
+void addPluginDescriptionIfMissing(Array<PluginDescription>& types, const PluginDescription* description)
+{
+    if (description != nullptr && !containsPluginDescription(types, *description))
+        types.add(*description);
+}
+
 void paintSearchGlyph(Graphics& g, Rectangle<float> area, Colour colour)
 {
     const auto size = jmin(area.getWidth(), area.getHeight()) * 0.5f;
@@ -559,8 +575,7 @@ void PluginSearchContent::updateResults()
 
     // Add Effect Rack if available
     InternalPluginFormat internalFormat;
-    if (auto* subGraphDesc = internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter))
-        types.add(*subGraphDesc);
+    addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
 
     String query = searchBar.getText().trim().toLowerCase();
 

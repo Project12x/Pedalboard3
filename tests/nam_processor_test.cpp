@@ -1677,12 +1677,43 @@ TEST_CASE("TONE3000 browser uses architecture-aware cache lookups", "[nam][tone3
 
 TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][a2][ui]")
 {
+    const auto typesHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000Types.h");
+    const auto clientSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000Client.cpp");
+    const auto managerSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000DownloadManager.cpp");
     const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.cpp");
+    const auto browserHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.h");
 
     REQUIRE(browserSource.find("getArchitectureDisplayText") != std::string::npos);
-    REQUIRE(browserSource.find("architectureValue->setText(getArchitectureDisplayText(*tone)") != std::string::npos);
+    REQUIRE(browserSource.find("getArchitectureDetailText") != std::string::npos);
+    REQUIRE(browserSource.find("architectureValue->setText(getArchitectureDetailText(*tone)") != std::string::npos);
     REQUIRE(browserSource.find("const auto architectureText = getArchitectureDisplayText(tone)") !=
             std::string::npos);
+    REQUIRE(browserHeader.find("architectureCombo") != std::string::npos);
+    REQUIRE(browserHeader.find("currentArchitecture = Tone3000::ModelArchitecture::A2") != std::string::npos);
+    REQUIRE(browserSource.find("architectureCombo->addItem(\"A2\", 1)") != std::string::npos);
+    REQUIRE(browserSource.find("Tone3000::ModelArchitecture::LegacyDefault") != std::string::npos);
+    REQUIRE(browserSource.find("currentArchitecture);") != std::string::npos);
+
+    REQUIRE(typesHeader.find("ModelArchitecture requestedArchitecture") != std::string::npos);
+    REQUIRE(clientSource.find("tone.requestedArchitecture = architecture") != std::string::npos);
+    REQUIRE(clientSource.find("tone.architecture = Tone3000::modelArchitectureDisplayName(architecture)") ==
+            std::string::npos);
+    REQUIRE(managerSource.find("return tone.requestedArchitecture;") != std::string::npos);
+}
+
+TEST_CASE("TONE3000 browser keeps download actions visible for the selected model", "[nam][tone3000][ui]")
+{
+    const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.cpp");
+
+    const auto actionRow = browserSource.find("Keep the primary model actions visible");
+    const auto firstDetailRow = browserSource.find("auto row = detailRow();", actionRow);
+    REQUIRE(actionRow != std::string::npos);
+    REQUIRE(firstDetailRow != std::string::npos);
+    REQUIRE(actionRow < firstDetailRow);
+
+    REQUIRE(browserSource.find("downloadButton->setButtonText(\"Login to Download\")") != std::string::npos);
+    REQUIRE(browserSource.find("downloadButton->setEnabled(true);") != std::string::npos);
+    REQUIRE(browserSource.find("updateDetailsPanel(selectedTone);") != std::string::npos);
 }
 
 TEST_CASE("NAMCore routes A2 candidates without replacing legacy fallback", "[nam][a2]")

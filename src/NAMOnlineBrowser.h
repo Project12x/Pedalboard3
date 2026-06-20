@@ -121,6 +121,8 @@ class NAMOnlineBrowserComponent : public juce::Component,
     // Filter controls
     std::unique_ptr<juce::Label> gearTypeLabel;
     std::unique_ptr<juce::ComboBox> gearTypeCombo;
+    std::unique_ptr<juce::Label> architectureFilterLabel;
+    std::unique_ptr<juce::ComboBox> architectureCombo;
     std::unique_ptr<juce::Label> sortLabel;
     std::unique_ptr<juce::ComboBox> sortCombo;
 
@@ -159,6 +161,7 @@ class NAMOnlineBrowserComponent : public juce::Component,
     // Search state
     juce::String currentQuery;
     Tone3000::GearType currentGearType = Tone3000::GearType::All;
+    Tone3000::ModelArchitecture currentArchitecture = Tone3000::ModelArchitecture::A2;
     Tone3000::SortOrder currentSortOrder = Tone3000::SortOrder::Trending;
     int currentPage = 1;
     int totalResults = 0;

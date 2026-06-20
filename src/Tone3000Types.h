@@ -227,6 +227,7 @@ struct ToneInfo
     std::string modelUrl;
     std::string architecture;
     int architectureVersion{0};
+    ModelArchitecture requestedArchitecture{ModelArchitecture::LegacyDefault};
     int64_t fileSize{0};
 
     // Local cache info

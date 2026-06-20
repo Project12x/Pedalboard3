@@ -47,6 +47,22 @@ namespace
 {
 constexpr const char* kGraphGridStyleSettingsKey = "GraphGridStyle";
 
+bool containsPluginDescription(const Array<PluginDescription>& types, const PluginDescription& description)
+{
+    const auto identifier = description.createIdentifierString();
+    for (int i = 0; i < types.size(); ++i)
+        if (types.getReference(i).createIdentifierString() == identifier)
+            return true;
+
+    return false;
+}
+
+void addPluginDescriptionIfMissing(Array<PluginDescription>& types, const PluginDescription* description)
+{
+    if (description != nullptr && !containsPluginDescription(types, *description))
+        types.add(*description);
+}
+
 String getGraphGridStyle()
 {
     auto style = SettingsManager::getInstance().getString(kGraphGridStyleSettingsKey, "Lines").toLowerCase();
@@ -133,8 +149,7 @@ PluginField::PluginField(FilterGraph* filterGraph, KnownPluginList* list, Applic
 
         // Add Effect Rack if available
         InternalPluginFormat internalFormat;
-        if (auto* subGraphDesc = internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter))
-            types.add(*subGraphDesc);
+        addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
 
         int idx = typeIndex - 1;
         if (idx >= 0 && idx < types.size())
@@ -313,7 +328,7 @@ void PluginField::mouseDown(const MouseEvent& e)
 
         // Add Effect Rack (SubGraphProcessor) - it may not be in KnownPluginList
         InternalPluginFormat internalFormat;
-        types.add(*internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
+        addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
 
         // Build lookup map: pluginIdentifier -> index
         std::map<String, int> identifierToIndex;

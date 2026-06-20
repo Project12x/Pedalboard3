@@ -28,6 +28,22 @@ namespace
 {
 constexpr const char* kSubGraphGridStyleSettingsKey = "GraphGridStyle";
 
+bool containsPluginDescription(const Array<PluginDescription>& types, const PluginDescription& description)
+{
+    const auto identifier = description.createIdentifierString();
+    for (int i = 0; i < types.size(); ++i)
+        if (types.getReference(i).createIdentifierString() == identifier)
+            return true;
+
+    return false;
+}
+
+void addPluginDescriptionIfMissing(Array<PluginDescription>& types, const PluginDescription* description)
+{
+    if (description != nullptr && !containsPluginDescription(types, *description))
+        types.add(*description);
+}
+
 String getSubGraphGridStyle()
 {
     auto style = SettingsManager::getInstance().getString(kSubGraphGridStyleSettingsKey, "Lines").toLowerCase();
@@ -169,7 +185,7 @@ void SubGraphCanvas::mouseDown(const MouseEvent& e)
 
         // Add Effect Rack for nested racks
         InternalPluginFormat internalFormat;
-        types.add(*internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
+        addPluginDescriptionIfMissing(types, internalFormat.getDescriptionFor(InternalPluginFormat::subGraphProcFilter));
 
         // Build lookup map
         std::map<String, int> identifierToIndex;

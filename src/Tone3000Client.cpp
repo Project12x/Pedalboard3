@@ -193,18 +193,9 @@ void Tone3000Client::search(
             }
 
             auto searchResult = parseSearchResult(result);
-            if (architecture != Tone3000::ModelArchitecture::LegacyDefault)
+            for (auto& tone : searchResult.tones)
             {
-                for (auto& tone : searchResult.tones)
-                {
-                    if (tone.architectureVersion == 0 && tone.architecture.empty())
-                    {
-                        tone.architectureVersion = architecture == Tone3000::ModelArchitecture::A1 ? 1
-                                                  : architecture == Tone3000::ModelArchitecture::A2 ? 2
-                                                                                                   : 0;
-                        tone.architecture = Tone3000::modelArchitectureDisplayName(architecture);
-                    }
-                }
+                tone.requestedArchitecture = architecture;
             }
 
             callback(searchResult, Tone3000::ApiError::none());
