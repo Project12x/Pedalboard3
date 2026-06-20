@@ -298,6 +298,18 @@ TEST_CASE("NAMCore process path does not own model handoff", "[rt][nam]")
     const auto processBody = processorSource.substr(processStart, processEnd - processStart);
     REQUIRE(processBody.find("setSlimmableSize") == std::string::npos);
     REQUIRE(processBody.find("SetSlimmableSize") == std::string::npos);
+
+    const auto sizeSetterStart = processorSource.find("void NAMProcessor::setSlimmableSize");
+    const auto sizeSetterEnd = processorSource.find("void NAMProcessor::applySlimmableSizeAtNonAudioBoundary",
+                                                    sizeSetterStart + 1);
+    REQUIRE(sizeSetterStart != std::string::npos);
+    REQUIRE(sizeSetterEnd != std::string::npos);
+    const auto sizeSetterBody = processorSource.substr(sizeSetterStart, sizeSetterEnd - sizeSetterStart);
+    const auto preparedCheck = sizeSetterBody.find("if (isPrepared.load(std::memory_order_acquire))");
+    REQUIRE(preparedCheck != std::string::npos);
+    REQUIRE(sizeSetterBody.find("hasDeferredSlimmableSizeApply = true", preparedCheck) != std::string::npos);
+    REQUIRE(sizeSetterBody.find("return;", preparedCheck) != std::string::npos);
+    REQUIRE(sizeSetterBody.find("namCore->setSlimmableSize") == std::string::npos);
 }
 
 TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam][a2]")
@@ -329,6 +341,8 @@ TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam
     REQUIRE(a2AdapterSource.find("NumOutputChannels() != 1") != std::string::npos);
     REQUIRE(a2AdapterSource.find("impl->model->process(inputs, outputs, numSamples)") != std::string::npos);
     REQUIRE(a2AdapterSource.find("SetSlimmableSize(std::clamp(size, 0.0, 1.0))") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("flushPendingSlimmableModelSwap();") != std::string::npos);
+    REQUIRE(a2AdapterSource.find("impl->model->process(inputs, outputs, 0)") != std::string::npos);
 
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_MINOR 5") != std::string::npos);
     REQUIRE(a2Version.find("NEURAL_AMP_MODELER_DSP_VERSION_PATCH 3") != std::string::npos);

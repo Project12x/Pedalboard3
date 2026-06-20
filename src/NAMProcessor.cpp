@@ -93,6 +93,7 @@ void NAMProcessor::prepareToPlay(double sampleRate, int estimatedSamplesPerBlock
 
     // Prepare NAM core
     namCore->prepare(sampleRate, estimatedSamplesPerBlock);
+    syncModelStateAfterCorePrepare();
 
     // Prepare convolvers for IR
     convolver->prepare(sampleRate, estimatedSamplesPerBlock);
@@ -128,6 +129,17 @@ void NAMProcessor::releaseResources()
     isPrepared.store(false, std::memory_order_release);
 }
 
+void NAMProcessor::syncModelStateAfterCorePrepare()
+{
+    if (namCore && modelLoaded.load() && !namCore->isModelLoaded())
+    {
+        modelLoaded.store(false);
+        currentModelFile = juce::File();
+        hasDeferredSlimmableSizeApply = false;
+        spdlog::warn("NAMProcessor: Core cleared the current model during prepare");
+    }
+}
+
 void NAMProcessor::applyDeferredHeavyStateChanges()
 {
     if (hasDeferredModelClear)
@@ -145,6 +157,9 @@ void NAMProcessor::applyDeferredHeavyStateChanges()
         hasDeferredModelLoad = false;
         loadModel(file);
     }
+
+    if (hasDeferredSlimmableSizeApply)
+        applySlimmableSizeAtNonAudioBoundary();
 
     if (hasDeferredIRClear)
     {
@@ -206,7 +221,7 @@ bool NAMProcessor::loadModel(const juce::File& modelFile)
     {
         currentModelFile = modelFile;
         modelLoaded.store(true);
-        namCore->setSlimmableSize(slimmableSize.load());
+        applySlimmableSizeAtNonAudioBoundary();
         hasDeferredModelLoad = false;
         hasDeferredModelClear = false;
         spdlog::info("NAMProcessor: Model loaded successfully");
@@ -255,8 +270,31 @@ void NAMProcessor::setSlimmableSize(float size)
     const float clamped = juce::jlimit(0.0f, 1.0f, size);
     slimmableSize.store(clamped);
 
-    if (namCore && isCurrentModelSlimmable())
-        namCore->setSlimmableSize(clamped);
+    if (!namCore || !isCurrentModelSlimmable())
+    {
+        hasDeferredSlimmableSizeApply = false;
+        return;
+    }
+
+    if (isPrepared.load(std::memory_order_acquire))
+    {
+        hasDeferredSlimmableSizeApply = true;
+        return;
+    }
+
+    applySlimmableSizeAtNonAudioBoundary();
+}
+
+void NAMProcessor::applySlimmableSizeAtNonAudioBoundary()
+{
+    if (!namCore || !modelLoaded.load() || !namCore->isSlimmableModel())
+    {
+        hasDeferredSlimmableSizeApply = false;
+        return;
+    }
+
+    namCore->setSlimmableSize(slimmableSize.load());
+    hasDeferredSlimmableSizeApply = false;
 }
 
 //==============================================================================

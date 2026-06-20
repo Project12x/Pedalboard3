@@ -129,12 +129,27 @@ bool NAMCoreA2::setSlimmableSize(double size)
     try
     {
         slimmable->SetSlimmableSize(std::clamp(size, 0.0, 1.0));
+        flushPendingSlimmableModelSwap();
         return true;
     }
     catch (const std::exception&)
     {
         return false;
     }
+}
+
+void NAMCoreA2::flushPendingSlimmableModelSwap()
+{
+    if (!impl->model)
+        return;
+
+    float inputSample = 0.0f;
+    float outputSample = 0.0f;
+    float* inputs[1] = {&inputSample};
+    float* outputs[1] = {&outputSample};
+    // Slimmable WaveNet installs staged models at the top of process(); zero frames
+    // commits that swap at this non-audio boundary without advancing DSP state.
+    impl->model->process(inputs, outputs, 0);
 }
 
 void NAMCoreA2::prepare(double sampleRate, int blockSize)

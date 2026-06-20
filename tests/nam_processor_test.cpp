@@ -1727,13 +1727,32 @@ TEST_CASE("NAM A2 slimmable size uses state and UI boundaries instead of host au
     REQUIRE(processorHeader.find("std::atomic<float> slimmableSize{1.0f}") != std::string::npos);
     REQUIRE(processorHeader.find("bool isCurrentModelSlimmable() const") != std::string::npos);
     REQUIRE(processorHeader.find("void setSlimmableSize(float size)") != std::string::npos);
+    REQUIRE(processorHeader.find("void applySlimmableSizeAtNonAudioBoundary()") != std::string::npos);
+    REQUIRE(processorHeader.find("bool hasDeferredSlimmableSizeApply = false") != std::string::npos);
     REQUIRE(processorHeader.find("SlimmableSizeParam") == std::string::npos);
 
     REQUIRE(processorSource.find("stream.writeInt(9)") != std::string::npos);
     REQUIRE(processorSource.find("stream.writeFloat(slimmableSize.load())") != std::string::npos);
     REQUIRE(processorSource.find("if (version >= 9 && !stream.isExhausted())") != std::string::npos);
-    REQUIRE(processorSource.find("namCore->setSlimmableSize(slimmableSize.load())") != std::string::npos);
     REQUIRE(processorSource.find("juce::jlimit(0.0f, 1.0f, size)") != std::string::npos);
+    REQUIRE(processorSource.find("hasDeferredSlimmableSizeApply = true") != std::string::npos);
+    REQUIRE(processorSource.find("applySlimmableSizeAtNonAudioBoundary();") != std::string::npos);
+
+    const auto setterStart = processorSource.find("void NAMProcessor::setSlimmableSize");
+    const auto boundaryStart = processorSource.find("void NAMProcessor::applySlimmableSizeAtNonAudioBoundary");
+    REQUIRE(setterStart != std::string::npos);
+    REQUIRE(boundaryStart != std::string::npos);
+    REQUIRE(setterStart < boundaryStart);
+
+    const auto setterBody = processorSource.substr(setterStart, boundaryStart - setterStart);
+    const auto preparedCheck = setterBody.find("if (isPrepared.load(std::memory_order_acquire))");
+    const auto deferredFlag = setterBody.find("hasDeferredSlimmableSizeApply = true", preparedCheck);
+    const auto boundaryApply = setterBody.find("applySlimmableSizeAtNonAudioBoundary();", preparedCheck);
+    REQUIRE(preparedCheck != std::string::npos);
+    REQUIRE(deferredFlag != std::string::npos);
+    REQUIRE(boundaryApply != std::string::npos);
+    REQUIRE(preparedCheck < deferredFlag);
+    REQUIRE(deferredFlag < boundaryApply);
 
     REQUIRE(controlHeader.find("updateSlimmableControlState") != std::string::npos);
     REQUIRE(controlHeader.find("slimmableSizeSlider") != std::string::npos);
@@ -1742,6 +1761,40 @@ TEST_CASE("NAM A2 slimmable size uses state and UI boundaries instead of host au
     REQUIRE(controlSource.find("namProcessor->isCurrentModelSlimmable()") != std::string::npos);
     REQUIRE(controlSource.find("namProcessor->setSlimmableSize(static_cast<float>(slider->getValue()))") !=
             std::string::npos);
+}
+
+TEST_CASE("NAMProcessor synchronizes public loaded state after core prepare rejection", "[nam][a2][state]")
+{
+    const auto processorHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.h");
+    const auto processorSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMProcessor.cpp");
+
+    REQUIRE(processorHeader.find("void syncModelStateAfterCorePrepare()") != std::string::npos);
+
+    const auto prepareStart = processorSource.find("void NAMProcessor::prepareToPlay");
+    const auto releaseStart = processorSource.find("void NAMProcessor::releaseResources", prepareStart);
+    REQUIRE(prepareStart != std::string::npos);
+    REQUIRE(releaseStart != std::string::npos);
+
+    const auto prepareBody = processorSource.substr(prepareStart, releaseStart - prepareStart);
+    const auto corePrepare = prepareBody.find("namCore->prepare(sampleRate, estimatedSamplesPerBlock)");
+    const auto syncState = prepareBody.find("syncModelStateAfterCorePrepare();");
+    const auto applyDeferred = prepareBody.find("applyDeferredHeavyStateChanges();");
+    REQUIRE(corePrepare != std::string::npos);
+    REQUIRE(syncState != std::string::npos);
+    REQUIRE(applyDeferred != std::string::npos);
+    REQUIRE(corePrepare < syncState);
+    REQUIRE(syncState < applyDeferred);
+
+    const auto syncStart = processorSource.find("void NAMProcessor::syncModelStateAfterCorePrepare");
+    const auto applyStart = processorSource.find("void NAMProcessor::applyDeferredHeavyStateChanges", syncStart);
+    REQUIRE(syncStart != std::string::npos);
+    REQUIRE(applyStart != std::string::npos);
+
+    const auto syncBody = processorSource.substr(syncStart, applyStart - syncStart);
+    REQUIRE(syncBody.find("!namCore->isModelLoaded()") != std::string::npos);
+    REQUIRE(syncBody.find("modelLoaded.store(false)") != std::string::npos);
+    REQUIRE(syncBody.find("currentModelFile = juce::File()") != std::string::npos);
+    REQUIRE(syncBody.find("hasDeferredSlimmableSizeApply = false") != std::string::npos);
 }
 
 TEST_CASE("NAM A2 fixture coverage gap is documented instead of hidden by a derived sample", "[nam][a2][fixtures]")

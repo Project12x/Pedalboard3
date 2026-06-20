@@ -216,6 +216,8 @@ class NAMProcessor : public PedalboardProcessor
     void updateIRFilters();
     void normalizeModelOutput(float* output, int numSamples);
     void applyDeferredHeavyStateChanges();
+    void applySlimmableSizeAtNonAudioBoundary();
+    void syncModelStateAfterCorePrepare();
     static float dBToLinear(float dB);
 
     struct ParamEqBandRuntime
@@ -259,6 +261,7 @@ class NAMProcessor : public PedalboardProcessor
     bool hasDeferredModelClear = false;
     bool hasDeferredIRClear = false;
     bool hasDeferredIR2Clear = false;
+    bool hasDeferredSlimmableSizeApply = false;
 
     // IR blend (0 = IR1 only, 1 = IR2 only)
     std::atomic<float> irBlend{0.0f};

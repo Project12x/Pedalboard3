@@ -34,6 +34,8 @@ public:
     void process(float* input, float* output, int numSamples);
 
 private:
+    void flushPendingSlimmableModelSwap();
+
     struct Impl;
     std::unique_ptr<Impl> impl;
 };
