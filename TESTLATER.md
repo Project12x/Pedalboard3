@@ -85,3 +85,33 @@ Steps:
 14. If a listed local NAM file has been moved or deleted, confirm the preview shows MISSING and `Load Model` / `Delete Model` stay disabled.
 15. Repeat the visual pass in dark, light/daylight, and synthwave themes.
 16. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
+
+## NAM A1/A2 Browser Smoke
+
+Status: local and online browser behavior needs one more manual pass after native launch.
+
+Steps:
+
+1. Open the NAM Library local browser with at least one A1 `.nam` model and one A2 `.nam` container model available.
+2. Confirm local rows show the correct A1 or A2 architecture pill without clipping.
+3. Select and load an A1 model, then confirm the loaded NAM node/control still identifies the model as A1.
+4. Select and load an A2 model, then confirm the loaded NAM node/control still identifies the model as A2.
+5. Open the online browser while authenticated, select a model, and confirm a visible download action is available.
+6. Confirm the online A1/A2 architecture filter changes the result set sensibly and does not label every result as A2.
+7. Download one online model, refresh local results, and confirm the new local row shows the correct architecture pill.
+8. Reopen the NAM detail card at 75%, 100%, 150%, and 200% UI Scale and confirm labels, pills, and footer status do not clip.
+
+## ReverbSC Direct Node Visual Smoke
+
+Status: deferred manual/visual pass after the ReverbSC node UI lands.
+
+Steps:
+
+1. Add a ReverbSC internal node from the plugin browser.
+2. Confirm the node shows direct-painted Mix, Feedback, Damping, Width, and Output controls.
+3. Drag each direct control and confirm the visible value updates immediately.
+4. Confirm dragging the controls does not move the graph node unless the drag starts outside a control.
+5. Save the patch, reload it, and confirm the five ReverbSC values restore.
+6. Toggle bypass and mappings from the node footer and confirm the direct-painted control surface remains readable.
+7. Check dark, light/daylight, and synthwave themes.
+8. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming the control text and pills do not clip.

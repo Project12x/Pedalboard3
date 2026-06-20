@@ -28,7 +28,7 @@ class ReverbSCProcessor : public PedalboardProcessor
     ~ReverbSCProcessor() override = default;
 
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(220, 96); }
+    Point<int> getSize() override { return Point<int>(280, 146); }
     void updateEditorBounds(const Rectangle<int>& bounds);
 
     void fillInPluginDescription(PluginDescription& description) const override;

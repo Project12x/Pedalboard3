@@ -1,5 +1,9 @@
 #include "ReverbSCProcessor.h"
 
+#include "ColourScheme.h"
+#include "FontManager.h"
+
+#include <array>
 #include <cmath>
 
 namespace
@@ -8,6 +12,326 @@ constexpr const char* kStateTag = "Pedalboard3ReverbSCSettings";
 constexpr int kStateVersion = 1;
 constexpr float kMinDampingHz = 200.0f;
 constexpr float kMaxDampingHz = 20000.0f;
+
+constexpr double defaultValueForParameter(int parameterIndex) noexcept
+{
+    switch (parameterIndex)
+    {
+    case ReverbSCProcessor::MixParam:
+        return 0.35;
+    case ReverbSCProcessor::FeedbackParam:
+        return 0.97;
+    case ReverbSCProcessor::DampingParam:
+        return 0.4949495;
+    case ReverbSCProcessor::WidthParam:
+        return 1.0;
+    case ReverbSCProcessor::OutputParam:
+        return 0.5;
+    default:
+        return 0.0;
+    }
+}
+
+Colour colourForReverbParameter(int parameterIndex)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    switch (parameterIndex)
+    {
+    case ReverbSCProcessor::MixParam:
+        return colours["Graph Category Reverb"];
+    case ReverbSCProcessor::FeedbackParam:
+        return colours["Warning Colour"].brighter(0.05f);
+    case ReverbSCProcessor::DampingParam:
+        return colours["Graph Category Delay"].brighter(0.08f);
+    case ReverbSCProcessor::WidthParam:
+        return colours["Graph Category Reverb"].brighter(0.28f);
+    case ReverbSCProcessor::OutputParam:
+        return colours["Success Colour"].brighter(0.10f);
+    default:
+        return colours["Text Colour"];
+    }
+}
+
+class ReverbSCControl final : public Component, private Timer
+{
+  public:
+    explicit ReverbSCControl(ReverbSCProcessor* proc) : processor(proc)
+    {
+        setName("ReverbSC Node Controls");
+        setSize(280, 146);
+
+        for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
+        {
+            auto& slider = sliders[static_cast<size_t>(parameter)];
+            slider.setName(processor->getParameterName(parameter));
+            slider.setSliderStyle(Slider::LinearHorizontal);
+            slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            slider.setRange(0.0, 1.0, 0.001);
+            slider.setDoubleClickReturnValue(true, defaultValueForParameter(parameter));
+            slider.setValue(processor->getParameter(parameter), dontSendNotification);
+            slider.setMouseDragSensitivity(140);
+            slider.setAlpha(0.01f);
+
+            const int parameterIndex = parameter;
+            slider.onValueChange = [this, parameterIndex]()
+            {
+                if (processor == nullptr || syncingFromProcessor)
+                    return;
+
+                processor->setParameter(parameterIndex,
+                                        static_cast<float>(sliders[static_cast<size_t>(parameterIndex)].getValue()));
+                repaint(parameterAreas[static_cast<size_t>(parameterIndex)].expanded(3, 2));
+            };
+
+            addAndMakeVisible(slider);
+        }
+
+        startTimerHz(24);
+    }
+
+    ~ReverbSCControl() override { stopTimer(); }
+
+    void resized() override
+    {
+        auto area = getLocalBounds().reduced(8, 7);
+        headerArea = area.removeFromTop(25);
+        area.removeFromTop(5);
+
+        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(32);
+        area.removeFromTop(7);
+
+        const int columnGap = 7;
+        const int rowGap = 6;
+        const int columnWidth = (area.getWidth() - columnGap) / 2;
+        const int rowHeight = 29;
+
+        auto leftColumn = area.removeFromLeft(columnWidth);
+        area.removeFromLeft(columnGap);
+        auto rightColumn = area.withWidth(columnWidth);
+
+        parameterAreas[ReverbSCProcessor::FeedbackParam] = leftColumn.removeFromTop(rowHeight);
+        parameterAreas[ReverbSCProcessor::DampingParam] = rightColumn.removeFromTop(rowHeight);
+        leftColumn.removeFromTop(rowGap);
+        rightColumn.removeFromTop(rowGap);
+        parameterAreas[ReverbSCProcessor::WidthParam] = leftColumn.removeFromTop(rowHeight);
+        parameterAreas[ReverbSCProcessor::OutputParam] = rightColumn.removeFromTop(rowHeight);
+
+        for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
+            sliders[static_cast<size_t>(parameter)].setBounds(parameterAreas[static_cast<size_t>(parameter)].expanded(3, 2));
+    }
+
+    void paint(Graphics& g) override
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto& fonts = FontManager::getInstance();
+
+        const auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+        const auto accent = colours["Graph Category Reverb"];
+        const auto secondary = colours["Graph Category Delay"];
+        const auto base = colours["Plugin Background"].interpolatedWith(accent, 0.055f);
+        const auto text = colours["Text Colour"];
+
+        g.setColour(base.darker(0.42f).withAlpha(0.30f));
+        g.fillRoundedRectangle(bounds.translated(0.0f, 1.5f), 8.0f);
+
+        ColourGradient face(base.brighter(0.075f), bounds.getX(), bounds.getY(), base.darker(0.18f), bounds.getX(),
+                            bounds.getBottom(), false);
+        face.addColour(0.48, base.interpolatedWith(secondary, 0.035f));
+        g.setGradientFill(face);
+        g.fillRoundedRectangle(bounds, 8.0f);
+
+        g.setColour(accent.withAlpha(0.52f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), 8.0f, 1.0f);
+        g.setColour(text.withAlpha(0.05f));
+        g.drawRoundedRectangle(bounds.reduced(2.0f), 6.0f, 0.7f);
+
+        paintHeader(g, headerArea);
+        paintParameterLane(g, parameterAreas[ReverbSCProcessor::MixParam], ReverbSCProcessor::MixParam);
+        paintParameterTile(g, parameterAreas[ReverbSCProcessor::FeedbackParam], ReverbSCProcessor::FeedbackParam);
+        paintParameterTile(g, parameterAreas[ReverbSCProcessor::DampingParam], ReverbSCProcessor::DampingParam);
+        paintParameterTile(g, parameterAreas[ReverbSCProcessor::WidthParam], ReverbSCProcessor::WidthParam);
+        paintParameterTile(g, parameterAreas[ReverbSCProcessor::OutputParam], ReverbSCProcessor::OutputParam);
+
+        auto footer = getLocalBounds().reduced(12, 0).removeFromBottom(6).toFloat();
+        g.setColour(accent.withAlpha(0.42f));
+        g.fillRoundedRectangle(footer.withHeight(2.0f), 1.0f);
+
+        ignoreUnused(fonts);
+    }
+
+  private:
+    ReverbSCProcessor* processor = nullptr;
+    std::array<Slider, ReverbSCProcessor::NumParameters> sliders;
+    std::array<Rectangle<int>, ReverbSCProcessor::NumParameters> parameterAreas;
+    Rectangle<int> headerArea;
+    bool syncingFromProcessor = false;
+
+    void timerCallback() override
+    {
+        if (processor == nullptr)
+            return;
+
+        bool needsRepaint = false;
+        ScopedValueSetter<bool> syncGuard(syncingFromProcessor, true);
+
+        for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
+        {
+            auto& slider = sliders[static_cast<size_t>(parameter)];
+            const auto currentValue = static_cast<double>(processor->getParameter(parameter));
+            if (std::abs(slider.getValue() - currentValue) > 0.0005)
+            {
+                slider.setValue(currentValue, dontSendNotification);
+                needsRepaint = true;
+            }
+        }
+
+        if (needsRepaint)
+            repaint();
+    }
+
+    void paintHeader(Graphics& g, Rectangle<int> area)
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto& fonts = FontManager::getInstance();
+        const auto accent = colours["Graph Category Reverb"];
+        const auto secondary = colours["Graph Category Delay"];
+        const auto text = colours["Text Colour"];
+
+        auto titleArea = area.reduced(8, 0);
+        auto pill = titleArea.removeFromRight(62).reduced(0, 3);
+        auto glyph = titleArea.removeFromRight(56).reduced(4, 2);
+
+        auto dot = Rectangle<float>(6.0f, 6.0f).withCentre({(float)titleArea.getX() + 3.0f, (float)titleArea.getCentreY()});
+        g.setColour(accent.withAlpha(0.20f));
+        g.fillEllipse(dot.expanded(4.0f));
+        g.setColour(accent.withAlpha(0.92f));
+        g.fillEllipse(dot);
+
+        g.setFont(fonts.getBadgeFont().withHeight(11.0f));
+        g.setColour(text.withAlpha(0.72f));
+        g.drawText("SC REVERB", titleArea.withTrimmedLeft(13), Justification::centredLeft, true);
+
+        paintDiffusionGlyph(g, glyph, accent, secondary);
+
+        const auto pillF = pill.toFloat();
+        g.setColour(colours["Plugin Background"].darker(0.28f).withAlpha(0.78f));
+        g.fillRoundedRectangle(pillF, 6.0f);
+        g.setColour(accent.withAlpha(0.42f));
+        g.drawRoundedRectangle(pillF.reduced(0.5f), 6.0f, 0.8f);
+        g.setFont(fonts.getBadgeFont().withHeight(9.0f));
+        g.setColour(accent.brighter(0.12f));
+        g.drawText("STEREO", pill, Justification::centred, true);
+    }
+
+    void paintDiffusionGlyph(Graphics& g, Rectangle<int> area, Colour accent, Colour secondary)
+    {
+        auto graph = area.toFloat().reduced(2.0f, 3.0f);
+        if (graph.isEmpty())
+            return;
+
+        for (int lineIndex = 0; lineIndex < 3; ++lineIndex)
+        {
+            const float y = graph.getY() + 4.0f + (float)lineIndex * 5.6f;
+            Path tail;
+            tail.startNewSubPath(graph.getX(), y);
+            tail.cubicTo(graph.getX() + graph.getWidth() * 0.30f, y - 5.0f,
+                         graph.getX() + graph.getWidth() * 0.60f, y + 5.0f, graph.getRight(), y - 1.5f);
+            g.setColour((lineIndex == 1 ? accent : secondary).withAlpha(0.20f));
+            g.strokePath(tail, PathStrokeType(3.0f, PathStrokeType::curved, PathStrokeType::rounded));
+            g.setColour((lineIndex == 1 ? accent : secondary).withAlpha(0.66f));
+            g.strokePath(tail, PathStrokeType(0.85f, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+    }
+
+    void paintParameterLane(Graphics& g, Rectangle<int> area, int parameterIndex)
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto& fonts = FontManager::getInstance();
+        const auto accent = colourForReverbParameter(parameterIndex);
+        const auto text = colours["Text Colour"];
+        const auto surface = colours["Plugin Background"].darker(0.20f).interpolatedWith(accent, 0.045f);
+        const float value = processor != nullptr ? processor->getParameter(parameterIndex) : 0.0f;
+
+        auto lane = area.toFloat();
+        g.setColour(surface.withAlpha(0.92f));
+        g.fillRoundedRectangle(lane, 7.0f);
+        g.setColour(accent.withAlpha(0.44f));
+        g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
+
+        auto content = area.reduced(10, 0);
+        auto labelArea = content.removeFromLeft(52);
+        auto valueArea = content.removeFromRight(62);
+        auto rail = content.reduced(5, 0).withSizeKeepingCentre(content.getWidth() - 10, 8).toFloat();
+
+        g.setFont(fonts.getBadgeFont().withHeight(10.0f));
+        g.setColour(text.withAlpha(0.62f));
+        g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), labelArea, Justification::centredLeft, true);
+
+        g.setFont(fonts.getMonoFont(10.5f));
+        g.setColour(text.withAlpha(0.86f));
+        g.drawText(processor->getParameterText(parameterIndex), valueArea, Justification::centredRight, true);
+
+        paintRail(g, rail, value, accent);
+    }
+
+    void paintParameterTile(Graphics& g, Rectangle<int> area, int parameterIndex)
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto& fonts = FontManager::getInstance();
+        const auto accent = colourForReverbParameter(parameterIndex);
+        const auto text = colours["Text Colour"];
+        const auto surface = colours["Plugin Background"].darker(0.25f).interpolatedWith(accent, 0.040f);
+        const float value = processor != nullptr ? processor->getParameter(parameterIndex) : 0.0f;
+
+        auto tile = area.toFloat();
+        g.setColour(surface.withAlpha(0.90f));
+        g.fillRoundedRectangle(tile, 6.0f);
+        g.setColour(accent.withAlpha(0.36f));
+        g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
+
+        auto content = area.reduced(8, 4);
+        auto top = content.removeFromTop(13);
+        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 68 : 45);
+
+        g.setFont(fonts.getBadgeFont().withHeight(8.6f));
+        g.setColour(text.withAlpha(0.58f));
+        g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), top, Justification::centredLeft, true);
+
+        g.setFont(fonts.getMonoFont(9.0f));
+        g.setColour(text.withAlpha(0.82f));
+        g.drawText(processor->getParameterText(parameterIndex), valueArea, Justification::centredRight, true);
+
+        auto rail = area.reduced(9, 0).removeFromBottom(8).withHeight(5).toFloat();
+        paintRail(g, rail, value, accent);
+    }
+
+    void paintRail(Graphics& g, Rectangle<float> rail, float value, Colour accent)
+    {
+        if (rail.isEmpty())
+            return;
+
+        value = jlimit(0.0f, 1.0f, value);
+        g.setColour(Colours::black.withAlpha(0.20f));
+        g.fillRoundedRectangle(rail, 2.5f);
+        g.setColour(accent.withAlpha(0.16f));
+        g.drawRoundedRectangle(rail.reduced(0.35f), 2.5f, 0.7f);
+
+        auto fill = rail.withWidth(rail.getWidth() * value);
+        ColourGradient fillGradient(accent.withAlpha(0.78f), fill.getX(), fill.getCentreY(),
+                                    accent.brighter(0.40f).withAlpha(0.54f), fill.getRight(), fill.getCentreY(), false);
+        g.setGradientFill(fillGradient);
+        g.fillRoundedRectangle(fill, 2.5f);
+
+        const float thumbX = jlimit(rail.getX() + 2.0f, rail.getRight() - 2.0f, rail.getX() + rail.getWidth() * value);
+        auto thumb = Rectangle<float>(5.0f, 11.0f).withCentre({thumbX, rail.getCentreY()});
+        g.setColour(accent.brighter(0.22f).withAlpha(0.88f));
+        g.fillRoundedRectangle(thumb, 2.2f);
+        g.setColour(Colours::white.withAlpha(0.16f));
+        g.drawRoundedRectangle(thumb.reduced(0.5f), 2.2f, 0.6f);
+    }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ReverbSCControl)
+};
 } // namespace
 
 ReverbSCProcessor::ReverbSCProcessor()
@@ -17,7 +341,7 @@ ReverbSCProcessor::ReverbSCProcessor()
 
 Component* ReverbSCProcessor::getControls()
 {
-    return new Component();
+    return new ReverbSCControl(this);
 }
 
 void ReverbSCProcessor::updateEditorBounds(const Rectangle<int>& bounds)

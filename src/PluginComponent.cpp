@@ -300,6 +300,11 @@ bool isDirectPaintedEmbeddedNodeName(const String& pluginName)
            isStickyNoteNodeName(pluginName);
 }
 
+bool usesEmbeddedParameterSurface(const String& pluginName)
+{
+    return pluginName == "ReverbSC";
+}
+
 bool suppressesHostParamPinForUtilityNode(const String& pluginName)
 {
     return pluginName == "Oscilloscope" || pluginName == "Tone Generator";
@@ -2422,7 +2427,7 @@ int PluginComponent::getNodeParameterControlCount() const
     if (!areNodeParameterControlsEnabled() || isAudioIONode() || node == nullptr)
         return 0;
 
-    if (isDirectPaintedEmbeddedNodeName(pluginName))
+    if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName))
         return 0;
 
     const auto excludedSystemNode =

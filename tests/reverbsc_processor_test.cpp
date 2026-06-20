@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -145,6 +146,39 @@ TEST_CASE("ReverbSCProcessor exposes stable host metadata", "[reverbsc][processo
     REQUIRE(processor.getParameterName(ReverbSCProcessor::DampingParam) == "Damping");
     REQUIRE(processor.getParameterName(ReverbSCProcessor::WidthParam) == "Width");
     REQUIRE(processor.getParameterName(ReverbSCProcessor::OutputParam) == "Output");
+}
+
+TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter", "[reverbsc][ui]")
+{
+    ReverbSCProcessor processor;
+    std::unique_ptr<Component> controls(processor.getControls());
+
+    REQUIRE(controls != nullptr);
+    REQUIRE(processor.getSize().getX() >= 280);
+    REQUIRE(processor.getSize().getY() >= 146);
+    REQUIRE(controls->getNumChildComponents() >= ReverbSCProcessor::NumParameters);
+
+    for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
+    {
+        const auto parameterName = processor.getParameterName(parameter);
+        bool foundSlider = false;
+        for (int childIndex = 0; childIndex < controls->getNumChildComponents(); ++childIndex)
+        {
+            auto* child = controls->getChildComponent(childIndex);
+            if (child != nullptr && child->getName() == parameterName)
+                foundSlider = dynamic_cast<Slider*>(child) != nullptr;
+        }
+
+        REQUIRE(foundSlider);
+    }
+
+    const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");
+    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
+    REQUIRE(source.find("class ReverbSCControl") != std::string::npos);
+    REQUIRE(source.find("paintParameterLane") != std::string::npos);
+    REQUIRE(source.find("paintParameterTile") != std::string::npos);
+    REQUIRE(pluginComponentSource.find("usesEmbeddedParameterSurface") != std::string::npos);
+    REQUIRE(pluginComponentSource.find("pluginName == \"ReverbSC\"") != std::string::npos);
 }
 
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
