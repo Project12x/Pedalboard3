@@ -203,6 +203,21 @@ TEST_CASE("ReverbSC embedded controls do not paint a nested node shell", "[rever
     REQUIRE(controlBody.find("drawRoundedRectangle(bounds") == std::string::npos);
 }
 
+TEST_CASE("ReverbSC embedded controls do not duplicate host title chrome", "[reverbsc][ui]")
+{
+    const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");
+
+    const auto controlStart = source.find("class ReverbSCControl");
+    REQUIRE(controlStart != std::string::npos);
+    const auto controlEnd = source.find("} // namespace", controlStart);
+    REQUIRE(controlEnd != std::string::npos);
+    const auto controlBody = source.substr(controlStart, controlEnd - controlStart);
+
+    REQUIRE(controlBody.find("\"SC REVERB\"") == std::string::npos);
+    REQUIRE(controlBody.find("\"STEREO\"") == std::string::npos);
+    REQUIRE(controlBody.find("paintHeader") == std::string::npos);
+}
+
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
 {
     ReverbSCProcessor source;

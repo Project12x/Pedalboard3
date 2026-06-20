@@ -94,16 +94,14 @@ class ReverbSCControl final : public Component, private Timer
     void resized() override
     {
         auto area = getLocalBounds().reduced(8, 7);
-        headerArea = area.removeFromTop(25);
-        area.removeFromTop(5);
 
-        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(32);
-        area.removeFromTop(7);
+        parameterAreas[ReverbSCProcessor::MixParam] = area.removeFromTop(34);
+        area.removeFromTop(8);
 
         const int columnGap = 7;
-        const int rowGap = 6;
+        const int rowGap = 8;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
-        const int rowHeight = 29;
+        const int rowHeight = 41;
 
         auto leftColumn = area.removeFromLeft(columnWidth);
         area.removeFromLeft(columnGap);
@@ -125,7 +123,6 @@ class ReverbSCControl final : public Component, private Timer
         auto& colours = ColourScheme::getInstance().colours;
         const auto accent = colours["Graph Category Reverb"];
 
-        paintHeader(g, headerArea);
         paintParameterLane(g, parameterAreas[ReverbSCProcessor::MixParam], ReverbSCProcessor::MixParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::FeedbackParam], ReverbSCProcessor::FeedbackParam);
         paintParameterTile(g, parameterAreas[ReverbSCProcessor::DampingParam], ReverbSCProcessor::DampingParam);
@@ -141,7 +138,6 @@ class ReverbSCControl final : public Component, private Timer
     ReverbSCProcessor* processor = nullptr;
     std::array<Slider, ReverbSCProcessor::NumParameters> sliders;
     std::array<Rectangle<int>, ReverbSCProcessor::NumParameters> parameterAreas;
-    Rectangle<int> headerArea;
     bool syncingFromProcessor = false;
 
     void timerCallback() override
@@ -165,60 +161,6 @@ class ReverbSCControl final : public Component, private Timer
 
         if (needsRepaint)
             repaint();
-    }
-
-    void paintHeader(Graphics& g, Rectangle<int> area)
-    {
-        auto& colours = ColourScheme::getInstance().colours;
-        auto& fonts = FontManager::getInstance();
-        const auto accent = colours["Graph Category Reverb"];
-        const auto secondary = colours["Graph Category Delay"];
-        const auto text = colours["Text Colour"];
-
-        auto titleArea = area.reduced(8, 0);
-        auto pill = titleArea.removeFromRight(62).reduced(0, 3);
-        auto glyph = titleArea.removeFromRight(56).reduced(4, 2);
-
-        auto dot = Rectangle<float>(6.0f, 6.0f).withCentre({(float)titleArea.getX() + 3.0f, (float)titleArea.getCentreY()});
-        g.setColour(accent.withAlpha(0.20f));
-        g.fillEllipse(dot.expanded(4.0f));
-        g.setColour(accent.withAlpha(0.92f));
-        g.fillEllipse(dot);
-
-        g.setFont(fonts.getBadgeFont().withHeight(11.0f));
-        g.setColour(text.withAlpha(0.72f));
-        g.drawText("SC REVERB", titleArea.withTrimmedLeft(13), Justification::centredLeft, true);
-
-        paintDiffusionGlyph(g, glyph, accent, secondary);
-
-        const auto pillF = pill.toFloat();
-        g.setColour(colours["Plugin Background"].darker(0.28f).withAlpha(0.78f));
-        g.fillRoundedRectangle(pillF, 6.0f);
-        g.setColour(accent.withAlpha(0.42f));
-        g.drawRoundedRectangle(pillF.reduced(0.5f), 6.0f, 0.8f);
-        g.setFont(fonts.getBadgeFont().withHeight(9.0f));
-        g.setColour(accent.brighter(0.12f));
-        g.drawText("STEREO", pill, Justification::centred, true);
-    }
-
-    void paintDiffusionGlyph(Graphics& g, Rectangle<int> area, Colour accent, Colour secondary)
-    {
-        auto graph = area.toFloat().reduced(2.0f, 3.0f);
-        if (graph.isEmpty())
-            return;
-
-        for (int lineIndex = 0; lineIndex < 3; ++lineIndex)
-        {
-            const float y = graph.getY() + 4.0f + (float)lineIndex * 5.6f;
-            Path tail;
-            tail.startNewSubPath(graph.getX(), y);
-            tail.cubicTo(graph.getX() + graph.getWidth() * 0.30f, y - 5.0f,
-                         graph.getX() + graph.getWidth() * 0.60f, y + 5.0f, graph.getRight(), y - 1.5f);
-            g.setColour((lineIndex == 1 ? accent : secondary).withAlpha(0.20f));
-            g.strokePath(tail, PathStrokeType(3.0f, PathStrokeType::curved, PathStrokeType::rounded));
-            g.setColour((lineIndex == 1 ? accent : secondary).withAlpha(0.66f));
-            g.strokePath(tail, PathStrokeType(0.85f, PathStrokeType::curved, PathStrokeType::rounded));
-        }
     }
 
     void paintParameterLane(Graphics& g, Rectangle<int> area, int parameterIndex)
