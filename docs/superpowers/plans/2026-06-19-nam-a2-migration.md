@@ -250,13 +250,15 @@ Commit target: `feat: add rt-safe nam a2 size control`
 Files:
 
 - `tests/nam_processor_test.cpp`
+- `tests/nam_core_runtime_test.cpp`
 - possibly `tests/fixtures/nam/*`
 - documentation for fixture provenance
 
 Steps:
 
-- [ ] Add a tiny A1 fixture or existing known-good model fixture.
-- [ ] Add a tiny A2 fixture if the upstream/TONE3000 license permits storing it.
+- [x] Add a generated minimal legacy Linear `.nam` model at test runtime.
+- [x] Add a generated minimal explicit A2 Linear `.nam` model at test runtime.
+- [ ] Add exact redistributable real-world A1/A2 fixtures when license and provenance are clear.
 - [x] If fixture size or license blocks repo storage, add a documented manual verification command and keep source-structure guards until fixtures are available.
 - [x] Verify model load failure is clean for unsupported/malformed files.
 - [x] Verify legacy serialized states still restore paths without forcing loads on the audio callback.
@@ -277,19 +279,26 @@ Fixture provenance findings:
 - `Models/*/config.json` plus `weights.npy` samples in the upstream plugin repo
   are not packed `.nam` files and would require a conversion step before they
   represent user-loadable fixtures.
-- `tests/CMakeLists.txt` does not compile `src/NAMCore.cpp` or
-  `src/NAMCoreA2.cpp`; the current automated safety net is source/contract
-  coverage. Runtime fixture tests should be added with exact redistributable A1
-  and A2 model files or with documented generated fixtures.
+- The broad `Pedalboard3_Tests` target still does not compile `src/NAMCore.cpp`
+  or `src/NAMCoreA2.cpp`. Runtime loader coverage now lives in the dedicated
+  `Pedalboard3_NAMCoreRuntimeTests` target, which links the real legacy
+  `NAMCore.cpp` path and the isolated A2 adapter path.
+- Generated runtime tests cover a minimal legacy Linear model, a minimal
+  explicit A2 Linear model, A2 sample-rate rejection after deferred prepare, and
+  failed unsupported A2 loads preserving the existing model.
+  Real-world WaveNet/slimmable fixture coverage still requires exact
+  redistributable model files or documented upstream-generated fixtures.
 
 Verification:
 
 ```powershell
+cmake --build build --config Debug --target Pedalboard3_NAMCoreRuntimeTests -- /m:1
+.\build\tests\Debug\Pedalboard3_NAMCoreRuntimeTests.exe
 .\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
 ctest --test-dir build -C Debug --output-on-failure
 ```
 
-Commit target: `test: cover nam a1 and a2 compatibility`
+Commit target: `test: cover generated nam runtime compatibility`
 
 ## Task 7: Manual Product Verification
 
@@ -313,6 +322,8 @@ Pending product-run verification. For the Task 6 fixture gap, use:
 
 ```powershell
 cmake --build build --config Debug --target Pedalboard3 -- /m:1
+cmake --build build --config Debug --target Pedalboard3_NAMCoreRuntimeTests -- /m:1
+.\build\tests\Debug\Pedalboard3_NAMCoreRuntimeTests.exe
 .\build\tests\Debug\Pedalboard3_Tests.exe "[nam]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[rt][nam]"
 ```
@@ -337,4 +348,4 @@ Then run the app against real model files:
 - A2 support can accidentally hide A1/custom models if the browser has no fallback selector.
 - TONE3000 cache keys can collide if architecture is ignored for downloads.
 - `SetSlimmableSize()` is thread-safe but not RT-safe, so treating it like a normal audio parameter would regress the RT sprint.
-- A fixture-free implementation can compile while still failing real A2 loads; do not call the runtime migration complete without a real A2 model load path.
+- Generated Linear runtime tests can still miss real-world A2 WaveNet/slimmable load failures; do not call the runtime migration complete without an exact real A2 model load path.

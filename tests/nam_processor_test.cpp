@@ -1819,8 +1819,20 @@ TEST_CASE("NAM A2 fixture coverage gap is documented instead of hidden by a deri
     REQUIRE(fixturePolicy.find("Do not create a derived A2 fixture") != std::string::npos);
     REQUIRE(plan.find("Fixture provenance findings") != std::string::npos);
 
-    REQUIRE(testsCmake.find("../src/NAMCore.cpp") == std::string::npos);
-    REQUIRE(testsCmake.find("../src/NAMCoreA2.cpp") == std::string::npos);
+    const auto mainTestsStart = testsCmake.find("add_executable(Pedalboard3_Tests");
+    const auto namRuntimeSourcesStart = testsCmake.find("set(PEDALBOARD3_NAM_RUNTIME_SOURCES");
+    REQUIRE(mainTestsStart != std::string::npos);
+    REQUIRE(namRuntimeSourcesStart != std::string::npos);
+    REQUIRE(mainTestsStart < namRuntimeSourcesStart);
+
+    const auto mainTestsCmake = testsCmake.substr(mainTestsStart, namRuntimeSourcesStart - mainTestsStart);
+    REQUIRE(mainTestsCmake.find("../src/NAMCore.cpp") == std::string::npos);
+    REQUIRE(mainTestsCmake.find("../src/NAMCoreA2.cpp") == std::string::npos);
+
+    REQUIRE(testsCmake.find("add_executable(Pedalboard3_NAMCoreRuntimeTests") != std::string::npos);
+    REQUIRE(testsCmake.find("nam_core_runtime_test.cpp") != std::string::npos);
+    REQUIRE(testsCmake.find("../src/NAMCore.cpp") != std::string::npos);
+    REQUIRE(testsCmake.find("Pedalboard3_NAMCoreA2Adapter") != std::string::npos);
 }
 
 TEST_CASE("NAMCore rejects unsupported A2 loads before replacing an existing model", "[nam][a2][compat]")
