@@ -32,8 +32,10 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
 
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+    void selectedRowsChanged(int lastRowSelected) override;
 
     const Tone3000::ToneInfo* getToneAt(int index) const;
+    void setSelectionChangedCallback(std::function<void()> callback);
 
     // Download state tracking
     void setDownloadProgress(const juce::String& toneId, float progress);
@@ -49,6 +51,7 @@ class Tone3000ResultsListModel : public juce::ListBoxModel
 
     // Track download states per tone
     std::map<std::string, float> downloadProgress; // -1 = not downloading, 0-1 = progress, 2 = complete, -2 = failed
+    std::function<void()> selectionChangedCallback;
     int hoveredRow = -1;
 };
 

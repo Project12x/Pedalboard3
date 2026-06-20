@@ -446,11 +446,18 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
     juce::String authHeader;
     auto tokens = Tone3000Client::getInstance().getTokens();
     if (tokens.isValid())
-        authHeader = "Authorization: Bearer " + juce::String(tokens.accessToken);
+        authHeader = "Authorization: Bearer " + juce::String(tokens.accessToken) + "\r\n";
+
+    int statusCode = 0;
+    juce::StringPairArray responseHeaders;
 
     auto options = juce::URL::InputStreamOptions(juce::URL::ParameterHandling::inAddress)
+        .withHttpRequestCmd("GET")
         .withConnectionTimeoutMs(30000)
         .withExtraHeaders(authHeader)
+        .withStatusCode(&statusCode)
+        .withResponseHeaders(&responseHeaders)
+        .withNumRedirectsToFollow(8)
         .withProgressCallback([&](int bytesDownloaded, int totalBytes) -> bool {
             task.bytesDownloaded = bytesDownloaded;
             if (totalBytes > 0)
@@ -484,7 +491,25 @@ bool Tone3000DownloadManager::processDownload(Tone3000::DownloadTask& task)
     if (!stream)
     {
         task.state = Tone3000::DownloadState::Failed;
-        task.errorMessage = "Failed to connect to download server";
+        task.errorMessage = statusCode > 0
+            ? ("Failed to connect to download server (HTTP " + juce::String(statusCode) + ")").toStdString()
+            : std::string("Failed to connect to download server");
+        spdlog::error("[Tone3000DownloadManager] {}: {} status={} content-type={} length={}",
+                      task.toneName, task.errorMessage, statusCode,
+                      responseHeaders["Content-Type"].toStdString(),
+                      responseHeaders["Content-Length"].toStdString());
+        notifyFailed(juce::String(task.toneId), juce::String(task.errorMessage));
+        return false;
+    }
+
+    spdlog::debug("[Tone3000DownloadManager] Opened download stream for {} status={} content-type={} length={}",
+                  task.toneName, statusCode, responseHeaders["Content-Type"].toStdString(),
+                  responseHeaders["Content-Length"].toStdString());
+
+    if (statusCode >= 400)
+    {
+        task.state = Tone3000::DownloadState::Failed;
+        task.errorMessage = ("Download server returned HTTP " + juce::String(statusCode)).toStdString();
         spdlog::error("[Tone3000DownloadManager] {}: {}", task.toneName, task.errorMessage);
         notifyFailed(juce::String(task.toneId), juce::String(task.errorMessage));
         return false;

@@ -436,6 +436,17 @@ const Tone3000::ToneInfo* Tone3000ResultsListModel::getToneAt(int index) const
     return nullptr;
 }
 
+void Tone3000ResultsListModel::selectedRowsChanged(int /*lastRowSelected*/)
+{
+    if (selectionChangedCallback)
+        selectionChangedCallback();
+}
+
+void Tone3000ResultsListModel::setSelectionChangedCallback(std::function<void()> callback)
+{
+    selectionChangedCallback = std::move(callback);
+}
+
 void Tone3000ResultsListModel::setDownloadProgress(const juce::String& toneId, float progress)
 {
     downloadProgress[toneId.toStdString()] = progress;
@@ -555,6 +566,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     resultsList->setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
     resultsList->setOutlineThickness(0);
     resultsList->addMouseListener(this, true);
+    listModel.setSelectionChangedCallback([this]() { onListSelectionChanged(); });
     addAndMakeVisible(resultsList.get());
 
     // Details panel
@@ -1044,6 +1056,9 @@ void NAMOnlineBrowserComponent::buttonClicked(juce::Button* button)
     }
     else if (button == downloadButton.get())
     {
+        const auto selectedId = selectedTone != nullptr ? selectedTone->id : std::string("<none>");
+        spdlog::info("[NAMOnlineBrowser] Download button clicked, selectedTone={}, authenticated={}",
+                     selectedId, Tone3000Client::getInstance().isAuthenticated());
         downloadSelectedModel();
     }
     else if (button == loadButton.get())
@@ -1321,15 +1336,21 @@ void NAMOnlineBrowserComponent::onListSelectionChanged()
 void NAMOnlineBrowserComponent::downloadSelectedModel()
 {
     if (selectedTone == nullptr)
+    {
+        spdlog::warn("[NAMOnlineBrowser] Download requested with no selected tone");
+        statusLabel->setText("Select a model first", juce::dontSendNotification);
         return;
+    }
 
     if (!Tone3000Client::getInstance().isAuthenticated())
     {
+        statusLabel->setText("Login required to download", juce::dontSendNotification);
         showLoginDialog();
         return;
     }
 
     spdlog::info("[NAMOnlineBrowser] Queueing download: {}", selectedTone->name);
+    statusLabel->setText("Preparing download...", juce::dontSendNotification);
     Tone3000DownloadManager::getInstance().queueDownload(*selectedTone);
 
     downloadButton->setEnabled(false);
@@ -1497,12 +1518,16 @@ void NAMOnlineBrowserComponent::refreshAuthState()
 void NAMOnlineBrowserComponent::downloadQueued(const juce::String& toneId)
 {
     listModel.setDownloadProgress(toneId, 0.0f);
+    if (selectedTone && selectedTone->id == toneId.toStdString())
+        statusLabel->setText("Download queued", juce::dontSendNotification);
     resultsList->repaint();
 }
 
 void NAMOnlineBrowserComponent::downloadStarted(const juce::String& toneId)
 {
     listModel.setDownloadProgress(toneId, 0.0f);
+    if (selectedTone && selectedTone->id == toneId.toStdString())
+        statusLabel->setText("Downloading...", juce::dontSendNotification);
     resultsList->repaint();
 }
 
@@ -1516,6 +1541,8 @@ void NAMOnlineBrowserComponent::downloadProgress(const juce::String& toneId, flo
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
         downloadButton->setButtonText(juce::String::formatted("Downloading %.0f%%", progress * 100));
+        statusLabel->setText(juce::String::formatted("Downloading %.0f%%", progress * 100),
+                             juce::dontSendNotification);
     }
 }
 
@@ -1527,6 +1554,7 @@ void NAMOnlineBrowserComponent::downloadCompleted(const juce::String& toneId, co
     // Update details panel if this is the selected model
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
+        statusLabel->setText("Download complete", juce::dontSendNotification);
         updateDetailsPanel(selectedTone);
     }
 
@@ -1540,6 +1568,7 @@ void NAMOnlineBrowserComponent::downloadFailed(const juce::String& toneId, const
 
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
+        statusLabel->setText("Download failed: " + errorMessage, juce::dontSendNotification);
         updateDetailsPanel(selectedTone);
     }
 
@@ -1553,6 +1582,7 @@ void NAMOnlineBrowserComponent::downloadCancelled(const juce::String& toneId)
 
     if (selectedTone && selectedTone->id == toneId.toStdString())
     {
+        statusLabel->setText("Download cancelled", juce::dontSendNotification);
         updateDetailsPanel(selectedTone);
     }
 }

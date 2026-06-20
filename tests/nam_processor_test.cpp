@@ -1704,6 +1704,8 @@ TEST_CASE("TONE3000 browser surfaces NAM architecture labels", "[nam][tone3000][
 TEST_CASE("TONE3000 browser keeps download actions visible for the selected model", "[nam][tone3000][ui]")
 {
     const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.cpp");
+    const auto browserHeader = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMOnlineBrowser.h");
+    const auto managerSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/Tone3000DownloadManager.cpp");
 
     const auto actionRow = browserSource.find("Keep the primary model actions visible");
     const auto firstDetailRow = browserSource.find("auto row = detailRow();", actionRow);
@@ -1714,6 +1716,16 @@ TEST_CASE("TONE3000 browser keeps download actions visible for the selected mode
     REQUIRE(browserSource.find("downloadButton->setButtonText(\"Login to Download\")") != std::string::npos);
     REQUIRE(browserSource.find("downloadButton->setEnabled(true);") != std::string::npos);
     REQUIRE(browserSource.find("updateDetailsPanel(selectedTone);") != std::string::npos);
+    REQUIRE(browserHeader.find("void selectedRowsChanged(int lastRowSelected) override") != std::string::npos);
+    REQUIRE(browserHeader.find("setSelectionChangedCallback") != std::string::npos);
+    REQUIRE(browserSource.find("listModel.setSelectionChangedCallback") != std::string::npos);
+    REQUIRE(browserSource.find("Download button clicked") != std::string::npos);
+    REQUIRE(browserSource.find("Select a model first") != std::string::npos);
+    REQUIRE(browserSource.find("Download failed: ") != std::string::npos);
+    REQUIRE(managerSource.find(".withStatusCode(&statusCode)") != std::string::npos);
+    REQUIRE(managerSource.find(".withResponseHeaders(&responseHeaders)") != std::string::npos);
+    REQUIRE(managerSource.find(".withNumRedirectsToFollow(8)") != std::string::npos);
+    REQUIRE(managerSource.find("Download server returned HTTP ") != std::string::npos);
 }
 
 TEST_CASE("NAMCore routes A2 candidates without replacing legacy fallback", "[nam][a2]")
