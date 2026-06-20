@@ -1057,9 +1057,10 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         std::unique_ptr<Drawable> closeDown;
         if (stickyNoteNode)
         {
-            closeUp = createNoteCloseDrawable(Colour(0xFF9A4A16), 0.76f);
-            closeOver = createNoteCloseDrawable(Colour(0xFFD97706), 0.94f);
-            closeDown = createNoteCloseDrawable(Colour(0xFF7C2D12), 0.98f);
+            const auto noteCloseBase = ColourScheme::getInstance().colours["Warning Colour"];
+            closeUp = createNoteCloseDrawable(noteCloseBase.darker(0.18f), 0.76f);
+            closeOver = createNoteCloseDrawable(noteCloseBase.brighter(0.12f), 0.94f);
+            closeDown = createNoteCloseDrawable(noteCloseBase.darker(0.32f), 0.98f);
         }
         else
         {

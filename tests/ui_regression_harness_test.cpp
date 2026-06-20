@@ -473,7 +473,13 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("std::unique_ptr<Drawable> createNoteCloseDrawable") != std::string::npos);
     CHECK(pluginSource->find("const bool stickyNoteNode = isStickyNoteNodeName(pluginName);") != std::string::npos);
-    CHECK(pluginSource->find("closeUp = createNoteCloseDrawable(Colour(0xFF9A4A16), 0.76f);") !=
+    CHECK(pluginSource->find("const auto noteCloseBase = ColourScheme::getInstance().colours[\"Warning Colour\"];") !=
+          std::string::npos);
+    CHECK(pluginSource->find("closeUp = createNoteCloseDrawable(noteCloseBase.darker(0.18f), 0.76f);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("closeOver = createNoteCloseDrawable(noteCloseBase.brighter(0.12f), 0.94f);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("closeDown = createNoteCloseDrawable(noteCloseBase.darker(0.32f), 0.98f);") !=
           std::string::npos);
     CHECK(pluginSource->find("return pluginName == \"Tuner\" || pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\" ||") !=
           std::string::npos);
@@ -955,9 +961,13 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
           std::string::npos);
     CHECK(filterGraphSource->find("e->setAttribute(\"nodeHeight\", (int)node->properties.getWithDefault(\"nodeHeight\", 0));") !=
           std::string::npos);
-    CHECK(filterGraphSource->find("node->properties.set(\"nodeWidth\", xml.getIntAttribute(\"nodeWidth\", 0));") !=
+    CHECK(filterGraphSource->find("node.nodeWidth = e->getIntAttribute(\"nodeWidth\", 0);") !=
           std::string::npos);
-    CHECK(filterGraphSource->find("node->properties.set(\"nodeHeight\", xml.getIntAttribute(\"nodeHeight\", 0));") !=
+    CHECK(filterGraphSource->find("node.nodeHeight = e->getIntAttribute(\"nodeHeight\", 0);") !=
+          std::string::npos);
+    CHECK(filterGraphSource->find("node->properties.set(\"nodeWidth\", preparedNode.nodeWidth);") !=
+          std::string::npos);
+    CHECK(filterGraphSource->find("node->properties.set(\"nodeHeight\", preparedNode.nodeHeight);") !=
           std::string::npos);
 
     CHECK(subGraphSource->find("0xFF00AAAA") == std::string::npos);
