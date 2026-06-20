@@ -1730,6 +1730,26 @@ TEST_CASE("NAM local browser surfaces architecture version labels", "[nam][a2][u
     REQUIRE(browserSource.find("float archChipWidth") != std::string::npos);
     REQUIRE(browserSource.find("drawBrowserChip(g, centredChips.removeFromLeft(archChipWidth)") !=
             std::string::npos);
+    REQUIRE(browserSource.find("const auto technicalTop") != std::string::npos);
+    REQUIRE(browserSource.find("previewCard.setBottom(jmin(previewCard.getBottom(), technicalTop - 8.0f))") !=
+            std::string::npos);
+    REQUIRE(browserSource.find("previewCard.reduced(12.0f, 8.0f).removeFromBottom(22.0f)") !=
+            std::string::npos);
+}
+
+TEST_CASE("NAM local browser repaints painted preview badges on selection changes", "[nam][a2][ui]")
+{
+    const auto browserSource = readTextFileForNamTest(PEDALBOARD3_SOURCE_DIR "/src/NAMModelBrowser.cpp");
+
+    const auto handlerStart = browserSource.find("void NAMModelBrowserComponent::onListSelectionChanged()");
+    REQUIRE(handlerStart != std::string::npos);
+
+    const auto handlerEnd = browserSource.find("\n}", handlerStart);
+    REQUIRE(handlerEnd != std::string::npos);
+
+    const auto handlerBody = browserSource.substr(handlerStart, handlerEnd - handlerStart);
+    REQUIRE(handlerBody.find("updateDetailsPanel(model);") != std::string::npos);
+    REQUIRE(handlerBody.find("repaint(detailsPanelBounds.expanded(2));") != std::string::npos);
 }
 
 TEST_CASE("NAM loader surfaces loaded model architecture badge", "[nam][a2][ui]")

@@ -1932,11 +1932,16 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                        .getUnion(boundsInBrowser(modelDescriptionLabel.get()))
                                        .toFloat()
                                        .expanded(10.0f, 5.0f);
+                const auto technicalTop = modelTypeLabel && modelTypeLabel->isVisible()
+                                              ? static_cast<float>(boundsInBrowser(modelTypeLabel.get()).getY())
+                                              : detailsBounds.getBottom();
                 previewCard.setLeft(detailsBounds.getX() + 14.0f);
                 previewCard.setRight(detailsBounds.getRight() - 14.0f);
                 previewCard.setTop(jmax(detailsBounds.getY() + 14.0f,
                                         previewCard.getY() - (detailsBounds.getWidth() >= 250.0f ? 60.0f : 0.0f)));
                 previewCard.setBottom(previewCard.getBottom() + 14.0f);
+                if (technicalTop > previewCard.getY() + 72.0f)
+                    previewCard.setBottom(jmin(previewCard.getBottom(), technicalTop - 8.0f));
 
                 g.setColour(selectedModel ? palette.accent.withAlpha(selectedReady ? 0.13f : 0.08f)
                                           : palette.text.withAlpha(0.045f));
@@ -1957,7 +1962,7 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                                    selectedModel != nullptr);
                 }
 
-                auto chipRow = previewCard.reduced(10.0f, 0.0f).removeFromBottom(24.0f);
+                auto chipRow = previewCard.reduced(12.0f, 8.0f).removeFromBottom(22.0f);
                 const auto stateChipWidth = selectedModel && !selectedReady ? 70.0f : 58.0f;
                 float archChipWidth = 0.0f;
                 float typeChipWidth = 0.0f;
@@ -3032,6 +3037,11 @@ void NAMModelBrowserComponent::onListSelectionChanged()
     auto selectedRow = modelList->getSelectedRow();
     const auto* model = listModel.getModelAt(selectedRow);
     updateDetailsPanel(model);
+    refreshFavouriteButtons();
+    if (!detailsPanelBounds.isEmpty())
+        repaint(detailsPanelBounds.expanded(2));
+    else
+        repaint();
 }
 
 void NAMModelBrowserComponent::mouseUp(const MouseEvent& event)
