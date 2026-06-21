@@ -44,6 +44,8 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     void drawChromeShell(Graphics& g, Rectangle<float> bounds);
     void drawDisplayPanel(Graphics& g, Rectangle<float> bounds);
     void drawWaveformGlyph(Graphics& g, Rectangle<float> bounds);
+    void drawSectionLabel(Graphics& g, Rectangle<float> bounds, const String& text);
+    void drawOutputKnob(Graphics& g, Rectangle<float> bounds, float normalisedValue, Colour accent);
     void drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent);
     void drawSliderLane(Graphics& g, Rectangle<float> bounds, const String& label, float normalisedValue, Colour accent);
     String getNoteName(int midiNote) const;
@@ -92,6 +94,8 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     Rectangle<int> detuneChipArea;
     Rectangle<int> waveformPanel;
     Rectangle<int> bottomPanel;
+    Rectangle<int> outputPanel;
+    Rectangle<int> outputKnobArea;
     Rectangle<int> amplitudeRail;
     Rectangle<int> amplitudeChipArea;
     Rectangle<int> modePanel;

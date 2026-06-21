@@ -1910,7 +1910,7 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(oscilloscopeControl->find("g.drawText(\"OSCILLOSCOPE\"") != std::string::npos);
     CHECK(oscilloscopeControl->find("g.drawText(\"NO SIGNAL\"") != std::string::npos);
 
-    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(340, 220); }") !=
+    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(360, 286); }") !=
           std::string::npos);
     CHECK(toneHeader->find("PinLayout getOutputPinLayout() const override;") != std::string::npos);
     CHECK(toneSource->find("setPlayConfigDetails(0, 2, 44100.0, 512);") != std::string::npos);
@@ -1918,14 +1918,16 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(toneSource->find("constexpr int kToneGeneratorRightOutputPinY = 92;") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorLeftOutputPinY);") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorRightOutputPinY);") != std::string::npos);
-    CHECK(toneControl->find("setSize(340, 220);") != std::string::npos);
+    CHECK(toneControl->find("setSize(360, 286);") != std::string::npos);
     CHECK(toneControl->find("void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth)") !=
           std::string::npos);
     CHECK(toneControl->find("frequencySlider->setTextBoxStyle(Slider::TextBoxRight, false, 68, 18);") !=
           std::string::npos);
-    CHECK(toneControl->find("detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 54, 18);") !=
+    CHECK(toneControl->find("detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 72, 18);") !=
           std::string::npos);
-    CHECK(toneControl->find("amplitudeSlider->setTextBoxStyle(Slider::TextBoxRight, false, 46, 18);") !=
+    CHECK(toneControl->find("amplitudeSlider->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);") !=
+          std::string::npos);
+    CHECK(toneControl->find("amplitudeSlider->setTextBoxStyle(Slider::TextBoxBelow, false, 54, 16);") !=
           std::string::npos);
     CHECK(toneControl->find("frequencySlider->setAlpha(0.01f);") == std::string::npos);
     CHECK(toneControl->find("detuneSlider->setAlpha(0.01f);") == std::string::npos);
@@ -1936,10 +1938,17 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
           std::string::npos);
     CHECK(toneControl->find("void ToneGeneratorControl::drawWaveformGlyph(Graphics& g, Rectangle<float> bounds)") !=
           std::string::npos);
+    CHECK(toneControl->find("void ToneGeneratorControl::drawSectionLabel(Graphics& g, Rectangle<float> bounds, const String& text)") !=
+          std::string::npos);
+    CHECK(toneControl->find("void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, float normalisedValue, Colour accent)") !=
+          std::string::npos);
     CHECK(toneControl->find("void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)") !=
           std::string::npos);
     CHECK(toneControl->find("displayPanel = bounds.removeFromTop(60);") != std::string::npos);
+    CHECK(toneControl->find("outputKnobArea = outputLayout.removeFromLeft(74);") != std::string::npos);
     CHECK(toneControl->find("drawWaveformGlyph(g, waveformGlyphArea.toFloat());") != std::string::npos);
+    CHECK(toneControl->find("g.drawText(\"WAVE\", tile.removeFromBottom(12.0f)") == std::string::npos);
+    CHECK(toneControl->find("g.drawText(\"WAVE\", waveformPanel.toFloat().removeFromTop") == std::string::npos);
     CHECK(toneControl->find("g.fillAll();") == std::string::npos);
     CHECK(toneControl->find("g.drawText(\"Freq:\", Rectangle<float>(10, 28, 34, 14)") ==
           std::string::npos);
