@@ -61,6 +61,7 @@ void SubGraphProcessor::initializeInternalGraph()
     if (auto node = internalGraph.addNode(std::move(audioIn), juce::AudioProcessorGraph::NodeID(rackAudioInUid)))
     {
         rackAudioInNode = node->nodeID;
+        node->properties.set("rackPortRole", "audio-in");
         node->properties.set("x", 50.0);
         node->properties.set("y", 100.0);
         spdlog::debug("[SubGraphProcessor] Created rack audio input node: {}", rackAudioInNode.uid);
@@ -69,6 +70,7 @@ void SubGraphProcessor::initializeInternalGraph()
     if (auto node = internalGraph.addNode(std::move(audioOut), juce::AudioProcessorGraph::NodeID(rackAudioOutUid)))
     {
         rackAudioOutNode = node->nodeID;
+        node->properties.set("rackPortRole", "audio-out");
         node->properties.set("x", 400.0);
         node->properties.set("y", 100.0);
         spdlog::debug("[SubGraphProcessor] Created rack audio output node: {}", rackAudioOutNode.uid);
@@ -77,6 +79,7 @@ void SubGraphProcessor::initializeInternalGraph()
     if (auto node = internalGraph.addNode(std::move(midiIn), juce::AudioProcessorGraph::NodeID(rackMidiInUid)))
     {
         rackMidiInNode = node->nodeID;
+        node->properties.set("rackPortRole", "midi-in");
         node->properties.set("x", 50.0);
         node->properties.set("y", 250.0);
         spdlog::debug("[SubGraphProcessor] Created rack MIDI input node: {}", rackMidiInNode.uid);

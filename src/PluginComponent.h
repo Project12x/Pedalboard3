@@ -178,6 +178,8 @@ class PluginComponent : public Component,
 
     ///	The name of the plugin.
     String pluginName;
+    /// The display title shown on the node.
+    String displayName;
 
     ///	Used to draw the name of the plugin.
     GlyphArrangement nameText;

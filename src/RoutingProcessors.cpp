@@ -32,9 +32,9 @@ static float normaliseRoutingMeter(float peak)
     return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
 }
 
-static constexpr int kMixerNodeWidth = 320;
-static constexpr int kMixerStripRowHeight = 52;
-static constexpr int kMixerMasterRowHeight = 54;
+static constexpr int kMixerNodeMinWidth = 276;
+static constexpr int kMixerStripWidth = 62;
+static constexpr int kMixerNodeHeight = 190;
 
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
 {
@@ -976,7 +976,7 @@ Component* MixerProcessor::getControls()
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
                 auto& f = faders[ch];
-                f.setSliderStyle(Slider::LinearVertical);
+                f.setSliderStyle(Slider::LinearHorizontal);
                 f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
                 f.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
                 f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
@@ -1035,7 +1035,7 @@ Component* MixerProcessor::getControls()
             }
 
             auto& mf = masterFader;
-            mf.setSliderStyle(Slider::LinearVertical);
+            mf.setSliderStyle(Slider::LinearHorizontal);
             mf.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
             mf.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
             mf.setValue(processor->getMasterGainDb(), dontSendNotification);
@@ -1065,6 +1065,7 @@ Component* MixerProcessor::getControls()
             area.removeFromTop(5);
 
             const int activeStrips = processor->getNumStrips();
+            const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
 
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
@@ -1072,39 +1073,50 @@ Component* MixerProcessor::getControls()
                 stripDecks[ch] = {};
                 badgeAreas[ch] = {};
                 panRails[ch] = {};
+                gainRails[ch] = {};
                 valueAreas[ch] = {};
             }
 
             for (int ch = 0; ch < activeStrips; ++ch)
             {
-                auto row = area.removeFromTop(kMixerStripRowHeight);
-                stripDecks[ch] = row.reduced(0, 1);
+                auto strip = area.removeFromLeft(stripW).reduced(4, 0);
+                stripDecks[ch] = strip;
 
-                auto strip = stripDecks[ch].reduced(7, 5);
-                badgeAreas[ch] = strip.removeFromLeft(28).reduced(1, 6);
+                auto top = strip.removeFromTop(22);
+                badgeAreas[ch] = top.removeFromLeft(24).reduced(1, 2);
+                phaseButtons[ch].setBounds(top.removeFromRight(19).reduced(1, 3));
+                stereoButtons[ch].setBounds(top.removeFromRight(23).reduced(1, 3));
 
-                phaseButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-                stereoButtons[ch].setBounds(strip.removeFromRight(24).withSizeKeepingCentre(22, 16));
-                soloButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-                muteButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-
-                valueAreas[ch] = strip.removeFromRight(42).reduced(0, 13);
-                vuAreas[ch] = strip.removeFromRight(30).reduced(5, 3).withWidth(18);
-                faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
-
-                panRails[ch] = strip.removeFromTop(14).reduced(8, 4);
+                panRails[ch] = strip.removeFromTop(12).reduced(11, 3);
                 panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
+
+                strip.removeFromTop(5);
+                vuAreas[ch] = strip.removeFromTop(48).withSizeKeepingCentre(18, 48);
+
+                valueAreas[ch] = strip.removeFromTop(17).reduced(0, 1);
+                gainRails[ch] = strip.removeFromTop(13).reduced(8, 3);
+                faders[ch].setBounds(gainRails[ch].expanded(8, 6));
+
+                strip.removeFromTop(2);
+                auto btnRow = strip.removeFromTop(18);
+                const auto muteArea = btnRow.withWidth(24).withX(btnRow.getCentreX() - 25);
+                const auto soloArea = btnRow.withWidth(24).withX(btnRow.getCentreX() + 1);
+                muteButtons[ch].setBounds(muteArea.reduced(1, 2));
+                soloButtons[ch].setBounds(soloArea.reduced(1, 2));
             }
 
-            auto masterStrip = area.removeFromTop(kMixerMasterRowHeight);
-            masterDeck = masterStrip.reduced(0, 1);
-            masterStrip = masterDeck.reduced(7, 5);
-            masterBadgeArea = masterStrip.removeFromLeft(28).reduced(1, 6);
-            masterMuteButton.setBounds(masterStrip.removeFromRight(24).withSizeKeepingCentre(22, 16));
-            masterValueArea = masterStrip.removeFromRight(44).reduced(0, 14);
-            masterFaderArea = masterStrip.removeFromRight(30).reduced(5, 3).withWidth(18);
-            masterFader.setBounds(masterFaderArea.expanded(14, 4));
-            masterPanRail = masterStrip.removeFromTop(14).reduced(8, 4);
+            auto masterStrip = area.reduced(4, 0);
+            masterDeck = masterStrip;
+            auto masterTop = masterStrip.removeFromTop(22);
+            masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
+            masterPanRail = masterStrip.removeFromTop(12).reduced(11, 3);
+            masterStrip.removeFromTop(5);
+            masterFaderArea = masterStrip.removeFromTop(48).withSizeKeepingCentre(18, 48);
+            masterValueArea = masterStrip.removeFromTop(17).reduced(0, 1);
+            masterGainRail = masterStrip.removeFromTop(13).reduced(8, 3);
+            masterFader.setBounds(masterGainRail.expanded(8, 6));
+            masterStrip.removeFromTop(2);
+            masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
         }
 
         void timerCallback() override { repaint(); }
@@ -1120,6 +1132,7 @@ Component* MixerProcessor::getControls()
                 paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);
                 paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
                 drawVuMeter(g, ch, cs);
+                drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);
                 g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
                 g.setFont(Font(9.8f, Font::bold));
                 g.drawText(String(processor->getChannelGainDb(ch), 1), valueAreas[ch], Justification::centred, true);
@@ -1129,6 +1142,7 @@ Component* MixerProcessor::getControls()
             paintRoutingBadge(g, masterBadgeArea.toFloat(), "M", accent, true);
             paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
             drawMasterFader(g, cs);
+            drawGainRail(g, masterGainRail.toFloat(), processor->getMasterGainDb(), accent, cs);
             g.setColour(cs.colours["Text Colour"].withAlpha(0.72f));
             g.setFont(Font(9.8f, Font::bold));
             g.drawText(String(processor->getMasterGainDb(), 1), masterValueArea, Justification::centred, true);
@@ -1150,10 +1164,12 @@ Component* MixerProcessor::getControls()
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> stripDecks;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> badgeAreas;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> panRails;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainRails;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> valueAreas;
         Rectangle<int> masterDeck;
         Rectangle<int> masterBadgeArea;
         Rectangle<int> masterPanRail;
+        Rectangle<int> masterGainRail;
         Rectangle<int> masterFaderArea;
         Rectangle<int> masterValueArea;
 
@@ -1202,6 +1218,35 @@ Component* MixerProcessor::getControls()
             }
         }
 
+        void drawGainRail(Graphics& g, Rectangle<float> bounds, float gainDb, Colour accent, ColourScheme& cs)
+        {
+            if (bounds.isEmpty())
+                return;
+
+            const auto track = bounds.reduced(0.5f);
+            const float normalized = jlimit(0.0f, 1.0f, (gainDb + 60.0f) / 72.0f);
+            const auto fill = track.withWidth(track.getWidth() * normalized);
+
+            g.setColour(cs.colours["Plugin Background"].darker(0.36f));
+            g.fillRoundedRectangle(track, 3.0f);
+
+            ColourGradient gainFill(accent.withAlpha(0.58f), fill.getX(), fill.getY(),
+                                    cs.colours["VU Meter Lower Colour"].withAlpha(0.46f), fill.getRight(),
+                                    fill.getY(), false);
+            gainFill.addColour(0.62,
+                                accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.44f));
+            g.setGradientFill(gainFill);
+            g.fillRoundedRectangle(fill, 3.0f);
+
+            const float thumbX = jlimit(track.getX() + 4.0f, track.getRight() - 4.0f,
+                                        track.getX() + track.getWidth() * normalized);
+            auto thumb = Rectangle<float>(thumbX - 3.0f, track.getCentreY() - 6.5f, 6.0f, 13.0f);
+            g.setColour(cs.colours["Button Highlight"].withAlpha(0.72f));
+            g.fillRoundedRectangle(thumb, 2.0f);
+            g.setColour(accent.withAlpha(0.54f));
+            g.drawRoundedRectangle(track.reduced(0.5f), 3.0f, 0.8f);
+        }
+
         void drawMasterFader(Graphics& g, ColourScheme& cs)
         {
             auto area = masterFaderArea;
@@ -1210,7 +1255,6 @@ Component* MixerProcessor::getControls()
 
             g.setColour(cs.colours["Plugin Background"].darker(0.35f));
             g.fillRoundedRectangle(area.toFloat(), 4.0f);
-            drawFaderFill(g, area, processor->getMasterGainDb(), cs);
             g.setColour(getRoutingNodeAccent().withAlpha(masterMuteButton.getToggleState() ? 0.12f : 0.30f));
             g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
         }
@@ -1237,8 +1281,6 @@ Component* MixerProcessor::getControls()
             drawSingleBar(g, leftBar, vuL, peakL, cs);
             drawSingleBar(g, rightBar, vuR, peakR, cs);
 
-            drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);
-
             g.setFont(9.0f);
             g.setColour(cs.colours["Text Colour"].withAlpha(0.5f));
             const float dbMarks[] = {0.0f, -6.0f, -12.0f, -24.0f, -48.0f};
@@ -1252,33 +1294,6 @@ Component* MixerProcessor::getControls()
 
             g.setColour(getRoutingNodeAccent().withAlpha(0.24f));
             g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
-        }
-
-        void drawFaderFill(Graphics& g, Rectangle<int> area, float gainDb, ColourScheme& cs)
-        {
-            const auto track = area.toFloat().reduced(1.0f);
-            const auto accent = getRoutingNodeAccent();
-            const float normalized = jlimit(0.0f, 1.0f, (gainDb + 60.0f) / 72.0f);
-            auto fill = track.withTop(track.getBottom() - track.getHeight() * normalized);
-
-            ColourGradient faderFill(accent.withAlpha(0.36f), fill.getCentreX(), fill.getBottom(),
-                                     cs.colours["VU Meter Lower Colour"].withAlpha(0.50f), fill.getCentreX(),
-                                     fill.getY(), false);
-            faderFill.addColour(0.62,
-                                 accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.42f));
-            g.setGradientFill(faderFill);
-            g.fillRoundedRectangle(fill, 3.0f);
-
-            const float thumbY = jlimit(track.getY() + 4.0f, track.getBottom() - 4.0f,
-                                        track.getBottom() - track.getHeight() * normalized);
-            auto thumb = Rectangle<float>(track.getCentreX() - 10.0f, thumbY - 3.0f, 20.0f, 6.0f);
-            ColourGradient thumbFill(cs.colours["Button Highlight"], thumb.getX(), thumb.getY(),
-                                     cs.colours["Button Colour"], thumb.getX(), thumb.getBottom(), false);
-            thumbFill.addColour(0.50, cs.colours["Text Colour"].withAlpha(0.16f));
-            g.setGradientFill(thumbFill);
-            g.fillRoundedRectangle(thumb, 2.0f);
-            g.setColour(accent.withAlpha(0.56f));
-            g.drawRoundedRectangle(thumb.reduced(0.5f), 2.0f, 0.8f);
         }
 
         void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
@@ -1323,7 +1338,8 @@ Component* MixerProcessor::getControls()
 
 Point<int> MixerProcessor::getSize()
 {
-    return Point<int>(kMixerNodeWidth, 34 + getNumStrips() * kMixerStripRowHeight + kMixerMasterRowHeight);
+    return Point<int>(jmax(kMixerNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerStripWidth),
+                      jmax(kMixerNodeHeight, 70 + countTotalInputChannels() * 22));
 }
 
 int MixerProcessor::countTotalInputChannels() const
@@ -1812,20 +1828,22 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
 PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 {
     PinLayout layout;
-    const int firstRowTop = 26 + 31;
+    int pinY = 57;
     const int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < n; ++i)
     {
-        const int rowTop = firstRowTop + i * kMixerStripRowHeight;
         const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
         if (stereo)
         {
-            layout.pinY.push_back(rowTop + 8);
-            layout.pinY.push_back(rowTop + 30);
+            layout.pinY.push_back(pinY);
+            pinY += 22;
+            layout.pinY.push_back(pinY);
+            pinY += 22;
         }
         else
         {
-            layout.pinY.push_back(rowTop + 19);
+            layout.pinY.push_back(pinY);
+            pinY += 22;
         }
     }
     return layout;
@@ -1834,10 +1852,7 @@ PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 PedalboardProcessor::PinLayout MixerProcessor::getOutputPinLayout() const
 {
     PinLayout layout;
-    const int firstRowTop = 26 + 31;
-    const int n = numStrips_.load(std::memory_order_acquire);
-    const int masterRowTop = firstRowTop + n * kMixerStripRowHeight;
-    layout.pinY.push_back(masterRowTop + 8);
-    layout.pinY.push_back(masterRowTop + 30);
+    layout.pinY.push_back(92);
+    layout.pinY.push_back(114);
     return layout;
 }

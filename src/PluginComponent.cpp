@@ -112,6 +112,33 @@ bool producesMidiSafe(AudioProcessor* proc)
     return proc->producesMidi();
 }
 
+String getRackBoundaryRole(AudioProcessorGraph::Node* node)
+{
+    if (node == nullptr)
+        return {};
+
+    return node->properties.getWithDefault("rackPortRole", var()).toString();
+}
+
+String getRackBoundaryDisplayName(AudioProcessorGraph::Node* node, const String& fallback)
+{
+    const auto role = getRackBoundaryRole(node);
+    if (role == "audio-in")
+        return "Rack Input";
+    if (role == "audio-out")
+        return "Rack Output";
+    if (role == "midi-in")
+        return "Rack MIDI In";
+
+    return fallback;
+}
+
+bool isRackAudioBoundaryNode(AudioProcessorGraph::Node* node)
+{
+    const auto role = getRackBoundaryRole(node);
+    return role == "audio-in" || role == "audio-out";
+}
+
 struct NodeVisualStyle
 {
     String category;
@@ -1034,6 +1061,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
 
     pluginName = node->getProcessor()->getName();
+    displayName = getRackBoundaryDisplayName(node, pluginName);
     const auto visualStyle = getNodeVisualStyle(node->getProcessor(), pluginName);
     visualCategoryName = visualStyle.category;
     visualAccentColour = visualStyle.accent;
@@ -1043,7 +1071,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
 
     determineSize();
 
-    titleLabel = new Label("titleLabe", pluginName);
+    titleLabel = new Label("titleLabe", displayName);
     titleLabel->setBounds(20, 3, getWidth() - 28, 20);
     titleLabel->setInterceptsMouseClicks(false, false);
     titleLabel->setFont(FontManager::getInstance().getSubheadingFont());
@@ -1947,6 +1975,7 @@ void PluginComponent::labelTextChanged(Label* label)
     PluginField* parent = dynamic_cast<PluginField*>(getParentComponent());
 
     pluginName = label->getText();
+    displayName = getRackBoundaryDisplayName(node, pluginName);
 
     // Update processor name in main canvas (SubGraphCanvas doesn't track names)
     if (parent)
@@ -2006,7 +2035,8 @@ void PluginComponent::sliderValueChanged(Slider* slider)
 //------------------------------------------------------------------------------
 void PluginComponent::setUserName(const String& val)
 {
-    titleLabel->setText(val, sendNotification);
+    displayName = getRackBoundaryDisplayName(node, val);
+    titleLabel->setText(displayName, sendNotification);
 }
 
 //------------------------------------------------------------------------------
@@ -2109,7 +2139,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     nameText.clear();
 
     // Determine plugin name bounds.
-    nameText.addLineOfText(tempFont, pluginName, 10.0f, y);
+    nameText.addLineOfText(tempFont, displayName, 10.0f, y);
     // nameText.getBoundingBox(0, -1, l, t, r, b, true);
     bounds = nameText.getBoundingBox(0, -1, true);
     nameWidth = bounds.getWidth();
@@ -2389,7 +2419,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 //------------------------------------------------------------------------------
 bool PluginComponent::isAudioIONode() const
 {
-    return (pluginName == "Audio Input") || (pluginName == "Audio Output");
+    return !isRackAudioBoundaryNode(node) && ((pluginName == "Audio Input") || (pluginName == "Audio Output"));
 }
 
 //------------------------------------------------------------------------------
