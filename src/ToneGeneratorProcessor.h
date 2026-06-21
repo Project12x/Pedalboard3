@@ -54,6 +54,7 @@ class ToneGeneratorProcessor : public PedalboardProcessor
     // PedalboardProcessor interface
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(392, 308); }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }
     PinLayout getOutputPinLayout() const override;
 
     void updateEditorBounds(const Rectangle<int>& bounds);

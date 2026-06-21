@@ -29,6 +29,7 @@ class ReverbSCProcessor : public PedalboardProcessor
 
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(340, 190); }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::embeddedParameterSurface(60); }
     void updateEditorBounds(const Rectangle<int>& bounds);
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;

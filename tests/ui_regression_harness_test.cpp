@@ -444,11 +444,18 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           "[ui][regression][visual][source][nodes]")
 {
     const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto processorHeader = loadSourceFile("src/PedalboardProcessors.h");
     const auto labelSource = loadSourceFile("src/LabelControl.cpp");
     const auto notesSource = loadSourceFile("src/NotesControl.cpp");
     const auto markdownTokeniserSource = loadSourceFile("src/MarkdownTokeniser.cpp");
     const auto notesProcessorSource = loadSourceFile("src/NotesProcessor.h");
     const auto notesProcessorImplSource = loadSourceFile("src/NotesProcessor.cpp");
+    const auto namProcessorHeader = loadSourceFile("src/NAMProcessor.h");
+    const auto irProcessorHeader = loadSourceFile("src/IRLoaderProcessor.h");
+    const auto reverbProcessorHeader = loadSourceFile("src/ReverbSCProcessor.h");
+    const auto oscilloscopeProcessorHeader = loadSourceFile("src/OscilloscopeProcessor.h");
+    const auto toneProcessorHeader = loadSourceFile("src/ToneGeneratorProcessor.h");
+    const auto tunerProcessorHeader = loadSourceFile("src/TunerProcessor.h");
     const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
     const auto routingSource = loadSourceFile("src/RoutingProcessors.cpp");
     const auto routingHeader = loadSourceFile("src/RoutingProcessors.h");
@@ -456,11 +463,18 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     const auto internalFiltersHeader = loadSourceFile("src/InternalFilters.h");
 
     REQUIRE(pluginSource.has_value());
+    REQUIRE(processorHeader.has_value());
     REQUIRE(labelSource.has_value());
     REQUIRE(notesSource.has_value());
     REQUIRE(markdownTokeniserSource.has_value());
     REQUIRE(notesProcessorSource.has_value());
     REQUIRE(notesProcessorImplSource.has_value());
+    REQUIRE(namProcessorHeader.has_value());
+    REQUIRE(irProcessorHeader.has_value());
+    REQUIRE(reverbProcessorHeader.has_value());
+    REQUIRE(oscilloscopeProcessorHeader.has_value());
+    REQUIRE(toneProcessorHeader.has_value());
+    REQUIRE(tunerProcessorHeader.has_value());
     REQUIRE(tunerSource.has_value());
     REQUIRE(routingSource.has_value());
     REQUIRE(routingHeader.has_value());
@@ -489,6 +503,38 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("struct EmbeddedNodeShellPolicy") != std::string::npos);
     CHECK(pluginSource->find("EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(const String& pluginName, const String& visualCategoryName = {})") !=
           std::string::npos);
+    CHECK(processorHeader->find("struct NodeShellPolicy") != std::string::npos);
+    CHECK(processorHeader->find("enum class Kind") != std::string::npos);
+    CHECK(processorHeader->find("static NodeShellPolicy heroChassis(int topOffset, int heightPadding)") !=
+          std::string::npos);
+    CHECK(processorHeader->find("static NodeShellPolicy directPainted(bool suppressUtilityHostParamPin = false)") !=
+          std::string::npos);
+    CHECK(processorHeader->find("static NodeShellPolicy embeddedParameterSurface(int heightPadding)") !=
+          std::string::npos);
+    CHECK(processorHeader->find("static NodeShellPolicy compactPinLabels()") != std::string::npos);
+    CHECK(processorHeader->find("virtual NodeShellPolicy getNodeShellPolicy() const { return {}; }") !=
+          std::string::npos);
+    CHECK(pluginSource->find("EmbeddedNodeShellPolicy adaptNodeShellPolicy(const PedalboardProcessor::NodeShellPolicy& source)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const auto advertisedPolicy = adaptNodeShellPolicy(proc->getNodeShellPolicy());") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (advertisedPolicy.hasProcessorContract)") != std::string::npos);
+    CHECK(namProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::heroChassis(70, 84); }") !=
+          std::string::npos);
+    CHECK(irProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::heroChassis(78, 112); }") !=
+          std::string::npos);
+    CHECK(reverbProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::embeddedParameterSurface(60); }") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(); }") !=
+          std::string::npos);
+    CHECK(oscilloscopeProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }") !=
+          std::string::npos);
+    CHECK(toneProcessorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }") !=
+          std::string::npos);
+    CHECK(notesProcessorSource->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(); }") !=
+          std::string::npos);
+    CHECK(routingHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::compactPinLabels(); }") !=
+          std::string::npos);
     CHECK(pluginSource->find("policy.kind = EmbeddedNodeShellKind::DirectPainted;") != std::string::npos);
     CHECK(pluginSource->find("policy.suppressesHostEditorButton = true;") != std::string::npos);
     CHECK(pluginSource->find("policy.suppressesHostMappingsButton = true;") != std::string::npos);
@@ -504,16 +550,22 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("if (getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::DirectPainted)\n        return 0;") !=
           std::string::npos);
+    CHECK(pluginSource->find("int getEmbeddedNodeControlLeftOffset(int hostWidth, Point<int> compSize, const EmbeddedNodeShellPolicy& policy)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (policy.kind == EmbeddedNodeShellKind::DirectPainted)\n        return 0;") !=
+          std::string::npos);
     CHECK(pluginSource->find("return (hostWidth / 2) - (compSize.getX() / 2);") != std::string::npos);
-    CHECK(pluginSource->find("tempint = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);") !=
+    CHECK(pluginSource->find("const auto controlShellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (isDirectPaintedEmbeddedNodeName(pluginName))\n        {\n            w = compSize.getX();\n            h = compSize.getY();") !=
+    CHECK(pluginSource->find("tempint = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, controlShellPolicy);") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (!isDirectPaintedEmbeddedNodeName(pluginName))\n            h = compSize.getY() + getEmbeddedNodeControlHeightPadding(pluginName);") !=
+    CHECK(pluginSource->find("if (shellPolicy.kind == EmbeddedNodeShellKind::DirectPainted)\n        {\n            w = compSize.getX();\n            h = compSize.getY();") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (!onlyUpdateWidth && !isDirectPaintedEmbeddedNodeName(pluginName))\n        h += getNodeParameterControlsHeight();") !=
+    CHECK(pluginSource->find("if (shellPolicy.kind != EmbeddedNodeShellKind::DirectPainted)\n            h = compSize.getY() + getEmbeddedNodeControlHeightPadding(shellPolicy);") !=
           std::string::npos);
-    CHECK(pluginSource->find("int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);") !=
+    CHECK(pluginSource->find("if (!onlyUpdateWidth && shellPolicy.kind != EmbeddedNodeShellKind::DirectPainted)\n        h += getNodeParameterControlsHeight();") !=
+          std::string::npos);
+    CHECK(pluginSource->find("int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, shellPolicy);") !=
           std::string::npos);
     CHECK(pluginSource->find("if (isStickyNoteNodeName(pluginName))\n        {\n            w = compSize.getX();\n            h = compSize.getY();") ==
           std::string::npos);
@@ -528,7 +580,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("const float nodeBorderWidth = highlighted ? 0.82f : 0.58f;") != std::string::npos);
     CHECK(pluginSource->find("beingDragged ? 1.12f : 0.72f") != std::string::npos);
     CHECK(pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);") != std::string::npos);
-    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName, visualCategoryName);") !=
+    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);") !=
           std::string::npos);
     CHECK(pluginSource->find("const bool suppressHostEditorButton = labelNode || shellPolicy.suppressesHostEditorButton;") !=
           std::string::npos);
@@ -546,7 +598,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)") !=
           std::string::npos);
-    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName);") !=
+    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(plugin, pluginName);") !=
           std::string::npos);
     CHECK(pluginSource->find("if (shellPolicy.suppressesHostMidiOrParamPin || suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
@@ -581,9 +633,11 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     const auto optionalButtonSection = pluginSource->substr(labelNodeMarker, deleteButtonMarker - labelNodeMarker);
     CHECK(optionalButtonSection.find("deleteButton =") == std::string::npos);
     CHECK(pluginSource->find("if (bypassable != nullptr && bypassButton != nullptr)") != std::string::npos);
-    CHECK(pluginSource->find("bool showLabels = (!proc) || shouldDrawHostPinText(pluginName);") !=
+    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(plugin, pluginName, visualCategoryName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("const bool compactPinLabels = usesCompactHostPinLabels(pluginName);") !=
+    CHECK(pluginSource->find("bool showLabels = (!proc) || shellPolicy.drawsHostPinText;") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const bool compactPinLabels = shellPolicy.usesCompactHostPinLabels;") !=
           std::string::npos);
     CHECK(pluginSource->find("bool useNumberedNames = compactPinLabels || ignorePinNames || (pluginName == \"Audio Output\");") !=
           std::string::npos);

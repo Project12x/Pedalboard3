@@ -94,6 +94,7 @@ class SplitterProcessor : public PedalboardProcessor
     // PedalboardProcessor overrides
     Component* getControls() override;
     Point<int> getSize() override;
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::compactPinLabels(); }
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;
 
@@ -251,6 +252,7 @@ class MixerProcessor : public PedalboardProcessor
     // PedalboardProcessor overrides
     Component* getControls() override;
     Point<int> getSize() override;
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::compactPinLabels(); }
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;
 

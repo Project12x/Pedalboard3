@@ -31,6 +31,7 @@ class IRLoaderProcessor : public PedalboardProcessor
     // PedalboardProcessor interface
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(280, 210); }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::heroChassis(78, 112); }
 
     void updateEditorBounds(const Rectangle<int>& bounds);
 

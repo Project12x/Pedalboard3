@@ -50,6 +50,7 @@ class NAMProcessor : public PedalboardProcessor
     // PedalboardProcessor interface
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(420, editorCollapsed.load() ? 40 : 480); }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::heroChassis(70, 84); }
 
     // F1: Collapsible editor
     bool isEditorCollapsed() const { return editorCollapsed.load(); }

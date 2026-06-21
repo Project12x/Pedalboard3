@@ -26,6 +26,7 @@ class NotesProcessor : public PedalboardProcessor
 
         return Point<int>(200, 150);
     }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(); }
     void updateEditorBounds(const Rectangle<int>& bounds)
     {
         editorBounds = bounds;

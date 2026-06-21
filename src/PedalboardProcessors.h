@@ -43,6 +43,83 @@ class PedalboardProcessor : public AudioPluginInstance
     ///	Returns the size of the controls component.
     virtual Point<int> getSize() = 0;
 
+    /// Host-node shell policy advertised by built-in processors.
+    struct NodeShellPolicy
+    {
+        enum class Kind
+        {
+            Generic,
+            HeroChassis,
+            DirectPainted,
+            EmbeddedParameterSurface
+        };
+
+        Kind kind = Kind::Generic;
+        bool participatesInNodeShell = false;
+        bool ownsFullNodeSurface = false;
+        bool usesCompactHostPinLabels = false;
+        bool suppressesHostEditorButton = false;
+        bool suppressesHostMappingsButton = false;
+        bool suppressesHostBypassButton = false;
+        bool suppressesHostMidiOrParamPin = false;
+        bool suppressesUtilityHostParamPin = false;
+        bool drawsHostPinText = true;
+        bool showsHostTitleLabel = true;
+        int controlTopOffset = 26;
+        int controlHeightPadding = 64;
+
+        static NodeShellPolicy heroChassis(int topOffset, int heightPadding)
+        {
+            NodeShellPolicy policy;
+            policy.kind = Kind::HeroChassis;
+            policy.participatesInNodeShell = true;
+            policy.showsHostTitleLabel = false;
+            policy.controlTopOffset = topOffset;
+            policy.controlHeightPadding = heightPadding;
+            return policy;
+        }
+
+        static NodeShellPolicy directPainted(bool suppressUtilityHostParamPin = false)
+        {
+            NodeShellPolicy policy;
+            policy.kind = Kind::DirectPainted;
+            policy.participatesInNodeShell = true;
+            policy.ownsFullNodeSurface = true;
+            policy.suppressesHostEditorButton = true;
+            policy.suppressesHostMappingsButton = true;
+            policy.suppressesHostBypassButton = true;
+            policy.suppressesHostMidiOrParamPin = true;
+            policy.suppressesUtilityHostParamPin = suppressUtilityHostParamPin;
+            policy.drawsHostPinText = false;
+            policy.showsHostTitleLabel = false;
+            policy.controlTopOffset = 0;
+            policy.controlHeightPadding = 0;
+            return policy;
+        }
+
+        static NodeShellPolicy embeddedParameterSurface(int heightPadding)
+        {
+            NodeShellPolicy policy;
+            policy.kind = Kind::EmbeddedParameterSurface;
+            policy.participatesInNodeShell = true;
+            policy.suppressesHostEditorButton = true;
+            policy.suppressesHostMidiOrParamPin = true;
+            policy.controlHeightPadding = heightPadding;
+            return policy;
+        }
+
+        static NodeShellPolicy compactPinLabels()
+        {
+            NodeShellPolicy policy;
+            policy.participatesInNodeShell = true;
+            policy.usesCompactHostPinLabels = true;
+            policy.drawsHostPinText = false;
+            return policy;
+        }
+    };
+
+    virtual NodeShellPolicy getNodeShellPolicy() const { return {}; }
+
     /// Pin layout info for aligning pins with strip rows.
     struct PinLayout
     {

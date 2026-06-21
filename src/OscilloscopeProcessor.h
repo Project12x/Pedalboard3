@@ -28,6 +28,7 @@ class OscilloscopeProcessor : public PedalboardProcessor
     // PedalboardProcessor interface
     Component* getControls() override;
     Point<int> getSize() override { return Point<int>(280, 154); }
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;
 

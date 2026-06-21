@@ -333,6 +333,7 @@ enum class EmbeddedNodeShellKind
 struct EmbeddedNodeShellPolicy
 {
     EmbeddedNodeShellKind kind = EmbeddedNodeShellKind::Generic;
+    bool hasProcessorContract = false;
     bool ownsFullNodeSurface = false;
     bool usesCompactHostPinLabels = false;
     bool suppressesHostEditorButton = false;
@@ -345,6 +346,43 @@ struct EmbeddedNodeShellPolicy
     int controlTopOffset = 26;
     int controlHeightPadding = 64;
 };
+
+EmbeddedNodeShellPolicy adaptNodeShellPolicy(const PedalboardProcessor::NodeShellPolicy& source)
+{
+    EmbeddedNodeShellPolicy policy;
+    policy.hasProcessorContract = source.participatesInNodeShell;
+
+    switch (source.kind)
+    {
+        case PedalboardProcessor::NodeShellPolicy::Kind::HeroChassis:
+            policy.kind = EmbeddedNodeShellKind::HeroChassis;
+            break;
+        case PedalboardProcessor::NodeShellPolicy::Kind::DirectPainted:
+            policy.kind = EmbeddedNodeShellKind::DirectPainted;
+            break;
+        case PedalboardProcessor::NodeShellPolicy::Kind::EmbeddedParameterSurface:
+            policy.kind = EmbeddedNodeShellKind::EmbeddedParameterSurface;
+            break;
+        case PedalboardProcessor::NodeShellPolicy::Kind::Generic:
+        default:
+            policy.kind = EmbeddedNodeShellKind::Generic;
+            break;
+    }
+
+    policy.ownsFullNodeSurface = source.ownsFullNodeSurface;
+    policy.usesCompactHostPinLabels = source.usesCompactHostPinLabels;
+    policy.suppressesHostEditorButton = source.suppressesHostEditorButton;
+    policy.suppressesHostMappingsButton = source.suppressesHostMappingsButton;
+    policy.suppressesHostBypassButton = source.suppressesHostBypassButton;
+    policy.suppressesHostMidiOrParamPin = source.suppressesHostMidiOrParamPin;
+    policy.suppressesUtilityHostParamPin = source.suppressesUtilityHostParamPin;
+    policy.drawsHostPinText = source.drawsHostPinText;
+    policy.showsHostTitleLabel = source.showsHostTitleLabel;
+    policy.controlTopOffset = source.controlTopOffset;
+    policy.controlHeightPadding = source.controlHeightPadding;
+
+    return policy;
+}
 
 EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(const String& pluginName, const String& visualCategoryName = {})
 {
@@ -401,6 +439,29 @@ EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(const String& pluginName, con
     return policy;
 }
 
+EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(AudioProcessor* plugin, const String& pluginName,
+                                                   const String& visualCategoryName = {})
+{
+    auto policy = getEmbeddedNodeShellPolicy(pluginName, visualCategoryName);
+    auto* innerProcessor = plugin;
+
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(innerProcessor))
+        innerProcessor = bypassable->getPlugin();
+
+    if (auto* proc = dynamic_cast<PedalboardProcessor*>(innerProcessor))
+    {
+        const auto advertisedPolicy = adaptNodeShellPolicy(proc->getNodeShellPolicy());
+        if (advertisedPolicy.hasProcessorContract)
+        {
+            policy = advertisedPolicy;
+            if (visualCategoryName == "rack")
+                policy.suppressesHostMappingsButton = true;
+        }
+    }
+
+    return policy;
+}
+
 bool isHeroChassisNodeName(const String& pluginName)
 {
     return getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::HeroChassis;
@@ -438,7 +499,7 @@ bool shouldShowHostTitleLabel(const String& pluginName)
 
 bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)
 {
-    const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName);
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(plugin, pluginName);
     if (shellPolicy.suppressesHostMidiOrParamPin || suppressesHostParamPinForUtilityNode(pluginName))
         return false;
 
@@ -472,6 +533,16 @@ int getEmbeddedNodeControlHeightPadding(const String& pluginName)
     return getEmbeddedNodeShellPolicy(pluginName).controlHeightPadding;
 }
 
+int getEmbeddedNodeControlTopOffset(const EmbeddedNodeShellPolicy& policy)
+{
+    return policy.controlTopOffset;
+}
+
+int getEmbeddedNodeControlHeightPadding(const EmbeddedNodeShellPolicy& policy)
+{
+    return policy.controlHeightPadding;
+}
+
 Point<int> getDefaultRackNodeSize()
 {
     return {324, 212};
@@ -502,6 +573,14 @@ Point<int> getEmbeddedNodeControlSize(PedalboardProcessor* proc, const String& p
 int getEmbeddedNodeControlLeftOffset(int hostWidth, Point<int> compSize, const String& pluginName)
 {
     if (getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::DirectPainted)
+        return 0;
+
+    return (hostWidth / 2) - (compSize.getX() / 2);
+}
+
+int getEmbeddedNodeControlLeftOffset(int hostWidth, Point<int> compSize, const EmbeddedNodeShellPolicy& policy)
+{
+    if (policy.kind == EmbeddedNodeShellKind::DirectPainted)
         return 0;
 
     return (hostWidth / 2) - (compSize.getX() / 2);
@@ -1195,7 +1274,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         titleLabel->setBounds(20, 3, getWidth() - 40, 20);
 
         const bool labelNode = isLabelNodeName(pluginName);
-        const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName, visualCategoryName);
+        const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
         const bool suppressHostEditorButton = labelNode || shellPolicy.suppressesHostEditorButton;
         const bool suppressHostMappingsButton = labelNode || shellPolicy.suppressesHostMappingsButton;
         const bool suppressHostBypassButton = labelNode || shellPolicy.suppressesHostBypassButton;
@@ -1206,7 +1285,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             editButton = new TextButton("e", "Open plugin editor (right-click for options)");
             editButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
             int editButtonWidth = 20;
-            if (isHeroChassisNodeName(pluginName))
+            if (shellPolicy.kind == EmbeddedNodeShellKind::HeroChassis)
             {
                 editButton->setButtonText("Edit");
                 editButtonWidth = 44;
@@ -1229,7 +1308,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             mappingsButton = new TextButton("m", "Open mappings editor");
             mappingsButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
             int mappingsButtonWidth = 24;
-            if (isHeroChassisNodeName(pluginName))
+            if (shellPolicy.kind == EmbeddedNodeShellKind::HeroChassis)
             {
                 mappingsButton->setButtonText("Map");
                 mappingsButtonWidth = 42;
@@ -1244,7 +1323,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
             bypassButton->setImages(bypassOff.get(), nullptr, nullptr, nullptr, bypassOn.get());
             bypassButton->setClickingTogglesState(true);
-            if (isHeroChassisNodeName(pluginName))
+            if (shellPolicy.kind == EmbeddedNodeShellKind::HeroChassis)
                 bypassButton->setEdgeIndent(4);
             bypassButton->setBounds(getWidth() - 30, getHeight() - 30, 20, 20);
             bypassButton->addListener(this);
@@ -1274,6 +1353,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         Component* comp = proc->getControls();
         Point<int> compSize = proc->getSize();
         compSize = getEmbeddedNodeControlSize(proc, pluginName);
+        const auto controlShellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
 
         spdlog::debug("[PluginComponent] proc valid, getControls()={}, getSize()={}x{}", comp != nullptr,
                       compSize.getX(), compSize.getY());
@@ -1298,13 +1378,13 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             }
         }
 
-        tempint = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);
-        comp->setBounds(tempint, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
+        tempint = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, controlShellPolicy);
+        comp->setBounds(tempint, getEmbeddedNodeControlTopOffset(controlShellPolicy), compSize.getX(), compSize.getY());
         if (deleteButton != nullptr)
             deleteButton->toFront(false);
 
         spdlog::debug("[PluginComponent] Control positioned: x={}, y={}, PluginComponent size={}x{}", tempint,
-                      getEmbeddedNodeControlTopOffset(pluginName), getWidth(), getHeight());
+                      getEmbeddedNodeControlTopOffset(controlShellPolicy), getWidth(), getHeight());
     }
 
     createPins();
@@ -1429,7 +1509,8 @@ Rectangle<float> PluginComponent::getEffectRackSubgraphPreviewBounds() const
 //------------------------------------------------------------------------------
 void PluginComponent::layoutFooterButtons()
 {
-    const bool heroNode = isHeroChassisNodeName(pluginName);
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
+    const bool heroNode = shellPolicy.kind == EmbeddedNodeShellKind::HeroChassis;
     const bool rackNode = visualCategoryName == "rack";
 
     if (heroNode)
@@ -1465,7 +1546,7 @@ void PluginComponent::layoutFooterButtons()
         return;
     }
 
-    if (usesEmbeddedParameterSurface(pluginName))
+    if (shellPolicy.kind == EmbeddedNodeShellKind::EmbeddedParameterSurface)
     {
         const int y = getHeight() - 25;
         const int h = 18;
@@ -1497,8 +1578,9 @@ void PluginComponent::paint(Graphics& g)
     const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
     const bool highlighted = beingDragged || isMouseOver(true);
     const bool rackNode = visualCategoryName == "rack";
-    const bool heroChassisNode = isHeroChassisNodeName(pluginName);
-    const bool directPaintedNode = isDirectPaintedEmbeddedNodeName(pluginName);
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
+    const bool heroChassisNode = shellPolicy.kind == EmbeddedNodeShellKind::HeroChassis;
+    const bool directPaintedNode = shellPolicy.kind == EmbeddedNodeShellKind::DirectPainted;
     Colour accentColour = rackNode ? colours["Graph Category Modulation"] : visualAccentColour;
 
     if (directPaintedNode)
@@ -1604,7 +1686,7 @@ void PluginComponent::paint(Graphics& g)
     if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
     {
-        float footerY = usesEmbeddedParameterSurface(pluginName) ? h - 31.0f : h - 36.0f;
+        float footerY = shellPolicy.kind == EmbeddedNodeShellKind::EmbeddedParameterSurface ? h - 31.0f : h - 36.0f;
         g.setColour(colours["Plugin Border"].withAlpha(0.28f));
         g.drawLine(6.0f, footerY, w - 6.0f, footerY, 0.75f);
     }
@@ -2257,8 +2339,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     inputText.clear();
     outputText.clear();
 
-    bool showLabels = (!proc) || shouldDrawHostPinText(pluginName);
-    const bool compactPinLabels = usesCompactHostPinLabels(pluginName);
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(plugin, pluginName, visualCategoryName);
+    bool showLabels = (!proc) || shellPolicy.drawsHostPinText;
+    const bool compactPinLabels = shellPolicy.usesCompactHostPinLabels;
     auto positionOutputTextForCurrentWidth = [&]()
     {
         const float outputRightInset = pluginName == "MIDI Input" ? 18.0f : 10.0f;
@@ -2443,8 +2526,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         h *= (int)pinSpacing;
 
         float minH = (float)h + 70.0f;
-        if (proc && minH < procH + (float)getEmbeddedNodeControlHeightPadding(pluginName))
-            minH = procH + (float)getEmbeddedNodeControlHeightPadding(pluginName);
+        if (proc && minH < procH + (float)getEmbeddedNodeControlHeightPadding(shellPolicy))
+            minH = procH + (float)getEmbeddedNodeControlHeightPadding(shellPolicy);
 
         if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
@@ -2457,7 +2540,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
-            if (usesEmbeddedParameterSurface(pluginName))
+            if (shellPolicy.kind == EmbeddedNodeShellKind::EmbeddedParameterSurface)
                 h = (int)minH;
             else
                 h = jmax((int)minH, h + 70);
@@ -2472,7 +2555,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         Point<int> compSize = proc->getSize();
         compSize = getEmbeddedNodeControlSize(proc, pluginName);
 
-        if (isDirectPaintedEmbeddedNodeName(pluginName))
+        if (shellPolicy.kind == EmbeddedNodeShellKind::DirectPainted)
         {
             w = compSize.getX();
             h = compSize.getY();
@@ -2482,8 +2565,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         else
             w = (int)(compSize.getX() + 24.0f);
 
-        if (!isDirectPaintedEmbeddedNodeName(pluginName))
-            h = compSize.getY() + getEmbeddedNodeControlHeightPadding(pluginName);
+        if (shellPolicy.kind != EmbeddedNodeShellKind::DirectPainted)
+            h = compSize.getY() + getEmbeddedNodeControlHeightPadding(shellPolicy);
     }
 
     if (visualCategoryName == "rack")
@@ -2513,7 +2596,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     if (showLabels)
         positionOutputTextForCurrentWidth();
 
-    if (!onlyUpdateWidth && !isDirectPaintedEmbeddedNodeName(pluginName))
+    if (!onlyUpdateWidth && shellPolicy.kind != EmbeddedNodeShellKind::DirectPainted)
         h += getNodeParameterControlsHeight();
 
     if (onlyUpdateWidth)
@@ -2546,6 +2629,7 @@ void PluginComponent::updateNodeSize()
     {
         Point<int> compSize = proc->getSize();
         compSize = getEmbeddedNodeControlSize(proc, pluginName);
+        const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
         for (int ci = 0; ci < getNumChildComponents(); ++ci)
         {
             auto* child = getChildComponent(ci);
@@ -2558,8 +2642,8 @@ void PluginComponent::updateNodeSize()
                 continue;
             if (dynamic_cast<NodeParameterMiniControl*>(child) != nullptr)
                 continue;
-            int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);
-            child->setBounds(cx, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
+            int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, shellPolicy);
+            child->setBounds(cx, getEmbeddedNodeControlTopOffset(shellPolicy), compSize.getX(), compSize.getY());
             break;
         }
     }
@@ -2592,7 +2676,9 @@ int PluginComponent::getNodeParameterControlCount() const
     if (!areNodeParameterControlsEnabled() || isAudioIONode() || node == nullptr)
         return 0;
 
-    if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName))
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
+    if (shellPolicy.kind == EmbeddedNodeShellKind::DirectPainted ||
+        shellPolicy.kind == EmbeddedNodeShellKind::EmbeddedParameterSurface)
         return 0;
 
     const auto excludedSystemNode =
@@ -2757,6 +2843,7 @@ void PluginComponent::refreshPins()
     {
         Point<int> compSize = proc->getSize();
         compSize = getEmbeddedNodeControlSize(proc, pluginName);
+        const auto shellPolicy = getEmbeddedNodeShellPolicy(node->getProcessor(), pluginName, visualCategoryName);
         // Find the control component among our children and reposition it
         for (int ci = 0; ci < getNumChildComponents(); ++ci)
         {
@@ -2772,8 +2859,8 @@ void PluginComponent::refreshPins()
             if (dynamic_cast<NodeParameterMiniControl*>(child) != nullptr)
                 continue;
             // This should be the PedalboardProcessor's control component
-            int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);
-            child->setBounds(cx, getEmbeddedNodeControlTopOffset(pluginName), compSize.getX(), compSize.getY());
+            int cx = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, shellPolicy);
+            child->setBounds(cx, getEmbeddedNodeControlTopOffset(shellPolicy), compSize.getX(), compSize.getY());
             break;
         }
     }
