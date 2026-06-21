@@ -55,7 +55,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     frequencySlider->setSkewFactorFromMidPoint(440.0);
     frequencySlider->setValue(processor->getFrequency(), dontSendNotification);
     frequencySlider->addListener(this);
-    frequencySlider->setTextBoxStyle(Slider::TextBoxRight, false, 68, 18);
+    frequencySlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     styleEditableSlider(*frequencySlider, getAccentColour(), " Hz", 68);
     addAndMakeVisible(frequencySlider.get());
 
@@ -64,7 +64,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 76, 20);
+    detuneSlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     styleEditableSlider(*detuneSlider, colours["Warning Colour"], String::fromUTF8(" \xC2\xA2"), 76);
     addAndMakeVisible(detuneSlider.get());
 
@@ -135,7 +135,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Update display at 30fps
     startTimerHz(30);
 
-    setSize(360, 308);
+    setSize(392, 308);
 }
 
 ToneGeneratorControl::~ToneGeneratorControl()
@@ -260,6 +260,9 @@ void ToneGeneratorControl::paint(Graphics& g)
 
     drawSliderLane(g, frequencyRail.toFloat(), "FREQ", freqNorm, accent);
     drawSliderLane(g, detuneRail.toFloat(), "FINE", detuneNorm, warning);
+    drawValueChip(g, pitchFrequencyChipArea.toFloat(), String(baseFrequency, 1) + " Hz", accent);
+    const String detunePrefix = detune > 0.049f ? "+" : "";
+    drawValueChip(g, detuneChipArea.toFloat(), detunePrefix + String(detune, 1) + String::fromUTF8(" \xC2\xA2"), warning);
     drawOutputKnob(g, outputKnobArea.toFloat(), jlimit(0.0f, 1.0f, amplitude), success);
 
     if (toneProcessor != nullptr && toneProcessor->isPlaying())
@@ -294,19 +297,21 @@ void ToneGeneratorControl::resized()
     pitchInner.removeFromTop(14);
     auto freqRow = pitchInner.removeFromTop(20);
     frequencyChipArea = frequencyChipArea.reduced(0, 1);
-    auto frequencyControl = freqRow.withTrimmedLeft(35);
-    frequencyRail = frequencyControl.withTrimmedRight(76).reduced(0, 4);
-    frequencySlider->setBounds(frequencyControl.expanded(7, 1));
+    pitchFrequencyChipArea = freqRow.removeFromRight(74);
+    freqRow.removeFromRight(8);
+    frequencyRail = freqRow.reduced(0, 4);
+    frequencySlider->setBounds(frequencyRail.withTrimmedLeft(30).expanded(3, 5));
 
     pitchInner.removeFromTop(4);
     auto detuneRow = pitchInner.removeFromTop(20);
-    auto presetArea = detuneRow.removeFromRight(144);
-    auto detuneControl = detuneRow.withTrimmedLeft(35);
-    detuneChipArea = detuneControl.removeFromRight(84);
-    detuneRail = detuneControl.reduced(0, 4);
-    detuneSlider->setBounds(detuneRow.withTrimmedLeft(35).expanded(7, 1));
+    auto presetArea = detuneRow.removeFromRight(134);
+    detuneRow.removeFromRight(7);
+    detuneChipArea = detuneRow.removeFromRight(70);
+    detuneRow.removeFromRight(8);
+    detuneRail = detuneRow.reduced(0, 4);
+    detuneSlider->setBounds(detuneRail.withTrimmedLeft(30).expanded(3, 5));
 
-    const int btnW = 34;
+    const int btnW = 32;
     detune1Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
     presetArea.removeFromLeft(2);
     detune5Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));

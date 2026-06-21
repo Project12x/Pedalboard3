@@ -40,10 +40,14 @@
 - Effect Rack node: current snapshot has one clear `Open` affordance and no redundant `Map` button.
 - Notes node: empty hint is present again in the captured snapshot.
 
+### Fixed After Follow-Up
+
+- Tone Generator node: `documentation/qa/2026-06-21-tone-tuner-polish/app-node-tone-generator.png` shows the pitch row no longer has the prior normal-size overlap. The node was widened slightly, pitch-row values were moved into direct-painted chips, and hidden slider hit targets now sit over the rails instead of painting text boxes over the row.
+- Tuner node: `documentation/qa/2026-06-21-tone-tuner-polish/app-node-tuner.png` shows the mode row is now an integrated segmented control with clearer separation and a roomier bypass pill.
+
 ### Still Open From Current Evidence
 
-- Tone Generator node: the current node snapshot still has a real pitch-row clipping/overlap problem. The frequency label/slider/value area collide, and the pitch control row is too tight. This is visible at the normal node snapshot size, so it is not a stress-only issue.
-- Tuner node: current snapshot still has cramped mode-pill treatment. `Needle`, `Strobe`, `Poly`, and `Bypass` are readable, but the row looks like generic pills over a dark strip rather than a finished direct-painted control surface. This is polish debt, not a functional blocker.
+- No current normal-size node snapshot failure remains from the Tone Generator/Tuner items. The remaining checks are interaction-level/manual, not obvious rendering defects.
 
 ### Stress-Only / Do Not Over-Prioritize
 
@@ -94,7 +98,7 @@ Evidence:
 - `tests/ui_regression_harness_test.cpp` checks the Tone Generator size, output pin footprint, theme-derived colour helpers, removal of hardcoded black/white/hex colours, removal of the `READY` pill, output rotary knob, text-box sizing, visible sliders, waveform glyph, display/pitch/bottom panel sizing, and removal of the old clipped wave labels.
 
 Residual risk:
-- The fresh node snapshot found a real pitch-row clipping/overlap issue. Do not call Tone Generator visually final yet.
+- The follow-up snapshot in `documentation/qa/2026-06-21-tone-tuner-polish` shows the pitch-row clipping fixed. Manual interaction remains useful because the row uses direct-painted chips with hidden slider hit targets.
 
 ### NAM Loader Theme/Text Roles
 
@@ -137,7 +141,7 @@ Evidence:
 - The focused `[ui][regression][visual]` test run passed.
 
 Residual risk:
-- Current screenshots now cover browser chrome centering and common dialog rendering. Tuner pill rendering still needs polish. Extreme 200% fixed-size clipping should not be treated as a realistic blocker.
+- Current screenshots now cover browser chrome centering and common dialog rendering. The follow-up node snapshot shows the Tuner mode row polished. Extreme 200% fixed-size clipping should not be treated as a realistic blocker.
 
 ## Needs Proof, Not New Implementation Yet
 
@@ -163,18 +167,6 @@ Recommended direction:
 - Centralize shell sizing, footer affordance policy, pin-label policy, drag suppression, host padding, and theme role handoff.
 - Keep NAM/IR hero chassis nodes as their own category if they do not fit the direct-node shell.
 
-### Tone Generator Pitch Row
-
-Status: open current visual bug.
-
-The fresh node snapshot shows the pitch row still clips/overlaps at normal node size. This should be fixed before treating the Tone Generator chrome pass as complete.
-
-### Tuner Mode Row Finish
-
-Status: open polish debt.
-
-The tuner mode row is readable but still visually rough: the mode pills sit on a dark strip and do not yet feel integrated with the rest of the direct-painted node language. This is not urgent functionality work, but it remains visible polish.
-
 ### Roadmap P1/P2 Polish
 
 Status: open, but not part of the old bug list.
@@ -189,8 +181,6 @@ Status: open, but not part of the old bug list.
 
 ## Recommended Next Audit Steps
 
-1. Fix the Tone Generator pitch-row clipping visible in `documentation/qa/2026-06-21-polish-audit-nodes/app-node-tone-generator.png`.
-2. Polish the Tuner mode row visible in `documentation/qa/2026-06-21-polish-audit-nodes/app-node-tuner.png`.
-3. Run the manual `TESTLATER.md` smoke passes that depend on authenticated online state, local model files, user interaction, or hardware.
-4. If high-scale dialog polish is revisited, define realistic high-DPI window sizes first. Do not use the fixed 200% stress captures as a product-blocking acceptance target.
-5. Only convert screenshot/manual failures into implementation tasks. Do not reopen broad polish buckets or already contract-covered issues without new evidence.
+1. Run the manual `TESTLATER.md` smoke passes that depend on authenticated online state, local model files, user interaction, or hardware.
+2. If high-scale dialog polish is revisited, define realistic high-DPI window sizes first. Do not use the fixed 200% stress captures as a product-blocking acceptance target.
+3. Only convert screenshot/manual failures into implementation tasks. Do not reopen broad polish buckets or already contract-covered issues without new evidence.

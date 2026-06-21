@@ -287,24 +287,45 @@ void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto tunerAccent = colours["Tuner Active Colour"];
-    auto bypassPlate = bounds.removeFromRight(76.0f).reduced(1.0f);
+    auto bypassPlate = bounds.removeFromRight(82.0f).reduced(1.0f);
     bounds.removeFromRight(4.0f);
     const auto plate = bounds.reduced(1.0f);
 
-    g.setColour(colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f).darker(0.12f));
+    ColourGradient plateFill(colours["Field Background"].interpolatedWith(tunerAccent, 0.055f).brighter(0.02f),
+                             plate.getX(), plate.getY(),
+                             colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.58f)
+                                 .darker(0.16f),
+                             plate.getX(), plate.getBottom(), false);
+    plateFill.addColour(0.50, colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f));
+    g.setGradientFill(plateFill);
     g.fillRoundedRectangle(plate, 7.0f);
     g.setColour(colours["Plugin Border"].interpolatedWith(tunerAccent, 0.14f).withAlpha(0.64f));
     g.drawRoundedRectangle(plate.reduced(0.5f), 7.0f, 0.9f);
+    g.setColour(colours["Text Colour"].withAlpha(0.055f));
+    g.drawLine(plate.getX() + 7.0f, plate.getY() + 1.0f, plate.getRight() - 7.0f, plate.getY() + 1.0f, 0.7f);
 
     const float segmentW = plate.getWidth() / 3.0f;
+    for (int i = 1; i < 3; ++i)
+    {
+        const auto separatorX = plate.getX() + segmentW * static_cast<float>(i);
+        g.setColour(colours["Plugin Border"].interpolatedWith(tunerAccent, 0.18f).withAlpha(0.42f));
+        g.drawLine(separatorX, plate.getY() + 5.0f, separatorX, plate.getBottom() - 5.0f, 0.8f);
+    }
+
     const int modeIndex = currentMode == TunerMode::Needle ? 0 : currentMode == TunerMode::Strobe ? 1 : 2;
     const auto selected = Rectangle<float>(plate.getX() + segmentW * (float)modeIndex, plate.getY(), segmentW,
                                            plate.getHeight())
                               .reduced(2.0f);
-    g.setColour(tunerAccent.withAlpha(0.16f));
+    ColourGradient selectedFill(tunerAccent.withAlpha(0.24f), selected.getX(), selected.getY(),
+                                tunerAccent.darker(0.42f).withAlpha(0.28f), selected.getX(),
+                                selected.getBottom(), false);
+    g.setGradientFill(selectedFill);
     g.fillRoundedRectangle(selected, 5.0f);
     g.setColour(tunerAccent.withAlpha(0.42f));
     g.drawRoundedRectangle(selected.reduced(0.5f), 5.0f, 0.75f);
+    g.setColour(tunerAccent.brighter(0.20f).withAlpha(0.38f));
+    g.drawLine(selected.getX() + 5.0f, selected.getY() + 1.0f, selected.getRight() - 5.0f,
+               selected.getY() + 1.0f, 0.7f);
 
     drawBypassPill(g, bypassPlate);
 }
@@ -892,7 +913,7 @@ void TunerControl::resized()
     auto bounds = getLocalBounds().reduced(8, 6);
     bounds.removeFromTop(43);
     auto modeArea = bounds.removeFromTop(29);
-    auto bypassArea = modeArea.removeFromRight(76).reduced(2, 2);
+    auto bypassArea = modeArea.removeFromRight(82).reduced(2, 2);
     modeArea.removeFromRight(4);
     const int thirdWidth = modeArea.getWidth() / 3;
     needleModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));

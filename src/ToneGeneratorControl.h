@@ -90,6 +90,7 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     Rectangle<int> waveformGlyphArea;
     Rectangle<int> frequencyRail;
     Rectangle<int> frequencyChipArea;
+    Rectangle<int> pitchFrequencyChipArea;
     Rectangle<int> noteChipArea;
     Rectangle<int> pitchPanel;
     Rectangle<int> detuneRail;
