@@ -184,8 +184,8 @@ TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter
     std::unique_ptr<Component> controls(processor.getControls());
 
     REQUIRE(controls != nullptr);
-    REQUIRE(processor.getSize().getX() == 308);
-    REQUIRE(processor.getSize().getY() == 154);
+    REQUIRE(processor.getSize().getX() == 340);
+    REQUIRE(processor.getSize().getY() == 190);
     REQUIRE(controls->getNumChildComponents() >= ReverbSCProcessor::NumParameters);
 
     for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
@@ -298,9 +298,13 @@ TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "
     REQUIRE(controlBody.find("paintPanelLighting") != std::string::npos);
     REQUIRE(controlBody.find("paintReverbGlyph") != std::string::npos);
     REQUIRE(controlBody.find("glyphArea") != std::string::npos);
-    REQUIRE(source.find("setSize(308, 154);") != std::string::npos);
-    REQUIRE(header.find("Point<int>(308, 154)") != std::string::npos);
-    REQUIRE(controlBody.find("jmin(10.8f") != std::string::npos);
+    REQUIRE(source.find("setSize(340, 190);") != std::string::npos);
+    REQUIRE(header.find("Point<int>(340, 190)") != std::string::npos);
+    REQUIRE(controlBody.find("withHeight(11.8f)") != std::string::npos);
+    REQUIRE(controlBody.find("withHeight(10.2f)") != std::string::npos);
+    REQUIRE(controlBody.find("jmin(12.2f") != std::string::npos);
+    REQUIRE(controlBody.find("removeFromBottom(14).reduced(3, 4)") != std::string::npos);
+    REQUIRE(controlBody.find("removeFromBottom(7).toFloat().withHeight(5.5f)") == std::string::npos);
 }
 
 TEST_CASE("ReverbSC embedded controls use compact host footer spacing", "[reverbsc][ui]")

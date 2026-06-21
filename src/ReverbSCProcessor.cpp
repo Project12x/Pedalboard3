@@ -60,7 +60,7 @@ class ReverbSCControl final : public Component, private Timer
     explicit ReverbSCControl(ReverbSCProcessor* proc) : processor(proc)
     {
         setName("ReverbSC Node Controls");
-        setSize(308, 154);
+        setSize(340, 190);
 
         for (int parameter = 0; parameter < ReverbSCProcessor::NumParameters; ++parameter)
         {
@@ -95,16 +95,16 @@ class ReverbSCControl final : public Component, private Timer
 
     void resized() override
     {
-        auto area = getLocalBounds().reduced(10, 7);
+        auto area = getLocalBounds().reduced(12, 8);
 
-        auto hero = area.removeFromTop(58);
-        glyphArea = hero.removeFromLeft(58);
-        hero.removeFromLeft(8);
+        auto hero = area.removeFromTop(66);
+        glyphArea = hero.removeFromLeft(66);
+        hero.removeFromLeft(10);
         parameterAreas[ReverbSCProcessor::MixParam] = hero;
-        area.removeFromTop(6);
+        area.removeFromTop(8);
 
         const int columnGap = 8;
-        const int rowGap = 6;
+        const int rowGap = 8;
         const int columnWidth = (area.getWidth() - columnGap) / 2;
         const int rowHeight = (area.getHeight() - rowGap) / 2;
 
@@ -282,13 +282,13 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
 
-        auto content = area.reduced(10, 0);
-        auto top = content.removeFromTop(22);
-        auto labelArea = top.removeFromLeft(62);
-        auto valueArea = top.removeFromRight(66).reduced(0, 4);
-        auto rail = content.reduced(5, 2).withSizeKeepingCentre(content.getWidth() - 10, 10).toFloat();
+        auto content = area.reduced(11, 1);
+        auto top = content.removeFromTop(24);
+        auto labelArea = top.removeFromLeft(70);
+        auto valueArea = top.removeFromRight(72).reduced(0, 4);
+        auto rail = content.removeFromBottom(17).reduced(3, 4).toFloat();
 
-        g.setFont(fonts.getBadgeFont().withHeight(10.4f));
+        g.setFont(fonts.getBadgeFont().withHeight(11.8f));
         g.setColour(text.withAlpha(0.68f));
         g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), labelArea, Justification::centredLeft, true);
 
@@ -318,17 +318,17 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.39f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
 
-        auto content = area.reduced(8, 4);
-        auto top = content.removeFromTop(16);
-        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 68 : 45);
+        auto content = area.reduced(9, 5);
+        auto top = content.removeFromTop(19);
+        auto valueArea = top.removeFromRight(parameterIndex == ReverbSCProcessor::DampingParam ? 74 : 50);
 
-        g.setFont(fonts.getBadgeFont().withHeight(8.6f));
+        g.setFont(fonts.getBadgeFont().withHeight(10.2f));
         g.setColour(text.withAlpha(0.64f));
         g.drawText(processor->getParameterName(parameterIndex).toUpperCase(), top, Justification::centredLeft, true);
 
         paintValueChip(g, valueArea.reduced(0, 1), processor->getParameterText(parameterIndex), accent);
 
-        auto rail = area.reduced(8, 0).removeFromBottom(7).toFloat().withHeight(5.5f);
+        auto rail = content.removeFromBottom(14).reduced(3, 4).toFloat();
         paintRail(g, rail, value, accent);
     }
 
@@ -375,7 +375,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setColour(accent.withAlpha(0.42f));
         g.drawRoundedRectangle(chip, 5.5f, 0.7f);
 
-        g.setFont(fonts.getMonoFont(jmin(10.8f, area.getHeight() * 0.78f)));
+        g.setFont(fonts.getMonoFont(jmin(12.2f, area.getHeight() * 0.78f)));
         g.setColour(colours["Text Colour"].withAlpha(0.88f));
         g.drawFittedText(valueText, area.reduced(4, 0), Justification::centred, 1);
     }

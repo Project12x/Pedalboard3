@@ -772,9 +772,15 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);") !=
           std::string::npos);
+    CHECK(routingSource->find("drawControlLabel(g, panLabelAreas[ch].toFloat(), \"PAN\", cs);") !=
+          std::string::npos);
+    CHECK(routingSource->find("drawControlLabel(g, gainLabelAreas[ch].toFloat(), \"VOL\", cs);") !=
+          std::string::npos);
+    CHECK(routingSource->find("drawHorizontalVuMeter(g, meterRails[ch], ch, cs);") !=
+          std::string::npos);
     CHECK(routingSource->find("drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);") !=
           std::string::npos);
-    CHECK(routingSource->find("drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);") !=
+    CHECK(routingSource->find("if (processor->isVerticalLayout())\n                drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);") !=
           std::string::npos);
     CHECK(routingSource->find("ColourGradient gainFill(accent.withAlpha(0.58f)") != std::string::npos);
     CHECK(routingSource->find("auto thumb = Rectangle<float>(thumbX - 3.0f, track.getCentreY() - 6.5f, 6.0f, 13.0f);") !=
@@ -808,6 +814,12 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainRails;") !=
           std::string::npos);
+    CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> meterRails;") !=
+          std::string::npos);
+    CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> panLabelAreas;") !=
+          std::string::npos);
+    CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainLabelAreas;") !=
+          std::string::npos);
     CHECK(routingSource->find("void layoutHorizontal(Rectangle<int> area)") != std::string::npos);
     CHECK(routingSource->find("void layoutVertical(Rectangle<int> area)") != std::string::npos);
 
@@ -819,6 +831,10 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));") !=
           std::string::npos);
     CHECK(routingSource->find("auto strip = area.removeFromLeft(stripW).reduced(4, 0);") !=
+          std::string::npos);
+    CHECK(routingSource->find("meterRails[ch] = strip.removeFromTop(12).reduced(8, 3);") !=
+          std::string::npos);
+    CHECK(routingSource->find("vuAreas[ch] = strip.removeFromTop(48).withSizeKeepingCentre(18, 48);") ==
           std::string::npos);
     CHECK(routingSource->find("auto row = area.removeFromTop(kMixerVerticalStripRowHeight);") !=
           std::string::npos);

@@ -1087,9 +1087,12 @@ Component* MixerProcessor::getControls()
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
                 vuAreas[ch] = {};
+                meterRails[ch] = {};
                 stripDecks[ch] = {};
                 badgeAreas[ch] = {};
+                panLabelAreas[ch] = {};
                 panRails[ch] = {};
+                gainLabelAreas[ch] = {};
                 gainRails[ch] = {};
                 valueAreas[ch] = {};
             }
@@ -1097,6 +1100,8 @@ Component* MixerProcessor::getControls()
             masterDeck = {};
             masterBadgeArea = {};
             masterPanRail = {};
+            masterMeterRail = {};
+            masterGainLabelArea = {};
             masterGainRail = {};
             masterFaderArea = {};
             masterValueArea = {};
@@ -1117,14 +1122,19 @@ Component* MixerProcessor::getControls()
                 phaseButtons[ch].setBounds(top.removeFromRight(19).reduced(1, 3));
                 stereoButtons[ch].setBounds(top.removeFromRight(23).reduced(1, 3));
 
-                panRails[ch] = strip.removeFromTop(12).reduced(11, 3);
+                auto panRow = strip.removeFromTop(18);
+                panLabelAreas[ch] = panRow.removeFromLeft(25).reduced(0, 2);
+                panRails[ch] = panRow.reduced(2, 5);
                 panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
 
-                strip.removeFromTop(5);
-                vuAreas[ch] = strip.removeFromTop(48).withSizeKeepingCentre(18, 48);
+                strip.removeFromTop(3);
+                meterRails[ch] = strip.removeFromTop(12).reduced(8, 3);
 
-                valueAreas[ch] = strip.removeFromTop(17).reduced(0, 1);
-                gainRails[ch] = strip.removeFromTop(13).reduced(8, 3);
+                strip.removeFromTop(4);
+                auto gainRow = strip.removeFromTop(20);
+                gainLabelAreas[ch] = gainRow.removeFromLeft(25).reduced(0, 2);
+                valueAreas[ch] = gainRow.removeFromRight(31).reduced(0, 1);
+                gainRails[ch] = gainRow.reduced(2, 5);
                 faders[ch].setBounds(gainRails[ch].expanded(8, 6));
 
                 strip.removeFromTop(2);
@@ -1139,11 +1149,12 @@ Component* MixerProcessor::getControls()
             masterDeck = masterStrip;
             auto masterTop = masterStrip.removeFromTop(22);
             masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
-            masterPanRail = masterStrip.removeFromTop(12).reduced(11, 3);
-            masterStrip.removeFromTop(5);
-            masterFaderArea = masterStrip.removeFromTop(48).withSizeKeepingCentre(18, 48);
-            masterValueArea = masterStrip.removeFromTop(17).reduced(0, 1);
-            masterGainRail = masterStrip.removeFromTop(13).reduced(8, 3);
+            masterMeterRail = masterStrip.removeFromTop(12).reduced(8, 3);
+            masterStrip.removeFromTop(7);
+            auto masterGainRow = masterStrip.removeFromTop(20);
+            masterGainLabelArea = masterGainRow.removeFromLeft(25).reduced(0, 2);
+            masterValueArea = masterGainRow.removeFromRight(31).reduced(0, 1);
+            masterGainRail = masterGainRow.reduced(2, 5);
             masterFader.setBounds(masterGainRail.expanded(8, 6));
             masterStrip.removeFromTop(2);
             masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
@@ -1168,9 +1179,12 @@ Component* MixerProcessor::getControls()
 
                 valueAreas[ch] = strip.removeFromRight(42).reduced(0, 13);
                 vuAreas[ch] = strip.removeFromRight(30).reduced(5, 3).withWidth(18);
+                gainLabelAreas[ch] = vuAreas[ch].withHeight(10).withY(stripDecks[ch].getY() + 5);
                 faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
 
-                panRails[ch] = strip.removeFromTop(14).reduced(8, 4);
+                auto panRow = strip.removeFromTop(14);
+                panLabelAreas[ch] = panRow.removeFromLeft(26).reduced(0, 2);
+                panRails[ch] = panRow.reduced(6, 4);
                 panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
             }
 
@@ -1197,10 +1211,20 @@ Component* MixerProcessor::getControls()
             {
                 paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));
                 paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);
+                drawControlLabel(g, panLabelAreas[ch].toFloat(), "PAN", cs);
                 paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
-                drawVuMeter(g, ch, cs);
+                if (verticalLayout)
+                {
+                    drawControlLabel(g, gainLabelAreas[ch].toFloat(), "VOL", cs);
+                    drawVuMeter(g, ch, cs);
+                }
+                else
+                    drawHorizontalVuMeter(g, meterRails[ch], ch, cs);
                 if (!verticalLayout)
+                {
+                    drawControlLabel(g, gainLabelAreas[ch].toFloat(), "VOL", cs);
                     drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);
+                }
                 g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
                 g.setFont(Font(9.8f, Font::bold));
                 g.drawText(String(processor->getChannelGainDb(ch), 1), valueAreas[ch], Justification::centred, true);
@@ -1208,10 +1232,17 @@ Component* MixerProcessor::getControls()
 
             paintMixerMasterDeck(g, masterDeck.toFloat(), accent);
             paintRoutingBadge(g, masterBadgeArea.toFloat(), "M", accent, true);
-            paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
-            drawMasterFader(g, cs);
+            if (!masterPanRail.isEmpty())
+                paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
+            if (verticalLayout)
+                drawMasterFader(g, cs);
+            else
+                drawHorizontalMasterVuMeter(g, masterMeterRail, cs);
             if (!verticalLayout)
+            {
+                drawControlLabel(g, masterGainLabelArea.toFloat(), "VOL", cs);
                 drawGainRail(g, masterGainRail.toFloat(), processor->getMasterGainDb(), accent, cs);
+            }
             g.setColour(cs.colours["Text Colour"].withAlpha(0.72f));
             g.setFont(Font(9.8f, Font::bold));
             g.drawText(String(processor->getMasterGainDb(), 1), masterValueArea, Justification::centred, true);
@@ -1231,14 +1262,19 @@ Component* MixerProcessor::getControls()
         Slider masterFader;
         TextButton masterMuteButton;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> vuAreas;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> meterRails;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> stripDecks;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> badgeAreas;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> panLabelAreas;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> panRails;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainLabelAreas;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainRails;
         std::array<Rectangle<int>, MixerProcessor::MaxStrips> valueAreas;
         Rectangle<int> masterDeck;
         Rectangle<int> masterBadgeArea;
         Rectangle<int> masterPanRail;
+        Rectangle<int> masterMeterRail;
+        Rectangle<int> masterGainLabelArea;
         Rectangle<int> masterGainRail;
         Rectangle<int> masterFaderArea;
         Rectangle<int> masterValueArea;
@@ -1303,6 +1339,16 @@ Component* MixerProcessor::getControls()
             }
         }
 
+        void drawControlLabel(Graphics& g, Rectangle<float> bounds, const String& text, ColourScheme& cs)
+        {
+            if (bounds.isEmpty())
+                return;
+
+            g.setFont(Font(8.2f, Font::bold));
+            g.setColour(cs.colours["Text Colour"].withAlpha(0.52f));
+            g.drawText(text, bounds.toNearestInt(), Justification::centredLeft, true);
+        }
+
         void drawGainRail(Graphics& g, Rectangle<float> bounds, float gainDb, Colour accent, ColourScheme& cs)
         {
             if (bounds.isEmpty())
@@ -1330,6 +1376,75 @@ Component* MixerProcessor::getControls()
             g.fillRoundedRectangle(thumb, 2.0f);
             g.setColour(accent.withAlpha(0.54f));
             g.drawRoundedRectangle(track.reduced(0.5f), 3.0f, 0.8f);
+        }
+
+        void drawHorizontalVuMeter(Graphics& g, Rectangle<int> area, int ch, ColourScheme& cs)
+        {
+            if (area.isEmpty())
+                return;
+
+            auto* strip = processor->getStrip(ch);
+            const float vuL = strip != nullptr ? strip->vuL.load(std::memory_order_relaxed) : 0.0f;
+            const float vuR = strip != nullptr ? strip->vuR.load(std::memory_order_relaxed) : 0.0f;
+            const float peakL = strip != nullptr ? strip->peakL.load(std::memory_order_relaxed) : 0.0f;
+            const float peakR = strip != nullptr ? strip->peakR.load(std::memory_order_relaxed) : 0.0f;
+
+            drawHorizontalMeterPair(g, area, vuL, vuR, peakL, peakR, cs);
+        }
+
+        void drawHorizontalMasterVuMeter(Graphics& g, Rectangle<int> area, ColourScheme& cs)
+        {
+            if (area.isEmpty())
+                return;
+
+            drawHorizontalMeterPair(g, area,
+                                    processor->masterVuL.load(std::memory_order_relaxed),
+                                    processor->masterVuR.load(std::memory_order_relaxed),
+                                    processor->masterPeakL.load(std::memory_order_relaxed),
+                                    processor->masterPeakR.load(std::memory_order_relaxed), cs);
+        }
+
+        void drawHorizontalMeterPair(Graphics& g, Rectangle<int> area, float vuL, float vuR, float peakL, float peakR,
+                                     ColourScheme& cs)
+        {
+            const auto outline = area;
+            g.setColour(cs.colours["Plugin Background"].darker(0.35f));
+            g.fillRoundedRectangle(area.toFloat(), 3.0f);
+
+            auto upper = area.removeFromTop(jmax(2, area.getHeight() / 2)).reduced(1, 0);
+            auto lower = area.reduced(1, 0);
+            drawSingleHorizontalBar(g, upper, vuL, peakL, cs);
+            drawSingleHorizontalBar(g, lower, vuR, peakR, cs);
+
+            g.setColour(getRoutingNodeAccent().withAlpha(0.24f));
+            g.drawRoundedRectangle(outline.toFloat().reduced(0.5f), 3.0f, 0.8f);
+        }
+
+        void drawSingleHorizontalBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
+        {
+            if (bar.isEmpty())
+                return;
+
+            const float vuDb = Decibels::gainToDecibels(vuLevel, -60.0f);
+            const float norm = jlimit(0.0f, 1.0f, (vuDb + 60.0f) / 72.0f);
+            auto fill = bar.withWidth(jmax(1, static_cast<int>(bar.getWidth() * norm))).toFloat();
+
+            ColourGradient meterFill(cs.colours["VU Meter Lower Colour"].withAlpha(0.50f), fill.getX(), fill.getY(),
+                                     cs.colours["VU Meter Upper Colour"].withAlpha(0.58f), fill.getRight(),
+                                     fill.getY(), false);
+            meterFill.addColour(0.82, cs.colours["VU Meter Over Colour"].withAlpha(0.44f));
+            g.setGradientFill(meterFill);
+            g.fillRoundedRectangle(fill, 1.5f);
+
+            const float peakDb = Decibels::gainToDecibels(peakLevel, -60.0f);
+            const float peakNorm = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 72.0f);
+            if (peakNorm > 0.001f)
+            {
+                const float peakX = static_cast<float>(bar.getX()) + static_cast<float>(bar.getWidth()) * peakNorm;
+                g.setColour(Colours::white.withAlpha(0.58f));
+                g.drawVerticalLine(static_cast<int>(peakX), static_cast<float>(bar.getY()),
+                                   static_cast<float>(bar.getBottom()));
+            }
         }
 
         void drawMasterFader(Graphics& g, ColourScheme& cs)
