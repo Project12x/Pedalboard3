@@ -59,8 +59,12 @@ class NAMLookAndFeel : public LookAndFeel_V4
     Colour ampHeaderBg;        // Header bar background
     Colour ampAccent;          // Primary accent (warm orange from Warning Colour)
     Colour ampAccentSecondary; // Secondary accent (from Slider Colour)
-    Colour ampTextBright;      // Primary text
-    Colour ampTextDim;         // Secondary/label text
+    Colour ampTextBright;      // Primary text on NAM panels/insets
+    Colour ampTextDim;         // Secondary text on NAM panels/insets
+    Colour ampHostTextBright;  // Primary text on the surrounding node shell
+    Colour ampHostTextDim;     // Secondary text on the surrounding node shell
+    Colour ampPanelTextBright; // Primary text on dark cards/buttons/readouts
+    Colour ampPanelTextDim;    // Secondary text on dark cards/buttons/readouts
     Colour ampLedOn;           // Active LED colour
     Colour ampLedOff;          // Inactive LED colour
     Colour ampKnobBody;        // Rotary knob body
@@ -90,6 +94,7 @@ class NAMControl : public Component, public Button::Listener, public Slider::Lis
     void sliderValueChanged(Slider* slider) override;
     void timerCallback() override;
     void mouseDown(const MouseEvent& event) override;
+    void parentHierarchyChanged() override;
 
     // Refresh theme colours
     void refreshColours();

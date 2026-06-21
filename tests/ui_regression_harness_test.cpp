@@ -632,8 +632,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
 
     const auto namSource = loadSourceFile("src/NAMControl.cpp");
     REQUIRE(namSource.has_value());
-    CHECK(namSource->find("ampTextBright = ampSurface.contrasting(0.92f);") != std::string::npos);
-    CHECK(namSource->find("ampTextDim = ampTextBright.withAlpha(0.68f);") !=
+    CHECK(namSource->find("ampHostTextBright = cs.colours[\"Text Colour\"];") != std::string::npos);
+    CHECK(namSource->find("ampPanelTextBright = ampInsetBg.contrasting(0.92f);") != std::string::npos);
+    CHECK(namSource->find("const auto shellTextDim = isEmbeddedInGraphNode() ? laf.ampHostTextDim : laf.ampTextDim;") !=
           std::string::npos);
     CHECK(namSource->find("std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow)") !=
           std::string::npos);
@@ -933,6 +934,11 @@ TEST_CASE("MIDI source nodes keep source-side labels and bottom keyboard hint",
           std::string::npos);
     CHECK(pluginSource->find("producesMidiSafe(plugin) || pluginName == \"MIDI Input\" || (plugin->getName() == \"OSC Input\")") !=
           std::string::npos);
+    CHECK(pluginSource->find("const bool midiInputSourceNode = pluginName == \"MIDI Input\";") !=
+          std::string::npos);
+    CHECK(pluginSource->find("titleLabel->setJustificationType(midiInputSourceNode ? Justification::centredRight") !=
+          std::string::npos);
+    CHECK(pluginSource->find("positionOutputTextForCurrentWidth();") != std::string::npos);
     CHECK(virtualMidiHeader->find("Point<int> getSize() override { return Point<int>(100, 60); }") !=
           std::string::npos);
     CHECK(virtualMidiSource->find("class VirtualMidiInputControl final : public Component") !=
@@ -1203,8 +1209,11 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(pluginSource->find("IconManager::DomainGlyph::Amp") != std::string::npos);
     CHECK(pluginSource->find("IconManager::DomainGlyph::Cabinet") != std::string::npos);
     CHECK(namSource->find("Colours::white") == std::string::npos);
-    CHECK(namSource->find("ampTextBright = ampSurface.contrasting(0.92f);") != std::string::npos);
-    CHECK(namSource->find("ampLedOff = ampTextBright.withAlpha(0.42f);") != std::string::npos);
+    CHECK(namSource->find("ampHostTextBright = cs.colours[\"Text Colour\"];") != std::string::npos);
+    CHECK(namSource->find("ampPanelTextBright = ampInsetBg.contrasting(0.92f);") != std::string::npos);
+    CHECK(namSource->find("ampLedOff = ampPanelTextBright.withAlpha(0.42f);") != std::string::npos);
+    CHECK(namSource->find("g.setColour(laf.ampHostTextDim.withAlpha(0.86f));") != std::string::npos);
+    CHECK(namSource->find("g.setColour(laf.ampPanelTextDim.withAlpha(0.72f));") != std::string::npos);
     CHECK(namSource->find("auto area = bounds.reduced(3, 2);") != std::string::npos);
     CHECK(namSource->find("auto modelButtons = captureSection.removeFromTop(27).reduced(3, 2);") !=
           std::string::npos);
@@ -1652,9 +1661,13 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
           std::string::npos);
     CHECK(browserSource->find("const int headerGap = compactLayout ? 10 : 14;") != std::string::npos);
     CHECK(browserSource->find("const int searchHeight = compactLayout ? 32 : 34;") != std::string::npos);
-    CHECK(browserSource->find("const int tabLeftInset = jmax(0, (titleRow.getWidth() - tabStripWidth) / 2);") !=
+    CHECK(browserSource->find("const auto titleRowOriginal = bounds.removeFromTop(compactLayout ? 28 : 34);") !=
           std::string::npos);
-    CHECK(browserSource->find("auto titleTextRow = titleRow.withWidth(jmax(0, tabLeftInset - titleGap));") !=
+    CHECK(browserSource->find("const int tabStripX = titleRowOriginal.getX() + jmax(0, (titleRowOriginal.getWidth() - tabStripWidth) / 2);") !=
+          std::string::npos);
+    CHECK(browserSource->find("auto tabRow = Rectangle<int>(tabStripX, titleRowOriginal.getY(), tabStripWidth, titleRowOriginal.getHeight());") !=
+          std::string::npos);
+    CHECK(browserSource->find("auto titleTextRow = titleRowOriginal.withRight(jmax(titleRowOriginal.getX(), tabRow.getX() - titleGap));") !=
           std::string::npos);
     CHECK(browserSource->find("titleLabel->setBounds(titleTextRow);") != std::string::npos);
     CHECK(browserSource->find("g.drawText(window.getName(), titleSpaceX, 0, titleSpaceW, h, Justification::centred, true);") !=

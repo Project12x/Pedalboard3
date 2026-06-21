@@ -1344,10 +1344,13 @@ void PluginComponent::resized()
 //------------------------------------------------------------------------------
 void PluginComponent::layoutTitleLabel()
 {
+    const bool midiInputSourceNode = pluginName == "MIDI Input";
     const int titleLeft = isRackBoundaryNode(node) ? 12 : (isAudioIONode() ? 22 : 20);
     const int titleRightInset = deleteButton ? 24 : 8;
     if (titleLabel != nullptr)
     {
+        titleLabel->setJustificationType(midiInputSourceNode ? Justification::centredRight
+                                                             : Justification::centredLeft);
         titleLabel->setBounds(titleLeft, 3, jmax(0, getWidth() - titleLeft - titleRightInset), 20);
         titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
@@ -2194,6 +2197,14 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
 
     bool showLabels = (!proc) || shouldDrawHostPinText(pluginName);
     const bool compactPinLabels = usesCompactHostPinLabels(pluginName);
+    auto positionOutputTextForCurrentWidth = [&]()
+    {
+        const float outputRightInset = pluginName == "MIDI Input" ? 18.0f : 10.0f;
+        x = (w - outputWidth - outputRightInset);
+
+        for (i = 0; i < outputText.size(); ++i)
+            outputText[i]->moveRangeOfGlyphs(0, -1, x, 0.0f);
+    };
 
     // Use larger spacing for Audio I/O nodes (40px for VU + slider per channel)
     const float pinSpacing = isAudioIONode() ? 40.0f : 22.0f;
@@ -2366,14 +2377,6 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         if (isRackBoundaryNode(node))
             w = jmax(w, 140);
 
-        // Shift output texts to where they should be.
-        {
-            x = (w - outputWidth - 10.0f);
-
-            for (i = 0; i < outputText.size(); ++i)
-                outputText[i]->moveRangeOfGlyphs(0, -1, x, 0.0f);
-        }
-
         h = jmax(numInputPins, numOutputPins);
         h *= (int)pinSpacing;
 
@@ -2444,6 +2447,9 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         h = 92;
         spdlog::info("[determineSize] '{}': FINAL w={} h={}", pluginName.toStdString(), w, h);
     }
+
+    if (showLabels)
+        positionOutputTextForCurrentWidth();
 
     if (!onlyUpdateWidth && !isDirectPaintedEmbeddedNodeName(pluginName))
         h += getNodeParameterControlsHeight();

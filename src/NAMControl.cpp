@@ -47,16 +47,20 @@ void NAMLookAndFeel::refreshColours()
         ampHeaderBg = Colour(face2);
         ampAccent = Colour(accent);
         ampAccentSecondary = Colour(accent2);
-        ampTextBright = ampSurface.contrasting(0.92f);
-        ampTextDim = ampTextBright.withAlpha(0.68f);
+        ampInsetBg = Colour(inset);
+        ampHostTextBright = cs.colours["Text Colour"];
+        ampHostTextDim = ampHostTextBright.withAlpha(0.68f);
+        ampPanelTextBright = ampInsetBg.contrasting(0.92f);
+        ampPanelTextDim = ampPanelTextBright.withAlpha(0.68f);
+        ampTextBright = ampPanelTextBright;
+        ampTextDim = ampPanelTextDim;
         ampLedOn = Colour(led);
-        ampLedOff = ampTextBright.withAlpha(0.42f);
+        ampLedOff = ampPanelTextBright.withAlpha(0.42f);
         ampKnobBody = Colour(inset).brighter(0.08f);
         ampKnobRing = Colour(edge).brighter(0.42f);
         ampTrackBg = Colour(inset).darker(0.12f);
         ampButtonBg = Colour(face2);
         ampButtonHover = Colour(face2).brighter(0.14f);
-        ampInsetBg = Colour(inset);
     };
 
     if (preset == "Midnight")
@@ -90,8 +94,13 @@ void NAMLookAndFeel::refreshColours()
         ampHeaderBg = pluginBg.interpolatedWith(warnCol, 0.16f);
         ampAccent = warnCol;
         ampAccentSecondary = paramCol;
-        ampTextBright = ampSurface.contrasting(0.92f);
-        ampTextDim = ampTextBright.withAlpha(0.6f);
+        ampInsetBg = fieldBg.interpolatedWith(pluginBg, 0.35f);
+        ampHostTextBright = cs.colours["Text Colour"];
+        ampHostTextDim = ampHostTextBright.withAlpha(0.68f);
+        ampPanelTextBright = ampInsetBg.contrasting(0.92f);
+        ampPanelTextDim = ampPanelTextBright.withAlpha(0.68f);
+        ampTextBright = ampPanelTextBright;
+        ampTextDim = ampPanelTextDim;
         ampLedOn = cs.colours["Success Colour"].brighter(0.4f);
         ampLedOff = fieldBg.interpolatedWith(pluginBg, 0.55f).darker(0.25f);
         ampKnobBody = pluginBg.darker(0.15f);
@@ -99,7 +108,6 @@ void NAMLookAndFeel::refreshColours()
         ampTrackBg = ampBackground.darker(0.4f);
         ampButtonBg = cs.colours["Button Colour"];
         ampButtonHover = cs.colours["Button Highlight"];
-        ampInsetBg = fieldBg.interpolatedWith(pluginBg, 0.35f);
     }
 
     // Apply to JUCE colour IDs
@@ -519,7 +527,7 @@ void NAMLookAndFeel::drawLabel(Graphics& g, Label& label)
 
         if (!label.isBeingEdited())
         {
-            g.setColour(loaded || isArchChip ? ampTextBright : ampTextDim);
+            g.setColour(loaded || isArchChip ? ampPanelTextBright : ampPanelTextDim);
             g.setFont(label.getFont());
             if (isArchChip)
                 g.drawText(label.getText(), bounds.reduced(2.0f, 0.0f), label.getJustificationType(), true);
@@ -844,6 +852,11 @@ NAMControl::~NAMControl()
     setLookAndFeel(nullptr);
 }
 
+void NAMControl::parentHierarchyChanged()
+{
+    refreshColours();
+}
+
 bool NAMControl::isEmbeddedInGraphNode() const
 {
     return findParentComponentOfClass<PluginComponent>() != nullptr;
@@ -858,6 +871,7 @@ void NAMControl::refreshColours()
     const auto loadedChipBg = laf.ampInsetBg.interpolatedWith(laf.ampAccent, 0.06f);
     const auto loadedChipOutline = laf.ampAccent.withAlpha(0.32f);
     const auto emptyChipOutline = laf.ampBorder.withAlpha(0.75f);
+    const auto shellTextDim = isEmbeddedInGraphNode() ? laf.ampHostTextDim : laf.ampTextDim;
 
     modelNameLabel->setColour(Label::backgroundColourId, namProcessor->isModelLoaded() ? loadedChipBg : laf.ampInsetBg);
     modelNameLabel->setColour(Label::outlineColourId, namProcessor->isModelLoaded() ? loadedChipOutline : emptyChipOutline);
@@ -872,18 +886,18 @@ void NAMControl::refreshColours()
     modelArchLabel->setColour(Label::textColourId, laf.ampAccent);
 
     // Dim labels
-    irLowCutLabel->setColour(Label::textColourId, laf.ampTextDim);
-    irHighCutLabel->setColour(Label::textColourId, laf.ampTextDim);
-    irBlendLabel->setColour(Label::textColourId, laf.ampTextDim);
-    slimmableSizeLabel->setColour(Label::textColourId, laf.ampTextDim);
-    inputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
-    outputGainLabel->setColour(Label::textColourId, laf.ampTextDim);
-    noiseGateLabel->setColour(Label::textColourId, laf.ampTextDim);
-    bassLabel->setColour(Label::textColourId, laf.ampTextDim);
-    midLabel->setColour(Label::textColourId, laf.ampTextDim);
-    trebleLabel->setColour(Label::textColourId, laf.ampTextDim);
+    irLowCutLabel->setColour(Label::textColourId, shellTextDim);
+    irHighCutLabel->setColour(Label::textColourId, shellTextDim);
+    irBlendLabel->setColour(Label::textColourId, shellTextDim);
+    slimmableSizeLabel->setColour(Label::textColourId, shellTextDim);
+    inputGainLabel->setColour(Label::textColourId, shellTextDim);
+    outputGainLabel->setColour(Label::textColourId, shellTextDim);
+    noiseGateLabel->setColour(Label::textColourId, shellTextDim);
+    bassLabel->setColour(Label::textColourId, shellTextDim);
+    midLabel->setColour(Label::textColourId, shellTextDim);
+    trebleLabel->setColour(Label::textColourId, shellTextDim);
     for (auto& label : paramEqBandLabels)
-        label->setColour(Label::textColourId, laf.ampTextDim);
+        label->setColour(Label::textColourId, shellTextDim);
 
     repaint();
 }
@@ -980,7 +994,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.fillEllipse(dot);
 
         g.setFont(fm.getBadgeFont().withHeight(12.5f));
-        g.setColour(laf.ampTextDim.withAlpha(0.86f));
+        g.setColour(laf.ampHostTextDim.withAlpha(0.86f));
         g.drawText(title.toUpperCase(), header.withTrimmedLeft(14), Justification::centredLeft, true);
     };
 
@@ -1037,7 +1051,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.fillRoundedRectangle(slot, 9.0f);
         g.setColour((active ? accent : laf.ampBorder).withAlpha(active ? 0.50f : 0.34f));
         g.drawRoundedRectangle(slot.reduced(0.5f), 9.0f, 1.0f);
-        g.setColour(laf.ampTextBright.withAlpha(0.04f));
+        g.setColour(laf.ampPanelTextBright.withAlpha(0.04f));
         g.drawRoundedRectangle(slot.reduced(2.0f), 7.0f, 0.7f);
         if (active)
         {
@@ -1046,7 +1060,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         }
 
         g.setFont(fm.getBadgeFont().withHeight(11.0f));
-        g.setColour(laf.ampTextDim.withAlpha(0.72f));
+        g.setColour(laf.ampPanelTextDim.withAlpha(0.72f));
         g.drawText(label.toUpperCase(), slotBounds.reduced(10, 0).removeFromTop(20), Justification::centredLeft, true);
         ignoreUnused(value, badge);
     };
@@ -1133,7 +1147,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.drawRoundedRectangle(curve.reduced(0.5f), 7.0f, 0.8f);
 
         auto graph = curve.reduced(9.0f, 7.0f);
-        g.setColour(laf.ampTextDim.withAlpha(0.16f));
+        g.setColour(laf.ampPanelTextDim.withAlpha(0.16f));
         g.drawHorizontalLine(roundToInt(graph.getCentreY()), graph.getX(), graph.getRight());
 
         Path eqPath;
@@ -1203,7 +1217,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     drawMockupPill(archPill, modelArchLabel->getText().isNotEmpty() ? modelArchLabel->getText() : "NAM",
                    laf.ampAccent, false);
     g.setFont(fm.getBadgeFont().withHeight(12.0f));
-    g.setColour(laf.ampTextDim.withAlpha(0.72f));
+    g.setColour(laf.ampHostTextDim.withAlpha(0.72f));
     g.drawText(namProcessor->isModelLoaded() ? namProcessor->getModelName() : "No model selected",
                metaRow, Justification::centredLeft, true);
     captureSection.removeFromTop(27);
@@ -1215,7 +1229,7 @@ void NAMControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     if (cabinetIrCollapsed)
     {
         g.setFont(fm.getBadgeFont().withHeight(11.5f));
-        g.setColour(laf.ampTextDim.withAlpha(0.70f));
+        g.setColour(laf.ampHostTextDim.withAlpha(0.70f));
         g.drawText("Cabinet controls collapsed", cabinetSection.reduced(16, 0), Justification::centredLeft, true);
     }
     else
@@ -2194,7 +2208,7 @@ void NAMControl::updateModelDisplay()
             architectureBadge.equalsIgnoreCase("A2") ? laf.ampAccentSecondary : laf.ampAccent;
 
         modelNameLabel->setText(namProcessor->getModelName(), dontSendNotification);
-        modelNameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        modelNameLabel->setColour(Label::textColourId, laf.ampPanelTextBright);
         modelNameLabel->setColour(Label::backgroundColourId, loadedChipBg);
         modelNameLabel->setColour(Label::outlineColourId, loadedChipOutline);
 
@@ -2206,7 +2220,7 @@ void NAMControl::updateModelDisplay()
     else
     {
         modelNameLabel->setText("No Model Loaded", dontSendNotification);
-        modelNameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        modelNameLabel->setColour(Label::textColourId, laf.ampPanelTextDim);
         modelNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
         modelNameLabel->setColour(Label::outlineColourId, emptyChipOutline);
         modelArchLabel->setText("", dontSendNotification);
@@ -2227,14 +2241,14 @@ void NAMControl::updateIRDisplay()
     if (namProcessor->isIRLoaded())
     {
         irNameLabel->setText(namProcessor->getIRName(), dontSendNotification);
-        irNameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        irNameLabel->setColour(Label::textColourId, laf.ampPanelTextBright);
         irNameLabel->setColour(Label::backgroundColourId, loadedChipBg);
         irNameLabel->setColour(Label::outlineColourId, loadedChipOutline);
     }
     else
     {
         irNameLabel->setText("No IR Loaded", dontSendNotification);
-        irNameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        irNameLabel->setColour(Label::textColourId, laf.ampPanelTextDim);
         irNameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
         irNameLabel->setColour(Label::outlineColourId, emptyChipOutline);
     }
@@ -2242,14 +2256,14 @@ void NAMControl::updateIRDisplay()
     if (namProcessor->isIR2Loaded())
     {
         ir2NameLabel->setText(namProcessor->getIR2Name(), dontSendNotification);
-        ir2NameLabel->setColour(Label::textColourId, laf.ampTextBright);
+        ir2NameLabel->setColour(Label::textColourId, laf.ampPanelTextBright);
         ir2NameLabel->setColour(Label::backgroundColourId, loadedChipBg);
         ir2NameLabel->setColour(Label::outlineColourId, loadedChipOutline);
     }
     else
     {
         ir2NameLabel->setText("No IR2 Loaded", dontSendNotification);
-        ir2NameLabel->setColour(Label::textColourId, laf.ampTextDim);
+        ir2NameLabel->setColour(Label::textColourId, laf.ampPanelTextDim);
         ir2NameLabel->setColour(Label::backgroundColourId, laf.ampInsetBg);
         ir2NameLabel->setColour(Label::outlineColourId, emptyChipOutline);
     }

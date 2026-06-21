@@ -2161,23 +2161,23 @@ void NAMModelBrowserComponent::resized()
     modelList->setRowHeight(compactLayout ? 46 : 58);
 
     // Title row with tab buttons
-    auto titleRow = bounds.removeFromTop(compactLayout ? 28 : 34);
+    const auto titleRowOriginal = bounds.removeFromTop(compactLayout ? 28 : 34);
     const int titleGap = compactLayout ? 8 : 16;
     const int localTabWidth = compactLayout ? 58 : 70;
     const int onlineTabWidth = compactLayout ? 64 : 70;
     const int irTabWidth = compactLayout ? 44 : 55;
     const int tabStripWidth = localTabWidth + 2 + onlineTabWidth + 2 + irTabWidth;
     // The tabs are primary navigation and must remain visible at high app scale.
-    const int tabLeftInset = jmax(0, (titleRow.getWidth() - tabStripWidth) / 2);
-    auto titleTextRow = titleRow.withWidth(jmax(0, tabLeftInset - titleGap));
+    const int tabStripX = titleRowOriginal.getX() + jmax(0, (titleRowOriginal.getWidth() - tabStripWidth) / 2);
+    auto tabRow = Rectangle<int>(tabStripX, titleRowOriginal.getY(), tabStripWidth, titleRowOriginal.getHeight());
+    auto titleTextRow = titleRowOriginal.withRight(jmax(titleRowOriginal.getX(), tabRow.getX() - titleGap));
     titleLabel->setBounds(titleTextRow);
     titleLabel->setVisible(titleTextRow.getWidth() >= (compactLayout ? 150 : 220));
-    titleRow.removeFromLeft(tabLeftInset);
-    localTabButton->setBounds(titleRow.removeFromLeft(localTabWidth));
-    titleRow.removeFromLeft(2);
-    onlineTabButton->setBounds(titleRow.removeFromLeft(onlineTabWidth));
-    titleRow.removeFromLeft(2);
-    irTabButton->setBounds(titleRow.removeFromLeft(irTabWidth));
+    localTabButton->setBounds(tabRow.removeFromLeft(localTabWidth));
+    tabRow.removeFromLeft(2);
+    onlineTabButton->setBounds(tabRow.removeFromLeft(onlineTabWidth));
+    tabRow.removeFromLeft(2);
+    irTabButton->setBounds(tabRow.removeFromLeft(irTabWidth));
 
     bounds.removeFromTop(compactLayout ? 14 : 20);
 
