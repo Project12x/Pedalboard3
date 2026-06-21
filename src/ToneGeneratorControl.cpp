@@ -18,24 +18,34 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
 {
     auto& colours = ColourScheme::getInstance().colours;
 
+    const int waveformRadioGroup = 1000;
+
     // Waveform buttons
     sineBtn = std::make_unique<TextButton>("SIN");
     sineBtn->addListener(this);
+    sineBtn->setClickingTogglesState(true);
+    sineBtn->setRadioGroupId(waveformRadioGroup);
     sineBtn->setTooltip("Sine wave - pure tone for tuner testing");
     addAndMakeVisible(sineBtn.get());
 
     sawBtn = std::make_unique<TextButton>("SAW");
     sawBtn->addListener(this);
+    sawBtn->setClickingTogglesState(true);
+    sawBtn->setRadioGroupId(waveformRadioGroup);
     sawBtn->setTooltip("Sawtooth wave - harmonic-rich for plugin testing");
     addAndMakeVisible(sawBtn.get());
 
     squareBtn = std::make_unique<TextButton>("SQR");
     squareBtn->addListener(this);
+    squareBtn->setClickingTogglesState(true);
+    squareBtn->setRadioGroupId(waveformRadioGroup);
     squareBtn->setTooltip("Square wave - digital edge cases");
     addAndMakeVisible(squareBtn.get());
 
     noiseBtn = std::make_unique<TextButton>("NOISE");
     noiseBtn->addListener(this);
+    noiseBtn->setClickingTogglesState(true);
+    noiseBtn->setRadioGroupId(waveformRadioGroup);
     noiseBtn->setTooltip("White noise - stress testing");
     addAndMakeVisible(noiseBtn.get());
 
@@ -45,7 +55,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     frequencySlider->setSkewFactorFromMidPoint(440.0);
     frequencySlider->setValue(processor->getFrequency(), dontSendNotification);
     frequencySlider->addListener(this);
-    frequencySlider->setTextValueSuffix(" Hz");
+    frequencySlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+    frequencySlider->setAlpha(0.01f);
     addAndMakeVisible(frequencySlider.get());
 
     // Detune slider
@@ -53,7 +64,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextValueSuffix(String::fromUTF8(" \xC2\xA2")); // Cent sign (U+00A2)
+    detuneSlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+    detuneSlider->setAlpha(0.01f);
     addAndMakeVisible(detuneSlider.get());
 
     // Detune preset buttons (boundary testing)
@@ -106,6 +118,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     amplitudeSlider->setRange(0.0, 1.0, 0.01);
     amplitudeSlider->setValue(processor->getAmplitude(), dontSendNotification);
     amplitudeSlider->addListener(this);
+    amplitudeSlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+    amplitudeSlider->setAlpha(0.01f);
     addAndMakeVisible(amplitudeSlider.get());
 
     // Play button
@@ -114,10 +128,13 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     playButton->setColour(TextButton::buttonColourId, colours["Success Colour"].darker(0.3f));
     addAndMakeVisible(playButton.get());
 
+    updateDisplay();
+    syncButtonStates();
+
     // Update display at 30fps
     startTimerHz(30);
 
-    setSize(280, 180);
+    setSize(320, 190);
 }
 
 ToneGeneratorControl::~ToneGeneratorControl()
@@ -128,7 +145,6 @@ ToneGeneratorControl::~ToneGeneratorControl()
 //==============================================================================
 void ToneGeneratorControl::buttonClicked(Button* button)
 {
-    auto& colours = ColourScheme::getInstance().colours;
     if (toneProcessor == nullptr)
         return;
 
@@ -184,11 +200,9 @@ void ToneGeneratorControl::buttonClicked(Button* button)
     {
         bool nowPlaying = !toneProcessor->isPlaying();
         toneProcessor->setPlaying(nowPlaying);
-        playButton->setButtonText(nowPlaying ? "STOP" : "PLAY");
-        playButton->setColour(TextButton::buttonColourId, nowPlaying ? colours["Danger Colour"].darker(0.3f)
-                                                                     : colours["Success Colour"].darker(0.3f));
     }
 
+    syncButtonStates();
     repaint();
 }
 
@@ -203,6 +217,9 @@ void ToneGeneratorControl::sliderValueChanged(Slider* slider)
         toneProcessor->setDetuneCents(static_cast<float>(slider->getValue()));
     else if (slider == amplitudeSlider.get())
         toneProcessor->setAmplitude(static_cast<float>(slider->getValue()));
+
+    updateDisplay();
+    repaint();
 }
 
 //==============================================================================
@@ -211,9 +228,7 @@ void ToneGeneratorControl::timerCallback()
     if (toneProcessor == nullptr)
         return;
 
-    displayedFrequency = toneProcessor->getActualFrequency();
-    int midiNote = ToneGeneratorProcessor::frequencyToMidiNote(displayedFrequency);
-    displayedNote = getNoteName(midiNote);
+    updateDisplay();
 
     repaint();
 }
@@ -223,99 +238,351 @@ void ToneGeneratorControl::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto& fonts = FontManager::getInstance();
-    auto bounds = getLocalBounds().toFloat();
+    const auto accent = Colour(0xFF39D3E6);
+    const auto warning = colours["Warning Colour"];
+    const auto success = colours["Success Colour"];
 
-    // Background
-    g.setColour(colours["Plugin Background"]);
-    g.fillAll();
+    drawChromeShell(g, getLocalBounds().toFloat());
+    drawDisplayPanel(g, displayPanel.toFloat());
+    drawWaveformGlyph(g, waveformGlyphArea.toFloat());
 
-    // Border
-    g.setColour(colours["Plugin Border"].withAlpha(0.3f));
-    g.drawRect(bounds.reduced(1), 1.0f);
-
-    // Frequency display
-    auto displayArea = bounds.removeFromTop(26).reduced(10, 0);
-    g.setFont(fonts.getMonoDisplayFont(16.0f));
-    g.setColour(Colour(0xFF00E676));
-    g.drawText(String(displayedFrequency, 1) + " Hz  " + displayedNote, displayArea, Justification::left);
-
-    // Labels
-    g.setColour(colours["Text Colour"].withAlpha(0.6f));
+    g.setColour(colours["Text Colour"].withAlpha(0.88f));
     g.setFont(fonts.getBadgeFont());
-    g.drawText("Freq:", Rectangle<float>(10, 28, 34, 14), Justification::left);
-    g.drawText("Detune:", Rectangle<float>(10, 50, 44, 14), Justification::left);
-    g.drawText("Level:", Rectangle<float>(10, 92, 34, 14), Justification::left);
+    g.drawText("PITCH", pitchPanel.toFloat().removeFromTop(12.0f), Justification::left);
+    g.drawText("WAVE", waveformPanel.toFloat().removeFromTop(12.0f), Justification::left);
+    g.drawText("OUTPUT", bottomPanel.toFloat().removeFromTop(12.0f), Justification::left);
+
+    const auto baseFrequency = toneProcessor != nullptr ? toneProcessor->getFrequency() : 440.0f;
+    const auto detune = toneProcessor != nullptr ? toneProcessor->getDetuneCents() : 0.0f;
+    const auto amplitude = toneProcessor != nullptr ? toneProcessor->getAmplitude() : 0.0f;
+    const auto freqNorm = jlimit(0.0f, 1.0f,
+                                 (std::log10(jmax(20.0f, baseFrequency)) - std::log10(20.0f)) /
+                                     (std::log10(2000.0f) - std::log10(20.0f)));
+    const auto detuneNorm = jmap(jlimit(-100.0f, 100.0f, detune), -100.0f, 100.0f, 0.0f, 1.0f);
+
+    drawSliderLane(g, frequencyRail.toFloat(), "FREQ", freqNorm, accent);
+    drawSliderLane(g, detuneRail.toFloat(), "FINE", detuneNorm, warning);
+    drawSliderLane(g, amplitudeRail.toFloat(), "LVL", jlimit(0.0f, 1.0f, amplitude), success);
+
+    drawValueChip(g, detuneChipArea.toFloat(), String(detune, 1) + String::fromUTF8(" \xC2\xA2"), warning);
+    drawValueChip(g, amplitudeChipArea.toFloat(), String(static_cast<int>(std::round(amplitude * 100.0f))) + "%", success);
+
+    if (toneProcessor != nullptr && toneProcessor->isPlaying())
+    {
+        auto led = headerArea.toFloat().removeFromLeft(18.0f).reduced(2.0f).withSizeKeepingCentre(9.0f, 9.0f);
+        g.setColour(success.withAlpha(0.28f));
+        g.fillEllipse(led.expanded(5.0f));
+        g.setColour(success);
+        g.fillEllipse(led);
+    }
 }
 
 void ToneGeneratorControl::resized()
 {
     auto& colours = ColourScheme::getInstance().colours;
-    auto bounds = getLocalBounds().reduced(10, 4);
+    auto bounds = getLocalBounds().reduced(8, 6);
 
-    bounds.removeFromTop(26); // Frequency display
-
-    // Frequency slider row
-    auto freqRow = bounds.removeFromTop(20);
-    freqRow.removeFromLeft(40); // Label space
-    frequencySlider->setBounds(freqRow);
-
-    bounds.removeFromTop(2);
-
-    // Detune row
-    auto detuneRow = bounds.removeFromTop(20);
-    detuneRow.removeFromLeft(50); // Label space
-
-    // Detune slider takes most of the row
-    auto presetArea = detuneRow.removeFromRight(116);
-    detuneSlider->setBounds(detuneRow);
-
-    // Preset buttons (wider with spacing for text visibility)
-    int btnW = 28;
-    detune1Btn->setBounds(presetArea.removeFromLeft(btnW));
-    presetArea.removeFromLeft(1);
-    detune5Btn->setBounds(presetArea.removeFromLeft(btnW));
-    presetArea.removeFromLeft(1);
-    detune50Btn->setBounds(presetArea.removeFromLeft(btnW));
-    presetArea.removeFromLeft(1);
-    detune99Btn->setBounds(presetArea.removeFromLeft(btnW));
-
+    headerArea = bounds.removeFromTop(20);
     bounds.removeFromTop(4);
 
-    // Waveform buttons row
-    auto waveformRow = bounds.removeFromTop(18);
-    int wfBtnW = waveformRow.getWidth() / 4;
-    sineBtn->setBounds(waveformRow.removeFromLeft(wfBtnW));
-    sawBtn->setBounds(waveformRow.removeFromLeft(wfBtnW));
-    squareBtn->setBounds(waveformRow.removeFromLeft(wfBtnW));
-    noiseBtn->setBounds(waveformRow);
+    displayPanel = bounds.removeFromTop(54);
+    auto displayInner = displayPanel.reduced(8, 7);
+    waveformGlyphArea = displayInner.removeFromRight(70);
+    displayInner.removeFromRight(8);
+    frequencyChipArea = displayInner.removeFromTop(24);
+    noteChipArea = displayInner.removeFromTop(18).withWidth(62);
 
-    bounds.removeFromTop(2);
+    bounds.removeFromTop(5);
+    pitchPanel = bounds.removeFromTop(38);
 
-    // Amplitude slider row
-    auto ampRow = bounds.removeFromTop(20);
-    ampRow.removeFromLeft(40); // Label space
-    amplitudeSlider->setBounds(ampRow);
+    auto pitchInner = pitchPanel.reduced(8, 5);
+    auto freqRow = pitchInner.removeFromTop(13);
+    frequencyChipArea = frequencyChipArea.reduced(0, 1);
+    frequencyRail = freqRow.withTrimmedLeft(35);
+    frequencySlider->setBounds(frequencyRail.expanded(7, 6));
+
+    pitchInner.removeFromTop(4);
+    auto detuneRow = pitchInner.removeFromTop(13);
+    auto presetArea = detuneRow.removeFromRight(112);
+    detuneChipArea = detuneRow.removeFromRight(50).reduced(0, -2);
+    detuneRail = detuneRow.withTrimmedLeft(35);
+    detuneSlider->setBounds(detuneRail.expanded(7, 6));
+
+    int btnW = 26;
+    detune1Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    presetArea.removeFromLeft(2);
+    detune5Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    presetArea.removeFromLeft(2);
+    detune50Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    presetArea.removeFromLeft(2);
+    detune99Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+
+    bounds.removeFromTop(5);
+    waveformPanel = bounds.removeFromTop(22);
+    auto waveformButtons = waveformPanel.reduced(8, 2);
+    const int wfBtnW = waveformButtons.getWidth() / 4;
+    sineBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
+    sawBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
+    squareBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
+    noiseBtn->setBounds(waveformButtons.reduced(1, 0));
 
     bounds.removeFromTop(4);
+    bottomPanel = bounds.removeFromTop(26);
+    auto bottomInner = bottomPanel.reduced(8, 4);
+    auto levelArea = bottomInner.removeFromLeft(118);
+    amplitudeChipArea = levelArea.removeFromRight(38).reduced(0, -1);
+    amplitudeRail = levelArea.withTrimmedLeft(30).reduced(0, 2);
+    amplitudeSlider->setBounds(amplitudeRail.expanded(7, 6));
 
-    // Test mode + Play row
-    auto modeRow = bounds.removeFromTop(22);
-    int modeBtnW = 50;
-    staticBtn->setBounds(modeRow.removeFromLeft(modeBtnW));
-    modeRow.removeFromLeft(2);
-    sweepBtn->setBounds(modeRow.removeFromLeft(modeBtnW));
-    modeRow.removeFromLeft(2);
-    driftBtn->setBounds(modeRow.removeFromLeft(modeBtnW));
-    modeRow.removeFromLeft(8);
-    playButton->setBounds(modeRow);
+    bottomInner.removeFromLeft(7);
+    modePanel = bottomInner;
+    const int modeBtnW = 43;
+    staticBtn->setBounds(modePanel.removeFromLeft(modeBtnW).reduced(1, 0));
+    modePanel.removeFromLeft(2);
+    sweepBtn->setBounds(modePanel.removeFromLeft(modeBtnW).reduced(1, 0));
+    modePanel.removeFromLeft(2);
+    driftBtn->setBounds(modePanel.removeFromLeft(modeBtnW).reduced(1, 0));
+    modePanel.removeFromLeft(6);
+    playButton->setBounds(modePanel.reduced(0, -1));
 
-    // Style all buttons
-    for (auto* btn : {sineBtn.get(), sawBtn.get(), squareBtn.get(), noiseBtn.get(), detune1Btn.get(), detune5Btn.get(),
-                      detune50Btn.get(), detune99Btn.get(), staticBtn.get(), sweepBtn.get(), driftBtn.get()})
+    syncButtonStates();
+
+    for (auto* btn : {detune1Btn.get(), detune5Btn.get(), detune50Btn.get(), detune99Btn.get()})
+        styleButtonChrome(*btn, colours["Warning Colour"], false);
+}
+
+void ToneGeneratorControl::updateDisplay()
+{
+    if (toneProcessor == nullptr)
+        return;
+
+    displayedFrequency = toneProcessor->getActualFrequency();
+    const int midiNote = ToneGeneratorProcessor::frequencyToMidiNote(displayedFrequency);
+    displayedNote = getNoteName(midiNote);
+}
+
+void ToneGeneratorControl::syncButtonStates()
+{
+    if (toneProcessor == nullptr)
+        return;
+
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto accent = Colour(0xFF39D3E6);
+    const auto waveform = toneProcessor->getWaveform();
+    const auto mode = toneProcessor->getTestMode();
+    const auto playing = toneProcessor->isPlaying();
+
+    sineBtn->setToggleState(waveform == ToneGeneratorProcessor::Waveform::Sine, dontSendNotification);
+    sawBtn->setToggleState(waveform == ToneGeneratorProcessor::Waveform::Saw, dontSendNotification);
+    squareBtn->setToggleState(waveform == ToneGeneratorProcessor::Waveform::Square, dontSendNotification);
+    noiseBtn->setToggleState(waveform == ToneGeneratorProcessor::Waveform::WhiteNoise, dontSendNotification);
+
+    staticBtn->setToggleState(mode == ToneGeneratorProcessor::TestMode::Static, dontSendNotification);
+    sweepBtn->setToggleState(mode == ToneGeneratorProcessor::TestMode::Sweep, dontSendNotification);
+    driftBtn->setToggleState(mode == ToneGeneratorProcessor::TestMode::Drift, dontSendNotification);
+
+    styleButtonChrome(*sineBtn, accent, sineBtn->getToggleState());
+    styleButtonChrome(*sawBtn, accent, sawBtn->getToggleState());
+    styleButtonChrome(*squareBtn, accent, squareBtn->getToggleState());
+    styleButtonChrome(*noiseBtn, accent, noiseBtn->getToggleState());
+    styleButtonChrome(*staticBtn, colours["Button Highlight"], staticBtn->getToggleState());
+    styleButtonChrome(*sweepBtn, colours["Button Highlight"], sweepBtn->getToggleState());
+    styleButtonChrome(*driftBtn, colours["Button Highlight"], driftBtn->getToggleState());
+
+    playButton->setButtonText(playing ? "STOP" : "PLAY");
+    styleButtonChrome(*playButton, playing ? colours["Danger Colour"] : colours["Success Colour"], playing);
+}
+
+void ToneGeneratorControl::styleButtonChrome(TextButton& button, Colour accent, bool active)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    button.setColour(TextButton::buttonColourId,
+                     active ? accent.darker(0.45f).withMultipliedSaturation(1.25f)
+                            : colours["Plugin Background"].interpolatedWith(accent, 0.12f).brighter(0.02f));
+    button.setColour(TextButton::buttonOnColourId, accent.darker(0.35f));
+    button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(active ? 0.98f : 0.68f));
+    button.setColour(TextButton::textColourOnId, Colours::white.withAlpha(0.96f));
+}
+
+void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto accent = Colour(0xFF39D3E6);
+    const auto shell = bounds.reduced(2.0f);
+
+    ColourGradient body(colours["Plugin Background"].interpolatedWith(accent, 0.13f).brighter(0.05f), shell.getX(),
+                        shell.getY(), colours["Plugin Background"].darker(0.18f), shell.getX(), shell.getBottom(),
+                        false);
+    body.addColour(0.42, colours["Plugin Background"].interpolatedWith(accent, 0.08f));
+    body.addColour(0.74, colours["Plugin Background"].darker(0.07f));
+    g.setGradientFill(body);
+    g.fillRoundedRectangle(shell, 8.0f);
+
+    g.setColour(accent.withAlpha(0.18f));
+    g.drawRoundedRectangle(shell.reduced(0.5f), 8.0f, 1.4f);
+    g.setColour(Colours::white.withAlpha(0.08f));
+    g.drawLine(shell.getX() + 10.0f, shell.getY() + 1.0f, shell.getRight() - 10.0f, shell.getY() + 1.0f, 1.0f);
+    g.setColour(Colours::black.withAlpha(0.24f));
+    g.drawLine(shell.getX() + 8.0f, shell.getBottom() - 1.0f, shell.getRight() - 8.0f, shell.getBottom() - 1.0f, 1.0f);
+
+    auto header = headerArea.toFloat();
+    ColourGradient headerFill(accent.withAlpha(0.16f), header.getX(), header.getY(), Colours::black.withAlpha(0.18f),
+                              header.getX(), header.getBottom(), false);
+    g.setGradientFill(headerFill);
+    g.fillRoundedRectangle(header.reduced(1.0f), 5.0f);
+
+    auto led = header.removeFromLeft(17.0f).reduced(3.5f);
+    g.setColour(accent.withAlpha(0.22f));
+    g.fillEllipse(led.expanded(3.0f));
+    g.setColour(accent);
+    g.fillEllipse(led);
+    g.setColour(Colours::white.withAlpha(0.62f));
+    g.fillEllipse(led.withSizeKeepingCentre(3.0f, 3.0f).translated(-1.0f, -1.0f));
+
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.90f));
+    g.drawText("TONE GENERATOR", header.removeFromLeft(122.0f), Justification::centredLeft);
+    g.setColour(accent.withAlpha(0.52f));
+    g.drawText("CAL", header.removeFromRight(34.0f), Justification::centredRight);
+}
+
+void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto accent = Colour(0xFF39D3E6);
+    auto panel = bounds.reduced(1.0f);
+
+    ColourGradient panelFill(colours["Field Background"].darker(0.20f), panel.getX(), panel.getY(),
+                             colours["Field Background"].interpolatedWith(accent, 0.10f), panel.getX(),
+                             panel.getBottom(), false);
+    panelFill.addColour(0.35, colours["Plugin Background"].darker(0.18f));
+    g.setGradientFill(panelFill);
+    g.fillRoundedRectangle(panel, 7.0f);
+
+    g.setColour(accent.withAlpha(0.32f));
+    g.drawRoundedRectangle(panel, 7.0f, 1.1f);
+    g.setColour(Colours::white.withAlpha(0.07f));
+    g.drawLine(panel.getX() + 8.0f, panel.getY() + 1.0f, panel.getRight() - 8.0f, panel.getY() + 1.0f);
+
+    g.setFont(fonts.getMonoDisplayFont(20.0f));
+    g.setColour(accent.brighter(0.18f));
+    g.drawText(String(displayedFrequency, 1) + " Hz", frequencyChipArea.toFloat().expanded(0.0f, 2.0f),
+               Justification::centredLeft, true);
+
+    drawValueChip(g, noteChipArea.toFloat(), displayedNote, accent);
+
+    auto status = bounds.reduced(8.0f, 7.0f).removeFromRight(70.0f).removeFromBottom(16.0f);
+    const bool playing = toneProcessor != nullptr && toneProcessor->isPlaying();
+    drawValueChip(g, status, playing ? "ACTIVE" : "READY", playing ? colours["Success Colour"] : accent);
+}
+
+void ToneGeneratorControl::drawWaveformGlyph(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto accent = Colour(0xFF39D3E6);
+    auto tile = bounds.reduced(1.0f);
+
+    ColourGradient tileFill(Colours::black.withAlpha(0.22f), tile.getX(), tile.getY(),
+                            accent.darker(0.70f).withAlpha(0.22f), tile.getX(), tile.getBottom(), false);
+    g.setGradientFill(tileFill);
+    g.fillRoundedRectangle(tile, 6.0f);
+    g.setColour(accent.withAlpha(0.34f));
+    g.drawRoundedRectangle(tile, 6.0f, 1.0f);
+
+    auto graph = tile.reduced(9.0f, 9.0f).withTrimmedBottom(9.0f);
+    g.setColour(accent.withAlpha(0.10f));
+    for (int i = 1; i < 4; ++i)
     {
-        btn->setColour(TextButton::buttonColourId, colours["Plugin Border"].darker(0.1f));
-        btn->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.8f));
+        const auto x = graph.getX() + graph.getWidth() * static_cast<float>(i) / 4.0f;
+        g.drawVerticalLine(roundToInt(x), graph.getY(), graph.getBottom());
     }
+    g.drawHorizontalLine(roundToInt(graph.getCentreY()), graph.getX(), graph.getRight());
+
+    Path wavePath;
+    const auto waveform = toneProcessor != nullptr ? toneProcessor->getWaveform() : ToneGeneratorProcessor::Waveform::Sine;
+    for (int i = 0; i < 48; ++i)
+    {
+        const float phase = static_cast<float>(i) / 47.0f;
+        float value = 0.0f;
+        if (waveform == ToneGeneratorProcessor::Waveform::Sine)
+            value = std::sin(phase * MathConstants<float>::twoPi);
+        else if (waveform == ToneGeneratorProcessor::Waveform::Saw)
+            value = 2.0f * phase - 1.0f;
+        else if (waveform == ToneGeneratorProcessor::Waveform::Square)
+            value = phase < 0.5f ? 0.82f : -0.82f;
+        else
+            value = std::sin(phase * 91.0f) * std::sin(phase * 37.0f);
+
+        const auto x = graph.getX() + phase * graph.getWidth();
+        const auto y = graph.getCentreY() - value * graph.getHeight() * 0.42f;
+        if (i == 0)
+            wavePath.startNewSubPath(x, y);
+        else
+            wavePath.lineTo(x, y);
+    }
+
+    g.setColour(accent.withAlpha(0.22f));
+    g.strokePath(wavePath, PathStrokeType(4.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour(accent.brighter(0.25f));
+    g.strokePath(wavePath, PathStrokeType(1.6f, PathStrokeType::curved, PathStrokeType::rounded));
+
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.58f));
+    g.drawText("WAVE", tile.removeFromBottom(12.0f), Justification::centred);
+}
+
+void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    auto chip = bounds.reduced(0.5f);
+
+    ColourGradient fill(Colours::black.withAlpha(0.24f), chip.getX(), chip.getY(),
+                        accent.darker(0.60f).withAlpha(0.32f), chip.getX(), chip.getBottom(), false);
+    g.setGradientFill(fill);
+    g.fillRoundedRectangle(chip, 5.0f);
+    g.setColour(accent.withAlpha(0.54f));
+    g.drawRoundedRectangle(chip, 5.0f, 0.9f);
+    g.setColour(colours["Text Colour"].withAlpha(0.88f));
+    g.setFont(fonts.getMonoDisplayFont(10.6f));
+    g.drawText(text, chip.reduced(5.0f, 0.0f), Justification::centred, true);
+}
+
+void ToneGeneratorControl::drawSliderLane(Graphics& g, Rectangle<float> bounds, const String& label, float normalisedValue,
+                                          Colour accent)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    auto labelArea = bounds.removeFromLeft(30.0f);
+    auto rail = bounds.reduced(1.0f, 3.0f);
+
+    g.setFont(fonts.getBadgeFont());
+    g.setColour(colours["Text Colour"].withAlpha(0.56f));
+    g.drawText(label, labelArea, Justification::centredLeft);
+
+    ColourGradient bed(Colours::black.withAlpha(0.34f), rail.getX(), rail.getY(),
+                       colours["Plugin Background"].brighter(0.05f).withAlpha(0.38f), rail.getX(), rail.getBottom(),
+                       false);
+    g.setGradientFill(bed);
+    g.fillRoundedRectangle(rail, 4.0f);
+    g.setColour(Colours::black.withAlpha(0.38f));
+    g.drawRoundedRectangle(rail, 4.0f, 0.8f);
+
+    auto fill = rail.withWidth(rail.getWidth() * jlimit(0.0f, 1.0f, normalisedValue));
+    ColourGradient fillGradient(accent.withAlpha(0.76f), fill.getX(), fill.getY(),
+                                accent.brighter(0.22f).withAlpha(0.92f), fill.getRight(), fill.getBottom(), false);
+    g.setGradientFill(fillGradient);
+    g.fillRoundedRectangle(fill, 4.0f);
+
+    const auto thumbX = rail.getX() + rail.getWidth() * jlimit(0.0f, 1.0f, normalisedValue);
+    auto thumb = Rectangle<float>(thumbX - 3.5f, rail.getY() - 3.0f, 7.0f, rail.getHeight() + 6.0f);
+    g.setColour(accent.withAlpha(0.30f));
+    g.fillRoundedRectangle(thumb.expanded(2.0f, 1.0f), 4.0f);
+    g.setColour(accent.brighter(0.18f));
+    g.fillRoundedRectangle(thumb, 3.5f);
 }
 
 //==============================================================================

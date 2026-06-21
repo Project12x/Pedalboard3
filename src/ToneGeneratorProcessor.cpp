@@ -13,8 +13,8 @@
 
 namespace
 {
-constexpr int kToneGeneratorLeftOutputPinY = 34;
-constexpr int kToneGeneratorRightOutputPinY = 56;
+constexpr int kToneGeneratorLeftOutputPinY = 70;
+constexpr int kToneGeneratorRightOutputPinY = 92;
 }
 
 //==============================================================================

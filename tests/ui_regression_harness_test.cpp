@@ -1910,18 +1910,26 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(oscilloscopeControl->find("g.drawText(\"OSCILLOSCOPE\"") != std::string::npos);
     CHECK(oscilloscopeControl->find("g.drawText(\"NO SIGNAL\"") != std::string::npos);
 
-    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(280, 180); }") !=
+    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(320, 190); }") !=
           std::string::npos);
     CHECK(toneHeader->find("PinLayout getOutputPinLayout() const override;") != std::string::npos);
     CHECK(toneSource->find("setPlayConfigDetails(0, 2, 44100.0, 512);") != std::string::npos);
-    CHECK(toneSource->find("constexpr int kToneGeneratorLeftOutputPinY = 34;") != std::string::npos);
-    CHECK(toneSource->find("constexpr int kToneGeneratorRightOutputPinY = 56;") != std::string::npos);
+    CHECK(toneSource->find("constexpr int kToneGeneratorLeftOutputPinY = 70;") != std::string::npos);
+    CHECK(toneSource->find("constexpr int kToneGeneratorRightOutputPinY = 92;") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorLeftOutputPinY);") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorRightOutputPinY);") != std::string::npos);
-    CHECK(toneControl->find("setSize(280, 180);") != std::string::npos);
-    CHECK(toneControl->find("auto displayArea = bounds.removeFromTop(26).reduced(10, 0);") !=
+    CHECK(toneControl->find("setSize(320, 190);") != std::string::npos);
+    CHECK(toneControl->find("void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)") !=
           std::string::npos);
-    CHECK(toneControl->find("auto bounds = getLocalBounds().reduced(10, 4);") != std::string::npos);
-    CHECK(toneControl->find("g.drawText(\"Freq:\", Rectangle<float>(10, 28, 34, 14)") !=
+    CHECK(toneControl->find("void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds)") !=
+          std::string::npos);
+    CHECK(toneControl->find("void ToneGeneratorControl::drawWaveformGlyph(Graphics& g, Rectangle<float> bounds)") !=
+          std::string::npos);
+    CHECK(toneControl->find("void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)") !=
+          std::string::npos);
+    CHECK(toneControl->find("displayPanel = bounds.removeFromTop(54);") != std::string::npos);
+    CHECK(toneControl->find("drawWaveformGlyph(g, waveformGlyphArea.toFloat());") != std::string::npos);
+    CHECK(toneControl->find("g.fillAll();") == std::string::npos);
+    CHECK(toneControl->find("g.drawText(\"Freq:\", Rectangle<float>(10, 28, 34, 14)") ==
           std::string::npos);
 }

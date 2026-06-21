@@ -38,6 +38,13 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
 
     // UI helpers
     void updateDisplay();
+    void syncButtonStates();
+    void styleButtonChrome(TextButton& button, Colour accent, bool active);
+    void drawChromeShell(Graphics& g, Rectangle<float> bounds);
+    void drawDisplayPanel(Graphics& g, Rectangle<float> bounds);
+    void drawWaveformGlyph(Graphics& g, Rectangle<float> bounds);
+    void drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent);
+    void drawSliderLane(Graphics& g, Rectangle<float> bounds, const String& label, float normalisedValue, Colour accent);
     String getNoteName(int midiNote) const;
 
     ToneGeneratorProcessor* toneProcessor;
@@ -72,6 +79,21 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     // Display state
     float displayedFrequency = 440.0f;
     String displayedNote = "A4";
+
+    Rectangle<int> headerArea;
+    Rectangle<int> displayPanel;
+    Rectangle<int> waveformGlyphArea;
+    Rectangle<int> frequencyRail;
+    Rectangle<int> frequencyChipArea;
+    Rectangle<int> noteChipArea;
+    Rectangle<int> pitchPanel;
+    Rectangle<int> detuneRail;
+    Rectangle<int> detuneChipArea;
+    Rectangle<int> waveformPanel;
+    Rectangle<int> bottomPanel;
+    Rectangle<int> amplitudeRail;
+    Rectangle<int> amplitudeChipArea;
+    Rectangle<int> modePanel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ToneGeneratorControl)
 };
