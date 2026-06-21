@@ -18,11 +18,37 @@
   - `scripts/run_d2_visual_qa.ps1`
   - `TESTLATER.md`
   - `ROADMAP.md`
-- Latest committed visual QA artifacts under `documentation/qa` are from 2026-06-16. They predate the latest June 21 NAM/IR Loader text-role fixes, so current screenshots are stale.
+- Initial committed visual QA artifacts under `documentation/qa` were from 2026-06-16 and predated the latest June 21 NAM/IR Loader text-role fixes.
+- Fresh visual QA artifacts were generated during this audit:
+  - `documentation/qa/2026-06-21-polish-audit-nodes`
+  - `documentation/qa/2026-06-21-polish-audit-dialogs`
+- Visual acceptance note: the fixed-size 200% dialog captures are stress cases, not a realistic use case at those small window dimensions. Treat them as graceful-degradation evidence only, not product-blocking bugs.
 - Focused Release tests run during this audit:
   - `.\\build\\tests\\Release\\Pedalboard3_Tests.exe "[ui][regression][visual]"` passed: 837 assertions in 16 test cases.
   - `.\\build\\tests\\Release\\Pedalboard3_Tests.exe "[reverbsc]"` passed: 304 assertions in 17 test cases.
   - `.\\build\\tests\\Release\\Pedalboard3_Tests.exe "[nam][a2][ui]"` passed: 63 assertions in 4 test cases.
+
+## Fresh Visual QA Results
+
+### Looks Current-Good
+
+- NAM Loader node: current snapshot shows the prior black/dark and single-text-role issue is fixed. Host text and dark panel text now separate cleanly.
+- IR Loader node: current snapshot shows the same text-role fix is applied; dark slot cards and outer shell labels are readable.
+- NAM Library normal-size dialog: chrome is centered, local rows show A1/A2 pills, detail text is readable, and the selected model panel no longer has the original pill rendering failure.
+- IR Browser normal-size dialog: local detail card is readable and visually aligned.
+- Mixer/Splitter nodes: current snapshots show the consolidated dynamic UI is usable and no duplicate DAW/internal variants are visible in the captured plugin search list.
+- Effect Rack node: current snapshot has one clear `Open` affordance and no redundant `Map` button.
+- Notes node: empty hint is present again in the captured snapshot.
+
+### Still Open From Current Evidence
+
+- Tone Generator node: the current node snapshot still has a real pitch-row clipping/overlap problem. The frequency label/slider/value area collide, and the pitch control row is too tight. This is visible at the normal node snapshot size, so it is not a stress-only issue.
+- Tuner node: current snapshot still has cramped mode-pill treatment. `Needle`, `Strobe`, `Poly`, and `Bypass` are readable, but the row looks like generic pills over a dark strip rather than a finished direct-painted control surface. This is polish debt, not a functional blocker.
+
+### Stress-Only / Do Not Over-Prioritize
+
+- NAM/IR Browser at 200% in the fixed QA capture sizes clips detail content. That resolution/window combination is not a realistic acceptance target. Keep it as stress evidence only.
+- At 150%, the NAM detail card starts to lose lower metadata in the scaled matrix. This is a lower-priority responsive/compact-mode issue unless it appears in a realistic user window.
 
 ## Done or Contract-Covered
 
@@ -35,7 +61,7 @@ Evidence:
 - `tests/ui_regression_harness_test.cpp` also checks ReverbSC theme-colour use and rejects hardcoded `Colours::white`, `Colours::black`, and `Colour(0x...)`.
 
 Residual risk:
-- The current visual QA screenshots are stale, so actual theme/scale rendering still needs a fresh screenshot pass.
+- Current screenshots are now available. The remaining ReverbSC gap is manual interaction: drag controls, save/reload, bypass/mappings readability, and user-facing feel.
 
 ### Internal Plugin Duplicate Prevention
 
@@ -46,7 +72,7 @@ Evidence:
 - That contract verifies runtime internal plugin XML is removed from persisted plugin-list XML before restore/save, which addresses the duplicate internal-node list failure at the source.
 
 Residual risk:
-- A live plugin-search screenshot after a clean app restart is still useful, but this is no longer an obvious open implementation item.
+- Current plugin-search capture shows no obvious duplicate internal plugin entries in the visible list.
 
 ### Mixer and Splitter Consolidation
 
@@ -58,7 +84,7 @@ Evidence:
 - `tests/ui_regression_harness_test.cpp` covers visible routing Mixer/Splitter polish, compact host pin labels, direct-painted embedding, and retention of controls.
 
 Residual risk:
-- The exact live horizontal/vertical strip presentation should be rechecked in screenshots because this area had repeated wording/interpretation mismatch.
+- The node snapshots look usable, but manual confirmation is still useful for horizontal/vertical interaction because this area had repeated wording/interpretation mismatch.
 
 ### Tone Generator Chrome and Layout
 
@@ -68,7 +94,7 @@ Evidence:
 - `tests/ui_regression_harness_test.cpp` checks the Tone Generator size, output pin footprint, theme-derived colour helpers, removal of hardcoded black/white/hex colours, removal of the `READY` pill, output rotary knob, text-box sizing, visible sliders, waveform glyph, display/pitch/bottom panel sizing, and removal of the old clipped wave labels.
 
 Residual risk:
-- This was a visually sensitive node. A fresh node snapshot is still required before calling it visually final.
+- The fresh node snapshot found a real pitch-row clipping/overlap issue. Do not call Tone Generator visually final yet.
 
 ### NAM Loader Theme/Text Roles
 
@@ -79,7 +105,7 @@ Evidence:
 - The latest HEAD specifically splits loader text roles by surface.
 
 Residual risk:
-- Needs screenshots in light/daylight, dark, and synthwave because the failure was black/dark or low-contrast text in real rendering.
+- Fresh node and dialog screenshots show the text-role issue is materially improved. Keep theme sweep as release QA, not as an open implementation claim.
 
 ### IR Loader Theme/Text Roles
 
@@ -89,7 +115,7 @@ Evidence:
 - `tests/ui_regression_harness_test.cpp` checks `IRLoaderControl.cpp` has separate `hostText`, `hostTextDim`, `panelText`, and `panelTextDim` roles, derives panel text from the inset surface, applies panel text to slider text boxes, and rejects prior hardcoded text patterns.
 
 Residual risk:
-- Same as NAM Loader: the code contract is green, but the visual pass needs current screenshots.
+- Fresh node and dialog screenshots show the text-role issue is materially improved. Keep theme sweep as release QA, not as an open implementation claim.
 
 ### NAM A1/A2 UI Labelling
 
@@ -100,7 +126,7 @@ Evidence:
 - Focused `[nam][a2][ui]` test run passed.
 
 Residual risk:
-- `TESTLATER.md` still correctly calls for a manual online/local smoke pass: authenticated download visibility, A1/A2 filter sanity, downloaded local pill correctness, and scale/clipping checks.
+- `TESTLATER.md` still correctly calls for a manual online/local smoke pass: authenticated download visibility, A1/A2 filter sanity, downloaded local pill correctness, and downloaded-model local architecture pill.
 
 ### Effect Rack, Notes, MIDI Labels, Tuner, NAM Browser Chrome
 
@@ -111,19 +137,18 @@ Evidence:
 - The focused `[ui][regression][visual]` test run passed.
 
 Residual risk:
-- The audit has not yet generated live screenshots after the latest fixes. This matters for small alignment problems such as browser chrome centering, clipped list rows, tuner pill rendering, and detail-card text wrapping.
+- Current screenshots now cover browser chrome centering and common dialog rendering. Tuner pill rendering still needs polish. Extreme 200% fixed-size clipping should not be treated as a realistic blocker.
 
 ## Needs Proof, Not New Implementation Yet
 
-These should not be treated as open bugs until the current build is visually checked:
+These should not be treated as open bugs until the current build is checked in realistic conditions:
 
-1. Current node snapshots after the June 21 commits.
-2. NAM and IR browser dialog matrix at 150% and 200% scale, including local/online/IR tabs.
-3. NAM online authenticated flow: visible download action, A1/A2 filter sanity, and downloaded-model local architecture pill.
-4. ReverbSC live interaction: dragging controls does not move the node, values update immediately, save/reload restores values, bypass/mappings remain readable.
-5. Mixer and Splitter live layout/orientation, especially because this area had repeated interpretation churn.
-6. Theme sweep for dark, daylight/light, and synthwave after the loader text-role changes.
-7. Scratch Capture hardware smoke remains manual/hardware-gated.
+1. NAM online authenticated flow: visible download action, A1/A2 filter sanity, and downloaded-model local architecture pill.
+2. ReverbSC live interaction: dragging controls does not move the node, values update immediately, save/reload restores values, bypass/mappings remain readable.
+3. Mixer and Splitter live layout/orientation, especially because this area had repeated wording/interpretation churn.
+4. Theme sweep for dark, daylight/light, and synthwave remains release QA, though the latest node/dialog screenshots are encouraging.
+5. Scratch Capture hardware smoke remains manual/hardware-gated.
+6. High-scale browser/dialog behavior should be tested in realistic high-DPI window sizes, not the cramped fixed 200% stress captures.
 
 ## Still Open Work
 
@@ -137,6 +162,18 @@ Recommended direction:
 - Define a small direct-node contract owned by processors/controls rather than scattered plugin-name checks.
 - Centralize shell sizing, footer affordance policy, pin-label policy, drag suppression, host padding, and theme role handoff.
 - Keep NAM/IR hero chassis nodes as their own category if they do not fit the direct-node shell.
+
+### Tone Generator Pitch Row
+
+Status: open current visual bug.
+
+The fresh node snapshot shows the pitch row still clips/overlaps at normal node size. This should be fixed before treating the Tone Generator chrome pass as complete.
+
+### Tuner Mode Row Finish
+
+Status: open polish debt.
+
+The tuner mode row is readable but still visually rough: the mode pills sit on a dark strip and do not yet feel integrated with the rest of the direct-painted node language. This is not urgent functionality work, but it remains visible polish.
 
 ### Roadmap P1/P2 Polish
 
@@ -152,18 +189,8 @@ Status: open, but not part of the old bug list.
 
 ## Recommended Next Audit Steps
 
-1. Generate current node snapshots:
-
-   ```powershell
-   .\scripts\run_d2_visual_qa.ps1 -Configuration Release -OutputName 2026-06-21-polish-audit-nodes -NodeSnapshotsOnly
-   ```
-
-2. Generate current scaled browser/dialog screenshots:
-
-   ```powershell
-   .\scripts\run_d2_visual_qa.ps1 -Configuration Release -OutputName 2026-06-21-polish-audit-dialogs -CaptureScaledDialogMatrix
-   ```
-
+1. Fix the Tone Generator pitch-row clipping visible in `documentation/qa/2026-06-21-polish-audit-nodes/app-node-tone-generator.png`.
+2. Polish the Tuner mode row visible in `documentation/qa/2026-06-21-polish-audit-nodes/app-node-tuner.png`.
 3. Run the manual `TESTLATER.md` smoke passes that depend on authenticated online state, local model files, user interaction, or hardware.
-
-4. Only convert screenshot/manual failures into implementation tasks. Do not reopen broad polish buckets or already contract-covered issues without new evidence.
+4. If high-scale dialog polish is revisited, define realistic high-DPI window sizes first. Do not use the fixed 200% stress captures as a product-blocking acceptance target.
+5. Only convert screenshot/manual failures into implementation tasks. Do not reopen broad polish buckets or already contract-covered issues without new evidence.
