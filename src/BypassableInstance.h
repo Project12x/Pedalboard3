@@ -116,7 +116,7 @@ class BypassableInstance : public AudioPluginInstance
     bool getCachedProducesMidi() const { return cachedProducesMidi; }
 
     /// Resync wrapper's channel count and tempBuffer after the inner plugin
-    /// dynamically changed its channel configuration (e.g. DawMixer adding strips).
+    /// dynamically changed its channel configuration (e.g. Mixer adding strips).
     /// Must be called from the message thread. Updates setPlayConfigDetails on
     /// the wrapper and resizes tempBuffer so processBlock sees the new channels.
     void resyncChannelCount();

@@ -1,6 +1,6 @@
 /**
  * @file mixer_splitter_test.cpp
- * @brief Integration and mutation tests for DawMixerProcessor and DawSplitterProcessor DSP
+ * @brief Integration and mutation tests for MixerProcessor and SplitterProcessor DSP
  *
  * These tests verify the mathematical correctness and boundary safety of:
  * 1. Strip management (add/remove bounds checking)
@@ -29,7 +29,7 @@
 using Catch::Matchers::WithinAbs;
 
 // =============================================================================
-// Constants mirroring DawMixerProcessor / DawSplitterProcessor
+// Constants mirroring MixerProcessor / SplitterProcessor
 // =============================================================================
 
 static constexpr int MaxStrips = 32;

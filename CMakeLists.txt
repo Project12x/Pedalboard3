@@ -293,10 +293,6 @@ target_sources(Pedalboard3 PRIVATE
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
-    src/DawMixerProcessor.cpp
-    src/DawMixerProcessor.h
-    src/DawSplitterProcessor.cpp
-    src/DawSplitterProcessor.h
     src/dsp/ReverbSC.cpp
     src/dsp/ReverbSC.h
     src/ReverbSCProcessor.cpp

@@ -31,8 +31,6 @@
 
 #include "InternalFilters.h"
 
-#include "DawMixerProcessor.h"
-#include "DawSplitterProcessor.h"
 #include "FilterGraph.h"
 #include "IRLoaderProcessor.h"
 #include "LabelProcessor.h"
@@ -222,17 +220,6 @@ InternalPluginFormat::InternalPluginFormat()
         virtualMidiInputProcDesc.category = "MIDI Utility";
     }
 
-    {
-        DawMixerProcessor p;
-        p.fillInPluginDescription(dawMixerProcDesc);
-        dawMixerProcDesc.category = "Built-in";
-    }
-
-    {
-        DawSplitterProcessor p;
-        p.fillInPluginDescription(dawSplitterProcDesc);
-        dawSplitterProcDesc.category = "Built-in";
-    }
 }
 
 AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const PluginDescription& desc)
@@ -303,14 +290,6 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     else if (desc.name == mixerProcDesc.name)
     {
         return new MixerProcessor();
-    }
-    else if (desc.name == dawMixerProcDesc.name)
-    {
-        return new DawMixerProcessor();
-    }
-    else if (desc.name == dawSplitterProcDesc.name)
-    {
-        return new DawSplitterProcessor();
     }
     else if (desc.name == irLoaderProcDesc.name)
     {
@@ -424,10 +403,6 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &subGraphProcDesc;
     case virtualMidiInputProcFilter:
         return &virtualMidiInputProcDesc;
-    case dawMixerProcFilter:
-        return &dawMixerProcDesc;
-    case dawSplitterProcFilter:
-        return &dawSplitterProcDesc;
     default:
         return 0;
     }
@@ -454,8 +429,7 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
                                                          midiTransposeProcFilter, midiRechannelizeProcFilter,
                                                          keyboardSplitProcFilter, notesProcFilter,
                                                          labelProcFilter,         midiFilePlayerProcFilter,
-                                                         subGraphProcFilter,      virtualMidiInputProcFilter,
-                                                         dawMixerProcFilter,      dawSplitterProcFilter};
+                                                         subGraphProcFilter,      virtualMidiInputProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));

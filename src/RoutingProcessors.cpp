@@ -4,7 +4,7 @@
     RoutingProcessors.cpp
     Created: 27 Jan 2026
 
-    Processors for A/B routing (Splitter and Mixer).
+    Processors for routing (Splitter and Mixer).
 
   ==============================================================================
 */
@@ -12,9 +12,9 @@
 #include "RoutingProcessors.h"
 
 #include "ColourScheme.h"
-#include "Images.h"
-#include "PedalboardProcessorEditors.h"
-#include "Vectors.h"
+#include "PluginComponent.h"
+
+#include <cmath>
 
 static Colour getRoutingNodeAccent()
 {
@@ -24,6 +24,12 @@ static Colour getRoutingNodeAccent()
 static String getRoutingVisualLabel(int index)
 {
     return String(index + 1);
+}
+
+static float normaliseRoutingMeter(float peak)
+{
+    const float dbVal = Decibels::gainToDecibels(jmax(0.0f, peak), -60.0f);
+    return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
 }
 
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
@@ -57,8 +63,8 @@ static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float l
 
     auto fill = track.withWidth(track.getWidth() * jlimit(0.0f, 1.0f, level));
     ColourGradient fillGradient(accent.withAlpha(muted ? 0.18f : 0.72f), fill.getX(), fill.getY(),
-                                colours["VU Meter Upper Colour"].withAlpha(muted ? 0.10f : 0.56f),
-                                fill.getRight(), fill.getY(), false);
+                                colours["VU Meter Upper Colour"].withAlpha(muted ? 0.10f : 0.56f), fill.getRight(),
+                                fill.getY(), false);
     fillGradient.addColour(0.70, colours["VU Meter Lower Colour"].withAlpha(muted ? 0.12f : 0.64f));
     g.setGradientFill(fillGradient);
     g.fillRoundedRectangle(fill, 3.0f);
@@ -95,7 +101,7 @@ static void paintRoutingFanout(Graphics& g, Rectangle<float> bounds, Colour acce
     const float startX = bounds.getX() + 30.0f;
     const float startY = bounds.getCentreY();
     const float endX = bounds.getRight() - 30.0f;
-    const int routes = jmax(2, routeCount);
+    const int routes = jmax(1, routeCount);
 
     for (int i = 0; i < routes; ++i)
     {
@@ -180,68 +186,144 @@ static void styleRoutingButton(TextButton& button, Colour accent)
     button.setColour(TextButton::textColourOnId, Colours::black.withAlpha(0.90f));
 }
 
+static void notifyParentPins(Component& component)
+{
+    if (auto* pc = component.findParentComponentOfClass<PluginComponent>())
+        pc->refreshPins();
+}
+
 //==============================================================================
 // Controls for Splitter
-class SplitterControl : public Component, public Button::Listener
+class SplitterControl : public Component, public Button::Listener, private Timer
 {
   public:
     SplitterControl(SplitterProcessor* proc) : processor(proc)
     {
-        addAndMakeVisible(muteA);
-        muteA.setButtonText("M");
-        muteA.setClickingTogglesState(true);
-        muteA.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
-        styleRoutingButton(muteA, getRoutingNodeAccent());
-        muteA.addListener(this);
+        addStripButton.setButtonText("+");
+        addStripButton.addListener(this);
+        styleRoutingButton(addStripButton, getRoutingNodeAccent());
+        addAndMakeVisible(addStripButton);
 
-        addAndMakeVisible(muteB);
-        muteB.setButtonText("M");
-        muteB.setClickingTogglesState(true);
-        muteB.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
-        styleRoutingButton(muteB, getRoutingNodeAccent());
-        muteB.addListener(this);
+        removeStripButton.setButtonText("-");
+        removeStripButton.addListener(this);
+        styleRoutingButton(removeStripButton, getRoutingNodeAccent());
+        addAndMakeVisible(removeStripButton);
 
-        // Update state
-        muteA.setToggleState(processor->getOutputMute(0), dontSendNotification);
-        muteB.setToggleState(processor->getOutputMute(1), dontSendNotification);
+        for (int index = 0; index < SplitterProcessor::MaxStrips; ++index)
+        {
+            auto& f = faders[index];
+            f.setSliderStyle(Slider::LinearHorizontal);
+            f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            f.setRange(SplitterProcessor::MinGainDb, SplitterProcessor::MaxGainDb, 0.1);
+            f.onValueChange = [this, index]()
+            { processor->setOutputGainDb(index, static_cast<float>(faders[index].getValue())); };
+            f.setAlpha(0.01f);
+            addAndMakeVisible(f);
+
+            auto& p = panSliders[index];
+            p.setSliderStyle(Slider::LinearHorizontal);
+            p.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            p.setRange(-1.0, 1.0, 0.01);
+            p.setDoubleClickReturnValue(true, 0.0);
+            p.onValueChange = [this, index]()
+            { processor->setOutputPan(index, static_cast<float>(panSliders[index].getValue())); };
+            p.setAlpha(0.01f);
+            addAndMakeVisible(p);
+
+            muteButtons[index].setButtonText("M");
+            auto& m = muteButtons[index];
+            m.setClickingTogglesState(true);
+            styleRoutingButton(m, ColourScheme::getInstance().colours["Danger Colour"]);
+            m.onClick = [this, index]() { processor->setOutputMute(index, muteButtons[index].getToggleState()); };
+            addAndMakeVisible(m);
+
+            auto& s = soloButtons[index];
+            s.setButtonText("S");
+            s.setClickingTogglesState(true);
+            styleRoutingButton(s, Colour(0xFFCCAA00));
+            s.onClick = [this, index]() { processor->setOutputSolo(index, soloButtons[index].getToggleState()); };
+            addAndMakeVisible(s);
+
+            stereoButtons[index].setButtonText("ST");
+            auto& st = stereoButtons[index];
+            st.setClickingTogglesState(true);
+            styleRoutingButton(st, getRoutingNodeAccent());
+            st.onClick = [this, index]()
+            {
+                processor->setOutputStereo(index, stereoButtons[index].getToggleState());
+                refreshTopology();
+            };
+            addAndMakeVisible(st);
+
+            auto& ph = phaseButtons[index];
+            ph.setButtonText(CharPointer_UTF8("\xc3\x98"));
+            ph.setClickingTogglesState(true);
+            styleRoutingButton(ph, Colour(0xFFFF8800));
+            ph.onClick = [this, index]()
+            { processor->setOutputPhaseInvert(index, phaseButtons[index].getToggleState()); };
+            addAndMakeVisible(ph);
+        }
+
+        syncControlsFromProcessor();
+        startTimerHz(24);
+    }
+
+    ~SplitterControl() override
+    {
+        addStripButton.removeListener(this);
+        removeStripButton.removeListener(this);
+        stopTimer();
     }
 
     void resized() override
     {
-        auto area = getLocalBounds().reduced(10, 9);
-        area.removeFromTop(3);
+        auto area = getLocalBounds().reduced(10, 8);
+        auto header = area.removeFromTop(20);
+        removeStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
+        addStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
+        area.removeFromTop(2);
 
-        auto inputRow = area.removeFromTop(28);
+        auto inputRow = area.removeFromTop(26);
         inputRowArea = inputRow.reduced(0, 1);
         inBadge = inputRow.removeFromLeft(36).reduced(1, 4);
-        inputMeter = inputRow.reduced(8, 11);
+        inputMeter = inputRow.reduced(8, 10);
 
-        fanoutArea = area.removeFromTop(25).reduced(0, 2);
+        fanoutArea = area.removeFromTop(24).reduced(0, 2);
+        area.removeFromTop(2);
 
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < SplitterProcessor::MaxStrips; ++i)
         {
-            auto output = area.removeFromTop(24);
+            outRows[i] = {};
+            outBadges[i] = {};
+            outLanes[i] = {};
+            outDbAreas[i] = {};
+        }
+
+        for (int i = 0; i < processor->getNumStrips(); ++i)
+        {
+            auto output = area.removeFromTop(44);
             outRows[i] = output.reduced(0, 1);
             outBadges[i] = output.removeFromLeft(28).reduced(1, 3);
 
-            auto muteSlot = output.removeFromRight(24);
-            if (i == 0)
-                muteA.setBounds(muteSlot.reduced(1, 4));
-            else if (i == 2)
-                muteB.setBounds(muteSlot.reduced(1, 4));
+            phaseButtons[i].setBounds(output.removeFromRight(20).reduced(1, 13));
+            stereoButtons[i].setBounds(output.removeFromRight(24).reduced(1, 13));
+            soloButtons[i].setBounds(output.removeFromRight(20).reduced(1, 13));
+            muteButtons[i].setBounds(output.removeFromRight(20).reduced(1, 13));
 
-            outDbAreas[i] = output.removeFromRight(34).reduced(0, 2);
-            outLanes[i] = output.reduced(7, 7);
+            outDbAreas[i] = output.removeFromRight(36).reduced(0, 12);
+            outLanes[i] = output.reduced(7, 16);
+            faders[i].setBounds(outLanes[i].expanded(8, 8));
+            panSliders[i].setBounds(outLanes[i].withHeight(jmax(8, outLanes[i].getHeight())).expanded(4, 4));
             area.removeFromTop(2);
         }
     }
 
-    void buttonClicked(Button* b) override
+    void buttonClicked(Button* button) override
     {
-        if (b == &muteA)
-            processor->setOutputMute(0, muteA.getToggleState());
-        else if (b == &muteB)
-            processor->setOutputMute(1, muteB.getToggleState());
+        if (button == &addStripButton)
+            addStripClicked();
+        else if (button == &removeStripButton)
+            removeStripClicked();
     }
 
     void paint(Graphics& g) override
@@ -249,36 +331,110 @@ class SplitterControl : public Component, public Button::Listener
         auto accent = getRoutingNodeAccent();
         paintRoutingRow(g, inputRowArea.toFloat(), accent, false, true);
         paintRoutingBadge(g, inBadge.toFloat(), "IN", accent, true);
-        paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState(),
-                           4);
+        paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), false, false,
+                           processor->getNumStrips());
 
-        paintRoutingMeterTrack(g, inputMeter.toFloat(), 0.62f, accent, false);
-        const float levels[] = {0.72f, 0.64f, 0.38f, 0.34f};
-        for (int i = 0; i < 4; ++i)
+        const float inputLevel =
+            normaliseRoutingMeter(jmax(processor->inputPeakL.load(std::memory_order_relaxed),
+                                       processor->inputPeakR.load(std::memory_order_relaxed)));
+        paintRoutingMeterTrack(g, inputMeter.toFloat(), inputLevel, accent, false);
+
+        for (int i = 0; i < processor->getNumStrips(); ++i)
         {
-            const bool muted = i < 2 ? muteA.getToggleState() : muteB.getToggleState();
-            paintRoutingRow(g, outRows[i].toFloat(), accent, muted, false);
-            paintRoutingBadge(g, outBadges[i].toFloat(), getRoutingVisualLabel(i), accent, !muted);
-            paintRoutingMeterTrack(g, outLanes[i].toFloat(), levels[i], accent, muted);
+            auto* strip = processor->getStrip(i);
+            if (strip == nullptr)
+                continue;
 
-            g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(muted ? 0.30f : 0.56f));
-            g.setFont(Font(9.0f, Font::bold));
-            g.drawText("0.0", outDbAreas[i], Justification::centredRight, true);
+            const bool muted = strip->mute.load(std::memory_order_relaxed);
+            const bool soloed = strip->solo.load(std::memory_order_relaxed);
+            const bool stereo = strip->stereo.load(std::memory_order_relaxed);
+            const float peak = jmax(strip->peakL.load(std::memory_order_relaxed),
+                                    strip->peakR.load(std::memory_order_relaxed));
+
+            paintRoutingRow(g, outRows[i].toFloat(), accent, muted, false);
+            paintRoutingBadge(g, outBadges[i].toFloat(), getRoutingVisualLabel(i), accent, !muted || soloed);
+            paintRoutingMeterTrack(g, outLanes[i].toFloat(), normaliseRoutingMeter(peak), accent, muted);
+
+            g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(muted ? 0.30f : 0.60f));
+            g.setFont(Font(9.5f, Font::bold));
+            g.drawText(String(processor->getOutputGainDb(i), 1), outDbAreas[i], Justification::centredRight, true);
+
+            g.setFont(Font(7.5f, Font::bold));
+            g.setColour(accent.withAlpha(stereo ? 0.62f : 0.28f));
+            const auto modeArea = outRows[i].withWidth(20).withX(outRows[i].getRight() - 20);
+            g.drawText(stereo ? "ST" : "M", modeArea, Justification::centred, true);
         }
     }
 
   private:
     SplitterProcessor* processor;
-    TextButton muteA;
-    TextButton muteB;
+    TextButton addStripButton;
+    TextButton removeStripButton;
+    std::array<Slider, SplitterProcessor::MaxStrips> faders;
+    std::array<Slider, SplitterProcessor::MaxStrips> panSliders;
+    std::array<TextButton, SplitterProcessor::MaxStrips> muteButtons;
+    std::array<TextButton, SplitterProcessor::MaxStrips> soloButtons;
+    std::array<TextButton, SplitterProcessor::MaxStrips> stereoButtons;
+    std::array<TextButton, SplitterProcessor::MaxStrips> phaseButtons;
     Rectangle<int> inputRowArea;
-    Rectangle<int> outRows[4];
     Rectangle<int> inBadge;
     Rectangle<int> inputMeter;
-    Rectangle<int> outBadges[4];
-    Rectangle<int> outLanes[4];
-    Rectangle<int> outDbAreas[4];
+    std::array<Rectangle<int>, SplitterProcessor::MaxStrips> outRows;
+    std::array<Rectangle<int>, SplitterProcessor::MaxStrips> outBadges;
+    std::array<Rectangle<int>, SplitterProcessor::MaxStrips> outLanes;
+    std::array<Rectangle<int>, SplitterProcessor::MaxStrips> outDbAreas;
     Rectangle<int> fanoutArea;
+
+    void addStripClicked()
+    {
+        processor->addStrip();
+        refreshTopology();
+    }
+
+    void removeStripClicked()
+    {
+        processor->removeStrip();
+        refreshTopology();
+    }
+
+    void refreshTopology()
+    {
+        const auto newSize = processor->getSize();
+        setSize(newSize.getX(), newSize.getY());
+        syncControlsFromProcessor();
+        resized();
+        notifyParentPins(*this);
+    }
+
+    void syncControlsFromProcessor()
+    {
+        const int active = processor->getNumStrips();
+        for (int i = 0; i < SplitterProcessor::MaxStrips; ++i)
+        {
+            const bool visible = i < active;
+            faders[i].setVisible(visible);
+            panSliders[i].setVisible(visible);
+            muteButtons[i].setVisible(visible);
+            soloButtons[i].setVisible(visible);
+            stereoButtons[i].setVisible(visible);
+            phaseButtons[i].setVisible(visible);
+
+            if (visible)
+            {
+                faders[i].setValue(processor->getOutputGainDb(i), dontSendNotification);
+                panSliders[i].setValue(processor->getOutputPan(i), dontSendNotification);
+                muteButtons[i].setToggleState(processor->getOutputMute(i), dontSendNotification);
+                soloButtons[i].setToggleState(processor->getOutputSolo(i), dontSendNotification);
+                stereoButtons[i].setToggleState(processor->getOutputStereo(i), dontSendNotification);
+                phaseButtons[i].setToggleState(processor->getOutputPhaseInvert(i), dontSendNotification);
+            }
+        }
+    }
+
+    void timerCallback() override
+    {
+        repaint();
+    }
 };
 
 //==============================================================================
@@ -287,8 +443,11 @@ class SplitterControl : public Component, public Button::Listener
 
 SplitterProcessor::SplitterProcessor()
 {
-    // 2 inputs (Stereo), 4 outputs (Stereo A, Stereo B)
-    setPlayConfigDetails(2, 4, 0, 0);
+    for (int i = 0; i < DefaultStrips; ++i)
+        strips_[static_cast<size_t>(i)].resetDefaults(i);
+
+    numStrips_.store(DefaultStrips, std::memory_order_release);
+    updateChannelConfig();
 }
 
 SplitterProcessor::~SplitterProcessor() {}
@@ -298,141 +457,453 @@ Component* SplitterProcessor::getControls()
     return new SplitterControl(this);
 }
 
-void SplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
+Point<int> SplitterProcessor::getSize()
 {
-    // JUCE buffers might resize if number of channels changes?
-    // In Pedalboard3 we assume fixed channels usually?
-    // Check output channels.
-    int numIn = getTotalNumInputChannels();
-    int numOut = getTotalNumOutputChannels();
-
-    if (numOut < 4 || numIn < 2)
-        return;
-
-    auto* inL = buffer.getReadPointer(0);
-    auto* inR = buffer.getReadPointer(1);
-
-    auto* outAL = buffer.getWritePointer(0);
-    auto* outAR = buffer.getWritePointer(1);
-
-    auto* outBL = buffer.getWritePointer(2);
-    auto* outBR = buffer.getWritePointer(3);
-
-    int numSamples = buffer.getNumSamples();
-
-    bool mA = muteA.load();
-    bool mB = muteB.load();
-
-    for (int i = 0; i < numSamples; ++i)
-    {
-        float l = inL[i];
-        float r = inR[i];
-
-        // Path A (Outputs 0, 1)
-        if (mA)
-        {
-            outAL[i] = 0.0f;
-            outAR[i] = 0.0f;
-        }
-        else
-        {
-            outAL[i] = l;
-            outAR[i] = r;
-        }
-
-        // Path B (Outputs 2, 3)
-        if (mB)
-        {
-            outBL[i] = 0.0f;
-            outBR[i] = 0.0f;
-        }
-        else
-        {
-            outBL[i] = l;
-            outBR[i] = r;
-        }
-    }
+    return Point<int>(260, jmax(176, 92 + getNumStrips() * 46));
 }
 
-AudioProcessorEditor* SplitterProcessor::createEditor()
+int SplitterProcessor::countTotalOutputChannels() const
 {
-    return new GenericAudioProcessorEditor(*this);
+    int total = 0;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+        total += strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed) ? 2 : 1;
+    return total;
+}
+
+void SplitterProcessor::updateChannelConfig()
+{
+    setPlayConfigDetails(2, countTotalOutputChannels(), getSampleRate(), getBlockSize());
+}
+
+void SplitterProcessor::addStrip()
+{
+    const int n = numStrips_.load(std::memory_order_acquire);
+    if (n >= MaxStrips)
+        return;
+
+    strips_[static_cast<size_t>(n)].resetDefaults(n);
+    if (currentSampleRate_ > 0.0)
+        stripDsp_[static_cast<size_t>(n)].init(currentSampleRate_);
+
+    numStrips_.store(n + 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+void SplitterProcessor::removeStrip()
+{
+    const int n = numStrips_.load(std::memory_order_acquire);
+    if (n <= 1)
+        return;
+
+    numStrips_.store(n - 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+SplitterProcessor::StripState* SplitterProcessor::getStrip(int index)
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+const SplitterProcessor::StripState* SplitterProcessor::getStrip(int index) const
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+void SplitterProcessor::computeVuDecay(double sampleRate)
+{
+    currentSampleRate_ = sampleRate;
+    const double samplesFor300ms = sampleRate * 0.3;
+    peakDecay_ = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
+}
+
+void SplitterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    computeVuDecay(sampleRate);
+
+    const int active = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < MaxStrips; ++i)
+    {
+        auto& dsp = stripDsp_[static_cast<size_t>(i)];
+        dsp.init(sampleRate);
+        if (i < active)
+        {
+            const float gain =
+                Decibels::decibelsToGain(strips_[static_cast<size_t>(i)].gainDb.load(std::memory_order_relaxed));
+            dsp.smoothedGain.setCurrentAndTargetValue(gain);
+        }
+    }
+
+    inputVuDspL_.init(static_cast<float>(sampleRate));
+    inputVuDspR_.init(static_cast<float>(sampleRate));
+    inputSnapshot_.setSize(2, samplesPerBlock, false, true, true);
+}
+
+void SplitterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midiMessages*/)
+{
+    const int numSamples = buffer.getNumSamples();
+    const int ns = numStrips_.load(std::memory_order_acquire);
+    const int totalChannels = buffer.getNumChannels();
+
+    if (ns == 0 || numSamples == 0 || totalChannels <= 0)
+    {
+        buffer.clear();
+        return;
+    }
+
+    if (inputSnapshot_.getNumSamples() < numSamples || inputSnapshot_.getNumChannels() < 2)
+    {
+        buffer.clear();
+        return;
+    }
+
+    FloatVectorOperations::copy(inputSnapshot_.getWritePointer(0), buffer.getReadPointer(0), numSamples);
+    FloatVectorOperations::copy(inputSnapshot_.getWritePointer(1),
+                                buffer.getReadPointer(totalChannels > 1 ? 1 : 0), numSamples);
+
+    const float* inL = inputSnapshot_.getReadPointer(0);
+    const float* inR = inputSnapshot_.getReadPointer(1);
+
+    float inPkL = inputPeakL.load(std::memory_order_relaxed);
+    float inPkR = inputPeakR.load(std::memory_order_relaxed);
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const float absL = std::abs(inL[i]);
+        const float absR = std::abs(inR[i]);
+        inPkL = (absL > inPkL) ? absL : inPkL * peakDecay_;
+        inPkR = (absR > inPkR) ? absR : inPkR * peakDecay_;
+    }
+    if (inPkL < 1e-10f)
+        inPkL = 0.0f;
+    if (inPkR < 1e-10f)
+        inPkR = 0.0f;
+    inputPeakL.store(inPkL, std::memory_order_relaxed);
+    inputPeakR.store(inPkR, std::memory_order_relaxed);
+    inputVuL.store(inPkL, std::memory_order_relaxed);
+    inputVuR.store(inPkR, std::memory_order_relaxed);
+
+    bool anySolo = false;
+    for (int s = 0; s < ns; ++s)
+    {
+        if (strips_[static_cast<size_t>(s)].solo.load(std::memory_order_relaxed))
+        {
+            anySolo = true;
+            break;
+        }
+    }
+
+    int currentOutputChannel = 0;
+    for (int s = 0; s < ns; ++s)
+    {
+        auto& strip = strips_[static_cast<size_t>(s)];
+        auto& dsp = stripDsp_[static_cast<size_t>(s)];
+
+        const bool isStereo = strip.stereo.load(std::memory_order_relaxed);
+        const int channelsNeeded = isStereo ? 2 : 1;
+        if (currentOutputChannel + channelsNeeded > totalChannels)
+            break;
+
+        float* dstL = buffer.getWritePointer(currentOutputChannel);
+        float* dstR = isStereo ? buffer.getWritePointer(currentOutputChannel + 1) : nullptr;
+        currentOutputChannel += channelsNeeded;
+
+        const bool effectiveMute = strip.mute.load(std::memory_order_relaxed) ||
+                                   (anySolo && !strip.solo.load(std::memory_order_relaxed));
+        const bool phaseInv = strip.phaseInvert.load(std::memory_order_relaxed);
+        const float gainDb = strip.gainDb.load(std::memory_order_relaxed);
+        const float pan = strip.pan.load(std::memory_order_relaxed);
+
+        dsp.smoothedGain.setTargetValue(Decibels::decibelsToGain(gainDb));
+
+        float panL = 1.0f;
+        float panR = 1.0f;
+        if (isStereo)
+        {
+            if (pan <= 0.0f)
+                panR = 1.0f + pan;
+            else
+                panL = 1.0f - pan;
+        }
+
+        float peakL = strip.peakL.load(std::memory_order_relaxed);
+        float peakR = strip.peakR.load(std::memory_order_relaxed);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const float gain = dsp.smoothedGain.getNextValue();
+            float outL = 0.0f;
+            float outR = 0.0f;
+
+            if (isStereo)
+            {
+                outL = inL[i];
+                outR = inR[i];
+                if (phaseInv)
+                {
+                    outL = -outL;
+                    outR = -outR;
+                }
+                outL *= gain * panL;
+                outR *= gain * panR;
+            }
+            else
+            {
+                outL = (inL[i] + inR[i]) * 0.5f;
+                if (phaseInv)
+                    outL = -outL;
+                outL *= gain;
+                outR = outL;
+            }
+
+            const float absL = std::abs(outL);
+            const float absR = std::abs(outR);
+            peakL = (absL > peakL) ? absL : peakL * peakDecay_;
+            peakR = isStereo ? ((absR > peakR) ? absR : peakR * peakDecay_) : peakL;
+
+            dstL[i] = effectiveMute ? 0.0f : outL;
+            if (dstR != nullptr)
+                dstR[i] = effectiveMute ? 0.0f : outR;
+        }
+
+        if (peakL < 1e-10f)
+            peakL = 0.0f;
+        if (peakR < 1e-10f)
+            peakR = 0.0f;
+        strip.peakL.store(peakL, std::memory_order_relaxed);
+        strip.peakR.store(peakR, std::memory_order_relaxed);
+        strip.vuL.store(peakL, std::memory_order_relaxed);
+        strip.vuR.store(peakR, std::memory_order_relaxed);
+    }
+
+    for (int ch = currentOutputChannel; ch < totalChannels; ++ch)
+        buffer.clear(ch, 0, numSamples);
 }
 
 void SplitterProcessor::fillInPluginDescription(PluginDescription& description) const
 {
     description.name = "Splitter";
-    description.descriptiveName = "Splits stereo input to two stereo pairs (A and B).";
+    description.descriptiveName = "Splits stereo input to dynamic mono or stereo outputs.";
     description.pluginFormatName = "Internal";
     description.category = "Routing";
     description.manufacturerName = "Pedalboard3";
-    description.version = "1.00";
+    description.version = "3.00";
     description.uniqueId = description.name.hashCode();
     description.isInstrument = false;
     description.numInputChannels = 2;
-    description.numOutputChannels = 4;
+    description.numOutputChannels = countTotalOutputChannels();
 }
 
 bool SplitterProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    if (layouts.getMainInputChannels() == 2 && layouts.getMainOutputChannels() == 4)
-        return true;
-    return false;
+    return layouts.getMainInputChannels() == 2 && layouts.getMainOutputChannels() == countTotalOutputChannels();
 }
 
 const String SplitterProcessor::getInputChannelName(int channelIndex) const
 {
-    if (channelIndex == 0)
-        return "Input L";
-    if (channelIndex == 1)
-        return "Input R";
-    return String();
+    return channelIndex == 0 ? "Input L" : "Input R";
 }
 
 const String SplitterProcessor::getOutputChannelName(int channelIndex) const
 {
-    if (channelIndex == 0)
-        return "Out A L";
-    if (channelIndex == 1)
-        return "Out A R";
-    if (channelIndex == 2)
-        return "Out B L";
-    if (channelIndex == 3)
-        return "Out B R";
-    return String();
+    if (channelIndex < countTotalOutputChannels())
+    {
+        int currentCh = 0;
+        const int n = numStrips_.load(std::memory_order_acquire);
+        for (int i = 0; i < n; ++i)
+        {
+            const auto& strip = strips_[static_cast<size_t>(i)];
+            const bool stereo = strip.stereo.load(std::memory_order_relaxed);
+            const int channels = stereo ? 2 : 1;
+            if (channelIndex < currentCh + channels)
+                return stereo ? strip.name + (channelIndex == currentCh ? " L" : " R") : strip.name;
+            currentCh += channels;
+        }
+    }
+    return "Output " + String(channelIndex + 1);
 }
 
 void SplitterProcessor::setOutputMute(int outputIndex, bool shouldMute)
 {
-    if (outputIndex == 0)
-        muteA.store(shouldMute);
-    else
-        muteB.store(shouldMute);
+    if (auto* strip = getStrip(outputIndex))
+        strip->mute.store(shouldMute, std::memory_order_relaxed);
 }
 
 bool SplitterProcessor::getOutputMute(int outputIndex) const
 {
-    if (outputIndex == 0)
-        return muteA.load();
-    return muteB.load();
+    if (auto* strip = getStrip(outputIndex))
+        return strip->mute.load(std::memory_order_relaxed);
+    return false;
+}
+
+void SplitterProcessor::setOutputGainDb(int outputIndex, float db)
+{
+    if (auto* strip = getStrip(outputIndex))
+        strip->gainDb.store(jlimit(MinGainDb, MaxGainDb, db), std::memory_order_relaxed);
+}
+
+float SplitterProcessor::getOutputGainDb(int outputIndex) const
+{
+    if (auto* strip = getStrip(outputIndex))
+        return strip->gainDb.load(std::memory_order_relaxed);
+    return 0.0f;
+}
+
+void SplitterProcessor::setOutputPan(int outputIndex, float pan)
+{
+    if (auto* strip = getStrip(outputIndex))
+        strip->pan.store(jlimit(-1.0f, 1.0f, pan), std::memory_order_relaxed);
+}
+
+float SplitterProcessor::getOutputPan(int outputIndex) const
+{
+    if (auto* strip = getStrip(outputIndex))
+        return strip->pan.load(std::memory_order_relaxed);
+    return 0.0f;
+}
+
+void SplitterProcessor::setOutputSolo(int outputIndex, bool shouldSolo)
+{
+    if (auto* strip = getStrip(outputIndex))
+        strip->solo.store(shouldSolo, std::memory_order_relaxed);
+}
+
+bool SplitterProcessor::getOutputSolo(int outputIndex) const
+{
+    if (auto* strip = getStrip(outputIndex))
+        return strip->solo.load(std::memory_order_relaxed);
+    return false;
+}
+
+void SplitterProcessor::setOutputStereo(int outputIndex, bool shouldBeStereo)
+{
+    if (auto* strip = getStrip(outputIndex))
+    {
+        const bool old = strip->stereo.exchange(shouldBeStereo, std::memory_order_acq_rel);
+        if (old != shouldBeStereo)
+            updateChannelConfig();
+    }
+}
+
+bool SplitterProcessor::getOutputStereo(int outputIndex) const
+{
+    if (auto* strip = getStrip(outputIndex))
+        return strip->stereo.load(std::memory_order_relaxed);
+    return true;
+}
+
+void SplitterProcessor::setOutputPhaseInvert(int outputIndex, bool shouldInvert)
+{
+    if (auto* strip = getStrip(outputIndex))
+        strip->phaseInvert.store(shouldInvert, std::memory_order_relaxed);
+}
+
+bool SplitterProcessor::getOutputPhaseInvert(int outputIndex) const
+{
+    if (auto* strip = getStrip(outputIndex))
+        return strip->phaseInvert.load(std::memory_order_relaxed);
+    return false;
+}
+
+bool SplitterProcessor::isOutputChannelStereoPair(int channelIndex) const
+{
+    int currentCh = 0;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+    {
+        const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        const int channels = stereo ? 2 : 1;
+        if (channelIndex >= currentCh && channelIndex < currentCh + channels)
+            return stereo;
+        currentCh += channels;
+    }
+    return false;
 }
 
 void SplitterProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("SplitterSettings");
-    xml.setAttribute("muteA", muteA.load());
-    xml.setAttribute("muteB", muteB.load());
+    xml.setAttribute("version", 4);
+    xml.setAttribute("numStrips", getNumStrips());
+    for (int i = 0; i < getNumStrips(); ++i)
+    {
+        const auto& strip = strips_[static_cast<size_t>(i)];
+        const String prefix = "strip" + String(i) + "_";
+        xml.setAttribute(prefix + "gainDb", static_cast<double>(strip.gainDb.load(std::memory_order_relaxed)));
+        xml.setAttribute(prefix + "pan", static_cast<double>(strip.pan.load(std::memory_order_relaxed)));
+        xml.setAttribute(prefix + "mute", strip.mute.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "solo", strip.solo.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "stereo", strip.stereo.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "phase", strip.phaseInvert.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "name", strip.name);
+    }
     copyXmlToBinary(xml, destData);
 }
 
 void SplitterProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-    if (xmlState != nullptr && xmlState->hasTagName("SplitterSettings"))
+    if (xmlState == nullptr || !xmlState->hasTagName("SplitterSettings"))
+        return;
+
+    if (!xmlState->hasAttribute("version"))
     {
-        muteA.store(xmlState->getBoolAttribute("muteA"));
-        muteB.store(xmlState->getBoolAttribute("muteB"));
+        setOutputMute(0, xmlState->getBoolAttribute("muteA"));
+        setOutputMute(1, xmlState->getBoolAttribute("muteB"));
+        return;
     }
+
+    const int active = jlimit(1, MaxStrips, xmlState->getIntAttribute("numStrips", DefaultStrips));
+    for (int i = 0; i < active; ++i)
+    {
+        auto& strip = strips_[static_cast<size_t>(i)];
+        strip.resetDefaults(i);
+        const String prefix = "strip" + String(i) + "_";
+        strip.gainDb.store(static_cast<float>(xmlState->getDoubleAttribute(prefix + "gainDb", 0.0)),
+                           std::memory_order_relaxed);
+        strip.pan.store(static_cast<float>(xmlState->getDoubleAttribute(prefix + "pan", 0.0)),
+                        std::memory_order_relaxed);
+        strip.mute.store(xmlState->getBoolAttribute(prefix + "mute", false), std::memory_order_relaxed);
+        strip.solo.store(xmlState->getBoolAttribute(prefix + "solo", false), std::memory_order_relaxed);
+        strip.stereo.store(xmlState->getBoolAttribute(prefix + "stereo", true), std::memory_order_relaxed);
+        strip.phaseInvert.store(xmlState->getBoolAttribute(prefix + "phase", false), std::memory_order_relaxed);
+        strip.name = xmlState->getStringAttribute(prefix + "name", "Out " + String(i + 1));
+    }
+    numStrips_.store(active, std::memory_order_release);
+    updateChannelConfig();
+}
+
+PedalboardProcessor::PinLayout SplitterProcessor::getInputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(54);
+    layout.pinY.push_back(76);
+    return layout;
+}
+
+PedalboardProcessor::PinLayout SplitterProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    const int firstRowTop = 26 + 82;
+    for (int i = 0; i < n; ++i)
+    {
+        const int rowTop = firstRowTop + i * 46;
+        const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        if (stereo)
+        {
+            layout.pinY.push_back(rowTop + 6);
+            layout.pinY.push_back(rowTop + 28);
+        }
+        else
+        {
+            layout.pinY.push_back(rowTop + 17);
+        }
+    }
+    return layout;
 }
 
 //==============================================================================
@@ -441,54 +912,75 @@ void SplitterProcessor::setStateInformation(const void* data, int sizeInBytes)
 
 MixerProcessor::MixerProcessor()
 {
-    // 4 inputs (Stereo A, Stereo B), 2 outputs (Stereo Mix)
-    setPlayConfigDetails(4, 2, 0, 0);
+    for (int i = 0; i < DefaultStrips; ++i)
+        strips_[static_cast<size_t>(i)].resetDefaults(i);
+
+    numStrips_.store(DefaultStrips, std::memory_order_release);
+    updateChannelConfig();
 }
 
 MixerProcessor::~MixerProcessor() {}
 
-void MixerProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/)
+void MixerProcessor::computeVuDecay(double sampleRate)
 {
-    // Init gain smoothing (50ms multiplicative ramp)
-    for (int ch = 0; ch < NumChannels; ++ch)
+    currentSampleRate_ = sampleRate;
+    const double samplesFor300ms = sampleRate * 0.3;
+    peakDecay_ = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
+}
+
+void MixerProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    computeVuDecay(sampleRate);
+
+    const int active = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < MaxStrips; ++i)
     {
-        smoothedGain[ch].reset(sampleRate, 0.05);
-        float gainLin = Decibels::decibelsToGain(channels[ch].gainDb.load(std::memory_order_relaxed));
-        smoothedGain[ch].setCurrentAndTargetValue(gainLin);
-        // Init VU meters
-        channels[ch].vuL.init(static_cast<float>(sampleRate));
-        channels[ch].vuR.init(static_cast<float>(sampleRate));
+        auto& dsp = stripDsp_[static_cast<size_t>(i)];
+        dsp.init(sampleRate);
+        if (i < active)
+        {
+            const float gain =
+                Decibels::decibelsToGain(strips_[static_cast<size_t>(i)].gainDb.load(std::memory_order_relaxed));
+            dsp.smoothedGain.setCurrentAndTargetValue(gain);
+        }
     }
-    smoothedMasterGain.reset(sampleRate, 0.05);
-    smoothedMasterGain.setCurrentAndTargetValue(
-        Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
-    // Peak meter decay: ~300ms from peak to -60dB
-    double samplesFor300ms = sampleRate * 0.3;
-    peakDecayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
+
+    smoothedMasterGain_.reset(sampleRate, GainRampSeconds);
+    smoothedMasterGain_.setCurrentAndTargetValue(Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
+    masterVuDspL_.init(static_cast<float>(sampleRate));
+    masterVuDspR_.init(static_cast<float>(sampleRate));
+    tempBuffer_.setSize(2, samplesPerBlock, false, true, true);
 }
 
 Component* MixerProcessor::getControls()
 {
-    // Full channel strip control embedded in the node panel
     class MixerControl : public Component, private Timer
     {
       public:
         MixerControl(MixerProcessor* proc) : processor(proc)
         {
-            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            addStripButton.setButtonText("+");
+            addStripButton.onClick = [this]() { addStripClicked(); };
+            styleRoutingButton(addStripButton, getRoutingNodeAccent());
+            addAndMakeVisible(addStripButton);
+
+            removeStripButton.setButtonText("-");
+            removeStripButton.onClick = [this]() { removeStripClicked(); };
+            styleRoutingButton(removeStripButton, getRoutingNodeAccent());
+            addAndMakeVisible(removeStripButton);
+
+            for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
-                // Gain fader (vertical, dB scale)
                 auto& f = faders[ch];
                 f.setSliderStyle(Slider::LinearVertical);
                 f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-                f.setRange(-60.0, 12.0, 0.1);
+                f.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
                 f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
                 f.onValueChange = [this, ch]()
                 { processor->setChannelGainDb(ch, static_cast<float>(faders[ch].getValue())); };
                 f.setAlpha(0.01f);
                 addAndMakeVisible(f);
 
-                // Pan knob (rotary)
                 auto& p = panKnobs[ch];
                 p.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
                 p.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
@@ -500,41 +992,48 @@ Component* MixerProcessor::getControls()
                 p.setAlpha(0.01f);
                 addAndMakeVisible(p);
 
-                // Mute button
                 auto& m = muteButtons[ch];
                 m.setButtonText("M");
                 m.setClickingTogglesState(true);
-                m.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
                 styleRoutingButton(m, ColourScheme::getInstance().colours["Danger Colour"]);
                 m.setToggleState(processor->getChannelMute(ch), dontSendNotification);
                 m.onClick = [this, ch]() { processor->setChannelMute(ch, muteButtons[ch].getToggleState()); };
                 addAndMakeVisible(m);
 
-                // Solo button
                 auto& s = soloButtons[ch];
                 s.setButtonText("S");
                 s.setClickingTogglesState(true);
-                s.setColour(TextButton::buttonOnColourId, Colour(0xFFCCAA00));
                 styleRoutingButton(s, Colour(0xFFCCAA00));
                 s.setToggleState(processor->getChannelSolo(ch), dontSendNotification);
                 s.onClick = [this, ch]() { processor->setChannelSolo(ch, soloButtons[ch].getToggleState()); };
                 addAndMakeVisible(s);
 
-                // Phase invert button
+                auto& st = stereoButtons[ch];
+                st.setButtonText("ST");
+                st.setClickingTogglesState(true);
+                styleRoutingButton(st, getRoutingNodeAccent());
+                st.setToggleState(processor->getChannelStereo(ch), dontSendNotification);
+                st.onClick = [this, ch]()
+                {
+                    processor->setChannelStereo(ch, stereoButtons[ch].getToggleState());
+                    refreshTopology();
+                };
+                addAndMakeVisible(st);
+
                 auto& ph = phaseButtons[ch];
-                ph.setButtonText(CharPointer_UTF8("\xc3\x98")); // O-slash as phase symbol
+                ph.setButtonText(CharPointer_UTF8("\xc3\x98"));
                 ph.setClickingTogglesState(true);
-                ph.setColour(TextButton::buttonOnColourId, Colour(0xFFFF8800));
                 styleRoutingButton(ph, Colour(0xFFFF8800));
                 ph.setToggleState(processor->getChannelPhaseInvert(ch), dontSendNotification);
-                ph.onClick = [this, ch]() { processor->setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
+                ph.onClick = [this, ch]()
+                { processor->setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
                 addAndMakeVisible(ph);
             }
 
             auto& mf = masterFader;
             mf.setSliderStyle(Slider::LinearVertical);
             mf.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            mf.setRange(-60.0, 12.0, 0.1);
+            mf.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
             mf.setValue(processor->getMasterGainDb(), dontSendNotification);
             mf.onValueChange = [this]() { processor->setMasterGainDb(static_cast<float>(masterFader.getValue())); };
             mf.setAlpha(0.01f);
@@ -542,12 +1041,12 @@ Component* MixerProcessor::getControls()
 
             masterMuteButton.setButtonText("M");
             masterMuteButton.setClickingTogglesState(true);
-            masterMuteButton.setColour(TextButton::buttonOnColourId, ColourScheme::getInstance().colours["Danger Colour"]);
             styleRoutingButton(masterMuteButton, ColourScheme::getInstance().colours["Danger Colour"]);
             masterMuteButton.setToggleState(processor->getMasterMute(), dontSendNotification);
             masterMuteButton.onClick = [this]() { processor->setMasterMute(masterMuteButton.getToggleState()); };
             addAndMakeVisible(masterMuteButton);
 
+            syncControlsFromProcessor();
             startTimerHz(30);
         }
 
@@ -556,27 +1055,42 @@ Component* MixerProcessor::getControls()
         void resized() override
         {
             auto area = getLocalBounds().reduced(8, 6);
-            area.removeFromTop(11);
-            int stripW = area.getWidth() / (MixerProcessor::NumChannels + 1);
+            auto header = area.removeFromTop(20);
+            removeStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
+            addStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
+            area.removeFromTop(5);
 
-            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            const int activeStrips = processor->getNumStrips();
+            const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
+
+            for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
+            {
+                vuAreas[ch] = {};
+                stripDecks[ch] = {};
+                badgeAreas[ch] = {};
+                panRails[ch] = {};
+                valueAreas[ch] = {};
+            }
+
+            for (int ch = 0; ch < activeStrips; ++ch)
             {
                 auto strip = area.removeFromLeft(stripW).reduced(4, 0);
                 stripDecks[ch] = strip;
 
-                auto top = strip.removeFromTop(20);
+                auto top = strip.removeFromTop(22);
                 badgeAreas[ch] = top.removeFromLeft(24).reduced(1, 2);
-                phaseButtons[ch].setBounds(top.removeFromRight(20).reduced(1, 3));
+                phaseButtons[ch].setBounds(top.removeFromRight(19).reduced(1, 3));
+                stereoButtons[ch].setBounds(top.removeFromRight(23).reduced(1, 3));
 
-                panRails[ch] = strip.removeFromTop(11).reduced(12, 3);
+                panRails[ch] = strip.removeFromTop(12).reduced(11, 3);
                 panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
 
                 strip.removeFromTop(5);
                 vuAreas[ch] = strip.removeFromTop(66).withSizeKeepingCentre(18, 66);
                 faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
 
-                valueAreas[ch] = strip.removeFromTop(16).reduced(0, 1);
-                strip.removeFromTop(3);
+                valueAreas[ch] = strip.removeFromTop(18).reduced(0, 1);
+                strip.removeFromTop(2);
                 auto btnRow = strip.removeFromTop(18);
                 const auto muteArea = btnRow.withWidth(24).withX(btnRow.getCentreX() - 25);
                 const auto soloArea = btnRow.withWidth(24).withX(btnRow.getCentreX() + 1);
@@ -586,14 +1100,14 @@ Component* MixerProcessor::getControls()
 
             auto masterStrip = area.reduced(4, 0);
             masterDeck = masterStrip;
-            auto masterTop = masterStrip.removeFromTop(20);
+            auto masterTop = masterStrip.removeFromTop(22);
             masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
-            masterPanRail = masterStrip.removeFromTop(11).reduced(12, 3);
+            masterPanRail = masterStrip.removeFromTop(12).reduced(11, 3);
             masterStrip.removeFromTop(5);
             masterFaderArea = masterStrip.removeFromTop(66).withSizeKeepingCentre(18, 66);
             masterFader.setBounds(masterFaderArea.expanded(14, 4));
-            masterValueArea = masterStrip.removeFromTop(16).reduced(0, 1);
-            masterStrip.removeFromTop(3);
+            masterValueArea = masterStrip.removeFromTop(18).reduced(0, 1);
+            masterStrip.removeFromTop(2);
             masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
         }
 
@@ -604,15 +1118,14 @@ Component* MixerProcessor::getControls()
             auto& cs = ColourScheme::getInstance();
             const auto accent = getRoutingNodeAccent();
 
-            for (int ch = 0; ch < MixerProcessor::NumChannels; ++ch)
+            for (int ch = 0; ch < processor->getNumStrips(); ++ch)
             {
                 paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));
-                auto badge = badgeAreas[ch];
-                paintRoutingBadge(g, badge.toFloat(), getRoutingVisualLabel(ch), accent, true);
+                paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);
                 paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
                 drawVuMeter(g, ch, cs);
-                g.setColour(cs.colours["Text Colour"].withAlpha(0.66f));
-                g.setFont(Font(9.0f, Font::bold));
+                g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
+                g.setFont(Font(9.8f, Font::bold));
                 g.drawText(String(processor->getChannelGainDb(ch), 1), valueAreas[ch], Justification::centred, true);
             }
 
@@ -620,30 +1133,78 @@ Component* MixerProcessor::getControls()
             paintRoutingBadge(g, masterBadgeArea.toFloat(), "M", accent, true);
             paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
             drawMasterFader(g, cs);
-            g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
-            g.setFont(Font(9.0f, Font::bold));
+            g.setColour(cs.colours["Text Colour"].withAlpha(0.72f));
+            g.setFont(Font(9.8f, Font::bold));
             g.drawText(String(processor->getMasterGainDb(), 1), masterValueArea, Justification::centred, true);
         }
 
       private:
         MixerProcessor* processor;
-        Slider faders[MixerProcessor::NumChannels];
-        Slider panKnobs[MixerProcessor::NumChannels];
-        TextButton muteButtons[MixerProcessor::NumChannels];
-        TextButton soloButtons[MixerProcessor::NumChannels];
-        TextButton phaseButtons[MixerProcessor::NumChannels];
+        TextButton addStripButton;
+        TextButton removeStripButton;
+        std::array<Slider, MixerProcessor::MaxStrips> faders;
+        std::array<Slider, MixerProcessor::MaxStrips> panKnobs;
+        std::array<TextButton, MixerProcessor::MaxStrips> muteButtons;
+        std::array<TextButton, MixerProcessor::MaxStrips> soloButtons;
+        std::array<TextButton, MixerProcessor::MaxStrips> stereoButtons;
+        std::array<TextButton, MixerProcessor::MaxStrips> phaseButtons;
         Slider masterFader;
         TextButton masterMuteButton;
-        Rectangle<int> vuAreas[MixerProcessor::NumChannels];
-        Rectangle<int> stripDecks[MixerProcessor::NumChannels];
-        Rectangle<int> badgeAreas[MixerProcessor::NumChannels];
-        Rectangle<int> panRails[MixerProcessor::NumChannels];
-        Rectangle<int> valueAreas[MixerProcessor::NumChannels];
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> vuAreas;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> stripDecks;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> badgeAreas;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> panRails;
+        std::array<Rectangle<int>, MixerProcessor::MaxStrips> valueAreas;
         Rectangle<int> masterDeck;
         Rectangle<int> masterBadgeArea;
         Rectangle<int> masterPanRail;
         Rectangle<int> masterFaderArea;
         Rectangle<int> masterValueArea;
+
+        void addStripClicked()
+        {
+            processor->addStrip();
+            refreshTopology();
+        }
+
+        void removeStripClicked()
+        {
+            processor->removeStrip();
+            refreshTopology();
+        }
+
+        void refreshTopology()
+        {
+            const auto newSize = processor->getSize();
+            setSize(newSize.getX(), newSize.getY());
+            syncControlsFromProcessor();
+            resized();
+            notifyParentPins(*this);
+        }
+
+        void syncControlsFromProcessor()
+        {
+            const int active = processor->getNumStrips();
+            for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
+            {
+                const bool visible = ch < active;
+                faders[ch].setVisible(visible);
+                panKnobs[ch].setVisible(visible);
+                muteButtons[ch].setVisible(visible);
+                soloButtons[ch].setVisible(visible);
+                stereoButtons[ch].setVisible(visible);
+                phaseButtons[ch].setVisible(visible);
+                if (visible)
+                {
+                    faders[ch].setValue(processor->getChannelGainDb(ch), dontSendNotification);
+                    panKnobs[ch].setValue(processor->getChannelPan(ch), dontSendNotification);
+                    muteButtons[ch].setToggleState(processor->getChannelMute(ch), dontSendNotification);
+                    soloButtons[ch].setToggleState(processor->getChannelSolo(ch), dontSendNotification);
+                    stereoButtons[ch].setToggleState(processor->getChannelStereo(ch), dontSendNotification);
+                    phaseButtons[ch].setToggleState(processor->getChannelPhaseInvert(ch), dontSendNotification);
+                }
+            }
+        }
 
         void drawMasterFader(Graphics& g, ColourScheme& cs)
         {
@@ -667,22 +1228,21 @@ Component* MixerProcessor::getControls()
             g.setColour(cs.colours["Plugin Background"].darker(0.35f));
             g.fillRoundedRectangle(area.toFloat(), 4.0f);
 
-            // Draw L and R bars
             int barW = (area.getWidth() - 6) / 2;
             auto leftBar = area.withWidth(barW).translated(2, 0).reduced(0, 2);
             auto rightBar = leftBar.translated(barW + 2, 0);
 
-            float vuL = processor->channels[ch].vuLevelL.load(std::memory_order_relaxed);
-            float vuR = processor->channels[ch].vuLevelR.load(std::memory_order_relaxed);
-            float peakL = processor->channels[ch].peakL.load(std::memory_order_relaxed);
-            float peakR = processor->channels[ch].peakR.load(std::memory_order_relaxed);
+            auto* strip = processor->getStrip(ch);
+            const float vuL = strip != nullptr ? strip->vuL.load(std::memory_order_relaxed) : 0.0f;
+            const float vuR = strip != nullptr ? strip->vuR.load(std::memory_order_relaxed) : 0.0f;
+            const float peakL = strip != nullptr ? strip->peakL.load(std::memory_order_relaxed) : 0.0f;
+            const float peakR = strip != nullptr ? strip->peakR.load(std::memory_order_relaxed) : 0.0f;
 
             drawSingleBar(g, leftBar, vuL, peakL, cs);
             drawSingleBar(g, rightBar, vuR, peakR, cs);
 
             drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);
 
-            // Draw dB scale ticks
             g.setFont(9.0f);
             g.setColour(cs.colours["Text Colour"].withAlpha(0.5f));
             const float dbMarks[] = {0.0f, -6.0f, -12.0f, -24.0f, -48.0f};
@@ -708,7 +1268,8 @@ Component* MixerProcessor::getControls()
             ColourGradient faderFill(accent.withAlpha(0.36f), fill.getCentreX(), fill.getBottom(),
                                      cs.colours["VU Meter Lower Colour"].withAlpha(0.50f), fill.getCentreX(),
                                      fill.getY(), false);
-            faderFill.addColour(0.62, accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.42f));
+            faderFill.addColour(0.62,
+                                 accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.42f));
             g.setGradientFill(faderFill);
             g.fillRoundedRectangle(fill, 3.0f);
 
@@ -731,8 +1292,8 @@ Component* MixerProcessor::getControls()
             int fillH = static_cast<int>(norm * bar.getHeight());
 
             float hFull = static_cast<float>(bar.getHeight());
-            float yellowThreshold = 48.0f / 72.0f; // -12 dB
-            float redThreshold = 60.0f / 72.0f;    // 0 dB
+            float yellowThreshold = 48.0f / 72.0f;
+            float redThreshold = 60.0f / 72.0f;
 
             for (int y = bar.getBottom() - fillH; y < bar.getBottom(); ++y)
             {
@@ -748,7 +1309,6 @@ Component* MixerProcessor::getControls()
                 g.drawHorizontalLine(y, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
             }
 
-            // Peak hold indicator
             float peakDb = Decibels::gainToDecibels(peakLevel, -60.0f);
             float peakNorm = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 72.0f);
             if (peakNorm > 0.001f)
@@ -765,215 +1325,348 @@ Component* MixerProcessor::getControls()
     return new MixerControl(this);
 }
 
-void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midiMessages*/)
+Point<int> MixerProcessor::getSize()
 {
-    int numIn = getTotalNumInputChannels();
-    int numOut = getTotalNumOutputChannels();
+    return Point<int>(jmax(276, 70 + (getNumStrips() + 1) * 62), 190);
+}
 
-    if (numIn < 4 || numOut < 2)
+int MixerProcessor::countTotalInputChannels() const
+{
+    int total = 0;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+        total += strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed) ? 2 : 1;
+    return total;
+}
+
+void MixerProcessor::updateChannelConfig()
+{
+    setPlayConfigDetails(countTotalInputChannels(), 2, getSampleRate(), getBlockSize());
+}
+
+void MixerProcessor::addStrip()
+{
+    const int n = numStrips_.load(std::memory_order_acquire);
+    if (n >= MaxStrips)
         return;
 
+    strips_[static_cast<size_t>(n)].resetDefaults(n);
+    if (currentSampleRate_ > 0.0)
+        stripDsp_[static_cast<size_t>(n)].init(currentSampleRate_);
+
+    numStrips_.store(n + 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+void MixerProcessor::removeStrip()
+{
+    const int n = numStrips_.load(std::memory_order_acquire);
+    if (n <= 1)
+        return;
+
+    numStrips_.store(n - 1, std::memory_order_release);
+    updateChannelConfig();
+}
+
+MixerProcessor::StripState* MixerProcessor::getStrip(int index)
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+const MixerProcessor::StripState* MixerProcessor::getStrip(int index) const
+{
+    if (index >= 0 && index < numStrips_.load(std::memory_order_acquire))
+        return &strips_[static_cast<size_t>(index)];
+    return nullptr;
+}
+
+void MixerProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer& /*midiMessages*/)
+{
     const int numSamples = buffer.getNumSamples();
+    const int ns = numStrips_.load(std::memory_order_acquire);
+    const int totalInputChannels = buffer.getNumChannels();
 
-    // Read channel inputs
-    const float* inAL = buffer.getReadPointer(0);
-    const float* inAR = buffer.getReadPointer(1);
-    const float* inBL = buffer.getReadPointer(2);
-    const float* inBR = buffer.getReadPointer(3);
-
-    float* outL = buffer.getWritePointer(0);
-    float* outR = buffer.getWritePointer(1);
-
-    // Read per-channel state atomics (once per block)
-    struct ChBlock
+    if (ns == 0 || numSamples == 0)
     {
-        float panL, panR;
-        bool mute, phaseInv;
-    };
-    ChBlock chb[NumChannels];
+        buffer.clear();
+        return;
+    }
 
-    // Solo logic: if any channel is soloed, mute all non-soloed channels
+    if (tempBuffer_.getNumSamples() < numSamples || tempBuffer_.getNumChannels() < 2)
+    {
+        buffer.clear();
+        return;
+    }
+
+    tempBuffer_.clear();
+
     bool anySolo = false;
-    for (int ch = 0; ch < NumChannels; ++ch)
+    for (int s = 0; s < ns; ++s)
     {
-        if (channels[ch].solo.load(std::memory_order_relaxed))
+        if (strips_[static_cast<size_t>(s)].solo.load(std::memory_order_relaxed))
+        {
             anySolo = true;
+            break;
+        }
     }
 
-    for (int ch = 0; ch < NumChannels; ++ch)
+    float* mixL = tempBuffer_.getWritePointer(0);
+    float* mixR = tempBuffer_.getWritePointer(1);
+    int currentInputChannel = 0;
+
+    for (int s = 0; s < ns; ++s)
     {
-        float pan = channels[ch].pan.load(std::memory_order_relaxed);
-        // Equal-power pan law (-3 dB at center)
-        chb[ch].panL = std::sqrt(0.5f * (1.0f - pan));
-        chb[ch].panR = std::sqrt(0.5f * (1.0f + pan));
-        chb[ch].mute = channels[ch].mute.load(std::memory_order_relaxed);
-        chb[ch].phaseInv = channels[ch].phaseInvert.load(std::memory_order_relaxed);
+        auto& strip = strips_[static_cast<size_t>(s)];
+        auto& dsp = stripDsp_[static_cast<size_t>(s)];
 
-        // If any channel is soloed and this one isn't, treat as muted
-        if (anySolo && !channels[ch].solo.load(std::memory_order_relaxed))
-            chb[ch].mute = true;
+        const bool isStereo = strip.stereo.load(std::memory_order_relaxed);
+        const int channelsNeeded = isStereo ? 2 : 1;
+        if (currentInputChannel + channelsNeeded > totalInputChannels)
+            break;
 
-        // Update smoothed gain target
-        float gainLin = Decibels::decibelsToGain(channels[ch].gainDb.load(std::memory_order_relaxed));
-        smoothedGain[ch].setTargetValue(gainLin);
-    }
-    const bool masterMuted = masterMute.load(std::memory_order_relaxed);
-    smoothedMasterGain.setTargetValue(Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
+        const float* srcL = buffer.getReadPointer(currentInputChannel);
+        const float* srcR = isStereo ? buffer.getReadPointer(currentInputChannel + 1) : nullptr;
+        currentInputChannel += channelsNeeded;
 
-    // Temp buffers for VU metering (per channel, L and R post-processing)
-    float vuBufA_L[8192], vuBufA_R[8192];
-    float vuBufB_L[8192], vuBufB_R[8192];
-    jassert(numSamples <= 8192);
+        const bool effectiveMute = strip.mute.load(std::memory_order_relaxed) ||
+                                   (anySolo && !strip.solo.load(std::memory_order_relaxed));
+        const bool phaseInv = strip.phaseInvert.load(std::memory_order_relaxed);
+        const float pan = strip.pan.load(std::memory_order_relaxed);
+        const float gainDb = strip.gainDb.load(std::memory_order_relaxed);
 
-    for (int i = 0; i < numSamples; ++i)
-    {
-        float sumL = 0.0f, sumR = 0.0f;
+        dsp.smoothedGain.setTargetValue(Decibels::decibelsToGain(gainDb));
 
-        // Channel A (inputs 0, 1)
+        float panL = 1.0f;
+        float panR = 1.0f;
+        if (isStereo)
         {
-            float gain = smoothedGain[0].getNextValue();
-            float l = inAL[i];
-            float r = inAR[i];
-            if (chb[0].phaseInv)
-            {
-                l = -l;
-                r = -r;
-            }
-            l *= gain;
-            r *= gain;
-            // Store for VU metering before mute (so VU shows signal even when muted)
-            vuBufA_L[i] = l;
-            vuBufA_R[i] = r;
-            if (!chb[0].mute)
-            {
-                sumL += l * chb[0].panL;
-                sumR += r * chb[0].panR;
-            }
+            if (pan <= 0.0f)
+                panR = 1.0f + pan;
+            else
+                panL = 1.0f - pan;
+        }
+        else
+        {
+            panL = std::sqrt(0.5f * (1.0f - pan));
+            panR = std::sqrt(0.5f * (1.0f + pan));
         }
 
-        // Channel B (inputs 2, 3)
-        {
-            float gain = smoothedGain[1].getNextValue();
-            float l = inBL[i];
-            float r = inBR[i];
-            if (chb[1].phaseInv)
-            {
-                l = -l;
-                r = -r;
-            }
-            l *= gain;
-            r *= gain;
-            vuBufB_L[i] = l;
-            vuBufB_R[i] = r;
-            if (!chb[1].mute)
-            {
-                sumL += l * chb[1].panL;
-                sumR += r * chb[1].panR;
-            }
-        }
+        float peakL = strip.peakL.load(std::memory_order_relaxed);
+        float peakR = strip.peakR.load(std::memory_order_relaxed);
 
-        const float masterGain = smoothedMasterGain.getNextValue();
-        outL[i] = masterMuted ? 0.0f : sumL * masterGain;
-        outR[i] = masterMuted ? 0.0f : sumR * masterGain;
-    }
-
-    // Feed VU meters (post-gain, pre-mute — shows signal level regardless of mute)
-    channels[0].vuL.process(vuBufA_L, numSamples);
-    channels[0].vuR.process(vuBufA_R, numSamples);
-    channels[0].vuLevelL.store(channels[0].vuL.read(), std::memory_order_relaxed);
-    channels[0].vuLevelR.store(channels[0].vuR.read(), std::memory_order_relaxed);
-
-    channels[1].vuL.process(vuBufB_L, numSamples);
-    channels[1].vuR.process(vuBufB_R, numSamples);
-    channels[1].vuLevelL.store(channels[1].vuL.read(), std::memory_order_relaxed);
-    channels[1].vuLevelR.store(channels[1].vuR.read(), std::memory_order_relaxed);
-
-    // Peak metering with decay
-    for (int ch = 0; ch < NumChannels; ++ch)
-    {
-        const float* vuL = (ch == 0) ? vuBufA_L : vuBufB_L;
-        const float* vuR = (ch == 0) ? vuBufA_R : vuBufB_R;
-        float peakL = channels[ch].peakL.load(std::memory_order_relaxed);
-        float peakR = channels[ch].peakR.load(std::memory_order_relaxed);
         for (int i = 0; i < numSamples; ++i)
         {
-            float absL = std::abs(vuL[i]);
-            float absR = std::abs(vuR[i]);
-            peakL = (absL > peakL) ? absL : peakL * peakDecayCoeff;
-            peakR = (absR > peakR) ? absR : peakR * peakDecayCoeff;
+            const float gain = dsp.smoothedGain.getNextValue();
+            float l = srcL[i];
+            float r = isStereo ? srcR[i] : l;
+
+            if (phaseInv)
+            {
+                l = -l;
+                r = -r;
+            }
+
+            l *= gain * panL;
+            r *= gain * panR;
+
+            const float absL = std::abs(l);
+            const float absR = std::abs(r);
+            peakL = (absL > peakL) ? absL : peakL * peakDecay_;
+            peakR = (absR > peakR) ? absR : peakR * peakDecay_;
+
+            if (!effectiveMute)
+            {
+                mixL[i] += l;
+                mixR[i] += r;
+            }
         }
+
         if (peakL < 1e-10f)
             peakL = 0.0f;
         if (peakR < 1e-10f)
             peakR = 0.0f;
-        channels[ch].peakL.store(peakL, std::memory_order_relaxed);
-        channels[ch].peakR.store(peakR, std::memory_order_relaxed);
+        strip.peakL.store(peakL, std::memory_order_relaxed);
+        strip.peakR.store(peakR, std::memory_order_relaxed);
+        strip.vuL.store(peakL, std::memory_order_relaxed);
+        strip.vuR.store(peakR, std::memory_order_relaxed);
     }
-}
 
-AudioProcessorEditor* MixerProcessor::createEditor()
-{
-    return nullptr; // Uses getControls() instead
+    smoothedMasterGain_.setTargetValue(Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
+    const bool masterMuted = masterMute.load(std::memory_order_relaxed);
+    float masterPkL = masterPeakL.load(std::memory_order_relaxed);
+    float masterPkR = masterPeakR.load(std::memory_order_relaxed);
+
+    float* outL = buffer.getWritePointer(0);
+    float* outR = buffer.getNumChannels() > 1 ? buffer.getWritePointer(1) : nullptr;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const float gain = smoothedMasterGain_.getNextValue();
+        float l = masterMuted ? 0.0f : mixL[i] * gain;
+        float r = masterMuted ? 0.0f : mixR[i] * gain;
+
+        outL[i] = l;
+        if (outR != nullptr)
+            outR[i] = r;
+
+        const float absL = std::abs(l);
+        const float absR = std::abs(r);
+        masterPkL = (absL > masterPkL) ? absL : masterPkL * peakDecay_;
+        masterPkR = (absR > masterPkR) ? absR : masterPkR * peakDecay_;
+    }
+
+    if (masterPkL < 1e-10f)
+        masterPkL = 0.0f;
+    if (masterPkR < 1e-10f)
+        masterPkR = 0.0f;
+    masterPeakL.store(masterPkL, std::memory_order_relaxed);
+    masterPeakR.store(masterPkR, std::memory_order_relaxed);
+    masterVuL.store(masterPkL, std::memory_order_relaxed);
+    masterVuR.store(masterPkR, std::memory_order_relaxed);
+
+    for (int ch = 2; ch < buffer.getNumChannels(); ++ch)
+        buffer.clear(ch, 0, numSamples);
 }
 
 void MixerProcessor::fillInPluginDescription(PluginDescription& description) const
 {
     description.name = "Mixer";
-    description.descriptiveName = "Mixes two stereo pairs (A and B) to stereo with gain, pan, mute/solo.";
+    description.descriptiveName = "Mixes dynamic mono or stereo strips to a stereo master.";
     description.pluginFormatName = "Internal";
     description.category = "Routing";
     description.manufacturerName = "Pedalboard3";
-    description.version = "2.00";
+    description.version = "4.00";
     description.uniqueId = description.name.hashCode();
     description.isInstrument = false;
-    description.numInputChannels = 4;
+    description.numInputChannels = countTotalInputChannels();
     description.numOutputChannels = 2;
 }
 
 bool MixerProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    if (layouts.getMainInputChannels() == 4 && layouts.getMainOutputChannels() == 2)
-        return true;
-    return false;
+    return layouts.getMainInputChannels() == countTotalInputChannels() && layouts.getMainOutputChannels() == 2;
 }
 
 const String MixerProcessor::getInputChannelName(int channelIndex) const
 {
-    if (channelIndex == 0)
-        return "In A L";
-    if (channelIndex == 1)
-        return "In A R";
-    if (channelIndex == 2)
-        return "In B L";
-    if (channelIndex == 3)
-        return "In B R";
-    return String();
+    if (channelIndex < countTotalInputChannels())
+    {
+        int currentCh = 0;
+        const int n = numStrips_.load(std::memory_order_acquire);
+        for (int i = 0; i < n; ++i)
+        {
+            const auto& strip = strips_[static_cast<size_t>(i)];
+            const bool stereo = strip.stereo.load(std::memory_order_relaxed);
+            const int channels = stereo ? 2 : 1;
+            if (channelIndex < currentCh + channels)
+                return stereo ? strip.name + (channelIndex == currentCh ? " L" : " R") : strip.name;
+            currentCh += channels;
+        }
+    }
+    return "Input " + String(channelIndex + 1);
 }
 
 const String MixerProcessor::getOutputChannelName(int channelIndex) const
 {
-    if (channelIndex == 0)
-        return "Output L";
-    if (channelIndex == 1)
-        return "Output R";
-    return String();
+    return channelIndex == 0 ? "Master L" : "Master R";
 }
 
-//==============================================================================
-// Parameter interface (for MIDI mapping compatibility)
+float MixerProcessor::getChannelGainDb(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->gainDb.load(std::memory_order_relaxed);
+    return 0.0f;
+}
+
+void MixerProcessor::setChannelGainDb(int ch, float db)
+{
+    if (auto* strip = getStrip(ch))
+        strip->gainDb.store(jlimit(MinGainDb, MaxGainDb, db), std::memory_order_relaxed);
+}
+
+float MixerProcessor::getChannelPan(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->pan.load(std::memory_order_relaxed);
+    return 0.0f;
+}
+
+void MixerProcessor::setChannelPan(int ch, float p)
+{
+    if (auto* strip = getStrip(ch))
+        strip->pan.store(jlimit(-1.0f, 1.0f, p), std::memory_order_relaxed);
+}
+
+bool MixerProcessor::getChannelMute(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->mute.load(std::memory_order_relaxed);
+    return false;
+}
+
+void MixerProcessor::setChannelMute(int ch, bool m)
+{
+    if (auto* strip = getStrip(ch))
+        strip->mute.store(m, std::memory_order_relaxed);
+}
+
+bool MixerProcessor::getChannelSolo(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->solo.load(std::memory_order_relaxed);
+    return false;
+}
+
+void MixerProcessor::setChannelSolo(int ch, bool s)
+{
+    if (auto* strip = getStrip(ch))
+        strip->solo.store(s, std::memory_order_relaxed);
+}
+
+bool MixerProcessor::getChannelStereo(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->stereo.load(std::memory_order_relaxed);
+    return true;
+}
+
+void MixerProcessor::setChannelStereo(int ch, bool s)
+{
+    if (auto* strip = getStrip(ch))
+    {
+        const bool old = strip->stereo.exchange(s, std::memory_order_acq_rel);
+        if (old != s)
+            updateChannelConfig();
+    }
+}
+
+bool MixerProcessor::getChannelPhaseInvert(int ch) const
+{
+    if (auto* strip = getStrip(ch))
+        return strip->phaseInvert.load(std::memory_order_relaxed);
+    return false;
+}
+
+void MixerProcessor::setChannelPhaseInvert(int ch, bool p)
+{
+    if (auto* strip = getStrip(ch))
+        strip->phaseInvert.store(p, std::memory_order_relaxed);
+}
 
 float MixerProcessor::getParameter(int parameterIndex)
 {
     switch (parameterIndex)
     {
     case ParamGainA:
-        return jmap(channels[0].gainDb.load(std::memory_order_relaxed), -60.0f, 12.0f, 0.0f, 1.0f);
+        return jmap(getChannelGainDb(0), MinGainDb, MaxGainDb, 0.0f, 1.0f);
     case ParamGainB:
-        return jmap(channels[1].gainDb.load(std::memory_order_relaxed), -60.0f, 12.0f, 0.0f, 1.0f);
+        return jmap(getChannelGainDb(1), MinGainDb, MaxGainDb, 0.0f, 1.0f);
     case ParamPanA:
-        return jmap(channels[0].pan.load(std::memory_order_relaxed), -1.0f, 1.0f, 0.0f, 1.0f);
+        return jmap(getChannelPan(0), -1.0f, 1.0f, 0.0f, 1.0f);
     case ParamPanB:
-        return jmap(channels[1].pan.load(std::memory_order_relaxed), -1.0f, 1.0f, 0.0f, 1.0f);
+        return jmap(getChannelPan(1), -1.0f, 1.0f, 0.0f, 1.0f);
     default:
         return 0.0f;
     }
@@ -984,16 +1677,16 @@ void MixerProcessor::setParameter(int parameterIndex, float newValue)
     switch (parameterIndex)
     {
     case ParamGainA:
-        channels[0].gainDb.store(jmap(newValue, 0.0f, 1.0f, -60.0f, 12.0f), std::memory_order_relaxed);
+        setChannelGainDb(0, jmap(newValue, 0.0f, 1.0f, MinGainDb, MaxGainDb));
         break;
     case ParamGainB:
-        channels[1].gainDb.store(jmap(newValue, 0.0f, 1.0f, -60.0f, 12.0f), std::memory_order_relaxed);
+        setChannelGainDb(1, jmap(newValue, 0.0f, 1.0f, MinGainDb, MaxGainDb));
         break;
     case ParamPanA:
-        channels[0].pan.store(jmap(newValue, 0.0f, 1.0f, -1.0f, 1.0f), std::memory_order_relaxed);
+        setChannelPan(0, jmap(newValue, 0.0f, 1.0f, -1.0f, 1.0f));
         break;
     case ParamPanB:
-        channels[1].pan.store(jmap(newValue, 0.0f, 1.0f, -1.0f, 1.0f), std::memory_order_relaxed);
+        setChannelPan(1, jmap(newValue, 0.0f, 1.0f, -1.0f, 1.0f));
         break;
     default:
         break;
@@ -1005,13 +1698,13 @@ const String MixerProcessor::getParameterName(int parameterIndex)
     switch (parameterIndex)
     {
     case ParamGainA:
-        return "Gain A";
+        return "Gain 1";
     case ParamGainB:
-        return "Gain B";
+        return "Gain 2";
     case ParamPanA:
-        return "Pan A";
+        return "Pan 1";
     case ParamPanB:
-        return "Pan B";
+        return "Pan 2";
     default:
         return "";
     }
@@ -1022,35 +1715,51 @@ const String MixerProcessor::getParameterText(int parameterIndex)
     switch (parameterIndex)
     {
     case ParamGainA:
-        return String(channels[0].gainDb.load(std::memory_order_relaxed), 1) + " dB";
+        return String(getChannelGainDb(0), 1) + " dB";
     case ParamGainB:
-        return String(channels[1].gainDb.load(std::memory_order_relaxed), 1) + " dB";
+        return String(getChannelGainDb(1), 1) + " dB";
     case ParamPanA:
-        return String(channels[0].pan.load(std::memory_order_relaxed), 2);
+        return String(getChannelPan(0), 2);
     case ParamPanB:
-        return String(channels[1].pan.load(std::memory_order_relaxed), 2);
+        return String(getChannelPan(1), 2);
     default:
         return "";
     }
 }
 
-//==============================================================================
-// State serialization (backward-compatible)
+bool MixerProcessor::isInputChannelStereoPair(int channelIndex) const
+{
+    int currentCh = 0;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+    {
+        const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        const int channels = stereo ? 2 : 1;
+        if (channelIndex >= currentCh && channelIndex < currentCh + channels)
+            return stereo;
+        currentCh += channels;
+    }
+    return false;
+}
 
 void MixerProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("MixerSettings");
-    xml.setAttribute("version", 3);
+    xml.setAttribute("version", 4);
+    xml.setAttribute("numStrips", getNumStrips());
     xml.setAttribute("masterGain", static_cast<double>(masterGainDb.load(std::memory_order_relaxed)));
     xml.setAttribute("masterMute", masterMute.load(std::memory_order_relaxed));
-    for (int ch = 0; ch < NumChannels; ++ch)
+    for (int ch = 0; ch < getNumStrips(); ++ch)
     {
-        String prefix = (ch == 0) ? "A" : "B";
-        xml.setAttribute("gain" + prefix, static_cast<double>(channels[ch].gainDb.load(std::memory_order_relaxed)));
-        xml.setAttribute("pan" + prefix, static_cast<double>(channels[ch].pan.load(std::memory_order_relaxed)));
-        xml.setAttribute("mute" + prefix, channels[ch].mute.load(std::memory_order_relaxed));
-        xml.setAttribute("solo" + prefix, channels[ch].solo.load(std::memory_order_relaxed));
-        xml.setAttribute("phase" + prefix, channels[ch].phaseInvert.load(std::memory_order_relaxed));
+        const auto& strip = strips_[static_cast<size_t>(ch)];
+        const String prefix = "strip" + String(ch) + "_";
+        xml.setAttribute(prefix + "gainDb", static_cast<double>(strip.gainDb.load(std::memory_order_relaxed)));
+        xml.setAttribute(prefix + "pan", static_cast<double>(strip.pan.load(std::memory_order_relaxed)));
+        xml.setAttribute(prefix + "mute", strip.mute.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "solo", strip.solo.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "stereo", strip.stereo.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "phase", strip.phaseInvert.load(std::memory_order_relaxed));
+        xml.setAttribute(prefix + "name", strip.name);
     }
     copyXmlToBinary(xml, destData);
 }
@@ -1061,34 +1770,74 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
     if (xmlState == nullptr || !xmlState->hasTagName("MixerSettings"))
         return;
 
-    int version = xmlState->getIntAttribute("version", 1);
-
-    if (version >= 2)
+    const int version = xmlState->getIntAttribute("version", 1);
+    if (version < 4)
     {
-        // New format: per-channel gainDb, pan, mute, solo, phaseInvert
-        for (int ch = 0; ch < NumChannels; ++ch)
-        {
-            String prefix = (ch == 0) ? "A" : "B";
-            channels[ch].gainDb.store(static_cast<float>(xmlState->getDoubleAttribute("gain" + prefix, 0.0)),
-                                      std::memory_order_relaxed);
-            channels[ch].pan.store(static_cast<float>(xmlState->getDoubleAttribute("pan" + prefix, 0.0)),
-                                   std::memory_order_relaxed);
-            channels[ch].mute.store(xmlState->getBoolAttribute("mute" + prefix, false), std::memory_order_relaxed);
-            channels[ch].solo.store(xmlState->getBoolAttribute("solo" + prefix, false), std::memory_order_relaxed);
-            channels[ch].phaseInvert.store(xmlState->getBoolAttribute("phase" + prefix, false),
-                                           std::memory_order_relaxed);
-        }
-
+        setChannelGainDb(0, static_cast<float>(xmlState->getDoubleAttribute("gainA", 0.0)));
+        setChannelGainDb(1, static_cast<float>(xmlState->getDoubleAttribute("gainB", 0.0)));
+        setChannelPan(0, static_cast<float>(xmlState->getDoubleAttribute("panA", 0.0)));
+        setChannelPan(1, static_cast<float>(xmlState->getDoubleAttribute("panB", 0.0)));
+        setChannelMute(0, xmlState->getBoolAttribute("muteA", false));
+        setChannelMute(1, xmlState->getBoolAttribute("muteB", false));
+        setChannelSolo(0, xmlState->getBoolAttribute("soloA", false));
+        setChannelSolo(1, xmlState->getBoolAttribute("soloB", false));
+        setChannelPhaseInvert(0, xmlState->getBoolAttribute("phaseA", false));
+        setChannelPhaseInvert(1, xmlState->getBoolAttribute("phaseB", false));
         masterGainDb.store(static_cast<float>(xmlState->getDoubleAttribute("masterGain", 0.0)),
                            std::memory_order_relaxed);
         masterMute.store(xmlState->getBoolAttribute("masterMute", false), std::memory_order_relaxed);
+        return;
     }
-    else
+
+    const int active = jlimit(1, MaxStrips, xmlState->getIntAttribute("numStrips", DefaultStrips));
+    for (int ch = 0; ch < active; ++ch)
     {
-        // Legacy format: convert linear levelA/levelB to dB
-        float levelA = static_cast<float>(xmlState->getDoubleAttribute("levelA", 0.707));
-        float levelB = static_cast<float>(xmlState->getDoubleAttribute("levelB", 0.707));
-        channels[0].gainDb.store(Decibels::gainToDecibels(levelA, -60.0f), std::memory_order_relaxed);
-        channels[1].gainDb.store(Decibels::gainToDecibels(levelB, -60.0f), std::memory_order_relaxed);
+        auto& strip = strips_[static_cast<size_t>(ch)];
+        strip.resetDefaults(ch);
+        const String prefix = "strip" + String(ch) + "_";
+        strip.gainDb.store(static_cast<float>(xmlState->getDoubleAttribute(prefix + "gainDb", 0.0)),
+                           std::memory_order_relaxed);
+        strip.pan.store(static_cast<float>(xmlState->getDoubleAttribute(prefix + "pan", 0.0)),
+                        std::memory_order_relaxed);
+        strip.mute.store(xmlState->getBoolAttribute(prefix + "mute", false), std::memory_order_relaxed);
+        strip.solo.store(xmlState->getBoolAttribute(prefix + "solo", false), std::memory_order_relaxed);
+        strip.stereo.store(xmlState->getBoolAttribute(prefix + "stereo", true), std::memory_order_relaxed);
+        strip.phaseInvert.store(xmlState->getBoolAttribute(prefix + "phase", false), std::memory_order_relaxed);
+        strip.name = xmlState->getStringAttribute(prefix + "name", "Ch " + String(ch + 1));
     }
+
+    numStrips_.store(active, std::memory_order_release);
+    masterGainDb.store(static_cast<float>(xmlState->getDoubleAttribute("masterGain", 0.0)),
+                       std::memory_order_relaxed);
+    masterMute.store(xmlState->getBoolAttribute("masterMute", false), std::memory_order_relaxed);
+    updateChannelConfig();
+}
+
+PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
+{
+    PinLayout layout;
+    const int stripTop = 26 + 31;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    for (int i = 0; i < n; ++i)
+    {
+        const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+        if (stereo)
+        {
+            layout.pinY.push_back(stripTop + 35);
+            layout.pinY.push_back(stripTop + 61);
+        }
+        else
+        {
+            layout.pinY.push_back(stripTop + 48);
+        }
+    }
+    return layout;
+}
+
+PedalboardProcessor::PinLayout MixerProcessor::getOutputPinLayout() const
+{
+    PinLayout layout;
+    layout.pinY.push_back(26 + 31 + 35);
+    layout.pinY.push_back(26 + 31 + 61);
+    return layout;
 }

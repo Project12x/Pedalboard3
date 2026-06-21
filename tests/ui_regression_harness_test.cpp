@@ -450,8 +450,10 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     const auto notesProcessorSource = loadSourceFile("src/NotesProcessor.h");
     const auto notesProcessorImplSource = loadSourceFile("src/NotesProcessor.cpp");
     const auto tunerSource = loadSourceFile("src/TunerControl.cpp");
-    const auto mixerSource = loadSourceFile("src/DawMixerProcessor.cpp");
-    const auto splitterSource = loadSourceFile("src/DawSplitterProcessor.cpp");
+    const auto routingSource = loadSourceFile("src/RoutingProcessors.cpp");
+    const auto routingHeader = loadSourceFile("src/RoutingProcessors.h");
+    const auto internalFiltersSource = loadSourceFile("src/InternalFilters.cpp");
+    const auto internalFiltersHeader = loadSourceFile("src/InternalFilters.h");
 
     REQUIRE(pluginSource.has_value());
     REQUIRE(labelSource.has_value());
@@ -460,8 +462,10 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     REQUIRE(notesProcessorSource.has_value());
     REQUIRE(notesProcessorImplSource.has_value());
     REQUIRE(tunerSource.has_value());
-    REQUIRE(mixerSource.has_value());
-    REQUIRE(splitterSource.has_value());
+    REQUIRE(routingSource.has_value());
+    REQUIRE(routingHeader.has_value());
+    REQUIRE(internalFiltersSource.has_value());
+    REQUIRE(internalFiltersHeader.has_value());
 
     CHECK(pluginSource->find("bool isLabelNodeName(const String& name)") != std::string::npos);
     CHECK(pluginSource->find(
@@ -641,52 +645,51 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(sixStringSource.find("auto centreLine = slot.withSizeKeepingCentre") == std::string::npos);
     CHECK(sixStringSource.find("g.fillEllipse(dot);") == std::string::npos);
 
-    const std::array<const std::string*, 2> stripSources{&*mixerSource, &*splitterSource};
-    for (const auto* source : stripSources)
-    {
-        CHECK(source->find("static Colour getRoutingAccent()") != std::string::npos);
-        CHECK(source->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
-              std::string::npos);
-        CHECK(source->find("static void paintRoutingShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") ==
-              std::string::npos);
-        CHECK(source->find("static void paintInsetMeterTrack(Graphics& g, Rectangle<float> bounds, float peak, Colour accent, bool stereo)") !=
-              std::string::npos);
-        CHECK(source->find("ColourGradient meter(colours[\"Success Colour\"].withAlpha(0.64f)") !=
-              std::string::npos);
-        CHECK(source->find("meter.addColour(0.58, colours[\"Success Colour\"].withAlpha(0.70f));") !=
-              std::string::npos);
-        CHECK(source->find("meter.addColour(0.80, colours[\"Warning Colour\"].withAlpha(0.76f));") !=
-              std::string::npos);
-        CHECK(source->find("colours[\"Danger Colour\"].withAlpha(0.76f)") != std::string::npos);
-        CHECK(source->find("Colour(0xFF00CC00)") == std::string::npos);
-        CHECK(source->find("Colour(0xFF008800)") == std::string::npos);
-        CHECK(source->find("stereoBtn.setButtonText(\"ST\");") != std::string::npos);
-        CHECK(source->find("phaseBtn.setButtonText(CharPointer_UTF8") != std::string::npos);
-        CHECK(source->find("muteBtn.setButtonText(\"M\");") != std::string::npos);
-        CHECK(source->find("soloBtn.setButtonText(\"S\");") != std::string::npos);
-        CHECK(source->find("void addStripClicked()") != std::string::npos);
-        CHECK(source->find("void removeStripClicked()") != std::string::npos);
-    }
+    CHECK(routingSource->find("static Colour getRoutingNodeAccent()") != std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") ==
+          std::string::npos);
+    CHECK(routingSource->find("static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float level, Colour accent, bool muted)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour accent, const String& label)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintMixerMasterDeck(Graphics& g, Rectangle<float> bounds, Colour accent)") !=
+          std::string::npos);
+    CHECK(routingSource->find("static void paintMixerPanRail(Graphics& g, Rectangle<float> bounds, float pan, Colour accent)") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), false, false,\n                           processor->getNumStrips());") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);") !=
+          std::string::npos);
+    CHECK(routingSource->find("paintRoutingBadge(g, masterBadgeArea.toFloat(), \"M\", accent, true);") !=
+          std::string::npos);
+    CHECK(routingSource->find("addStripButton.setButtonText(\"+\");") != std::string::npos);
+    CHECK(routingSource->find("removeStripButton.setButtonText(\"-\");") != std::string::npos);
+    CHECK(routingSource->find("void addStripClicked()") != std::string::npos);
+    CHECK(routingSource->find("void removeStripClicked()") != std::string::npos);
+    CHECK(routingSource->find("Colour(0xFF00CC00)") == std::string::npos);
+    CHECK(routingSource->find("Colour(0xFF008800)") == std::string::npos);
 
-    CHECK(mixerSource->find("paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);") !=
-          std::string::npos);
-    CHECK(mixerSource->find("paintRoutingBadge(g, badge.toFloat(), \"M\", accent, true);") != std::string::npos);
-    CHECK(mixerSource->find("paintMixerPanRail(g, panRail.toFloat(), static_cast<float>(panKnob.getValue()), accent);") !=
-          std::string::npos);
-    CHECK(mixerSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});") ==
-          std::string::npos);
-    CHECK(mixerSource->find("railFill.addColour(0.56, accent.withAlpha(0.13f));") != std::string::npos);
+    CHECK(routingHeader->find("static constexpr int MaxStrips = 32;") != std::string::npos);
+    CHECK(routingHeader->find("static constexpr int DefaultStrips = 2;") != std::string::npos);
+    CHECK(routingHeader->find("struct StripState") != std::string::npos);
+    CHECK(routingHeader->find("std::array<StripState, MaxStrips> strips_;") != std::string::npos);
+    CHECK(routingHeader->find("std::atomic<int> numStrips_") != std::string::npos);
+    CHECK(routingHeader->find("AudioBuffer<float> inputSnapshot_;") != std::string::npos);
+    CHECK(routingHeader->find("int getNumStrips() const") != std::string::npos);
+    CHECK(routingHeader->find("void addStrip();") != std::string::npos);
+    CHECK(routingHeader->find("void removeStrip();") != std::string::npos);
 
-    CHECK(splitterSource->find("static void paintSplitterFanout(Graphics& g, Rectangle<float> bounds, int outputs, Colour accent)") !=
-          std::string::npos);
-    CHECK(splitterSource->find("paintRoutingBadge(g, badge.toFloat(), \"IN\", accent, true);") != std::string::npos);
-    CHECK(splitterSource->find("paintRoutingBadge(g, badge.toFloat(), String(index + 1), accent, false);") !=
-          std::string::npos);
-    CHECK(splitterSource->find("paintSplitterFanout(g, fanArea.toFloat(), processor->getNumStrips(), getRoutingAccent());") !=
-          std::string::npos);
-    CHECK(splitterSource->find("paintRoutingShell(g, getLocalBounds().toFloat(), getRoutingAccent(), {});") ==
-          std::string::npos);
-    CHECK(splitterSource->find("railFill.addColour(0.56, accent.withAlpha(0.13f));") != std::string::npos);
+    const auto userFacingStart = internalFiltersSource->find("void InternalPluginFormat::getUserFacingTypes");
+    REQUIRE(userFacingStart != std::string::npos);
+    const auto userFacingSource = internalFiltersSource->substr(userFacingStart);
+    CHECK(userFacingSource.find("dawMixerProcFilter") == std::string::npos);
+    CHECK(userFacingSource.find("dawSplitterProcFilter") == std::string::npos);
+    CHECK(internalFiltersHeader->find("dawMixerProcFilter") == std::string::npos);
+    CHECK(internalFiltersHeader->find("dawSplitterProcFilter") == std::string::npos);
 }
 
 TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish without losing controls",
@@ -722,22 +725,19 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
 
     CHECK(routingSource->find("static void paintRoutingRow(Graphics& g, Rectangle<float> bounds, Colour accent, bool muted, bool input)") !=
           std::string::npos);
-    CHECK(routingSource->find("muteA.setButtonText(\"M\");") != std::string::npos);
-    CHECK(routingSource->find("muteB.setButtonText(\"M\");") != std::string::npos);
-    CHECK(routingSource->find("paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), muteA.getToggleState(), muteB.getToggleState(),\n                           4);") !=
+    CHECK(routingSource->find("muteButtons[index].setButtonText(\"M\");") != std::string::npos);
+    CHECK(routingSource->find("stereoButtons[index].setButtonText(\"ST\");") != std::string::npos);
+    CHECK(routingSource->find("paintRoutingFanout(g, fanoutArea.toFloat(), getRoutingNodeAccent(), false, false,\n                           processor->getNumStrips());") !=
           std::string::npos);
-    CHECK(routingSource->find("Rectangle<int> outRows[4];") != std::string::npos);
-    CHECK(routingSource->find("Rectangle<int> outBadges[4];") != std::string::npos);
-    CHECK(routingSource->find("Rectangle<int> outLanes[4];") != std::string::npos);
-    CHECK(routingSource->find("Rectangle<int> outDbAreas[4];") != std::string::npos);
-    CHECK(routingSource->find("for (int i = 0; i < 4; ++i)") != std::string::npos);
-    CHECK(routingSource->find("const float levels[] = {0.72f, 0.64f, 0.38f, 0.34f};") !=
+    CHECK(routingSource->find("std::array<TextButton, SplitterProcessor::MaxStrips> muteButtons;") !=
           std::string::npos);
-    CHECK(routingSource->find("paintRoutingBadge(g, outBadges[i].toFloat(), getRoutingVisualLabel(i), accent, !muted);") !=
+    CHECK(routingSource->find("std::array<Rectangle<int>, SplitterProcessor::MaxStrips> outRows;") !=
           std::string::npos);
-    CHECK(routingSource->find("paintRoutingRow(g, outRows[i].toFloat(), accent, muted, false);") !=
+    CHECK(routingSource->find("inputSnapshot_.setSize(2, samplesPerBlock, false, true, true);") !=
           std::string::npos);
-    CHECK(routingSource->find("paintRoutingMeterTrack(g, outLanes[i].toFloat(), levels[i], accent, muted);") !=
+    CHECK(routingSource->find("FloatVectorOperations::copy(inputSnapshot_.getWritePointer(0)") !=
+          std::string::npos);
+    CHECK(routingSource->find("for (int i = 0; i < processor->getNumStrips(); ++i)") !=
           std::string::npos);
     CHECK(routingSource->find("paintRoutingBadge(g, outBadgeA.toFloat(), getRoutingVisualLabel(0), accent, !muteA.getToggleState());") ==
           std::string::npos);
@@ -760,7 +760,7 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("masterMuteButton.setButtonText(\"M\");") != std::string::npos);
     CHECK(routingSource->find("auto& mf = masterFader;") != std::string::npos);
     CHECK(routingSource->find("mf.setSliderStyle(Slider::LinearVertical);") != std::string::npos);
-    CHECK(routingSource->find("paintRoutingBadge(g, badge.toFloat(), getRoutingVisualLabel(ch), accent, true);") !=
+    CHECK(routingSource->find("paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);") !=
           std::string::npos);
     CHECK(routingSource->find("paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));") !=
           std::string::npos);
@@ -779,9 +779,9 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("drawMasterFader(g, cs);") != std::string::npos);
     CHECK(routingHeader->find("float getMasterGainDb() const") != std::string::npos);
     CHECK(routingHeader->find("void setMasterMute(bool m)") != std::string::npos);
-    CHECK(routingHeader->find("juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> smoothedMasterGain;") !=
+    CHECK(routingHeader->find("SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedMasterGain_;") !=
           std::string::npos);
-    CHECK(routingSource->find("xml.setAttribute(\"version\", 3);") != std::string::npos);
+    CHECK(routingSource->find("xml.setAttribute(\"version\", 4);") != std::string::npos);
     const auto mixerControlStart = routingSource->find("Component* MixerProcessor::getControls()");
     const auto mixerProcessStart = routingSource->find("void MixerProcessor::processBlock");
     REQUIRE(mixerControlStart != std::string::npos);
@@ -792,14 +792,14 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);") != std::string::npos);
     CHECK(routingSource->find("f.setAlpha(0.01f);") != std::string::npos);
     CHECK(routingSource->find("p.setAlpha(0.01f);") != std::string::npos);
-    CHECK(routingSource->find("Rectangle<int> valueAreas[MixerProcessor::NumChannels];") != std::string::npos);
+    CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> valueAreas;") !=
+          std::string::npos);
 
-    CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 180); }") !=
-          std::string::npos);
-    CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 190); }") !=
-          std::string::npos);
-    CHECK(routingHeader->find("Point<int> getSize() override { return Point<int>(230, 280); }") ==
-          std::string::npos);
+    CHECK(routingHeader->find("Point<int> getSize() override;") != std::string::npos);
+    CHECK(routingHeader->find("static constexpr int MaxStrips = 32;") != std::string::npos);
+    CHECK(routingHeader->find("static constexpr int NumChannels = 2;") == std::string::npos);
+    CHECK(routingSource->find("Point<int> SplitterProcessor::getSize()") != std::string::npos);
+    CHECK(routingSource->find("Point<int> MixerProcessor::getSize()") != std::string::npos);
 }
 
 TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph chrome",

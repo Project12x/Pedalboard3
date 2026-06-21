@@ -61,7 +61,7 @@ int countInputChannelsFromBuses(AudioProcessor* proc)
 {
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(proc))
     {
-        // PedalboardProcessor subclasses (DawMixer, DawSplitter) dynamically change
+        // PedalboardProcessor subclasses (Mixer, Splitter) dynamically change
         // channel count via setPlayConfigDetails. The cached count from construction
         // time is stale. Query the inner plugin directly for current count.
         if (auto* inner = dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
@@ -2609,7 +2609,7 @@ void PluginComponent::refreshPins()
     createPins();
 
     // Resync the BypassableInstance wrapper's channel count when a
-    // PedalboardProcessor (DawMixer/DawSplitter) dynamically changes its
+    // PedalboardProcessor (Mixer/Splitter) dynamically changes its
     // channel configuration. Without this, the wrapper's tempBuffer and the
     // graph's buffer allocation stay at the old channel count.
     if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))

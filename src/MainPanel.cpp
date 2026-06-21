@@ -29,8 +29,6 @@
 #include "BypassableInstance.h"
 #include "ColourSchemeEditor.h"
 #include "CrashProtection.h"
-#include "DawMixerProcessor.h"
-#include "DawSplitterProcessor.h"
 #include "FontManager.h"
 #include "IRLoaderProcessor.h"
 #include "Images.h"
