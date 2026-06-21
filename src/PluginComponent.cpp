@@ -139,6 +139,12 @@ bool isRackAudioBoundaryNode(AudioProcessorGraph::Node* node)
     return role == "audio-in" || role == "audio-out";
 }
 
+bool isRackBoundaryNode(AudioProcessorGraph::Node* node)
+{
+    const auto role = getRackBoundaryRole(node);
+    return role == "audio-in" || role == "audio-out" || role == "midi-in";
+}
+
 struct NodeVisualStyle
 {
     String category;
@@ -1078,11 +1084,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
     titleLabel->setJustificationType(Justification::centredLeft);
     titleLabel->addListener(this);
     addAndMakeVisible(titleLabel);
-    titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
-
-    // Shift title label to make room for icon on Audio I/O nodes
-    if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
-        titleLabel->setBounds(22, 3, getWidth() - 30, 20);
+    layoutTitleLabel();
 
     if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
         (pluginName != "OSC Input") && (pluginName != "Virtual MIDI Input"))
@@ -1297,10 +1299,7 @@ PluginComponent::~PluginComponent()
 //------------------------------------------------------------------------------
 void PluginComponent::resized()
 {
-    const int titleLeft = isAudioIONode() ? 22 : 20;
-    const int titleRightInset = deleteButton ? 24 : 8;
-    if (titleLabel != nullptr)
-        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
+    layoutTitleLabel();
 
     layoutFooterButtons();
     if (deleteButton != nullptr)
@@ -1325,6 +1324,18 @@ void PluginComponent::resized()
         rackResizeBorder->setBounds(getLocalBounds());
         rackResizeBorder->toFront(false);
         sendChangeMessage();
+    }
+}
+
+//------------------------------------------------------------------------------
+void PluginComponent::layoutTitleLabel()
+{
+    const int titleLeft = isRackBoundaryNode(node) ? 12 : (isAudioIONode() ? 22 : 20);
+    const int titleRightInset = deleteButton ? 24 : 8;
+    if (titleLabel != nullptr)
+    {
+        titleLabel->setBounds(titleLeft, 3, jmax(0, getWidth() - titleLeft - titleRightInset), 20);
+        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
 }
 
@@ -1983,12 +1994,7 @@ void PluginComponent::labelTextChanged(Label* label)
 
     // Reset the Component's size/layout.
     determineSize(true);
-    {
-        const int titleLeft = isAudioIONode() ? 22 : 20;
-        const int titleRightInset = deleteButton ? 24 : 8;
-        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
-        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
-    }
+    layoutTitleLabel();
     if (deleteButton)
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
     layoutFooterButtons();
@@ -2327,6 +2333,8 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         // Enforce consistent minimum width for Audio I/O nodes (VU meters + gain sliders)
         if (isAudioIONode())
             w = jmax(w, 160);
+        if (isRackBoundaryNode(node))
+            w = jmax(w, 140);
 
         // Shift output texts to where they should be.
         {
@@ -2426,12 +2434,7 @@ bool PluginComponent::isAudioIONode() const
 void PluginComponent::updateNodeSize()
 {
     determineSize();
-    {
-        const int titleLeft = isAudioIONode() ? 22 : 20;
-        const int titleRightInset = deleteButton ? 24 : 8;
-        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
-        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
-    }
+    layoutTitleLabel();
 
     // Reposition bottom buttons after size change
     layoutFooterButtons();
@@ -2475,12 +2478,7 @@ void PluginComponent::updateNodeSize()
 void PluginComponent::refreshNodeParameterControls()
 {
     determineSize();
-    {
-        const int titleLeft = isAudioIONode() ? 22 : 20;
-        const int titleRightInset = deleteButton ? 24 : 8;
-        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
-        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
-    }
+    layoutTitleLabel();
 
     layoutFooterButtons();
 
@@ -2642,12 +2640,7 @@ void PluginComponent::refreshPins()
 
     // Recalculate size and recreate pins
     determineSize();
-    {
-        const int titleLeft = isAudioIONode() ? 22 : 20;
-        const int titleRightInset = deleteButton ? 24 : 8;
-        titleLabel->setBounds(titleLeft, 3, getWidth() - titleLeft - titleRightInset, 20);
-        titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
-    }
+    layoutTitleLabel();
     createPins();
 
     // Reposition bottom buttons after size change (prevents clipping by growing controls)

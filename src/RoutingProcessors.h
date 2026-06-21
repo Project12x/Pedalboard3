@@ -234,6 +234,8 @@ class MixerProcessor : public PedalboardProcessor
     ~MixerProcessor() override;
 
     int getNumStrips() const { return numStrips_.load(std::memory_order_acquire); }
+    bool isVerticalLayout() const { return verticalLayout_.load(std::memory_order_acquire); }
+    void setVerticalLayout(bool vertical) { verticalLayout_.store(vertical, std::memory_order_release); }
     void addStrip();
     void removeStrip();
     StripState* getStrip(int index);
@@ -322,6 +324,7 @@ class MixerProcessor : public PedalboardProcessor
   private:
     std::array<StripState, MaxStrips> strips_;
     std::atomic<int> numStrips_{0};
+    std::atomic<bool> verticalLayout_{false};
     std::array<StripDsp, MaxStrips> stripDsp_;
     SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedMasterGain_;
     VuMeterDsp masterVuDspL_, masterVuDspR_;

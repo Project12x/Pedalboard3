@@ -32,9 +32,12 @@ static float normaliseRoutingMeter(float peak)
     return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
 }
 
-static constexpr int kMixerNodeMinWidth = 276;
-static constexpr int kMixerStripWidth = 62;
-static constexpr int kMixerNodeHeight = 190;
+static constexpr int kMixerHorizontalNodeMinWidth = 276;
+static constexpr int kMixerHorizontalStripWidth = 62;
+static constexpr int kMixerHorizontalNodeHeight = 190;
+static constexpr int kMixerVerticalNodeWidth = 320;
+static constexpr int kMixerVerticalStripRowHeight = 52;
+static constexpr int kMixerVerticalMasterRowHeight = 54;
 
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
 {
@@ -973,10 +976,16 @@ Component* MixerProcessor::getControls()
             styleRoutingButton(removeStripButton, getRoutingNodeAccent());
             addAndMakeVisible(removeStripButton);
 
+            layoutModeButton.setButtonText(processor->isVerticalLayout() ? "V" : "H");
+            layoutModeButton.setTooltip("Switch mixer layout");
+            layoutModeButton.onClick = [this]() { toggleLayoutMode(); };
+            styleRoutingButton(layoutModeButton, getRoutingNodeAccent());
+            addAndMakeVisible(layoutModeButton);
+
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
                 auto& f = faders[ch];
-                f.setSliderStyle(Slider::LinearHorizontal);
+                f.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);
                 f.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
                 f.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
                 f.setValue(processor->getChannelGainDb(ch), dontSendNotification);
@@ -1035,7 +1044,7 @@ Component* MixerProcessor::getControls()
             }
 
             auto& mf = masterFader;
-            mf.setSliderStyle(Slider::LinearHorizontal);
+            mf.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);
             mf.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
             mf.setRange(MixerProcessor::MinGainDb, MixerProcessor::MaxGainDb, 0.1);
             mf.setValue(processor->getMasterGainDb(), dontSendNotification);
@@ -1062,11 +1071,19 @@ Component* MixerProcessor::getControls()
             auto header = area.removeFromTop(20);
             removeStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
             addStripButton.setBounds(header.removeFromRight(22).reduced(1, 2));
+            layoutModeButton.setButtonText(processor->isVerticalLayout() ? "V" : "H");
+            layoutModeButton.setBounds(header.removeFromRight(28).reduced(1, 2));
             area.removeFromTop(5);
 
-            const int activeStrips = processor->getNumStrips();
-            const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
+            clearLayoutRects();
+            if (processor->isVerticalLayout())
+                layoutVertical(area);
+            else
+                layoutHorizontal(area);
+        }
 
+        void clearLayoutRects()
+        {
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
                 vuAreas[ch] = {};
@@ -1076,6 +1093,19 @@ Component* MixerProcessor::getControls()
                 gainRails[ch] = {};
                 valueAreas[ch] = {};
             }
+
+            masterDeck = {};
+            masterBadgeArea = {};
+            masterPanRail = {};
+            masterGainRail = {};
+            masterFaderArea = {};
+            masterValueArea = {};
+        }
+
+        void layoutHorizontal(Rectangle<int> area)
+        {
+            const int activeStrips = processor->getNumStrips();
+            const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
 
             for (int ch = 0; ch < activeStrips; ++ch)
             {
@@ -1119,12 +1149,49 @@ Component* MixerProcessor::getControls()
             masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
         }
 
+        void layoutVertical(Rectangle<int> area)
+        {
+            const int activeStrips = processor->getNumStrips();
+
+            for (int ch = 0; ch < activeStrips; ++ch)
+            {
+                auto row = area.removeFromTop(kMixerVerticalStripRowHeight);
+                stripDecks[ch] = row.reduced(0, 1);
+
+                auto strip = stripDecks[ch].reduced(7, 5);
+                badgeAreas[ch] = strip.removeFromLeft(28).reduced(1, 6);
+
+                phaseButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                stereoButtons[ch].setBounds(strip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+                soloButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                muteButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+
+                valueAreas[ch] = strip.removeFromRight(42).reduced(0, 13);
+                vuAreas[ch] = strip.removeFromRight(30).reduced(5, 3).withWidth(18);
+                faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
+
+                panRails[ch] = strip.removeFromTop(14).reduced(8, 4);
+                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
+            }
+
+            auto masterStrip = area.removeFromTop(kMixerVerticalMasterRowHeight);
+            masterDeck = masterStrip.reduced(0, 1);
+            masterStrip = masterDeck.reduced(7, 5);
+            masterBadgeArea = masterStrip.removeFromLeft(28).reduced(1, 6);
+            masterMuteButton.setBounds(masterStrip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+            masterValueArea = masterStrip.removeFromRight(44).reduced(0, 14);
+            masterFaderArea = masterStrip.removeFromRight(30).reduced(5, 3).withWidth(18);
+            masterFader.setBounds(masterFaderArea.expanded(14, 4));
+            masterPanRail = masterStrip.removeFromTop(14).reduced(8, 4);
+        }
+
         void timerCallback() override { repaint(); }
 
         void paint(Graphics& g) override
         {
             auto& cs = ColourScheme::getInstance();
             const auto accent = getRoutingNodeAccent();
+            const bool verticalLayout = processor->isVerticalLayout();
 
             for (int ch = 0; ch < processor->getNumStrips(); ++ch)
             {
@@ -1132,7 +1199,8 @@ Component* MixerProcessor::getControls()
                 paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);
                 paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);
                 drawVuMeter(g, ch, cs);
-                drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);
+                if (!verticalLayout)
+                    drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);
                 g.setColour(cs.colours["Text Colour"].withAlpha(0.70f));
                 g.setFont(Font(9.8f, Font::bold));
                 g.drawText(String(processor->getChannelGainDb(ch), 1), valueAreas[ch], Justification::centred, true);
@@ -1142,7 +1210,8 @@ Component* MixerProcessor::getControls()
             paintRoutingBadge(g, masterBadgeArea.toFloat(), "M", accent, true);
             paintMixerPanRail(g, masterPanRail.toFloat(), 0.0f, accent);
             drawMasterFader(g, cs);
-            drawGainRail(g, masterGainRail.toFloat(), processor->getMasterGainDb(), accent, cs);
+            if (!verticalLayout)
+                drawGainRail(g, masterGainRail.toFloat(), processor->getMasterGainDb(), accent, cs);
             g.setColour(cs.colours["Text Colour"].withAlpha(0.72f));
             g.setFont(Font(9.8f, Font::bold));
             g.drawText(String(processor->getMasterGainDb(), 1), masterValueArea, Justification::centred, true);
@@ -1152,6 +1221,7 @@ Component* MixerProcessor::getControls()
         MixerProcessor* processor;
         TextButton addStripButton;
         TextButton removeStripButton;
+        TextButton layoutModeButton;
         std::array<Slider, MixerProcessor::MaxStrips> faders;
         std::array<Slider, MixerProcessor::MaxStrips> panKnobs;
         std::array<TextButton, MixerProcessor::MaxStrips> muteButtons;
@@ -1183,6 +1253,21 @@ Component* MixerProcessor::getControls()
         {
             processor->removeStrip();
             refreshTopology();
+        }
+
+        void toggleLayoutMode()
+        {
+            processor->setVerticalLayout(!processor->isVerticalLayout());
+            layoutModeButton.setButtonText(processor->isVerticalLayout() ? "V" : "H");
+            applySliderOrientation();
+            refreshTopology();
+        }
+
+        void applySliderOrientation()
+        {
+            for (auto& f : faders)
+                f.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);
+            masterFader.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);
         }
 
         void refreshTopology()
@@ -1255,6 +1340,8 @@ Component* MixerProcessor::getControls()
 
             g.setColour(cs.colours["Plugin Background"].darker(0.35f));
             g.fillRoundedRectangle(area.toFloat(), 4.0f);
+            if (processor->isVerticalLayout())
+                drawFaderFill(g, area, processor->getMasterGainDb(), cs);
             g.setColour(getRoutingNodeAccent().withAlpha(masterMuteButton.getToggleState() ? 0.12f : 0.30f));
             g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
         }
@@ -1281,6 +1368,9 @@ Component* MixerProcessor::getControls()
             drawSingleBar(g, leftBar, vuL, peakL, cs);
             drawSingleBar(g, rightBar, vuR, peakR, cs);
 
+            if (processor->isVerticalLayout())
+                drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);
+
             g.setFont(9.0f);
             g.setColour(cs.colours["Text Colour"].withAlpha(0.5f));
             const float dbMarks[] = {0.0f, -6.0f, -12.0f, -24.0f, -48.0f};
@@ -1294,6 +1384,33 @@ Component* MixerProcessor::getControls()
 
             g.setColour(getRoutingNodeAccent().withAlpha(0.24f));
             g.drawRoundedRectangle(area.toFloat().reduced(0.5f), 4.0f, 0.9f);
+        }
+
+        void drawFaderFill(Graphics& g, Rectangle<int> area, float gainDb, ColourScheme& cs)
+        {
+            const auto track = area.toFloat().reduced(1.0f);
+            const auto accent = getRoutingNodeAccent();
+            const float normalized = jlimit(0.0f, 1.0f, (gainDb + 60.0f) / 72.0f);
+            auto fill = track.withTop(track.getBottom() - track.getHeight() * normalized);
+
+            ColourGradient faderFill(accent.withAlpha(0.36f), fill.getCentreX(), fill.getBottom(),
+                                     cs.colours["VU Meter Lower Colour"].withAlpha(0.50f), fill.getCentreX(),
+                                     fill.getY(), false);
+            faderFill.addColour(0.62,
+                                 accent.interpolatedWith(cs.colours["VU Meter Upper Colour"], 0.35f).withAlpha(0.42f));
+            g.setGradientFill(faderFill);
+            g.fillRoundedRectangle(fill, 3.0f);
+
+            const float thumbY = jlimit(track.getY() + 4.0f, track.getBottom() - 4.0f,
+                                        track.getBottom() - track.getHeight() * normalized);
+            auto thumb = Rectangle<float>(track.getCentreX() - 10.0f, thumbY - 3.0f, 20.0f, 6.0f);
+            ColourGradient thumbFill(cs.colours["Button Highlight"], thumb.getX(), thumb.getY(),
+                                     cs.colours["Button Colour"], thumb.getX(), thumb.getBottom(), false);
+            thumbFill.addColour(0.50, cs.colours["Text Colour"].withAlpha(0.16f));
+            g.setGradientFill(thumbFill);
+            g.fillRoundedRectangle(thumb, 2.0f);
+            g.setColour(accent.withAlpha(0.56f));
+            g.drawRoundedRectangle(thumb.reduced(0.5f), 2.0f, 0.8f);
         }
 
         void drawSingleBar(Graphics& g, Rectangle<int> bar, float vuLevel, float peakLevel, ColourScheme& cs)
@@ -1338,8 +1455,11 @@ Component* MixerProcessor::getControls()
 
 Point<int> MixerProcessor::getSize()
 {
-    return Point<int>(jmax(kMixerNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerStripWidth),
-                      jmax(kMixerNodeHeight, 70 + countTotalInputChannels() * 22));
+    if (isVerticalLayout())
+        return Point<int>(kMixerVerticalNodeWidth, 34 + getNumStrips() * kMixerVerticalStripRowHeight + kMixerVerticalMasterRowHeight);
+
+    return Point<int>(jmax(kMixerHorizontalNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerHorizontalStripWidth),
+                      jmax(kMixerHorizontalNodeHeight, 70 + countTotalInputChannels() * 22));
 }
 
 int MixerProcessor::countTotalInputChannels() const
@@ -1757,8 +1877,9 @@ bool MixerProcessor::isInputChannelStereoPair(int channelIndex) const
 void MixerProcessor::getStateInformation(MemoryBlock& destData)
 {
     XmlElement xml("MixerSettings");
-    xml.setAttribute("version", 4);
+    xml.setAttribute("version", 5);
     xml.setAttribute("numStrips", getNumStrips());
+    xml.setAttribute("verticalLayout", isVerticalLayout());
     xml.setAttribute("masterGain", static_cast<double>(masterGainDb.load(std::memory_order_relaxed)));
     xml.setAttribute("masterMute", masterMute.load(std::memory_order_relaxed));
     for (int ch = 0; ch < getNumStrips(); ++ch)
@@ -1785,6 +1906,7 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
     const int version = xmlState->getIntAttribute("version", 1);
     if (version < 4)
     {
+        setVerticalLayout(false);
         setChannelGainDb(0, static_cast<float>(xmlState->getDoubleAttribute("gainA", 0.0)));
         setChannelGainDb(1, static_cast<float>(xmlState->getDoubleAttribute("gainB", 0.0)));
         setChannelPan(0, static_cast<float>(xmlState->getDoubleAttribute("panA", 0.0)));
@@ -1802,6 +1924,7 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
     }
 
     const int active = jlimit(1, MaxStrips, xmlState->getIntAttribute("numStrips", DefaultStrips));
+    setVerticalLayout(xmlState->getBoolAttribute("verticalLayout", false));
     for (int ch = 0; ch < active; ++ch)
     {
         auto& strip = strips_[static_cast<size_t>(ch)];
@@ -1828,6 +1951,28 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
 PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 {
     PinLayout layout;
+
+    if (isVerticalLayout())
+    {
+        const int firstRowTop = 26 + 31;
+        const int n = numStrips_.load(std::memory_order_acquire);
+        for (int i = 0; i < n; ++i)
+        {
+            const int rowTop = firstRowTop + i * kMixerVerticalStripRowHeight;
+            const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
+            if (stereo)
+            {
+                layout.pinY.push_back(rowTop + 8);
+                layout.pinY.push_back(rowTop + 30);
+            }
+            else
+            {
+                layout.pinY.push_back(rowTop + 19);
+            }
+        }
+        return layout;
+    }
+
     int pinY = 57;
     const int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < n; ++i)
@@ -1852,6 +1997,16 @@ PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 PedalboardProcessor::PinLayout MixerProcessor::getOutputPinLayout() const
 {
     PinLayout layout;
+    if (isVerticalLayout())
+    {
+        const int firstRowTop = 26 + 31;
+        const int n = numStrips_.load(std::memory_order_acquire);
+        const int masterRowTop = firstRowTop + n * kMixerVerticalStripRowHeight;
+        layout.pinY.push_back(masterRowTop + 8);
+        layout.pinY.push_back(masterRowTop + 30);
+        return layout;
+    }
+
     layout.pinY.push_back(92);
     layout.pinY.push_back(114);
     return layout;

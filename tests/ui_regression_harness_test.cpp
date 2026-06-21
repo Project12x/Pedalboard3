@@ -752,16 +752,20 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(visibleSplitterSource.find("paintRoutingNodeShell(g, getLocalBounds().toFloat(), getRoutingNodeAccent(), {});") ==
           std::string::npos);
 
-    CHECK(routingSource->find("f.setSliderStyle(Slider::LinearHorizontal);") != std::string::npos);
-    CHECK(routingSource->find("f.setSliderStyle(Slider::LinearVertical);") == std::string::npos);
+    CHECK(routingHeader->find("bool isVerticalLayout() const") != std::string::npos);
+    CHECK(routingHeader->find("void setVerticalLayout(bool vertical)") != std::string::npos);
+    CHECK(routingSource->find("layoutModeButton.setButtonText(processor->isVerticalLayout() ? \"V\" : \"H\");") !=
+          std::string::npos);
+    CHECK(routingSource->find("f.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);") !=
+          std::string::npos);
     CHECK(routingSource->find("p.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);") != std::string::npos);
     CHECK(routingSource->find("m.setButtonText(\"M\");") != std::string::npos);
     CHECK(routingSource->find("s.setButtonText(\"S\");") != std::string::npos);
     CHECK(routingSource->find("ph.setButtonText(CharPointer_UTF8") != std::string::npos);
     CHECK(routingSource->find("masterMuteButton.setButtonText(\"M\");") != std::string::npos);
     CHECK(routingSource->find("auto& mf = masterFader;") != std::string::npos);
-    CHECK(routingSource->find("mf.setSliderStyle(Slider::LinearHorizontal);") != std::string::npos);
-    CHECK(routingSource->find("mf.setSliderStyle(Slider::LinearVertical);") == std::string::npos);
+    CHECK(routingSource->find("mf.setSliderStyle(processor->isVerticalLayout() ? Slider::LinearVertical : Slider::LinearHorizontal);") !=
+          std::string::npos);
     CHECK(routingSource->find("paintRoutingBadge(g, badgeAreas[ch].toFloat(), getRoutingVisualLabel(ch), accent, true);") !=
           std::string::npos);
     CHECK(routingSource->find("paintMixerStripDeck(g, stripDecks[ch].toFloat(), accent, getRoutingVisualLabel(ch));") !=
@@ -769,6 +773,8 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingSource->find("paintMixerPanRail(g, panRails[ch].toFloat(), static_cast<float>(panKnobs[ch].getValue()), accent);") !=
           std::string::npos);
     CHECK(routingSource->find("drawGainRail(g, gainRails[ch].toFloat(), processor->getChannelGainDb(ch), accent, cs);") !=
+          std::string::npos);
+    CHECK(routingSource->find("drawFaderFill(g, area, processor->getChannelGainDb(ch), cs);") !=
           std::string::npos);
     CHECK(routingSource->find("ColourGradient gainFill(accent.withAlpha(0.58f)") != std::string::npos);
     CHECK(routingSource->find("auto thumb = Rectangle<float>(thumbX - 3.0f, track.getCentreY() - 6.5f, 6.0f, 13.0f);") !=
@@ -783,7 +789,11 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingHeader->find("void setMasterMute(bool m)") != std::string::npos);
     CHECK(routingHeader->find("SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedMasterGain_;") !=
           std::string::npos);
-    CHECK(routingSource->find("xml.setAttribute(\"version\", 4);") != std::string::npos);
+    CHECK(routingSource->find("xml.setAttribute(\"version\", 5);") != std::string::npos);
+    CHECK(routingSource->find("xml.setAttribute(\"verticalLayout\", isVerticalLayout());") !=
+          std::string::npos);
+    CHECK(routingSource->find("setVerticalLayout(xmlState->getBoolAttribute(\"verticalLayout\", false));") !=
+          std::string::npos);
     const auto mixerControlStart = routingSource->find("Component* MixerProcessor::getControls()");
     const auto mixerProcessStart = routingSource->find("void MixerProcessor::processBlock");
     REQUIRE(mixerControlStart != std::string::npos);
@@ -798,6 +808,8 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainRails;") !=
           std::string::npos);
+    CHECK(routingSource->find("void layoutHorizontal(Rectangle<int> area)") != std::string::npos);
+    CHECK(routingSource->find("void layoutVertical(Rectangle<int> area)") != std::string::npos);
 
     CHECK(routingHeader->find("Point<int> getSize() override;") != std::string::npos);
     CHECK(routingHeader->find("static constexpr int MaxStrips = 32;") != std::string::npos);
@@ -808,9 +820,14 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("auto strip = area.removeFromLeft(stripW).reduced(4, 0);") !=
           std::string::npos);
+    CHECK(routingSource->find("auto row = area.removeFromTop(kMixerVerticalStripRowHeight);") !=
+          std::string::npos);
+    CHECK(routingSource->find("return Point<int>(kMixerVerticalNodeWidth, 34 + getNumStrips() * kMixerVerticalStripRowHeight + kMixerVerticalMasterRowHeight);") !=
+          std::string::npos);
     CHECK(routingSource->find("int pinY = 57;") != std::string::npos);
     CHECK(routingSource->find("pinY += 22;") != std::string::npos);
-    CHECK(routingSource->find("kMixerStripRowHeight") == std::string::npos);
+    CHECK(routingSource->find("const int rowTop = firstRowTop + i * kMixerVerticalStripRowHeight;") !=
+          std::string::npos);
     CHECK(routingSource->find("layout.pinY.push_back(stripTop + 35);\n            layout.pinY.push_back(stripTop + 61);") ==
           std::string::npos);
 }
@@ -920,6 +937,13 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
     CHECK(pluginSource->find("String getRackBoundaryDisplayName(AudioProcessorGraph::Node* node, const String& fallback)") !=
           std::string::npos);
     CHECK(pluginSource->find("bool isRackAudioBoundaryNode(AudioProcessorGraph::Node* node)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("bool isRackBoundaryNode(AudioProcessorGraph::Node* node)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("void PluginComponent::layoutTitleLabel()") != std::string::npos);
+    CHECK(pluginSource->find("const int titleLeft = isRackBoundaryNode(node) ? 12 : (isAudioIONode() ? 22 : 20);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (isRackBoundaryNode(node))\n            w = jmax(w, 140);") !=
           std::string::npos);
     CHECK(pluginSource->find("displayName = getRackBoundaryDisplayName(node, pluginName);") !=
           std::string::npos);

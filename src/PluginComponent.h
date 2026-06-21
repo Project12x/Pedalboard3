@@ -158,6 +158,7 @@ class PluginComponent : public Component,
     void rebuildNodeParameterControls();
     void layoutNodeParameterControls();
     void layoutFooterButtons();
+    void layoutTitleLabel();
 
     ///	The title label.
     Label* titleLabel;
