@@ -2324,7 +2324,10 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         if ((pluginName != "Audio Input") && (pluginName != "MIDI Input") && (pluginName != "Audio Output") &&
             (pluginName != "OSC Input"))
         {
-            h = jmax((int)minH, h + 70);
+            if (usesEmbeddedParameterSurface(pluginName))
+                h = (int)minH;
+            else
+                h = jmax((int)minH, h + 70);
         }
         else
         {
@@ -2593,6 +2596,15 @@ void PluginComponent::refreshPins()
     outputPins.clear();
     paramPins.clear();
 
+    // Resync the BypassableInstance wrapper's channel count before recalculating
+    // size and pins. Dynamic PedalboardProcessors (Mixer/Splitter) update their
+    // real bus layout first; createPins() must see that current layout.
+    if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))
+    {
+        if (dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
+            bypassable->resyncChannelCount();
+    }
+
     // Remove existing gain sliders (Audio I/O nodes)
     for (auto* slider : channelGainSliders)
         removeChildComponent(slider);
@@ -2607,16 +2619,6 @@ void PluginComponent::refreshPins()
         titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
     createPins();
-
-    // Resync the BypassableInstance wrapper's channel count when a
-    // PedalboardProcessor (Mixer/Splitter) dynamically changes its
-    // channel configuration. Without this, the wrapper's tempBuffer and the
-    // graph's buffer allocation stay at the old channel count.
-    if (auto* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor()))
-    {
-        if (dynamic_cast<PedalboardProcessor*>(bypassable->getPlugin()))
-            bypassable->resyncChannelCount();
-    }
 
     // Reposition bottom buttons after size change (prevents clipping by growing controls)
     layoutFooterButtons();

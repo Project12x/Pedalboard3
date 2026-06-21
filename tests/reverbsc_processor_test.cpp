@@ -230,6 +230,21 @@ TEST_CASE("ReverbSC embedded controls suppress redundant editor and param pin af
     REQUIRE(editorExpression.find("usesEmbeddedParameterSurface(pluginName)") != std::string::npos);
 }
 
+TEST_CASE("ReverbSC embedded controls do not receive generic host bottom padding", "[reverbsc][ui]")
+{
+    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
+
+    const auto determineStart = pluginComponentSource.find("void PluginComponent::determineSize");
+    REQUIRE(determineStart != std::string::npos);
+    const auto determineEnd = pluginComponentSource.find("void PluginComponent::updateNodeSize", determineStart);
+    REQUIRE(determineEnd != std::string::npos);
+    const auto determineBody = pluginComponentSource.substr(determineStart, determineEnd - determineStart);
+
+    REQUIRE(determineBody.find("if (usesEmbeddedParameterSurface(pluginName))") != std::string::npos);
+    REQUIRE(determineBody.find("h = (int)minH;") != std::string::npos);
+    REQUIRE(determineBody.find("else\n                h = jmax((int)minH, h + 70);") != std::string::npos);
+}
+
 TEST_CASE("ReverbSC embedded controls do not paint a nested node shell", "[reverbsc][ui]")
 {
     const auto source = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/ReverbSCProcessor.cpp");

@@ -32,6 +32,10 @@ static float normaliseRoutingMeter(float peak)
     return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
 }
 
+static constexpr int kMixerNodeWidth = 320;
+static constexpr int kMixerStripRowHeight = 52;
+static constexpr int kMixerMasterRowHeight = 54;
+
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
 {
     auto& colours = ColourScheme::getInstance().colours;
@@ -1061,7 +1065,6 @@ Component* MixerProcessor::getControls()
             area.removeFromTop(5);
 
             const int activeStrips = processor->getNumStrips();
-            const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
 
             for (int ch = 0; ch < MixerProcessor::MaxStrips; ++ch)
             {
@@ -1074,41 +1077,34 @@ Component* MixerProcessor::getControls()
 
             for (int ch = 0; ch < activeStrips; ++ch)
             {
-                auto strip = area.removeFromLeft(stripW).reduced(4, 0);
-                stripDecks[ch] = strip;
+                auto row = area.removeFromTop(kMixerStripRowHeight);
+                stripDecks[ch] = row.reduced(0, 1);
 
-                auto top = strip.removeFromTop(22);
-                badgeAreas[ch] = top.removeFromLeft(24).reduced(1, 2);
-                phaseButtons[ch].setBounds(top.removeFromRight(19).reduced(1, 3));
-                stereoButtons[ch].setBounds(top.removeFromRight(23).reduced(1, 3));
+                auto strip = stripDecks[ch].reduced(7, 5);
+                badgeAreas[ch] = strip.removeFromLeft(28).reduced(1, 6);
 
-                panRails[ch] = strip.removeFromTop(12).reduced(11, 3);
-                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
+                phaseButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                stereoButtons[ch].setBounds(strip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+                soloButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                muteButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
 
-                strip.removeFromTop(5);
-                vuAreas[ch] = strip.removeFromTop(66).withSizeKeepingCentre(18, 66);
+                valueAreas[ch] = strip.removeFromRight(42).reduced(0, 13);
+                vuAreas[ch] = strip.removeFromRight(30).reduced(5, 3).withWidth(18);
                 faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
 
-                valueAreas[ch] = strip.removeFromTop(18).reduced(0, 1);
-                strip.removeFromTop(2);
-                auto btnRow = strip.removeFromTop(18);
-                const auto muteArea = btnRow.withWidth(24).withX(btnRow.getCentreX() - 25);
-                const auto soloArea = btnRow.withWidth(24).withX(btnRow.getCentreX() + 1);
-                muteButtons[ch].setBounds(muteArea.reduced(1, 2));
-                soloButtons[ch].setBounds(soloArea.reduced(1, 2));
+                panRails[ch] = strip.removeFromTop(14).reduced(8, 4);
+                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
             }
 
-            auto masterStrip = area.reduced(4, 0);
-            masterDeck = masterStrip;
-            auto masterTop = masterStrip.removeFromTop(22);
-            masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
-            masterPanRail = masterStrip.removeFromTop(12).reduced(11, 3);
-            masterStrip.removeFromTop(5);
-            masterFaderArea = masterStrip.removeFromTop(66).withSizeKeepingCentre(18, 66);
+            auto masterStrip = area.removeFromTop(kMixerMasterRowHeight);
+            masterDeck = masterStrip.reduced(0, 1);
+            masterStrip = masterDeck.reduced(7, 5);
+            masterBadgeArea = masterStrip.removeFromLeft(28).reduced(1, 6);
+            masterMuteButton.setBounds(masterStrip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+            masterValueArea = masterStrip.removeFromRight(44).reduced(0, 14);
+            masterFaderArea = masterStrip.removeFromRight(30).reduced(5, 3).withWidth(18);
             masterFader.setBounds(masterFaderArea.expanded(14, 4));
-            masterValueArea = masterStrip.removeFromTop(18).reduced(0, 1);
-            masterStrip.removeFromTop(2);
-            masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
+            masterPanRail = masterStrip.removeFromTop(14).reduced(8, 4);
         }
 
         void timerCallback() override { repaint(); }
@@ -1327,7 +1323,7 @@ Component* MixerProcessor::getControls()
 
 Point<int> MixerProcessor::getSize()
 {
-    return Point<int>(jmax(276, 70 + (getNumStrips() + 1) * 62), 190);
+    return Point<int>(kMixerNodeWidth, 34 + getNumStrips() * kMixerStripRowHeight + kMixerMasterRowHeight);
 }
 
 int MixerProcessor::countTotalInputChannels() const
@@ -1816,19 +1812,20 @@ void MixerProcessor::setStateInformation(const void* data, int sizeInBytes)
 PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 {
     PinLayout layout;
-    const int stripTop = 26 + 31;
+    const int firstRowTop = 26 + 31;
     const int n = numStrips_.load(std::memory_order_acquire);
     for (int i = 0; i < n; ++i)
     {
+        const int rowTop = firstRowTop + i * kMixerStripRowHeight;
         const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
         if (stereo)
         {
-            layout.pinY.push_back(stripTop + 35);
-            layout.pinY.push_back(stripTop + 61);
+            layout.pinY.push_back(rowTop + 8);
+            layout.pinY.push_back(rowTop + 30);
         }
         else
         {
-            layout.pinY.push_back(stripTop + 48);
+            layout.pinY.push_back(rowTop + 19);
         }
     }
     return layout;
@@ -1837,7 +1834,10 @@ PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 PedalboardProcessor::PinLayout MixerProcessor::getOutputPinLayout() const
 {
     PinLayout layout;
-    layout.pinY.push_back(26 + 31 + 35);
-    layout.pinY.push_back(26 + 31 + 61);
+    const int firstRowTop = 26 + 31;
+    const int n = numStrips_.load(std::memory_order_acquire);
+    const int masterRowTop = firstRowTop + n * kMixerStripRowHeight;
+    layout.pinY.push_back(masterRowTop + 8);
+    layout.pinY.push_back(masterRowTop + 30);
     return layout;
 }

@@ -800,6 +800,37 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
     CHECK(routingHeader->find("static constexpr int NumChannels = 2;") == std::string::npos);
     CHECK(routingSource->find("Point<int> SplitterProcessor::getSize()") != std::string::npos);
     CHECK(routingSource->find("Point<int> MixerProcessor::getSize()") != std::string::npos);
+    CHECK(routingSource->find("return Point<int>(jmax(276, 70 + (getNumStrips() + 1) * 62), 190);") ==
+          std::string::npos);
+    CHECK(routingSource->find("const int rowTop = firstRowTop + i * kMixerStripRowHeight;") != std::string::npos);
+    CHECK(routingSource->find("const int masterRowTop = firstRowTop + n * kMixerStripRowHeight;") !=
+          std::string::npos);
+    CHECK(routingSource->find("layout.pinY.push_back(rowTop +") != std::string::npos);
+    CHECK(routingSource->find("layout.pinY.push_back(stripTop + 35);\n            layout.pinY.push_back(stripTop + 61);") ==
+          std::string::npos);
+}
+
+TEST_CASE("Dynamic PedalboardProcessor pins resync wrapper channels before rebuilding pin components",
+          "[ui][regression][visual][source][nodes]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    REQUIRE(pluginSource.has_value());
+
+    const auto refreshStart = pluginSource->find("void PluginComponent::refreshPins()");
+    REQUIRE(refreshStart != std::string::npos);
+    const auto refreshEnd = pluginSource->find("void PluginComponent::createPins()", refreshStart);
+    REQUIRE(refreshEnd != std::string::npos);
+    const auto refreshBody = pluginSource->substr(refreshStart, refreshEnd - refreshStart);
+
+    const auto resyncCall = refreshBody.find("bypassable->resyncChannelCount();");
+    const auto determineCall = refreshBody.find("determineSize();");
+    const auto createPinsCall = refreshBody.find("createPins();");
+    REQUIRE(resyncCall != std::string::npos);
+    REQUIRE(determineCall != std::string::npos);
+    REQUIRE(createPinsCall != std::string::npos);
+
+    CHECK(resyncCall < determineCall);
+    CHECK(resyncCall < createPinsCall);
 }
 
 TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph chrome",
