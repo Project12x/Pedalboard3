@@ -485,13 +485,24 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("closeDown = createNoteCloseDrawable(noteCloseBase.darker(0.32f), 0.98f);") !=
           std::string::npos);
-    CHECK(pluginSource->find("return pluginName == \"Tuner\" || pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\" ||") !=
+    CHECK(pluginSource->find("enum class EmbeddedNodeShellKind") != std::string::npos);
+    CHECK(pluginSource->find("struct EmbeddedNodeShellPolicy") != std::string::npos);
+    CHECK(pluginSource->find("EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(const String& pluginName, const String& visualCategoryName = {})") !=
+          std::string::npos);
+    CHECK(pluginSource->find("policy.kind = EmbeddedNodeShellKind::DirectPainted;") != std::string::npos);
+    CHECK(pluginSource->find("policy.suppressesHostEditorButton = true;") != std::string::npos);
+    CHECK(pluginSource->find("policy.suppressesHostMappingsButton = true;") != std::string::npos);
+    CHECK(pluginSource->find("policy.suppressesHostBypassButton = true;") != std::string::npos);
+    CHECK(pluginSource->find("policy.suppressesHostMidiOrParamPin = true;") != std::string::npos);
+    CHECK(pluginSource->find("policy.drawsHostPinText = false;") != std::string::npos);
+    CHECK(pluginSource->find("policy.showsHostTitleLabel = false;") != std::string::npos);
+    CHECK(pluginSource->find("pluginName == \"Tuner\" || pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\" ||") !=
           std::string::npos);
     CHECK(pluginSource->find("isStickyNoteNodeName(pluginName);") !=
           std::string::npos);
     CHECK(pluginSource->find("int getEmbeddedNodeControlLeftOffset(int hostWidth, Point<int> compSize, const String& pluginName)") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (isDirectPaintedEmbeddedNodeName(pluginName))\n        return 0;") !=
+    CHECK(pluginSource->find("if (getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::DirectPainted)\n        return 0;") !=
           std::string::npos);
     CHECK(pluginSource->find("return (hostWidth / 2) - (compSize.getX() / 2);") != std::string::npos);
     CHECK(pluginSource->find("tempint = getEmbeddedNodeControlLeftOffset(getWidth(), compSize, pluginName);") !=
@@ -507,21 +518,23 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("if (isStickyNoteNodeName(pluginName))\n        {\n            w = compSize.getX();\n            h = compSize.getY();") ==
           std::string::npos);
     CHECK(pluginSource->find("bool usesCompactHostPinLabels(const String& pluginName)") != std::string::npos);
-    CHECK(pluginSource->find("return pluginName == \"Splitter\" || pluginName == \"Mixer\";") !=
+    CHECK(pluginSource->find("return getEmbeddedNodeShellPolicy(pluginName).usesCompactHostPinLabels;") !=
           std::string::npos);
     CHECK(pluginSource->find("bool shouldDrawHostPinText(const String& pluginName)") != std::string::npos);
-    CHECK(pluginSource->find("return !usesCompactHostPinLabels(pluginName) && !isDirectPaintedEmbeddedNodeName(pluginName);") !=
+    CHECK(pluginSource->find("return getEmbeddedNodeShellPolicy(pluginName).drawsHostPinText;") !=
+          std::string::npos);
+    CHECK(pluginSource->find("return getEmbeddedNodeShellPolicy(pluginName).showsHostTitleLabel;") !=
           std::string::npos);
     CHECK(pluginSource->find("const float nodeBorderWidth = highlighted ? 0.82f : 0.58f;") != std::string::npos);
     CHECK(pluginSource->find("beingDragged ? 1.12f : 0.72f") != std::string::npos);
     CHECK(pluginSource->find("const bool labelNode = isLabelNodeName(pluginName);") != std::string::npos);
-    CHECK(pluginSource->find("const bool suppressHostEditorButton =") != std::string::npos);
-    CHECK(pluginSource->find(
-              "labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);") !=
+    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName, visualCategoryName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || visualCategoryName == \"rack\";") !=
+    CHECK(pluginSource->find("const bool suppressHostEditorButton = labelNode || shellPolicy.suppressesHostEditorButton;") !=
           std::string::npos);
-    CHECK(pluginSource->find("const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
+    CHECK(pluginSource->find("const bool suppressHostMappingsButton = labelNode || shellPolicy.suppressesHostMappingsButton;") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const bool suppressHostBypassButton = labelNode || shellPolicy.suppressesHostBypassButton;") !=
           std::string::npos);
     CHECK(pluginSource->find("if (!suppressHostEditorButton)") != std::string::npos);
     CHECK(pluginSource->find("if (!suppressHostMappingsButton)") != std::string::npos);
@@ -529,13 +542,13 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("bool suppressesHostParamPinForUtilityNode(const String& pluginName)") !=
           std::string::npos);
-    CHECK(pluginSource->find("return pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\";") !=
+    CHECK(pluginSource->find("return getEmbeddedNodeShellPolicy(pluginName).suppressesUtilityHostParamPin;") !=
           std::string::npos);
     CHECK(pluginSource->find("bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName) ||") !=
+    CHECK(pluginSource->find("const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("suppressesHostParamPinForUtilityNode(pluginName))") !=
+    CHECK(pluginSource->find("if (shellPolicy.suppressesHostMidiOrParamPin || suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
     CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != \"MIDI Input\")") !=
           std::string::npos);
@@ -1196,7 +1209,7 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
           std::string::npos);
     CHECK(pluginSource->find("int getEmbeddedNodeControlHeightPadding(const String& pluginName)") !=
           std::string::npos);
-    CHECK(pluginSource->find("return 84;") != std::string::npos);
+    CHECK(pluginSource->find("policy.controlHeightPadding = 84;") != std::string::npos);
     CHECK(pluginSource->find("return 116;") == std::string::npos);
     CHECK(pluginSource->find("return {520, 704};") == std::string::npos);
     CHECK(pluginSource->find("return {480, 558};") == std::string::npos);
@@ -2016,9 +2029,11 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
 
     CHECK(pluginSource->find("bool suppressesHostParamPinForUtilityNode(const String& pluginName)") !=
           std::string::npos);
-    CHECK(pluginSource->find("return pluginName == \"Oscilloscope\" || pluginName == \"Tone Generator\";") !=
+    CHECK(pluginSource->find("return getEmbeddedNodeShellPolicy(pluginName).suppressesUtilityHostParamPin;") !=
           std::string::npos);
     CHECK(pluginSource->find("bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("if (shellPolicy.suppressesHostMidiOrParamPin || suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
     CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != \"MIDI Input\")") !=
           std::string::npos);

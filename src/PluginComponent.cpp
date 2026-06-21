@@ -322,46 +322,124 @@ bool areNodeParameterControlsEnabled()
     return SettingsManager::getInstance().getBool(kShowNodeParameterControlsSettingsKey, true);
 }
 
+enum class EmbeddedNodeShellKind
+{
+    Generic,
+    HeroChassis,
+    DirectPainted,
+    EmbeddedParameterSurface
+};
+
+struct EmbeddedNodeShellPolicy
+{
+    EmbeddedNodeShellKind kind = EmbeddedNodeShellKind::Generic;
+    bool ownsFullNodeSurface = false;
+    bool usesCompactHostPinLabels = false;
+    bool suppressesHostEditorButton = false;
+    bool suppressesHostMappingsButton = false;
+    bool suppressesHostBypassButton = false;
+    bool suppressesHostMidiOrParamPin = false;
+    bool suppressesUtilityHostParamPin = false;
+    bool drawsHostPinText = true;
+    bool showsHostTitleLabel = true;
+    int controlTopOffset = 26;
+    int controlHeightPadding = 64;
+};
+
+EmbeddedNodeShellPolicy getEmbeddedNodeShellPolicy(const String& pluginName, const String& visualCategoryName = {})
+{
+    EmbeddedNodeShellPolicy policy;
+
+    if (pluginName == "NAM Loader")
+    {
+        policy.kind = EmbeddedNodeShellKind::HeroChassis;
+        policy.showsHostTitleLabel = false;
+        policy.controlTopOffset = 70;
+        policy.controlHeightPadding = 84;
+    }
+    else if (pluginName == "IR Loader")
+    {
+        policy.kind = EmbeddedNodeShellKind::HeroChassis;
+        policy.showsHostTitleLabel = false;
+        policy.controlTopOffset = 78;
+        policy.controlHeightPadding = 112;
+    }
+    else if (pluginName == "ReverbSC")
+    {
+        policy.kind = EmbeddedNodeShellKind::EmbeddedParameterSurface;
+        policy.suppressesHostEditorButton = true;
+        policy.suppressesHostMidiOrParamPin = true;
+        policy.controlHeightPadding = 60;
+    }
+    else if (pluginName == "Tuner" || pluginName == "Oscilloscope" || pluginName == "Tone Generator" ||
+             isStickyNoteNodeName(pluginName))
+    {
+        policy.kind = EmbeddedNodeShellKind::DirectPainted;
+        policy.ownsFullNodeSurface = true;
+        policy.suppressesHostEditorButton = true;
+        policy.suppressesHostMappingsButton = true;
+        policy.suppressesHostBypassButton = true;
+        policy.suppressesHostMidiOrParamPin = true;
+        policy.drawsHostPinText = false;
+        policy.showsHostTitleLabel = false;
+        policy.controlTopOffset = 0;
+        policy.controlHeightPadding = 0;
+    }
+
+    if (pluginName == "Oscilloscope" || pluginName == "Tone Generator")
+        policy.suppressesUtilityHostParamPin = true;
+
+    if (pluginName == "Splitter" || pluginName == "Mixer")
+    {
+        policy.usesCompactHostPinLabels = true;
+        policy.drawsHostPinText = false;
+    }
+
+    if (visualCategoryName == "rack")
+        policy.suppressesHostMappingsButton = true;
+
+    return policy;
+}
+
 bool isHeroChassisNodeName(const String& pluginName)
 {
-    return pluginName == "NAM Loader" || pluginName == "IR Loader";
+    return getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::HeroChassis;
 }
 
 bool isDirectPaintedEmbeddedNodeName(const String& pluginName)
 {
-    return pluginName == "Tuner" || pluginName == "Oscilloscope" || pluginName == "Tone Generator" ||
-           isStickyNoteNodeName(pluginName);
+    return getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::DirectPainted;
 }
 
 bool usesEmbeddedParameterSurface(const String& pluginName)
 {
-    return pluginName == "ReverbSC";
+    return getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::EmbeddedParameterSurface;
 }
 
 bool suppressesHostParamPinForUtilityNode(const String& pluginName)
 {
-    return pluginName == "Oscilloscope" || pluginName == "Tone Generator";
+    return getEmbeddedNodeShellPolicy(pluginName).suppressesUtilityHostParamPin;
 }
 
 bool usesCompactHostPinLabels(const String& pluginName)
 {
-    return pluginName == "Splitter" || pluginName == "Mixer";
+    return getEmbeddedNodeShellPolicy(pluginName).usesCompactHostPinLabels;
 }
 
 bool shouldDrawHostPinText(const String& pluginName)
 {
-    return !usesCompactHostPinLabels(pluginName) && !isDirectPaintedEmbeddedNodeName(pluginName);
+    return getEmbeddedNodeShellPolicy(pluginName).drawsHostPinText;
 }
 
 bool shouldShowHostTitleLabel(const String& pluginName)
 {
-    return !isHeroChassisNodeName(pluginName) && !isDirectPaintedEmbeddedNodeName(pluginName);
+    return getEmbeddedNodeShellPolicy(pluginName).showsHostTitleLabel;
 }
 
 bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)
 {
-    if (isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName) ||
-        suppressesHostParamPinForUtilityNode(pluginName))
+    const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName);
+    if (shellPolicy.suppressesHostMidiOrParamPin || suppressesHostParamPinForUtilityNode(pluginName))
         return false;
 
     if ((pluginName == "Audio Input") || (pluginName == "Audio Output"))
@@ -386,28 +464,12 @@ String getMidiOrParameterPinLabel(AudioProcessor* plugin, const String& pluginNa
 
 int getEmbeddedNodeControlTopOffset(const String& pluginName)
 {
-    if (isDirectPaintedEmbeddedNodeName(pluginName))
-        return 0;
-    if (pluginName == "NAM Loader")
-        return 70;
-    if (pluginName == "IR Loader")
-        return 78;
-
-    return 26;
+    return getEmbeddedNodeShellPolicy(pluginName).controlTopOffset;
 }
 
 int getEmbeddedNodeControlHeightPadding(const String& pluginName)
 {
-    if (isDirectPaintedEmbeddedNodeName(pluginName))
-        return 0;
-    if (pluginName == "NAM Loader")
-        return 84;
-    if (pluginName == "IR Loader")
-        return 112;
-    if (pluginName == "ReverbSC")
-        return 60;
-
-    return 64;
+    return getEmbeddedNodeShellPolicy(pluginName).controlHeightPadding;
 }
 
 Point<int> getDefaultRackNodeSize()
@@ -439,7 +501,7 @@ Point<int> getEmbeddedNodeControlSize(PedalboardProcessor* proc, const String& p
 
 int getEmbeddedNodeControlLeftOffset(int hostWidth, Point<int> compSize, const String& pluginName)
 {
-    if (isDirectPaintedEmbeddedNodeName(pluginName))
+    if (getEmbeddedNodeShellPolicy(pluginName).kind == EmbeddedNodeShellKind::DirectPainted)
         return 0;
 
     return (hostWidth / 2) - (compSize.getX() / 2);
@@ -1133,10 +1195,10 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         titleLabel->setBounds(20, 3, getWidth() - 40, 20);
 
         const bool labelNode = isLabelNodeName(pluginName);
-        const bool suppressHostEditorButton =
-            labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);
-        const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || visualCategoryName == "rack";
-        const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
+        const auto shellPolicy = getEmbeddedNodeShellPolicy(pluginName, visualCategoryName);
+        const bool suppressHostEditorButton = labelNode || shellPolicy.suppressesHostEditorButton;
+        const bool suppressHostMappingsButton = labelNode || shellPolicy.suppressesHostMappingsButton;
+        const bool suppressHostBypassButton = labelNode || shellPolicy.suppressesHostBypassButton;
         int footerButtonX = 10;
 
         if (!suppressHostEditorButton)
