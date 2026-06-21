@@ -820,29 +820,35 @@ TEST_CASE("Visible routing mixer and splitter nodes match mockup routing polish 
           std::string::npos);
     CHECK(routingSource->find("std::array<Rectangle<int>, MixerProcessor::MaxStrips> gainLabelAreas;") !=
           std::string::npos);
-    CHECK(routingSource->find("void layoutHorizontal(Rectangle<int> area)") != std::string::npos);
-    CHECK(routingSource->find("void layoutVertical(Rectangle<int> area)") != std::string::npos);
+    CHECK(routingSource->find("void layoutHorizontalStrips(Rectangle<int> area)") != std::string::npos);
+    CHECK(routingSource->find("void layoutVerticalStrips(Rectangle<int> area)") != std::string::npos);
+    CHECK(routingSource->find("if (processor->isVerticalLayout())\n                layoutVerticalStrips(area);\n            else\n                layoutHorizontalStrips(area);") !=
+          std::string::npos);
 
     CHECK(routingHeader->find("Point<int> getSize() override;") != std::string::npos);
     CHECK(routingHeader->find("static constexpr int MaxStrips = 32;") != std::string::npos);
     CHECK(routingHeader->find("static constexpr int NumChannels = 2;") == std::string::npos);
     CHECK(routingSource->find("Point<int> SplitterProcessor::getSize()") != std::string::npos);
     CHECK(routingSource->find("Point<int> MixerProcessor::getSize()") != std::string::npos);
+    CHECK(routingSource->find("return Point<int>(kMixerHorizontalNodeWidth, 34 + getNumStrips() * kMixerHorizontalStripRowHeight + kMixerHorizontalMasterRowHeight);") !=
+          std::string::npos);
     CHECK(routingSource->find("const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));") !=
           std::string::npos);
     CHECK(routingSource->find("auto strip = area.removeFromLeft(stripW).reduced(4, 0);") !=
           std::string::npos);
-    CHECK(routingSource->find("meterRails[ch] = strip.removeFromTop(12).reduced(8, 3);") !=
+    CHECK(routingSource->find("auto row = area.removeFromTop(kMixerHorizontalStripRowHeight);") !=
           std::string::npos);
-    CHECK(routingSource->find("vuAreas[ch] = strip.removeFromTop(48).withSizeKeepingCentre(18, 48);") ==
+    CHECK(routingSource->find("meterRails[ch] = strip.removeFromTop(12).reduced(34, 3);") !=
           std::string::npos);
-    CHECK(routingSource->find("auto row = area.removeFromTop(kMixerVerticalStripRowHeight);") !=
+    CHECK(routingSource->find("gainRails[ch] = gainRow.reduced(4, 5);") !=
           std::string::npos);
-    CHECK(routingSource->find("return Point<int>(kMixerVerticalNodeWidth, 34 + getNumStrips() * kMixerVerticalStripRowHeight + kMixerVerticalMasterRowHeight);") !=
+    CHECK(routingSource->find("vuAreas[ch] = strip.removeFromTop(56).withSizeKeepingCentre(18, 56);") !=
+          std::string::npos);
+    CHECK(routingSource->find("return Point<int>(jmax(kMixerVerticalNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerVerticalStripWidth),\n                      kMixerVerticalNodeHeight);") !=
           std::string::npos);
     CHECK(routingSource->find("int pinY = 57;") != std::string::npos);
     CHECK(routingSource->find("pinY += 22;") != std::string::npos);
-    CHECK(routingSource->find("const int rowTop = firstRowTop + i * kMixerVerticalStripRowHeight;") !=
+    CHECK(routingSource->find("const int rowTop = firstRowTop + i * kMixerHorizontalStripRowHeight;") !=
           std::string::npos);
     CHECK(routingSource->find("layout.pinY.push_back(stripTop + 35);\n            layout.pinY.push_back(stripTop + 61);") ==
           std::string::npos);

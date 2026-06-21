@@ -32,12 +32,12 @@ static float normaliseRoutingMeter(float peak)
     return jlimit(0.0f, 1.0f, (dbVal + 60.0f) / 72.0f);
 }
 
-static constexpr int kMixerHorizontalNodeMinWidth = 276;
-static constexpr int kMixerHorizontalStripWidth = 62;
-static constexpr int kMixerHorizontalNodeHeight = 190;
-static constexpr int kMixerVerticalNodeWidth = 320;
-static constexpr int kMixerVerticalStripRowHeight = 52;
-static constexpr int kMixerVerticalMasterRowHeight = 54;
+static constexpr int kMixerHorizontalNodeWidth = 340;
+static constexpr int kMixerHorizontalStripRowHeight = 62;
+static constexpr int kMixerHorizontalMasterRowHeight = 54;
+static constexpr int kMixerVerticalNodeMinWidth = 276;
+static constexpr int kMixerVerticalStripWidth = 62;
+static constexpr int kMixerVerticalNodeHeight = 190;
 
 static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)
 {
@@ -1077,9 +1077,9 @@ Component* MixerProcessor::getControls()
 
             clearLayoutRects();
             if (processor->isVerticalLayout())
-                layoutVertical(area);
+                layoutVerticalStrips(area);
             else
-                layoutHorizontal(area);
+                layoutHorizontalStrips(area);
         }
 
         void clearLayoutRects()
@@ -1107,7 +1107,52 @@ Component* MixerProcessor::getControls()
             masterValueArea = {};
         }
 
-        void layoutHorizontal(Rectangle<int> area)
+        void layoutHorizontalStrips(Rectangle<int> area)
+        {
+            const int activeStrips = processor->getNumStrips();
+
+            for (int ch = 0; ch < activeStrips; ++ch)
+            {
+                auto row = area.removeFromTop(kMixerHorizontalStripRowHeight);
+                stripDecks[ch] = row.reduced(0, 1);
+
+                auto strip = stripDecks[ch].reduced(7, 5);
+                badgeAreas[ch] = strip.removeFromLeft(28).reduced(1, 6);
+
+                phaseButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                stereoButtons[ch].setBounds(strip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+                soloButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+                muteButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
+
+                valueAreas[ch] = strip.removeFromRight(44).reduced(0, 17);
+
+                auto panRow = strip.removeFromTop(18);
+                panLabelAreas[ch] = panRow.removeFromLeft(32).reduced(0, 2);
+                panRails[ch] = panRow.reduced(4, 5);
+                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
+
+                meterRails[ch] = strip.removeFromTop(12).reduced(34, 3);
+
+                auto gainRow = strip.removeFromTop(18);
+                gainLabelAreas[ch] = gainRow.removeFromLeft(32).reduced(0, 2);
+                gainRails[ch] = gainRow.reduced(4, 5);
+                faders[ch].setBounds(gainRails[ch].expanded(8, 6));
+            }
+
+            auto masterRow = area.removeFromTop(kMixerHorizontalMasterRowHeight);
+            masterDeck = masterRow.reduced(0, 1);
+            auto masterStrip = masterDeck.reduced(7, 5);
+            masterBadgeArea = masterStrip.removeFromLeft(28).reduced(1, 6);
+            masterMuteButton.setBounds(masterStrip.removeFromRight(24).withSizeKeepingCentre(22, 16));
+            masterValueArea = masterStrip.removeFromRight(44).reduced(0, 15);
+            masterMeterRail = masterStrip.removeFromTop(12).reduced(34, 3);
+            auto masterGainRow = masterStrip.removeFromTop(18);
+            masterGainLabelArea = masterGainRow.removeFromLeft(32).reduced(0, 2);
+            masterGainRail = masterGainRow.reduced(4, 5);
+            masterFader.setBounds(masterGainRail.expanded(8, 6));
+        }
+
+        void layoutVerticalStrips(Rectangle<int> area)
         {
             const int activeStrips = processor->getNumStrips();
             const int stripW = jmax(50, area.getWidth() / (activeStrips + 1));
@@ -1128,14 +1173,11 @@ Component* MixerProcessor::getControls()
                 panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
 
                 strip.removeFromTop(3);
-                meterRails[ch] = strip.removeFromTop(12).reduced(8, 3);
+                gainLabelAreas[ch] = strip.removeFromTop(10).withSizeKeepingCentre(26, 10);
+                vuAreas[ch] = strip.removeFromTop(56).withSizeKeepingCentre(18, 56);
+                faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
 
-                strip.removeFromTop(4);
-                auto gainRow = strip.removeFromTop(20);
-                gainLabelAreas[ch] = gainRow.removeFromLeft(25).reduced(0, 2);
-                valueAreas[ch] = gainRow.removeFromRight(31).reduced(0, 1);
-                gainRails[ch] = gainRow.reduced(2, 5);
-                faders[ch].setBounds(gainRails[ch].expanded(8, 6));
+                valueAreas[ch] = strip.removeFromTop(17).reduced(0, 1);
 
                 strip.removeFromTop(2);
                 auto btnRow = strip.removeFromTop(18);
@@ -1149,54 +1191,13 @@ Component* MixerProcessor::getControls()
             masterDeck = masterStrip;
             auto masterTop = masterStrip.removeFromTop(22);
             masterBadgeArea = masterTop.removeFromLeft(24).reduced(1, 2);
-            masterMeterRail = masterStrip.removeFromTop(12).reduced(8, 3);
-            masterStrip.removeFromTop(7);
-            auto masterGainRow = masterStrip.removeFromTop(20);
-            masterGainLabelArea = masterGainRow.removeFromLeft(25).reduced(0, 2);
-            masterValueArea = masterGainRow.removeFromRight(31).reduced(0, 1);
-            masterGainRail = masterGainRow.reduced(2, 5);
-            masterFader.setBounds(masterGainRail.expanded(8, 6));
+            masterStrip.removeFromTop(21);
+            masterGainLabelArea = masterStrip.removeFromTop(10).withSizeKeepingCentre(26, 10);
+            masterFaderArea = masterStrip.removeFromTop(56).withSizeKeepingCentre(18, 56);
+            masterFader.setBounds(masterFaderArea.expanded(14, 4));
+            masterValueArea = masterStrip.removeFromTop(17).reduced(0, 1);
             masterStrip.removeFromTop(2);
             masterMuteButton.setBounds(masterStrip.removeFromTop(18).withSizeKeepingCentre(24, 14));
-        }
-
-        void layoutVertical(Rectangle<int> area)
-        {
-            const int activeStrips = processor->getNumStrips();
-
-            for (int ch = 0; ch < activeStrips; ++ch)
-            {
-                auto row = area.removeFromTop(kMixerVerticalStripRowHeight);
-                stripDecks[ch] = row.reduced(0, 1);
-
-                auto strip = stripDecks[ch].reduced(7, 5);
-                badgeAreas[ch] = strip.removeFromLeft(28).reduced(1, 6);
-
-                phaseButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-                stereoButtons[ch].setBounds(strip.removeFromRight(24).withSizeKeepingCentre(22, 16));
-                soloButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-                muteButtons[ch].setBounds(strip.removeFromRight(20).withSizeKeepingCentre(18, 16));
-
-                valueAreas[ch] = strip.removeFromRight(42).reduced(0, 13);
-                vuAreas[ch] = strip.removeFromRight(30).reduced(5, 3).withWidth(18);
-                gainLabelAreas[ch] = vuAreas[ch].withHeight(10).withY(stripDecks[ch].getY() + 5);
-                faders[ch].setBounds(vuAreas[ch].expanded(14, 4));
-
-                auto panRow = strip.removeFromTop(14);
-                panLabelAreas[ch] = panRow.removeFromLeft(26).reduced(0, 2);
-                panRails[ch] = panRow.reduced(6, 4);
-                panKnobs[ch].setBounds(panRails[ch].expanded(7, 7));
-            }
-
-            auto masterStrip = area.removeFromTop(kMixerVerticalMasterRowHeight);
-            masterDeck = masterStrip.reduced(0, 1);
-            masterStrip = masterDeck.reduced(7, 5);
-            masterBadgeArea = masterStrip.removeFromLeft(28).reduced(1, 6);
-            masterMuteButton.setBounds(masterStrip.removeFromRight(24).withSizeKeepingCentre(22, 16));
-            masterValueArea = masterStrip.removeFromRight(44).reduced(0, 14);
-            masterFaderArea = masterStrip.removeFromRight(30).reduced(5, 3).withWidth(18);
-            masterFader.setBounds(masterFaderArea.expanded(14, 4));
-            masterPanRail = masterStrip.removeFromTop(14).reduced(8, 4);
         }
 
         void timerCallback() override { repaint(); }
@@ -1570,11 +1571,11 @@ Component* MixerProcessor::getControls()
 
 Point<int> MixerProcessor::getSize()
 {
-    if (isVerticalLayout())
-        return Point<int>(kMixerVerticalNodeWidth, 34 + getNumStrips() * kMixerVerticalStripRowHeight + kMixerVerticalMasterRowHeight);
+    if (!isVerticalLayout())
+        return Point<int>(kMixerHorizontalNodeWidth, 34 + getNumStrips() * kMixerHorizontalStripRowHeight + kMixerHorizontalMasterRowHeight);
 
-    return Point<int>(jmax(kMixerHorizontalNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerHorizontalStripWidth),
-                      jmax(kMixerHorizontalNodeHeight, 70 + countTotalInputChannels() * 22));
+    return Point<int>(jmax(kMixerVerticalNodeMinWidth, 70 + (getNumStrips() + 1) * kMixerVerticalStripWidth),
+                      kMixerVerticalNodeHeight);
 }
 
 int MixerProcessor::countTotalInputChannels() const
@@ -2067,13 +2068,13 @@ PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 {
     PinLayout layout;
 
-    if (isVerticalLayout())
+    if (!isVerticalLayout())
     {
         const int firstRowTop = 26 + 31;
         const int n = numStrips_.load(std::memory_order_acquire);
         for (int i = 0; i < n; ++i)
         {
-            const int rowTop = firstRowTop + i * kMixerVerticalStripRowHeight;
+            const int rowTop = firstRowTop + i * kMixerHorizontalStripRowHeight;
             const bool stereo = strips_[static_cast<size_t>(i)].stereo.load(std::memory_order_relaxed);
             if (stereo)
             {
@@ -2112,11 +2113,11 @@ PedalboardProcessor::PinLayout MixerProcessor::getInputPinLayout() const
 PedalboardProcessor::PinLayout MixerProcessor::getOutputPinLayout() const
 {
     PinLayout layout;
-    if (isVerticalLayout())
+    if (!isVerticalLayout())
     {
         const int firstRowTop = 26 + 31;
         const int n = numStrips_.load(std::memory_order_acquire);
-        const int masterRowTop = firstRowTop + n * kMixerVerticalStripRowHeight;
+        const int masterRowTop = firstRowTop + n * kMixerHorizontalStripRowHeight;
         layout.pinY.push_back(masterRowTop + 8);
         layout.pinY.push_back(masterRowTop + 30);
         return layout;
