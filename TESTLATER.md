@@ -59,15 +59,34 @@ Manual spot check:
 
 ## Mockup Polish Visual QA
 
-Status: deferred manual/visual pass after the next native build.
+Status: automated screenshot pass completed on the current branch; manual interaction checks remain.
 
 Scope:
 
-- Branch: `codex/secondary-mockup-polish`
+- Branch: `codex/rt-hosting-sprint`
+- Latest verified commit: `2486d56 fix: polish tone and tuner utility nodes`
 - Source reference: `releases/design-handoffs/pedalboard-remix/pedalboard-remix/project/Pedalboard 3 Demo.html`
 - Reference screenshot: `documentation\qa\2026-06-09-mockup-reference\nam-browser-mockup-msedge.png`
 
-Steps:
+Evidence captured:
+
+- `documentation\qa\2026-06-21-polish-audit-nodes`
+- `documentation\qa\2026-06-21-polish-audit-dialogs`
+- `documentation\qa\2026-06-21-tone-tuner-polish`
+- `audits\audit-20260621-polish-status.md`
+
+Covered by current screenshots:
+
+- NAM Loader and IR Loader node text roles are readable across node snapshots.
+- NAM Library normal-size chrome is centered and local rows/detail card are readable.
+- IR Browser normal-size detail card is readable.
+- Plugin search visible list no longer shows duplicate internal `Mixer`/`Splitter` variants in the captured view.
+- Effect Rack node has one clear `Open` affordance and no redundant `Map` button.
+- Notes node shows the empty hint again.
+- Tone Generator pitch-row overlap is fixed in `2026-06-21-tone-tuner-polish`.
+- Tuner mode row has an integrated segmented control in `2026-06-21-tone-tuner-polish`.
+
+Remaining manual checks:
 
 1. Launch Pedalboard3 and open a patch with several plugin nodes and visible cables.
 2. In `Options > Graph Grid`, switch between `Dots`, `Lines`, and `Off`.
@@ -84,13 +103,21 @@ Steps:
 13. Search the local NAM browser by file name, model type, metadata author/maker, and folder path, confirming matching rows remain selectable and double-click/load behavior is unchanged.
 14. If a listed local NAM file has been moved or deleted, confirm the preview shows MISSING and `Load Model` / `Delete Model` stay disabled.
 15. Repeat the visual pass in dark, light/daylight, and synthwave themes.
-16. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming no recovery controls are clipped.
+16. Repeat at realistic 75%, 100%, and 150% Pedalboard UI Scale window sizes, confirming no recovery controls are clipped.
+
+Note: the fixed-size 200% dialog captures in `2026-06-21-polish-audit-dialogs` are stress cases, not realistic acceptance targets. Revisit high-scale dialog layout only after defining realistic high-DPI window sizes.
 
 ## NAM A1/A2 Browser Smoke
 
-Status: local and online browser behavior needs one more manual pass after native launch.
+Status: local visual pills/detail cards are covered by current screenshots; online/authenticated behavior still needs one manual pass after native launch.
 
-Steps:
+Evidence already captured:
+
+- `documentation\qa\2026-06-21-polish-audit-dialogs\dialog-nam-browser-daylight.png`
+- `documentation\qa\2026-06-21-polish-audit-dialogs\dialog-nam-browser-midnight.png`
+- `documentation\qa\2026-06-21-polish-audit-dialogs\workflow-scaled-dialog-nam-browser-150-normal.png`
+
+Remaining manual steps:
 
 1. Open the NAM Library local browser with at least one A1 `.nam` model and one A2 `.nam` container model available.
 2. Confirm local rows show the correct A1 or A2 architecture pill without clipping.
@@ -99,11 +126,11 @@ Steps:
 5. Open the online browser while authenticated, select a model, and confirm a visible download action is available.
 6. Confirm the online A1/A2 architecture filter changes the result set sensibly and does not label every result as A2.
 7. Download one online model, refresh local results, and confirm the new local row shows the correct architecture pill.
-8. Reopen the NAM detail card at 75%, 100%, 150%, and 200% UI Scale and confirm labels, pills, and footer status do not clip.
+8. Reopen the NAM detail card at realistic 75%, 100%, and 150% UI Scale window sizes and confirm labels, pills, and footer status do not clip.
 
 ## ReverbSC Direct Node Visual Smoke
 
-Status: deferred manual/visual pass after the ReverbSC node UI lands.
+Status: still needs manual interaction pass. The June 21 automated node snapshot script does not include ReverbSC.
 
 Steps:
 
