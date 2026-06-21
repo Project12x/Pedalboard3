@@ -178,13 +178,13 @@ class ReverbSCControl final : public Component, private Timer
         auto bounds = getLocalBounds().toFloat();
 
         ColourGradient wash(accent.withAlpha(0.11f), bounds.getCentreX(), bounds.getY(),
-                            Colours::transparentBlack, bounds.getCentreX(), bounds.getBottom(), false);
+                            colours["Plugin Background"].withAlpha(0.0f), bounds.getCentreX(), bounds.getBottom(), false);
         wash.addColour(0.42, accent.darker(0.40f).withAlpha(0.045f));
-        wash.addColour(1.0, Colours::black.withAlpha(0.03f));
+        wash.addColour(1.0, colours["Window Background"].darker(0.35f).withAlpha(0.03f));
         g.setGradientFill(wash);
         g.fillRect(bounds);
 
-        g.setColour(Colours::white.withAlpha(0.045f));
+        g.setColour(colours["Text Colour"].withAlpha(0.045f));
         g.drawLine(bounds.getX() + 12.0f, bounds.getY() + 2.0f, bounds.getRight() - 20.0f, bounds.getY() + 2.0f,
                    1.0f);
         g.setColour(accent.withAlpha(0.11f));
@@ -209,7 +209,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setGradientFill(body);
         g.fillRoundedRectangle(tile, 9.0f);
 
-        g.setColour(Colours::white.withAlpha(0.075f));
+        g.setColour(colours["Text Colour"].withAlpha(0.075f));
         g.drawLine(tile.getX() + 9.0f, tile.getY() + 1.5f, tile.getRight() - 9.0f, tile.getY() + 1.5f, 1.0f);
         g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 9.0f, 1.1f);
@@ -254,7 +254,7 @@ class ReverbSCControl final : public Component, private Timer
             g.drawLine(x1, y, x2, y + 3.0f, 1.1f);
         }
 
-        g.setColour(Colours::white.withAlpha(0.20f));
+        g.setColour(colours["Text Colour"].withAlpha(0.20f));
         g.fillEllipse(centre.x - 2.0f, centre.y - 2.0f, 4.0f, 4.0f);
     }
 
@@ -277,7 +277,7 @@ class ReverbSCControl final : public Component, private Timer
 
         paintDiffusionTexture(g, area.reduced(7, 4), accent, value);
 
-        g.setColour(Colours::white.withAlpha(0.07f));
+        g.setColour(colours["Text Colour"].withAlpha(0.07f));
         g.drawLine(lane.getX() + 7.0f, lane.getY() + 1.0f, lane.getRight() - 7.0f, lane.getY() + 1.0f, 1.0f);
         g.setColour(accent.withAlpha(0.50f));
         g.drawRoundedRectangle(lane.reduced(0.5f), 7.0f, 0.9f);
@@ -313,7 +313,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setGradientFill(body);
         g.fillRoundedRectangle(tile, 6.0f);
 
-        g.setColour(Colours::white.withAlpha(0.055f));
+        g.setColour(colours["Text Colour"].withAlpha(0.055f));
         g.drawLine(tile.getX() + 6.0f, tile.getY() + 1.0f, tile.getRight() - 6.0f, tile.getY() + 1.0f, 1.0f);
         g.setColour(accent.withAlpha(0.39f));
         g.drawRoundedRectangle(tile.reduced(0.5f), 6.0f, 0.8f);
@@ -367,7 +367,7 @@ class ReverbSCControl final : public Component, private Timer
         auto& fonts = FontManager::getInstance();
         auto chip = area.toFloat().reduced(0.5f);
 
-        ColourGradient body(Colours::black.withAlpha(0.19f), chip.getX(), chip.getY(),
+        ColourGradient body(colours["Window Background"].darker(0.35f).withAlpha(0.19f), chip.getX(), chip.getY(),
                             accent.darker(0.55f).withAlpha(0.25f), chip.getX(), chip.getBottom(), false);
         body.addColour(0.45, colours["Plugin Background"].darker(0.45f).interpolatedWith(accent, 0.075f).withAlpha(0.88f));
         g.setGradientFill(body);
@@ -385,10 +385,11 @@ class ReverbSCControl final : public Component, private Timer
         if (rail.isEmpty())
             return;
 
+        auto& colours = ColourScheme::getInstance().colours;
         value = jlimit(0.0f, 1.0f, value);
-        ColourGradient bed(Colours::black.withAlpha(0.34f), rail.getX(), rail.getY(),
-                           Colours::white.withAlpha(0.06f), rail.getX(), rail.getBottom(), false);
-        bed.addColour(0.48, Colours::black.withAlpha(0.20f));
+        ColourGradient bed(colours["Window Background"].darker(0.35f).withAlpha(0.34f), rail.getX(), rail.getY(),
+                           colours["Text Colour"].withAlpha(0.06f), rail.getX(), rail.getBottom(), false);
+        bed.addColour(0.48, colours["Field Background"].darker(0.34f).withAlpha(0.20f));
         g.setGradientFill(bed);
         g.fillRoundedRectangle(rail, 2.5f);
         g.setColour(accent.withAlpha(0.18f));
@@ -401,7 +402,7 @@ class ReverbSCControl final : public Component, private Timer
         g.setGradientFill(fillGradient);
         g.fillRoundedRectangle(fill, 2.5f);
 
-        g.setColour(Colours::white.withAlpha(0.10f));
+        g.setColour(colours["Text Colour"].withAlpha(0.10f));
         g.drawLine(rail.getX() + 2.0f, rail.getY() + 1.0f, rail.getRight() - 2.0f, rail.getY() + 1.0f, 0.8f);
 
         const float thumbX = jlimit(rail.getX() + 2.0f, rail.getRight() - 2.0f, rail.getX() + rail.getWidth() * value);
@@ -410,7 +411,7 @@ class ReverbSCControl final : public Component, private Timer
         g.fillEllipse(thumb.expanded(4.0f, 3.0f));
         g.setColour(accent.brighter(0.22f).withAlpha(0.88f));
         g.fillRoundedRectangle(thumb, 2.2f);
-        g.setColour(Colours::white.withAlpha(0.16f));
+        g.setColour(colours["Text Colour"].withAlpha(0.16f));
         g.drawRoundedRectangle(thumb.reduced(0.5f), 2.2f, 0.6f);
     }
 

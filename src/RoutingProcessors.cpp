@@ -142,7 +142,7 @@ static void paintMixerStripDeck(Graphics& g, Rectangle<float> bounds, Colour acc
 
     g.setColour(colours["Plugin Border"].interpolatedWith(accent, 0.30f).withAlpha(0.48f));
     g.drawVerticalLine(roundToInt(bounds.getRight()), bounds.getY() + 9.0f, bounds.getBottom() - 9.0f);
-    g.setColour(Colours::white.withAlpha(0.045f));
+    g.setColour(colours["Text Colour"].withAlpha(0.045f));
     g.drawLine(bounds.getX() + 7.0f, bounds.getY() + 1.0f, bounds.getRight() - 7.0f, bounds.getY() + 1.0f, 0.7f);
 
     ignoreUnused(label);
@@ -161,7 +161,7 @@ static void paintMixerMasterDeck(Graphics& g, Rectangle<float> bounds, Colour ac
 
     g.setColour(colours["Plugin Border"].interpolatedWith(accent, 0.52f).withAlpha(0.72f));
     g.drawVerticalLine(roundToInt(deck.getX()), deck.getY() + 7.0f, deck.getBottom() - 7.0f);
-    g.setColour(Colours::white.withAlpha(0.055f));
+    g.setColour(colours["Text Colour"].withAlpha(0.055f));
     g.drawLine(deck.getX() + 7.0f, deck.getY() + 1.0f, deck.getRight() - 7.0f, deck.getY() + 1.0f, 0.7f);
 }
 
@@ -190,7 +190,7 @@ static void styleRoutingButton(TextButton& button, Colour accent)
     button.setColour(TextButton::buttonColourId, colours["Plugin Background"].brighter(0.06f));
     button.setColour(TextButton::buttonOnColourId, accent.withAlpha(0.82f));
     button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.75f));
-    button.setColour(TextButton::textColourOnId, Colours::black.withAlpha(0.90f));
+    button.setColour(TextButton::textColourOnId, colours["Plugin Background"].darker(0.55f).withAlpha(0.90f));
 }
 
 static void notifyParentPins(Component& component)
@@ -247,7 +247,7 @@ class SplitterControl : public Component, public Button::Listener, private Timer
             auto& s = soloButtons[index];
             s.setButtonText("S");
             s.setClickingTogglesState(true);
-            styleRoutingButton(s, Colour(0xFFCCAA00));
+            styleRoutingButton(s, ColourScheme::getInstance().colours["Warning Colour"]);
             s.onClick = [this, index]() { processor->setOutputSolo(index, soloButtons[index].getToggleState()); };
             addAndMakeVisible(s);
 
@@ -265,7 +265,7 @@ class SplitterControl : public Component, public Button::Listener, private Timer
             auto& ph = phaseButtons[index];
             ph.setButtonText(CharPointer_UTF8("\xc3\x98"));
             ph.setClickingTogglesState(true);
-            styleRoutingButton(ph, Colour(0xFFFF8800));
+            styleRoutingButton(ph, ColourScheme::getInstance().colours["Warning Colour"].brighter(0.12f));
             ph.onClick = [this, index]()
             { processor->setOutputPhaseInvert(index, phaseButtons[index].getToggleState()); };
             addAndMakeVisible(ph);
@@ -1016,7 +1016,7 @@ Component* MixerProcessor::getControls()
                 auto& s = soloButtons[ch];
                 s.setButtonText("S");
                 s.setClickingTogglesState(true);
-                styleRoutingButton(s, Colour(0xFFCCAA00));
+                styleRoutingButton(s, ColourScheme::getInstance().colours["Warning Colour"]);
                 s.setToggleState(processor->getChannelSolo(ch), dontSendNotification);
                 s.onClick = [this, ch]() { processor->setChannelSolo(ch, soloButtons[ch].getToggleState()); };
                 addAndMakeVisible(s);
@@ -1036,7 +1036,7 @@ Component* MixerProcessor::getControls()
                 auto& ph = phaseButtons[ch];
                 ph.setButtonText(CharPointer_UTF8("\xc3\x98"));
                 ph.setClickingTogglesState(true);
-                styleRoutingButton(ph, Colour(0xFFFF8800));
+                styleRoutingButton(ph, ColourScheme::getInstance().colours["Warning Colour"].brighter(0.12f));
                 ph.setToggleState(processor->getChannelPhaseInvert(ch), dontSendNotification);
                 ph.onClick = [this, ch]()
                 { processor->setChannelPhaseInvert(ch, phaseButtons[ch].getToggleState()); };
@@ -1442,7 +1442,7 @@ Component* MixerProcessor::getControls()
             if (peakNorm > 0.001f)
             {
                 const float peakX = static_cast<float>(bar.getX()) + static_cast<float>(bar.getWidth()) * peakNorm;
-                g.setColour(Colours::white.withAlpha(0.58f));
+                g.setColour(cs.colours["Text Colour"].withAlpha(0.58f));
                 g.drawVerticalLine(static_cast<int>(peakX), static_cast<float>(bar.getY()),
                                    static_cast<float>(bar.getBottom()));
             }
@@ -1558,7 +1558,7 @@ Component* MixerProcessor::getControls()
             if (peakNorm > 0.001f)
             {
                 int peakY = bar.getBottom() - static_cast<int>(peakNorm * bar.getHeight());
-                g.setColour(Colours::white.withAlpha(0.62f));
+                g.setColour(cs.colours["Text Colour"].withAlpha(0.62f));
                 g.drawHorizontalLine(peakY, static_cast<float>(bar.getX()), static_cast<float>(bar.getRight()));
             }
         }

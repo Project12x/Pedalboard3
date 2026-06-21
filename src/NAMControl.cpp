@@ -39,6 +39,7 @@ void NAMLookAndFeel::refreshColours()
     auto setBrowserPalette = [&](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
                                  uint32 edge2, uint32 accent, uint32 accent2, uint32 led, uint32 text)
     {
+        ignoreUnused(text);
         ampBackgroundTop = Colour(top);
         ampBackground = Colour(bottom);
         ampSurface = Colour(face);
@@ -47,10 +48,10 @@ void NAMLookAndFeel::refreshColours()
         ampHeaderBg = Colour(face2);
         ampAccent = Colour(accent);
         ampAccentSecondary = Colour(accent2);
-        ampTextBright = Colour(text);
-        ampTextDim = Colour(text).withAlpha(0.68f);
+        ampTextBright = cs.colours["Text Colour"];
+        ampTextDim = cs.colours["Text Colour"].withAlpha(0.68f);
         ampLedOn = Colour(led);
-        ampLedOff = Colour(text).withAlpha(0.42f);
+        ampLedOff = cs.colours["Text Colour"].withAlpha(0.42f);
         ampKnobBody = Colour(inset).brighter(0.08f);
         ampKnobRing = Colour(edge).brighter(0.42f);
         ampTrackBg = Colour(inset).darker(0.12f);

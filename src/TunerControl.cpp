@@ -42,7 +42,7 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     // 60 fps for smooth animation
     startTimerHz(60);
 
-    setSize(360, 268);
+    setSize(360, 276);
 }
 
 TunerControl::~TunerControl()
@@ -129,7 +129,7 @@ void TunerControl::paint(Graphics& g)
 
     area.removeFromTop(9);
 
-    auto modeArea = area.removeFromTop(25);
+    auto modeArea = area.removeFromTop(29);
     drawModeSegmentedControl(g, modeArea);
 
     area.removeFromTop(4);
@@ -174,7 +174,7 @@ void TunerControl::drawTunerGlassPanel(Graphics& g, Rectangle<float> bounds)
     g.setGradientFill(panelFill);
     g.fillRoundedRectangle(bounds, 8.0f);
 
-    g.setColour(Colours::black.withAlpha(0.18f));
+    g.setColour(colours["Window Background"].darker(0.35f).withAlpha(0.18f));
     g.fillRoundedRectangle(bounds.reduced(4.0f).translated(0.0f, 1.5f), 7.0f);
 
     g.setColour(colours["Text Colour"].withAlpha(0.055f));
@@ -243,8 +243,11 @@ void TunerControl::drawTunerHeader(Graphics& g, Rectangle<float> bounds)
 
     g.setColour(colours["Text Colour"].withAlpha(0.72f));
     g.setFont(fonts.getBadgeFont().withHeight(10.0f));
-    g.drawText(bypassed ? "BYPASS" : detected ? "ACTIVE" : "EMPTY", statePill.withTrimmedLeft(23.0f).withTrimmedRight(6.0f),
-               Justification::centredLeft, true);
+    if (bypassed || detected)
+    {
+        g.drawText(bypassed ? "BYPASS" : "ACTIVE", statePill.withTrimmedLeft(23.0f).withTrimmedRight(6.0f),
+                   Justification::centredLeft, true);
+    }
 }
 
 void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds)
@@ -352,7 +355,7 @@ void TunerControl::drawNoteGlyph(Graphics& g, Rectangle<float> bounds, const Str
     auto centre = bounds.getCentre();
     auto noteBounds = bounds.withSizeKeepingCentre(92.0f, bounds.getHeight());
 
-    g.setColour(Colours::black.withAlpha(0.38f));
+    g.setColour(colours["Window Background"].darker(0.35f).withAlpha(0.38f));
     g.setFont(fonts.getDisplayFont(50.0f));
     g.drawText(root, noteBounds.translated(1.5f, 1.5f), Justification::centred);
 
@@ -565,13 +568,13 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
         Colour tickCol;
         if (i == 0)
         {
-            tickCol = Colours::white;
+            tickCol = colours["Text Colour"];
             innerR = meterRadius - 14;
         }
         else if (std::abs(i) <= 1)
             tickCol = colours["Success Colour"].withAlpha(0.8f);
         else if (std::abs(i) <= 2)
-            tickCol = Colours::yellow.withAlpha(0.7f);
+            tickCol = colours["Warning Colour"].withAlpha(0.7f);
         else
             tickCol = colours["Danger Colour"].withAlpha(0.6f);
 
@@ -603,7 +606,7 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
         float needleLen = meterRadius - 3;
 
         // Shadow
-        g.setColour(Colours::black.withAlpha(0.35f));
+        g.setColour(colours["Window Background"].darker(0.35f).withAlpha(0.35f));
         Path shadowPath;
         shadowPath.startNewSubPath(centreX + 3, bottomY + 3);
         shadowPath.lineTo(centreX + std::cos(needleRad) * needleLen + 3, bottomY + std::sin(needleRad) * needleLen + 3);
@@ -838,7 +841,7 @@ void TunerControl::resized()
 
     auto bounds = getLocalBounds().reduced(8, 6);
     bounds.removeFromTop(43);
-    auto modeArea = bounds.removeFromTop(25);
+    auto modeArea = bounds.removeFromTop(29);
     modeArea.removeFromRight(18);
     auto bypassArea = modeArea.removeFromRight(72).reduced(2, 2);
     const int thirdWidth = modeArea.getWidth() / 3;
@@ -888,18 +891,19 @@ String TunerControl::getNoteName(int midiNote) const
 //==============================================================================
 Colour TunerControl::getTuningColour(float cents) const
 {
+    auto& colours = ColourScheme::getInstance().colours;
     float absCents = std::abs(cents);
 
     if (absCents < 2.0f)
-        return Colour(0xFF00E676); // Bright green
+        return colours["Tuner Active Colour"].brighter(0.18f);
     else if (absCents < 8.0f)
-        return Colour(0xFF76FF03); // Lime
+        return colours["Success Colour"].interpolatedWith(colours["Tuner Active Colour"], 0.45f).brighter(0.10f);
     else if (absCents < 18.0f)
-        return Colour(0xFFFFEB3B); // Yellow
+        return colours["Warning Colour"].brighter(0.12f);
     else if (absCents < 32.0f)
-        return Colour(0xFFFF9800); // Orange
+        return colours["Warning Colour"].interpolatedWith(colours["Danger Colour"], 0.32f).brighter(0.08f);
     else
-        return Colour(0xFFFF5252); // Red
+        return colours["Danger Colour"].brighter(0.10f);
 }
 
 //==============================================================================

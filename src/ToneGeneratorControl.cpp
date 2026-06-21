@@ -56,7 +56,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     frequencySlider->setValue(processor->getFrequency(), dontSendNotification);
     frequencySlider->addListener(this);
     frequencySlider->setTextBoxStyle(Slider::TextBoxRight, false, 68, 18);
-    styleEditableSlider(*frequencySlider, Colour(0xFF39D3E6), " Hz", 68);
+    styleEditableSlider(*frequencySlider, getAccentColour(), " Hz", 68);
     addAndMakeVisible(frequencySlider.get());
 
     // Detune slider
@@ -64,8 +64,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 72, 18);
-    styleEditableSlider(*detuneSlider, colours["Warning Colour"], String::fromUTF8(" \xC2\xA2"), 72);
+    detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 76, 20);
+    styleEditableSlider(*detuneSlider, colours["Warning Colour"], String::fromUTF8(" \xC2\xA2"), 76);
     addAndMakeVisible(detuneSlider.get());
 
     // Detune preset buttons (boundary testing)
@@ -135,7 +135,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Update display at 30fps
     startTimerHz(30);
 
-    setSize(360, 286);
+    setSize(360, 308);
 }
 
 ToneGeneratorControl::~ToneGeneratorControl()
@@ -238,7 +238,7 @@ void ToneGeneratorControl::timerCallback()
 void ToneGeneratorControl::paint(Graphics& g)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     const auto warning = colours["Warning Colour"];
     const auto success = colours["Success Colour"];
 
@@ -288,25 +288,25 @@ void ToneGeneratorControl::resized()
     noteChipArea = displayInner.removeFromTop(18).withWidth(62);
 
     bounds.removeFromTop(7);
-    pitchPanel = bounds.removeFromTop(58);
+    pitchPanel = bounds.removeFromTop(70);
 
-    auto pitchInner = pitchPanel.reduced(10, 7);
-    pitchInner.removeFromTop(15);
-    auto freqRow = pitchInner.removeFromTop(18);
+    auto pitchInner = pitchPanel.reduced(10, 5);
+    pitchInner.removeFromTop(14);
+    auto freqRow = pitchInner.removeFromTop(20);
     frequencyChipArea = frequencyChipArea.reduced(0, 1);
     auto frequencyControl = freqRow.withTrimmedLeft(35);
     frequencyRail = frequencyControl.withTrimmedRight(76).reduced(0, 4);
     frequencySlider->setBounds(frequencyControl.expanded(7, 1));
 
     pitchInner.removeFromTop(4);
-    auto detuneRow = pitchInner.removeFromTop(18);
-    auto presetArea = detuneRow.removeFromRight(130);
+    auto detuneRow = pitchInner.removeFromTop(20);
+    auto presetArea = detuneRow.removeFromRight(144);
     auto detuneControl = detuneRow.withTrimmedLeft(35);
-    detuneChipArea = detuneControl.removeFromRight(80);
+    detuneChipArea = detuneControl.removeFromRight(84);
     detuneRail = detuneControl.reduced(0, 4);
     detuneSlider->setBounds(detuneRow.withTrimmedLeft(35).expanded(7, 1));
 
-    int btnW = 30;
+    const int btnW = 34;
     detune1Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
     presetArea.removeFromLeft(2);
     detune5Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
@@ -326,11 +326,12 @@ void ToneGeneratorControl::resized()
     noiseBtn->setBounds(waveformButtons.reduced(1, 0));
 
     bounds.removeFromTop(6);
-    bottomPanel = bounds.removeFromTop(70);
+    bottomPanel = bounds.removeFromTop(80);
     auto bottomInner = bottomPanel.reduced(10, 5);
+    bottomInner.removeFromTop(16);
     outputPanel = bottomInner;
     auto outputLayout = outputPanel;
-    outputKnobArea = outputLayout.removeFromLeft(74);
+    outputKnobArea = outputLayout.removeFromLeft(82);
     outputLayout.removeFromLeft(8);
     amplitudeSlider->setBounds(outputKnobArea.reduced(6, 2));
 
@@ -367,7 +368,7 @@ void ToneGeneratorControl::syncButtonStates()
         return;
 
     auto& colours = ColourScheme::getInstance().colours;
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     const auto waveform = toneProcessor->getWaveform();
     const auto mode = toneProcessor->getTestMode();
     const auto playing = toneProcessor->isPlaying();
@@ -401,7 +402,7 @@ void ToneGeneratorControl::styleButtonChrome(TextButton& button, Colour accent, 
                             : colours["Plugin Background"].interpolatedWith(accent, 0.12f).brighter(0.02f));
     button.setColour(TextButton::buttonOnColourId, accent.darker(0.35f));
     button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(active ? 0.98f : 0.68f));
-    button.setColour(TextButton::textColourOnId, Colours::white.withAlpha(0.96f));
+    button.setColour(TextButton::textColourOnId, accent.contrasting(0.92f).withAlpha(0.96f));
 }
 
 void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth)
@@ -419,11 +420,16 @@ void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, co
     ignoreUnused(textBoxWidth);
 }
 
+Colour ToneGeneratorControl::getAccentColour() const
+{
+    return ColourScheme::getInstance().colours["Graph Category Source"];
+}
+
 void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto& fonts = FontManager::getInstance();
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     const auto shell = bounds.reduced(2.0f);
 
     ColourGradient body(colours["Plugin Background"].interpolatedWith(accent, 0.13f).brighter(0.05f), shell.getX(),
@@ -436,13 +442,14 @@ void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
 
     g.setColour(accent.withAlpha(0.18f));
     g.drawRoundedRectangle(shell.reduced(0.5f), 8.0f, 1.4f);
-    g.setColour(Colours::white.withAlpha(0.08f));
+    g.setColour(colours["Text Colour"].withAlpha(0.08f));
     g.drawLine(shell.getX() + 10.0f, shell.getY() + 1.0f, shell.getRight() - 10.0f, shell.getY() + 1.0f, 1.0f);
-    g.setColour(Colours::black.withAlpha(0.24f));
+    g.setColour(colours["Window Background"].darker(0.35f).withAlpha(0.24f));
     g.drawLine(shell.getX() + 8.0f, shell.getBottom() - 1.0f, shell.getRight() - 8.0f, shell.getBottom() - 1.0f, 1.0f);
 
     auto header = headerArea.toFloat();
-    ColourGradient headerFill(accent.withAlpha(0.16f), header.getX(), header.getY(), Colours::black.withAlpha(0.18f),
+    ColourGradient headerFill(accent.withAlpha(0.16f), header.getX(), header.getY(),
+                              colours["Plugin Background"].darker(0.34f).withAlpha(0.18f),
                               header.getX(), header.getBottom(), false);
     g.setGradientFill(headerFill);
     g.fillRoundedRectangle(header.reduced(1.0f), 5.0f);
@@ -452,7 +459,7 @@ void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
     g.fillEllipse(led.expanded(3.0f));
     g.setColour(accent);
     g.fillEllipse(led);
-    g.setColour(Colours::white.withAlpha(0.62f));
+    g.setColour(colours["Text Colour"].withAlpha(0.62f));
     g.fillEllipse(led.withSizeKeepingCentre(3.0f, 3.0f).translated(-1.0f, -1.0f));
 
     g.setFont(fonts.getBadgeFont());
@@ -466,7 +473,7 @@ void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto& fonts = FontManager::getInstance();
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     auto panel = bounds.reduced(1.0f);
 
     ColourGradient panelFill(colours["Field Background"].darker(0.20f), panel.getX(), panel.getY(),
@@ -478,7 +485,7 @@ void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds
 
     g.setColour(accent.withAlpha(0.32f));
     g.drawRoundedRectangle(panel, 7.0f, 1.1f);
-    g.setColour(Colours::white.withAlpha(0.07f));
+    g.setColour(colours["Text Colour"].withAlpha(0.07f));
     g.drawLine(panel.getX() + 8.0f, panel.getY() + 1.0f, panel.getRight() - 8.0f, panel.getY() + 1.0f);
 
     g.setFont(fonts.getMonoDisplayFont(20.0f));
@@ -490,16 +497,17 @@ void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds
 
     auto status = bounds.reduced(8.0f, 7.0f).removeFromRight(70.0f).removeFromBottom(16.0f);
     const bool playing = toneProcessor != nullptr && toneProcessor->isPlaying();
-    drawValueChip(g, status, playing ? "ACTIVE" : "READY", playing ? colours["Success Colour"] : accent);
+    if (playing)
+        drawValueChip(g, status, "ACTIVE", colours["Success Colour"]);
 }
 
 void ToneGeneratorControl::drawWaveformGlyph(Graphics& g, Rectangle<float> bounds)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     auto tile = bounds.reduced(1.0f);
 
-    ColourGradient tileFill(Colours::black.withAlpha(0.22f), tile.getX(), tile.getY(),
+    ColourGradient tileFill(colours["Window Background"].darker(0.35f).withAlpha(0.22f), tile.getX(), tile.getY(),
                             accent.darker(0.70f).withAlpha(0.22f), tile.getX(), tile.getBottom(), false);
     g.setGradientFill(tileFill);
     g.fillRoundedRectangle(tile, 6.0f);
@@ -548,10 +556,10 @@ void ToneGeneratorControl::drawSectionLabel(Graphics& g, Rectangle<float> bounds
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto& fonts = FontManager::getInstance();
-    const auto accent = Colour(0xFF39D3E6);
+    const auto accent = getAccentColour();
     auto label = bounds.reduced(10.0f, 0.0f).removeFromLeft(62.0f).reduced(0.0f, 1.0f);
 
-    ColourGradient fill(Colours::black.withAlpha(0.18f), label.getX(), label.getY(),
+    ColourGradient fill(colours["Window Background"].darker(0.35f).withAlpha(0.18f), label.getX(), label.getY(),
                         accent.darker(0.55f).withAlpha(0.22f), label.getX(), label.getBottom(), false);
     g.setGradientFill(fill);
     g.fillRoundedRectangle(label, 5.0f);
@@ -565,6 +573,7 @@ void ToneGeneratorControl::drawSectionLabel(Graphics& g, Rectangle<float> bounds
 
 void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, float normalisedValue, Colour accent)
 {
+    auto& colours = ColourScheme::getInstance().colours;
     auto knobArea = bounds.reduced(5.0f, 3.0f).withTrimmedBottom(17.0f);
     const auto diameter = jmin(knobArea.getWidth(), knobArea.getHeight());
     auto knob = Rectangle<float>(diameter, diameter).withCentre(knobArea.getCentre());
@@ -574,13 +583,14 @@ void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, 
     g.setColour(accent.withAlpha(0.13f));
     g.fillEllipse(knob.expanded(5.0f));
 
-    ColourGradient body(Colours::white.withAlpha(0.17f), knob.getX(), knob.getY(),
-                        Colours::black.withAlpha(0.48f), knob.getRight(), knob.getBottom(), false);
+    ColourGradient body(colours["Text Colour"].withAlpha(0.17f), knob.getX(), knob.getY(),
+                        colours["Window Background"].darker(0.35f).withAlpha(0.48f), knob.getRight(),
+                        knob.getBottom(), false);
     body.addColour(0.45, accent.darker(0.62f).withAlpha(0.68f));
     g.setGradientFill(body);
     g.fillEllipse(knob);
 
-    g.setColour(Colours::white.withAlpha(0.18f));
+    g.setColour(colours["Text Colour"].withAlpha(0.18f));
     g.drawEllipse(knob.reduced(1.0f), 1.0f);
     g.setColour(accent.withAlpha(0.50f));
     g.drawEllipse(knob, 1.2f);
@@ -598,7 +608,7 @@ void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, 
     pointer.startNewSubPath(centre.x, centre.y);
     pointer.lineTo(centre.x + std::cos(valueAngle) * (radius - 7.0f),
                    centre.y + std::sin(valueAngle) * (radius - 7.0f));
-    g.setColour(Colours::white.withAlpha(0.88f));
+    g.setColour(colours["Text Colour"].withAlpha(0.88f));
     g.strokePath(pointer, PathStrokeType(1.7f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
@@ -608,7 +618,7 @@ void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, c
     auto& fonts = FontManager::getInstance();
     auto chip = bounds.reduced(0.5f);
 
-    ColourGradient fill(Colours::black.withAlpha(0.24f), chip.getX(), chip.getY(),
+    ColourGradient fill(colours["Window Background"].darker(0.35f).withAlpha(0.24f), chip.getX(), chip.getY(),
                         accent.darker(0.60f).withAlpha(0.32f), chip.getX(), chip.getBottom(), false);
     g.setGradientFill(fill);
     g.fillRoundedRectangle(chip, 5.0f);
@@ -631,12 +641,12 @@ void ToneGeneratorControl::drawSliderLane(Graphics& g, Rectangle<float> bounds, 
     g.setColour(colours["Text Colour"].withAlpha(0.56f));
     g.drawText(label, labelArea, Justification::centredLeft);
 
-    ColourGradient bed(Colours::black.withAlpha(0.34f), rail.getX(), rail.getY(),
+    ColourGradient bed(colours["Window Background"].darker(0.35f).withAlpha(0.34f), rail.getX(), rail.getY(),
                        colours["Plugin Background"].brighter(0.05f).withAlpha(0.38f), rail.getX(), rail.getBottom(),
                        false);
     g.setGradientFill(bed);
     g.fillRoundedRectangle(rail, 4.0f);
-    g.setColour(Colours::black.withAlpha(0.38f));
+    g.setColour(colours["Plugin Border"].withAlpha(0.38f));
     g.drawRoundedRectangle(rail, 4.0f, 0.8f);
 
     auto fill = rail.withWidth(rail.getWidth() * jlimit(0.0f, 1.0f, normalisedValue));

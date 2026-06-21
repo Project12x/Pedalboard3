@@ -13,6 +13,12 @@ constexpr int kDefaultNoteNodeWidth = 200;
 constexpr int kDefaultNoteNodeHeight = 150;
 constexpr int kMinNoteNodeWidth = 120;
 constexpr int kMinNoteNodeHeight = 90;
+constexpr const char* kNotesEmptyHint = "Double click to edit note...";
+
+String sanitiseNoteEditorText(String text)
+{
+    return text.trim() == String(kNotesEmptyHint) ? String() : text;
+}
 
 Colour notePaperColour()
 {
@@ -315,14 +321,14 @@ NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(fal
     editor->setFont(FontManager::getInstance().getBodyFont().withHeight(13.0f));
     editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
     editor->applyColourToAllText(ink);
-    editor->setTextToShowWhenEmpty("Double click to edit note...", noteInkColour().withAlpha(0.55f));
+    editor->setTextToShowWhenEmpty(kNotesEmptyHint, noteInkColour().withAlpha(0.55f));
 
     // Wire up Escape key to exit edit mode
     editor->onEscapePressed = [this]() { setEditMode(false); };
     editor->onTextChange = [this]()
     {
         if (processor != nullptr)
-            processor->setText(editor->getText());
+            processor->setText(sanitiseNoteEditorText(editor->getText()));
     };
     editor->onFocusLost = [this]()
     {
@@ -331,11 +337,11 @@ NotesControl::NotesControl(NotesProcessor* proc) : processor(proc), editMode(fal
     };
 
     // Load text
-    editor->setText(processor != nullptr ? processor->getText() : String(), false);
+    editor->setText(sanitiseNoteEditorText(processor != nullptr ? processor->getText() : String()), false);
 
     // Start in View Mode
     editor->setVisible(false);
-    renderMarkdown(processor != nullptr ? processor->getText() : String());
+    renderMarkdown(sanitiseNoteEditorText(processor != nullptr ? processor->getText() : String()));
 
     // Enable mouse/keyboard interaction
     setInterceptsMouseClicks(true, true);
@@ -422,12 +428,12 @@ void NotesControl::updateText(const String& newText)
 {
     if (editor != nullptr && editor->getText() != newText)
     {
-        editor->setText(newText, false);
+        editor->setText(sanitiseNoteEditorText(newText), false);
         editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
         editor->applyColourToAllText(noteInkColour());
     }
 
-    renderMarkdown(newText);
+    renderMarkdown(sanitiseNoteEditorText(newText));
     repaint();
 }
 
@@ -511,7 +517,7 @@ void NotesControl::setEditMode(bool shouldEdit)
     if (editMode)
     {
         spdlog::debug("[NotesControl::setEditMode] entering edit mode");
-        editor->setText(processor != nullptr ? processor->getText() : editor->getText(), false);
+        editor->setText(sanitiseNoteEditorText(processor != nullptr ? processor->getText() : editor->getText()), false);
         editor->applyFontToAllText(FontManager::getInstance().getBodyFont().withHeight(13.0f));
         editor->applyColourToAllText(noteInkColour());
         editor->setVisible(true);
@@ -531,7 +537,7 @@ void NotesControl::setEditMode(bool shouldEdit)
         spdlog::debug("[NotesControl::setEditMode] exiting edit mode");
         const auto text = editor->getText();
         if (processor != nullptr && processor->getText() != text)
-            processor->setText(text);
+            processor->setText(sanitiseNoteEditorText(text));
         editor->setVisible(false);
         refreshWrappedTextLayout();
     }
@@ -548,9 +554,9 @@ String NotesControl::getCurrentTextForLayout() const
         return editor->getText();
 
     if (processor != nullptr)
-        return processor->getText();
+        return sanitiseNoteEditorText(processor->getText());
 
-    return editor != nullptr ? editor->getText() : String();
+    return sanitiseNoteEditorText(editor != nullptr ? editor->getText() : String());
 }
 
 void NotesControl::refreshWrappedTextLayout()

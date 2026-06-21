@@ -48,6 +48,7 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     void drawOutputKnob(Graphics& g, Rectangle<float> bounds, float normalisedValue, Colour accent);
     void drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent);
     void drawSliderLane(Graphics& g, Rectangle<float> bounds, const String& label, float normalisedValue, Colour accent);
+    Colour getAccentColour() const;
     String getNoteName(int midiNote) const;
 
     ToneGeneratorProcessor* toneProcessor;

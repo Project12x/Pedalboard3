@@ -159,6 +159,7 @@ class PluginComponent : public Component,
     void layoutNodeParameterControls();
     void layoutFooterButtons();
     void layoutTitleLabel();
+    Rectangle<float> getEffectRackSubgraphPreviewBounds() const;
 
     ///	The title label.
     Label* titleLabel;

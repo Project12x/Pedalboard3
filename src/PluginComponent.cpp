@@ -370,6 +370,20 @@ bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& plugin
     return acceptsMidiSafe(plugin) || (numInputs > 0) || (numOutputs > 0);
 }
 
+String getMidiOrParameterPinLabel(AudioProcessor* plugin, const String& pluginName, bool outputPin)
+{
+    if (pluginName == "Virtual MIDI Input" || pluginName == "MIDI Input")
+        return "MIDI";
+
+    if (pluginName == "OSC Input")
+        return "OSC";
+
+    if (outputPin ? producesMidiSafe(plugin) : acceptsMidiSafe(plugin))
+        return "MIDI";
+
+    return "param";
+}
+
 int getEmbeddedNodeControlTopOffset(const String& pluginName)
 {
     if (isDirectPaintedEmbeddedNodeName(pluginName))
@@ -1121,7 +1135,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
         const bool labelNode = isLabelNodeName(pluginName);
         const bool suppressHostEditorButton =
             labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);
-        const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
+        const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || visualCategoryName == "rack";
         const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);
         int footerButtonX = 10;
 
@@ -1153,7 +1167,7 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             mappingsButton = new TextButton("m", "Open mappings editor");
             mappingsButton->setLookAndFeel(&pluginNodeFooterButtonLookAndFeel);
             int mappingsButtonWidth = 24;
-            if (isHeroChassisNodeName(pluginName) || visualCategoryName == "rack")
+            if (isHeroChassisNodeName(pluginName))
             {
                 mappingsButton->setButtonText("Map");
                 mappingsButtonWidth = 42;
@@ -1337,6 +1351,14 @@ void PluginComponent::layoutTitleLabel()
         titleLabel->setBounds(titleLeft, 3, jmax(0, getWidth() - titleLeft - titleRightInset), 20);
         titleLabel->setVisible(shouldShowHostTitleLabel(pluginName));
     }
+}
+
+Rectangle<float> PluginComponent::getEffectRackSubgraphPreviewBounds() const
+{
+    constexpr float headerHeight = 23.0f;
+    const float w = static_cast<float>(getWidth());
+    const float h = static_cast<float>(getHeight());
+    return {12.0f, headerHeight + 10.0f, w - 24.0f, jmax(86.0f, h - headerHeight - 66.0f)};
 }
 
 //------------------------------------------------------------------------------
@@ -1536,9 +1558,7 @@ void PluginComponent::paint(Graphics& g)
 
     if (rackNode)
     {
-        auto rackPreview = Rectangle<float>(12.0f, headerHeight + 10.0f, w - 24.0f,
-                                            jmax(86.0f, h - headerHeight - 66.0f));
-        drawEffectRackSubgraphPreview(g, rackPreview, accentColour);
+        drawEffectRackSubgraphPreview(g, getEffectRackSubgraphPreviewBounds(), accentColour);
 
         auto rackFooterSummary = Rectangle<float>(16.0f, h - 31.0f, jmax(72.0f, w - 186.0f), 22.0f);
         drawEffectRackFooterSummary(g, rackFooterSummary, node != nullptr ? node->getProcessor() : nullptr,
@@ -1787,6 +1807,13 @@ void PluginComponent::mouseDown(const MouseEvent& e)
     if (localEvent.y < 21 && e.getNumberOfClicks() == 2)
     {
         titleLabel->showEditor();
+        return;
+    }
+
+    if (visualCategoryName == "rack" && e.getNumberOfClicks() == 1 &&
+        getEffectRackSubgraphPreviewBounds().contains(localEvent.position.toFloat()))
+    {
+        openPluginEditor(false); // Open rack editor from preview click
         return;
     }
 
@@ -2225,7 +2252,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
-                g->addLineOfText(tempFont, "param", 10.0f, y);
+                g->addLineOfText(tempFont, getMidiOrParameterPinLabel(plugin, pluginName, false), 10.0f, y);
                 bounds = g->getBoundingBox(0, -1, true);
 
                 inputText.add(g);
@@ -2293,7 +2320,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             {
                 GlyphArrangement* g = new GlyphArrangement;
 
-                g->addLineOfText(tempFont, "param",
+                g->addLineOfText(tempFont, getMidiOrParameterPinLabel(plugin, pluginName, true),
                                  0.0f, //(inputWidth + 20.0f),
                                  y);
                 bounds = g->getBoundingBox(0, -1, true);

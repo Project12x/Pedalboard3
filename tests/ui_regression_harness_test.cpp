@@ -519,7 +519,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find(
               "labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || usesEmbeddedParameterSurface(pluginName);") !=
           std::string::npos);
-    CHECK(pluginSource->find("const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
+    CHECK(pluginSource->find("const bool suppressHostMappingsButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName) || visualCategoryName == \"rack\";") !=
           std::string::npos);
     CHECK(pluginSource->find("const bool suppressHostBypassButton = labelNode || isDirectPaintedEmbeddedNodeName(pluginName);") !=
           std::string::npos);
@@ -538,6 +538,12 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(pluginSource->find("suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
     CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))") !=
+          std::string::npos);
+    CHECK(pluginSource->find("String getMidiOrParameterPinLabel(AudioProcessor* plugin, const String& pluginName, bool outputPin)") !=
+          std::string::npos);
+    CHECK(pluginSource->find("g->addLineOfText(tempFont, getMidiOrParameterPinLabel(plugin, pluginName, false), 10.0f, y);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("g->addLineOfText(tempFont, getMidiOrParameterPinLabel(plugin, pluginName, true),") !=
           std::string::npos);
     CHECK(pluginSource->find("bool shouldSuppressWholeNodeDragFrom(Component* component)") != std::string::npos);
     CHECK(pluginSource->find("dynamic_cast<Button*>(current) != nullptr || dynamic_cast<Slider*>(current) != nullptr") !=
@@ -590,6 +596,12 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(notesSource->find("editor->setReturnKeyStartsNewLine(true);") != std::string::npos);
     CHECK(notesSource->find("editor->setScrollbarsShown(true);") != std::string::npos);
     CHECK(notesSource->find("editor->onTextChange = [this]()") != std::string::npos);
+    CHECK(notesSource->find("constexpr const char* kNotesEmptyHint = \"Double click to edit note...\";") !=
+          std::string::npos);
+    CHECK(notesSource->find("String sanitiseNoteEditorText(String text)") != std::string::npos);
+    CHECK(notesSource->find("editor->setText(sanitiseNoteEditorText(processor != nullptr ? processor->getText() : editor->getText()), false);") !=
+          std::string::npos);
+    CHECK(notesSource->find("processor->setText(sanitiseNoteEditorText(text));") != std::string::npos);
     CHECK(notesSource->find("Rectangle<int> NotesControl::getTextAreaBounds() const") != std::string::npos);
     CHECK(notesSource->find("void NotesControl::refreshWrappedTextLayout()") != std::string::npos);
     CHECK(notesSource->find("void NotesControl::resized()\n{\n    refreshWrappedTextLayout();\n}") !=
@@ -618,6 +630,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
 
     const auto namSource = loadSourceFile("src/NAMControl.cpp");
     REQUIRE(namSource.has_value());
+    CHECK(namSource->find("ampTextBright = cs.colours[\"Text Colour\"];") != std::string::npos);
+    CHECK(namSource->find("ampTextDim = cs.colours[\"Text Colour\"].withAlpha(0.68f);") !=
+          std::string::npos);
     CHECK(namSource->find("std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow)") !=
           std::string::npos);
     CHECK(namSource->find("void NAMControl::layoutParamEqBandDeck(Rectangle<int> deckBounds, bool embedded)") !=
@@ -637,6 +652,15 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(tunerSource->find("auto dot = Rectangle<float>(12.0f, 6.0f).withCentre({track.getCentreX(), y});") !=
           std::string::npos);
     CHECK(tunerSource->find("g.fillRoundedRectangle(dot, 3.0f);") != std::string::npos);
+    CHECK(tunerSource->find("\"EMPTY\"") == std::string::npos);
+    CHECK(tunerSource->find("Colour(0xFF00E676)") == std::string::npos);
+    CHECK(tunerSource->find("Colour(0xFF76FF03)") == std::string::npos);
+    CHECK(tunerSource->find("Colour(0xFFFFEB3B)") == std::string::npos);
+    CHECK(tunerSource->find("Colour(0xFFFF9800)") == std::string::npos);
+    CHECK(tunerSource->find("Colour(0xFFFF5252)") == std::string::npos);
+    CHECK(tunerSource->find("Colours::white") == std::string::npos);
+    CHECK(tunerSource->find("Colours::black") == std::string::npos);
+    CHECK(tunerSource->find("Colours::yellow") == std::string::npos);
     const auto sixStringStart = tunerSource->find("void TunerControl::drawSixStringDisplay");
     const auto noteGlyphStart = tunerSource->find("void TunerControl::drawNoteGlyph", sixStringStart);
     REQUIRE(sixStringStart != std::string::npos);
@@ -646,6 +670,10 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(sixStringSource.find("g.fillEllipse(dot);") == std::string::npos);
 
     CHECK(routingSource->find("static Colour getRoutingNodeAccent()") != std::string::npos);
+    CHECK(routingSource->find("Colour(0xFFCCAA00)") == std::string::npos);
+    CHECK(routingSource->find("Colour(0xFFFF8800)") == std::string::npos);
+    CHECK(routingSource->find("Colours::white") == std::string::npos);
+    CHECK(routingSource->find("Colours::black") == std::string::npos);
     CHECK(routingSource->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
           std::string::npos);
     CHECK(routingSource->find("static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") ==
@@ -925,7 +953,11 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
     CHECK(pluginSource->find("compSize = getEmbeddedNodeControlSize(proc, pluginName);") != std::string::npos);
     CHECK(pluginSource->find("void drawEffectRackSubgraphPreview(Graphics& g, Rectangle<float> rackPreview, Colour accentColour)") !=
           std::string::npos);
-    CHECK(pluginSource->find("drawEffectRackSubgraphPreview(g, rackPreview, accentColour);") !=
+    CHECK(pluginSource->find("drawEffectRackSubgraphPreview(g, getEffectRackSubgraphPreviewBounds(), accentColour);") !=
+          std::string::npos);
+    CHECK(pluginSource->find("getEffectRackSubgraphPreviewBounds().contains(localEvent.position.toFloat())") !=
+          std::string::npos);
+    CHECK(pluginSource->find("openPluginEditor(false); // Open rack editor from preview click") !=
           std::string::npos);
     CHECK(pluginSource->find("countSubGraphContentProcessors") == std::string::npos);
     CHECK(pluginSource->find("#include \"SubGraphProcessor.h\"") != std::string::npos);
@@ -935,6 +967,8 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
           std::string::npos);
     CHECK(pluginSource->find("Point<int> getDefaultRackNodeSize()") != std::string::npos);
     CHECK(pluginSource->find("return {324, 212};") != std::string::npos);
+    CHECK(pluginSource->find("Rectangle<float> PluginComponent::getEffectRackSubgraphPreviewBounds() const") !=
+          std::string::npos);
     CHECK(pluginSource->find("void drawEffectRackShell(Graphics& g, Rectangle<float> bounds, Colour accentColour, bool highlighted, bool bypassed)") ==
           std::string::npos);
     CHECK(pluginSource->find("drawEffectRackShell(g, getLocalBounds().toFloat(), accentColour, highlighted, bypassed);") ==
@@ -1007,7 +1041,7 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
     CHECK(pluginSource->find("void drawEffectRackFooterSummary(Graphics& g, Rectangle<float> bounds, AudioProcessor* processor, Colour accentColour)") !=
           std::string::npos);
     CHECK(pluginSource->find("drawEffectRackFooterSummary(g, rackFooterSummary") != std::string::npos);
-    CHECK(pluginSource->find("auto rackPreview = Rectangle<float>(12.0f, headerHeight + 10.0f, w - 24.0f,") !=
+    CHECK(pluginSource->find("return {12.0f, headerHeight + 10.0f, w - 24.0f, jmax(86.0f, h - headerHeight - 66.0f)};") !=
           std::string::npos);
     CHECK(pluginSource->find("editButton->setButtonText(\"Open\");") != std::string::npos);
     CHECK(pluginSource->find("mappingsButton->setButtonText(\"Map\");") != std::string::npos);
@@ -1838,10 +1872,11 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
           std::string::npos);
     CHECK(tunerSource->find("sixStringModeButton->setTooltip(\"Six-string guitar tuner view\");") !=
           std::string::npos);
-    CHECK(tunerSource->find("setSize(360, 268);") != std::string::npos);
+    CHECK(tunerSource->find("setSize(360, 276);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerGlassPanel(g, bounds);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerHeader(g, headerArea);") != std::string::npos);
     CHECK(tunerSource->find("bounds.removeFromTop(43);") != std::string::npos);
+    CHECK(tunerSource->find("auto modeArea = area.removeFromTop(29);") != std::string::npos);
     CHECK(tunerSource->find("bypassButton = std::make_unique<TextButton>(\"BYPASS\");") !=
           std::string::npos);
     CHECK(tunerSource->find("drawModeSegmentedControl(g, modeArea);") != std::string::npos);
@@ -1858,7 +1893,7 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerSource->find("strobeModeButton->setBounds") != std::string::npos);
     CHECK(tunerSource->find("modeButton") == std::string::npos);
     CHECK(tunerSource->find("polyModeButton") == std::string::npos);
-    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(360, 268); }") !=
+    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(360, 276); }") !=
           std::string::npos);
     CHECK(tunerProcessorHeader->find("PinLayout getInputPinLayout() const override;") != std::string::npos);
     CHECK(tunerProcessorHeader->find("PinLayout getOutputPinLayout() const override;") != std::string::npos);
@@ -1877,6 +1912,7 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     const auto toneHeader = loadSourceFile("src/ToneGeneratorProcessor.h");
     const auto toneSource = loadSourceFile("src/ToneGeneratorProcessor.cpp");
     const auto toneControl = loadSourceFile("src/ToneGeneratorControl.cpp");
+    const auto reverbSource = loadSourceFile("src/ReverbSCProcessor.cpp");
 
     REQUIRE(pluginSource.has_value());
     REQUIRE(oscilloscopeHeader.has_value());
@@ -1885,6 +1921,7 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     REQUIRE(toneHeader.has_value());
     REQUIRE(toneSource.has_value());
     REQUIRE(toneControl.has_value());
+    REQUIRE(reverbSource.has_value());
 
     CHECK(pluginSource->find("bool suppressesHostParamPinForUtilityNode(const String& pluginName)") !=
           std::string::npos);
@@ -1910,7 +1947,7 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(oscilloscopeControl->find("g.drawText(\"OSCILLOSCOPE\"") != std::string::npos);
     CHECK(oscilloscopeControl->find("g.drawText(\"NO SIGNAL\"") != std::string::npos);
 
-    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(360, 286); }") !=
+    CHECK(toneHeader->find("Point<int> getSize() override { return Point<int>(360, 308); }") !=
           std::string::npos);
     CHECK(toneHeader->find("PinLayout getOutputPinLayout() const override;") != std::string::npos);
     CHECK(toneSource->find("setPlayConfigDetails(0, 2, 44100.0, 512);") != std::string::npos);
@@ -1918,12 +1955,17 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(toneSource->find("constexpr int kToneGeneratorRightOutputPinY = 92;") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorLeftOutputPinY);") != std::string::npos);
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorRightOutputPinY);") != std::string::npos);
-    CHECK(toneControl->find("setSize(360, 286);") != std::string::npos);
+    CHECK(toneControl->find("setSize(360, 308);") != std::string::npos);
+    CHECK(toneControl->find("Colour ToneGeneratorControl::getAccentColour() const") != std::string::npos);
+    CHECK(toneControl->find("Colour(0xFF39D3E6)") == std::string::npos);
+    CHECK(toneControl->find("Colours::white") == std::string::npos);
+    CHECK(toneControl->find("Colours::black") == std::string::npos);
+    CHECK(toneControl->find("\"READY\"") == std::string::npos);
     CHECK(toneControl->find("void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth)") !=
           std::string::npos);
     CHECK(toneControl->find("frequencySlider->setTextBoxStyle(Slider::TextBoxRight, false, 68, 18);") !=
           std::string::npos);
-    CHECK(toneControl->find("detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 72, 18);") !=
+    CHECK(toneControl->find("detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 76, 20);") !=
           std::string::npos);
     CHECK(toneControl->find("amplitudeSlider->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);") !=
           std::string::npos);
@@ -1945,11 +1987,24 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(toneControl->find("void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)") !=
           std::string::npos);
     CHECK(toneControl->find("displayPanel = bounds.removeFromTop(60);") != std::string::npos);
-    CHECK(toneControl->find("outputKnobArea = outputLayout.removeFromLeft(74);") != std::string::npos);
+    CHECK(toneControl->find("pitchPanel = bounds.removeFromTop(70);") != std::string::npos);
+    CHECK(toneControl->find("bottomPanel = bounds.removeFromTop(80);") != std::string::npos);
+    CHECK(toneControl->find("bottomInner.removeFromTop(16);") != std::string::npos);
+    CHECK(toneControl->find("outputKnobArea = outputLayout.removeFromLeft(82);") != std::string::npos);
+    CHECK(toneControl->find("const int btnW = 34;") != std::string::npos);
     CHECK(toneControl->find("drawWaveformGlyph(g, waveformGlyphArea.toFloat());") != std::string::npos);
     CHECK(toneControl->find("g.drawText(\"WAVE\", tile.removeFromBottom(12.0f)") == std::string::npos);
     CHECK(toneControl->find("g.drawText(\"WAVE\", waveformPanel.toFloat().removeFromTop") == std::string::npos);
     CHECK(toneControl->find("g.fillAll();") == std::string::npos);
     CHECK(toneControl->find("g.drawText(\"Freq:\", Rectangle<float>(10, 28, 34, 14)") ==
           std::string::npos);
+
+    CHECK(reverbSource->find("class ReverbSCControl final : public Component, private Timer") !=
+          std::string::npos);
+    CHECK(reverbSource->find("colours[\"Graph Category Reverb\"]") != std::string::npos);
+    CHECK(reverbSource->find("colours[\"Graph Category Delay\"]") != std::string::npos);
+    CHECK(reverbSource->find("colours[\"Success Colour\"]") != std::string::npos);
+    CHECK(reverbSource->find("Colours::white") == std::string::npos);
+    CHECK(reverbSource->find("Colours::black") == std::string::npos);
+    CHECK(reverbSource->find("Colour(0x") == std::string::npos);
 }
