@@ -33,6 +33,10 @@ struct IRLoaderPalette
     Colour led;
     Colour text;
     Colour textDim;
+    Colour hostText;
+    Colour hostTextDim;
+    Colour panelText;
+    Colour panelTextDim;
 };
 
 IRLoaderPalette makeIRLoaderPalette()
@@ -41,14 +45,28 @@ IRLoaderPalette makeIRLoaderPalette()
     auto& colours = scheme.colours;
     const auto preset = scheme.presetName;
 
-    auto palette = [](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
-                      uint32 edgeHi, uint32 accent, uint32 accent2, uint32 led)
+    auto palette = [&colours](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
+                              uint32 edgeHi, uint32 accent, uint32 accent2, uint32 led)
     {
-        const auto faceColour = Colour(face);
-        const auto textColour = faceColour.contrasting(0.92f);
-        return IRLoaderPalette{Colour(top),    Colour(bottom), Colour(face),  Colour(face2),
-                               Colour(inset),  Colour(edge),   Colour(edgeHi), Colour(accent),
-                               Colour(accent2), Colour(led),   textColour,    textColour.withAlpha(0.64f)};
+        const auto insetColour = Colour(inset);
+        const auto hostText = colours["Text Colour"];
+        const auto panelText = insetColour.contrasting(0.92f);
+        return IRLoaderPalette{Colour(top),
+                               Colour(bottom),
+                               Colour(face),
+                               Colour(face2),
+                               insetColour,
+                               Colour(edge),
+                               Colour(edgeHi),
+                               Colour(accent),
+                               Colour(accent2),
+                               Colour(led),
+                               panelText,
+                               panelText.withAlpha(0.64f),
+                               hostText,
+                               hostText.withAlpha(0.68f),
+                               panelText,
+                               panelText.withAlpha(0.64f)};
     };
 
     if (preset == "Midnight")
@@ -71,20 +89,26 @@ IRLoaderPalette makeIRLoaderPalette()
     const auto accent2 = colours["Audio Connection"];
     const auto face = colours["Dialog Inner Background"].interpolatedWith(accent, 0.07f);
     const auto edge = colours["Plugin Border"].interpolatedWith(accent, 0.12f);
-    const auto text = face.contrasting(0.92f);
+    const auto inset = colours["Window Background"].darker(0.08f).interpolatedWith(accent, 0.025f);
+    const auto hostText = colours["Text Colour"];
+    const auto panelText = inset.contrasting(0.92f);
 
     return {colours["Window Background"].interpolatedWith(accent, 0.07f),
             colours["Window Background"].darker(0.18f),
             face,
             face.brighter(0.08f).interpolatedWith(accent, 0.05f),
-            colours["Window Background"].darker(0.08f).interpolatedWith(accent, 0.025f),
+            inset,
             edge,
             edge.brighter(0.2f),
             accent,
             accent2,
             colours["Success Colour"],
-            text,
-            text.withAlpha(0.62f)};
+            panelText,
+            panelText.withAlpha(0.62f),
+            hostText,
+            hostText.withAlpha(0.68f),
+            panelText,
+            panelText.withAlpha(0.62f)};
 }
 
 void drawIRLoaderLed(Graphics& g, Rectangle<float> dot, Colour colour, bool active)
@@ -133,11 +157,11 @@ void IRLoaderLookAndFeel::refreshColours()
     const auto palette = makeIRLoaderPalette();
     setColour(Slider::backgroundColourId, palette.inset);
     setColour(Slider::trackColourId, palette.accent2);
-    setColour(Slider::thumbColourId, palette.text);
+    setColour(Slider::thumbColourId, palette.panelText);
     setColour(TextButton::buttonColourId, palette.face2);
-    setColour(TextButton::textColourOffId, palette.text);
-    setColour(TextButton::textColourOnId, palette.text);
-    setColour(Label::textColourId, palette.text);
+    setColour(TextButton::textColourOffId, palette.panelText);
+    setColour(TextButton::textColourOnId, palette.panelText);
+    setColour(Label::textColourId, palette.panelText);
 }
 
 void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
@@ -188,7 +212,7 @@ void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width,
                                     filledTrack.getBottom(), false);
         g.setGradientFill(fillGradient);
         g.fillRoundedRectangle(filledTrack, 2.0f);
-        g.setColour(palette.text.withAlpha(0.08f));
+        g.setColour(palette.panelText.withAlpha(0.08f));
         g.drawLine(filledTrack.getX() + 2.0f, filledTrack.getY() + 1.0f, filledTrack.getRight() - 2.0f,
                    filledTrack.getY() + 1.0f, 1.0f);
     }
@@ -220,7 +244,7 @@ void IRLoaderLookAndFeel::drawLinearSlider(Graphics& g, int x, int y, int width,
     // Thumb highlight
     g.setColour(palette.edgeHi.withAlpha(0.78f));
     g.drawEllipse(thumbX, thumbY, thumbSize, thumbSize, 1.0f);
-    g.setColour(palette.text.withAlpha(0.12f));
+    g.setColour(palette.panelText.withAlpha(0.12f));
     g.fillEllipse(thumbX + 4.0f, thumbY + 3.0f, 3.5f, 3.5f);
 }
 
@@ -250,7 +274,7 @@ void IRLoaderLookAndFeel::drawButtonBackground(Graphics& g, Button& button, cons
     g.setGradientFill(buttonGradient);
     g.fillRoundedRectangle(bounds, 5.0f);
 
-    g.setColour(palette.text.withAlpha(shouldDrawButtonAsHighlighted ? 0.12f : 0.07f));
+    g.setColour(palette.panelText.withAlpha(shouldDrawButtonAsHighlighted ? 0.12f : 0.07f));
     g.drawLine(bounds.getX() + 4.0f, bounds.getY() + 1.0f, bounds.getRight() - 4.0f, bounds.getY() + 1.0f, 1.0f);
 
     // Border
@@ -266,7 +290,7 @@ void IRLoaderLookAndFeel::drawButtonText(Graphics& g, TextButton& button, bool s
     const auto palette = makeIRLoaderPalette();
     auto area = button.getLocalBounds().reduced(3, 0);
     g.setFont(FontManager::getInstance().getBadgeFont().withHeight(jlimit(8.5f, 10.5f, button.getHeight() * 0.42f)));
-    g.setColour(palette.text.withAlpha(button.isEnabled() ? (shouldDrawButtonAsHighlighted ? 0.96f : 0.82f) : 0.35f));
+    g.setColour(palette.panelText.withAlpha(button.isEnabled() ? (shouldDrawButtonAsHighlighted ? 0.96f : 0.82f) : 0.35f));
     g.drawFittedText(button.getButtonText().toUpperCase(), area, Justification::centred, 1);
 }
 
@@ -300,7 +324,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
     irNameLabel = std::make_unique<Label>("irName", "No IR Loaded");
     irNameLabel->setJustificationType(Justification::centredLeft);
     irNameLabel->setFont(fonts.getCaptionFont());
-    irNameLabel->setColour(Label::textColourId, palette.text);
+    irNameLabel->setColour(Label::textColourId, palette.panelText);
     irNameLabel->setColour(Label::backgroundColourId, Colours::transparentBlack);
     irNameLabel->setColour(Label::outlineColourId, Colours::transparentBlack);
     addAndMakeVisible(irNameLabel.get());
@@ -323,7 +347,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
     irName2Label = std::make_unique<Label>("irName2", "No IR 2 Loaded");
     irName2Label->setJustificationType(Justification::centredLeft);
     irName2Label->setFont(fonts.getCaptionFont());
-    irName2Label->setColour(Label::textColourId, palette.text);
+    irName2Label->setColour(Label::textColourId, palette.panelText);
     irName2Label->setColour(Label::backgroundColourId, Colours::transparentBlack);
     irName2Label->setColour(Label::outlineColourId, Colours::transparentBlack);
     addAndMakeVisible(irName2Label.get());
@@ -340,7 +364,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
 
     blendLabel = std::make_unique<Label>("blendLabel", "BLEND");
     blendLabel->setJustificationType(Justification::centredRight);
-    blendLabel->setColour(Label::textColourId, palette.textDim);
+    blendLabel->setColour(Label::textColourId, palette.panelTextDim);
     blendLabel->setFont(fonts.getBadgeFont());
     addAndMakeVisible(blendLabel.get());
 
@@ -356,7 +380,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
 
     mixLabel = std::make_unique<Label>("mixLabel", "MIX");
     mixLabel->setJustificationType(Justification::centredRight);
-    mixLabel->setColour(Label::textColourId, palette.textDim);
+    mixLabel->setColour(Label::textColourId, palette.panelTextDim);
     mixLabel->setFont(fonts.getBadgeFont());
     addAndMakeVisible(mixLabel.get());
 
@@ -372,7 +396,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
 
     lowCutLabel = std::make_unique<Label>("lowCutLabel", "LO CUT");
     lowCutLabel->setJustificationType(Justification::centredRight);
-    lowCutLabel->setColour(Label::textColourId, palette.textDim);
+    lowCutLabel->setColour(Label::textColourId, palette.panelTextDim);
     lowCutLabel->setFont(fonts.getBadgeFont());
     addAndMakeVisible(lowCutLabel.get());
 
@@ -388,7 +412,7 @@ IRLoaderControl::IRLoaderControl(IRLoaderProcessor* processor) : irProcessor(pro
 
     highCutLabel = std::make_unique<Label>("highCutLabel", "HI CUT");
     highCutLabel->setJustificationType(Justification::centredRight);
-    highCutLabel->setColour(Label::textColourId, palette.textDim);
+    highCutLabel->setColour(Label::textColourId, palette.panelTextDim);
     highCutLabel->setFont(fonts.getBadgeFont());
     addAndMakeVisible(highCutLabel.get());
 
@@ -420,7 +444,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.setColour(accent.withAlpha(0.18f));
         g.fillEllipse(dot.expanded(3.0f));
         g.setFont(fonts.getBadgeFont().withHeight(9.2f));
-        g.setColour(palette.textDim.withAlpha(0.80f));
+        g.setColour(palette.hostTextDim.withAlpha(0.80f));
         g.drawText(title.toUpperCase(), header.withTrimmedLeft(12), Justification::centredLeft, true);
     };
 
@@ -434,10 +458,10 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.drawRoundedRectangle(pill.reduced(0.5f), 5.0f, 0.85f);
 
         auto dot = Rectangle<float>(5.5f, 5.5f).withCentre({pill.getX() + 9.0f, pill.getCentreY()});
-        drawIRLoaderLed(g, dot, active ? palette.led : palette.textDim.withAlpha(0.42f), active);
+        drawIRLoaderLed(g, dot, active ? palette.led : palette.panelTextDim.withAlpha(0.42f), active);
 
         g.setFont(fonts.getBadgeFont().withHeight(8.5f));
-        g.setColour((active ? palette.text : palette.textDim).withAlpha(active ? 0.86f : 0.56f));
+        g.setColour((active ? palette.panelText : palette.panelTextDim).withAlpha(active ? 0.86f : 0.56f));
         g.drawText(text, pillBounds.withTrimmedLeft(17), Justification::centredLeft, true);
     };
 
@@ -495,7 +519,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         }
 
         g.setFont(fonts.getBadgeFont().withHeight(9.0f));
-        g.setColour(palette.textDim.withAlpha(0.70f));
+        g.setColour(palette.panelTextDim.withAlpha(0.70f));
         g.drawText(label.toUpperCase(), slotBounds.reduced(9, 0).removeFromTop(20), Justification::centredLeft, true);
 
         drawEmbeddedStatusPill(slotBounds.withTrimmedRight(7).withY(slotBounds.getY() + 5).withHeight(18)
@@ -534,7 +558,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         const auto blend = jlimit(0.0f, 1.0f, irProcessor->getBlend());
         const auto text = String(roundToInt((1.0f - blend) * 100.0f)) + "%  /  " + String(roundToInt(blend * 100.0f)) + "%";
         g.setFont(fonts.getMonoFont(10.0f));
-        g.setColour(palette.textDim.withAlpha(0.84f));
+        g.setColour(palette.panelTextDim.withAlpha(0.84f));
         g.drawText(text, readoutBounds, Justification::centred, true);
     };
 
@@ -546,10 +570,10 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.setColour(palette.edge.withAlpha(0.42f));
         g.drawRoundedRectangle(chip.reduced(0.5f), 6.0f, 0.8f);
         g.setFont(fonts.getBadgeFont().withHeight(8.5f));
-        g.setColour(palette.textDim.withAlpha(0.68f));
+        g.setColour(palette.panelTextDim.withAlpha(0.68f));
         g.drawText(label, chipBounds.withWidth(22), Justification::centred, true);
         g.setFont(fonts.getMonoFont(10.0f));
-        g.setColour(palette.text.withAlpha(0.82f));
+        g.setColour(palette.panelText.withAlpha(0.82f));
         g.drawText(value, chipBounds.withTrimmedLeft(22), Justification::centredLeft, true);
     };
 
@@ -562,7 +586,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
         g.drawRoundedRectangle(curve.reduced(0.5f), 7.0f, 0.75f);
 
         auto graph = curve.reduced(9.0f, 7.0f);
-        g.setColour(palette.textDim.withAlpha(0.16f));
+        g.setColour(palette.panelTextDim.withAlpha(0.16f));
         g.drawHorizontalLine(roundToInt(graph.getCentreY()), graph.getX(), graph.getRight());
 
         const auto normLog = [](float value, float lo, float hi)
@@ -641,7 +665,7 @@ void IRLoaderControl::paintEmbeddedGraphNode(Graphics& g, Rectangle<int> bounds)
     const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
     auto footer = bounds.reduced(5, 0).removeFromBottom(13);
     g.setFont(fonts.getBadgeFont());
-    g.setColour((anyLoaded ? palette.accent2 : palette.textDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
+    g.setColour((anyLoaded ? palette.accent2 : palette.hostTextDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
     g.drawText(anyLoaded ? "CABINET ACTIVE" : "NO CABINET", footer, Justification::centredRight, true);
 }
 
@@ -657,10 +681,12 @@ void IRLoaderControl::paint(Graphics& g)
 
     auto refreshChildColours = [&]()
     {
+        const auto shellTextDim = embeddedInGraphNode ? palette.hostTextDim : palette.textDim;
+
         auto styleName = [&](Label& label, bool loaded)
         {
             label.setFont(fonts.getCaptionFont());
-            label.setColour(Label::textColourId, loaded ? palette.text : palette.textDim.withAlpha(0.72f));
+            label.setColour(Label::textColourId, loaded ? palette.panelText : palette.panelTextDim.withAlpha(0.72f));
             label.setColour(Label::backgroundColourId, Colours::transparentBlack);
             label.setColour(Label::outlineColourId, Colours::transparentBlack);
         };
@@ -671,12 +697,12 @@ void IRLoaderControl::paint(Graphics& g)
         for (auto* label : {blendLabel.get(), mixLabel.get(), lowCutLabel.get(), highCutLabel.get()})
         {
             label->setFont(fonts.getBadgeFont());
-            label->setColour(Label::textColourId, palette.textDim.withAlpha(0.82f));
+            label->setColour(Label::textColourId, shellTextDim.withAlpha(0.82f));
         }
 
         for (auto* slider : {blendSlider.get(), mixSlider.get(), lowCutSlider.get(), highCutSlider.get()})
         {
-            slider->setColour(Slider::textBoxTextColourId, palette.text.withAlpha(0.9f));
+            slider->setColour(Slider::textBoxTextColourId, palette.panelText.withAlpha(0.9f));
             slider->setColour(Slider::textBoxBackgroundColourId, palette.inset.withAlpha(0.9f));
             slider->setColour(Slider::textBoxOutlineColourId, palette.edge.withAlpha(0.72f));
             slider->setColour(Slider::textBoxHighlightColourId, palette.accent2.withAlpha(0.24f));
@@ -736,9 +762,9 @@ void IRLoaderControl::paint(Graphics& g)
                                  irProcessor->isIRLoaded() || irProcessor->isIR2Loaded());
 
         g.setFont(fonts.getBadgeFont());
-        g.setColour(palette.textDim.withAlpha(0.58f));
+        g.setColour(palette.panelTextDim.withAlpha(0.58f));
         g.drawText("CABINET", Rectangle<float>(36.0f, 4.0f, 70.0f, 9.0f), Justification::centredLeft);
-        g.setColour(palette.text);
+        g.setColour(palette.panelText);
         g.setFont(fonts.getSubheadingFont().withHeight(13.0f));
         g.drawText("IR LOADER", Rectangle<float>(36.0f, 11.0f, 116.0f, 16.0f), Justification::centredLeft);
 
@@ -747,7 +773,7 @@ void IRLoaderControl::paint(Graphics& g)
         const float ledX = bounds.getWidth() - 18.0f;
         const float ledY = (28 - ledSize) * 0.5f;
         const bool anyLoaded = irProcessor->isIRLoaded() || irProcessor->isIR2Loaded();
-        drawIRLoaderLed(g, Rectangle<float>(ledX, ledY, ledSize, ledSize), anyLoaded ? palette.led : palette.textDim,
+        drawIRLoaderLed(g, Rectangle<float>(ledX, ledY, ledSize, ledSize), anyLoaded ? palette.led : palette.panelTextDim,
                         anyLoaded);
     }
 
@@ -764,10 +790,10 @@ void IRLoaderControl::paint(Graphics& g)
 
         auto rightRail = slotBounds.removeFromRight(48.0f).reduced(5.0f, 4.0f);
         auto led = Rectangle<float>(7.5f, 7.5f).withCentre({rightRail.getX() + 8.0f, rightRail.getCentreY()});
-        drawIRLoaderLed(g, led, loaded ? palette.led : palette.textDim.withAlpha(0.42f), loaded);
+        drawIRLoaderLed(g, led, loaded ? palette.led : palette.panelTextDim.withAlpha(0.42f), loaded);
 
         g.setFont(fonts.getBadgeFont());
-        g.setColour((loaded ? palette.accent2 : palette.textDim).withAlpha(loaded ? 0.88f : 0.52f));
+        g.setColour((loaded ? palette.accent2 : palette.panelTextDim).withAlpha(loaded ? 0.88f : 0.52f));
         g.drawText(label, rightRail.withTrimmedLeft(15.0f), Justification::centredLeft, true);
     };
 
@@ -791,7 +817,7 @@ void IRLoaderControl::paint(Graphics& g)
                                                           : "NO CABINET LOADED";
     auto footer = bounds.removeFromBottom(18.0f).reduced(10.0f, 0.0f);
     g.setFont(fonts.getBadgeFont());
-    g.setColour((anyLoaded ? palette.accent2 : palette.textDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
+    g.setColour((anyLoaded ? palette.accent2 : palette.panelTextDim).withAlpha(anyLoaded ? 0.72f : 0.48f));
     g.drawText(status, footer, Justification::centredRight, true);
 }
 
@@ -1046,22 +1072,22 @@ void IRLoaderControl::updateIRDisplay()
     if (irProcessor->isIRLoaded())
     {
         irNameLabel->setText(irProcessor->getIRName(), dontSendNotification);
-        irNameLabel->setColour(Label::textColourId, palette.text);
+        irNameLabel->setColour(Label::textColourId, palette.panelText);
     }
     else
     {
         irNameLabel->setText("No IR Loaded", dontSendNotification);
-        irNameLabel->setColour(Label::textColourId, palette.textDim.withAlpha(0.72f));
+        irNameLabel->setColour(Label::textColourId, palette.panelTextDim.withAlpha(0.72f));
     }
 
     if (irProcessor->isIR2Loaded())
     {
         irName2Label->setText(irProcessor->getIR2Name(), dontSendNotification);
-        irName2Label->setColour(Label::textColourId, palette.text);
+        irName2Label->setColour(Label::textColourId, palette.panelText);
     }
     else
     {
         irName2Label->setText("No IR 2 Loaded", dontSendNotification);
-        irName2Label->setColour(Label::textColourId, palette.textDim.withAlpha(0.72f));
+        irName2Label->setColour(Label::textColourId, palette.panelTextDim.withAlpha(0.72f));
     }
 }

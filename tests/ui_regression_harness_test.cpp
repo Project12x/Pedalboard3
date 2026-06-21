@@ -1252,7 +1252,19 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(irSource->find("browseButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("clearButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("Colours::white") == std::string::npos);
-    CHECK(irSource->find("const auto textColour = faceColour.contrasting(0.92f);") !=
+    CHECK(irSource->find("Colour hostText;") != std::string::npos);
+    CHECK(irSource->find("Colour panelText;") != std::string::npos);
+    CHECK(irSource->find("const auto hostText = colours[\"Text Colour\"];") != std::string::npos);
+    CHECK(irSource->find("const auto panelText = insetColour.contrasting(0.92f);") != std::string::npos);
+    CHECK(irSource->find("const auto shellTextDim = embeddedInGraphNode ? palette.hostTextDim : palette.textDim;") !=
+          std::string::npos);
+    CHECK(irSource->find("g.setColour(palette.hostTextDim.withAlpha(0.80f));") !=
+          std::string::npos);
+    CHECK(irSource->find("g.setColour(palette.panelTextDim.withAlpha(0.70f));") !=
+          std::string::npos);
+    CHECK(irSource->find("slider->setColour(Slider::textBoxTextColourId, palette.panelText.withAlpha(0.9f));") !=
+          std::string::npos);
+    CHECK(irSource->find("const auto textColour = faceColour.contrasting(0.92f);") ==
           std::string::npos);
     CHECK(irSource->find("uint32 text") == std::string::npos);
     CHECK(irSource->find("auto area = bounds.reduced(5, 6);") != std::string::npos);
