@@ -537,7 +537,7 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(pluginSource->find("suppressesHostParamPinForUtilityNode(pluginName))") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))") !=
+    CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != \"MIDI Input\")") !=
           std::string::npos);
     CHECK(pluginSource->find("String getMidiOrParameterPinLabel(AudioProcessor* plugin, const String& pluginName, bool outputPin)") !=
           std::string::npos);
@@ -618,6 +618,8 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(notesSource->find("ctx.appendedAnyText") != std::string::npos);
     CHECK(notesSource->find("renderedText.setWordWrap(AttributedString::byChar);") != std::string::npos);
+    CHECK(notesSource->find("renderedText.append(kNotesEmptyHint, FontManager::getInstance().getBodyFont().withHeight(13.0f),") !=
+          std::string::npos);
     CHECK(notesSource->find("renderedText.append(markdown, FontManager::getInstance().getBodyFont().withHeight(13.0f), noteInkColour());") !=
           std::string::npos);
     CHECK(markdownTokeniserSource->find("Colours::white") == std::string::npos);
@@ -630,8 +632,8 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
 
     const auto namSource = loadSourceFile("src/NAMControl.cpp");
     REQUIRE(namSource.has_value());
-    CHECK(namSource->find("ampTextBright = cs.colours[\"Text Colour\"];") != std::string::npos);
-    CHECK(namSource->find("ampTextDim = cs.colours[\"Text Colour\"].withAlpha(0.68f);") !=
+    CHECK(namSource->find("ampTextBright = ampSurface.contrasting(0.92f);") != std::string::npos);
+    CHECK(namSource->find("ampTextDim = ampTextBright.withAlpha(0.68f);") !=
           std::string::npos);
     CHECK(namSource->find("std::make_unique<Slider>(Slider::LinearVertical, Slider::TextBoxBelow)") !=
           std::string::npos);
@@ -653,6 +655,14 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
           std::string::npos);
     CHECK(tunerSource->find("g.fillRoundedRectangle(dot, 3.0f);") != std::string::npos);
     CHECK(tunerSource->find("\"EMPTY\"") == std::string::npos);
+    CHECK(tunerSource->find("if (bypassed || detected)\n    {\n        auto statePill") !=
+          std::string::npos);
+    CHECK(tunerSource->find("class TunerModeButtonLookAndFeel final : public LookAndFeel_V4") !=
+          std::string::npos);
+    CHECK(tunerSource->find("needleModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);") !=
+          std::string::npos);
+    CHECK(tunerSource->find("bypassButton->setLookAndFeel(&tunerModeButtonLookAndFeel);") !=
+          std::string::npos);
     CHECK(tunerSource->find("Colour(0xFF00E676)") == std::string::npos);
     CHECK(tunerSource->find("Colour(0xFF76FF03)") == std::string::npos);
     CHECK(tunerSource->find("Colour(0xFFFFEB3B)") == std::string::npos);
@@ -676,6 +686,9 @@ TEST_CASE("Built-in node polish source contract covers label, notes, tuner, mixe
     CHECK(routingSource->find("Colours::black") == std::string::npos);
     CHECK(routingSource->find("static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent, bool primary)") !=
           std::string::npos);
+    CHECK(routingSource->find("const auto labelBase = primary ? colours[\"Plugin Background\"].interpolatedWith(accent, 0.28f) : base;") !=
+          std::string::npos);
+    CHECK(routingSource->find("labelBase.contrasting(0.90f)") != std::string::npos);
     CHECK(routingSource->find("static void paintRoutingNodeShell(Graphics& g, Rectangle<float> bounds, Colour accent, const String& title)") ==
           std::string::npos);
     CHECK(routingSource->find("static void paintRoutingMeterTrack(Graphics& g, Rectangle<float> bounds, float level, Colour accent, bool muted)") !=
@@ -905,6 +918,31 @@ TEST_CASE("Dynamic PedalboardProcessor pins resync wrapper channels before rebui
     CHECK(resyncCall < createPinsCall);
 }
 
+TEST_CASE("MIDI source nodes keep source-side labels and bottom keyboard hint",
+          "[ui][regression][visual][source][nodes][midi]")
+{
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+    const auto virtualMidiHeader = loadSourceFile("src/VirtualMidiInputProcessor.h");
+    const auto virtualMidiSource = loadSourceFile("src/VirtualMidiInputProcessor.cpp");
+
+    REQUIRE(pluginSource.has_value());
+    REQUIRE(virtualMidiHeader.has_value());
+    REQUIRE(virtualMidiSource.has_value());
+
+    CHECK(pluginSource->find("shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != \"MIDI Input\"") !=
+          std::string::npos);
+    CHECK(pluginSource->find("producesMidiSafe(plugin) || pluginName == \"MIDI Input\" || (plugin->getName() == \"OSC Input\")") !=
+          std::string::npos);
+    CHECK(virtualMidiHeader->find("Point<int> getSize() override { return Point<int>(100, 60); }") !=
+          std::string::npos);
+    CHECK(virtualMidiSource->find("class VirtualMidiInputControl final : public Component") !=
+          std::string::npos);
+    CHECK(virtualMidiSource->find("labelArea = labelArea.removeFromBottom") != std::string::npos);
+    CHECK(virtualMidiSource->find("g.drawText(\"Virtual Keyboard\", labelArea, Justification::centredRight, true);") !=
+          std::string::npos);
+    CHECK(virtualMidiSource->find("Colours::white") == std::string::npos);
+}
+
 TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph chrome",
           "[ui][regression][visual][source][subgraph]")
 {
@@ -957,7 +995,11 @@ TEST_CASE("Effect Rack nested graph polish source contract keeps semantic graph 
           std::string::npos);
     CHECK(pluginSource->find("getEffectRackSubgraphPreviewBounds().contains(localEvent.position.toFloat())") !=
           std::string::npos);
-    CHECK(pluginSource->find("openPluginEditor(false); // Open rack editor from preview click") !=
+    CHECK(pluginSource->find("visualCategoryName == \"rack\" && e.getNumberOfClicks() >= 2") !=
+          std::string::npos);
+    CHECK(pluginSource->find("openPluginEditor(false); // Open rack editor from preview double-click") !=
+          std::string::npos);
+    CHECK(pluginSource->find("const int openButtonRight = bypassButton != nullptr ? bypassButton->getX() - buttonGap") !=
           std::string::npos);
     CHECK(pluginSource->find("countSubGraphContentProcessors") == std::string::npos);
     CHECK(pluginSource->find("#include \"SubGraphProcessor.h\"") != std::string::npos);
@@ -1161,6 +1203,8 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(pluginSource->find("IconManager::DomainGlyph::Amp") != std::string::npos);
     CHECK(pluginSource->find("IconManager::DomainGlyph::Cabinet") != std::string::npos);
     CHECK(namSource->find("Colours::white") == std::string::npos);
+    CHECK(namSource->find("ampTextBright = ampSurface.contrasting(0.92f);") != std::string::npos);
+    CHECK(namSource->find("ampLedOff = ampTextBright.withAlpha(0.42f);") != std::string::npos);
     CHECK(namSource->find("auto area = bounds.reduced(3, 2);") != std::string::npos);
     CHECK(namSource->find("auto modelButtons = captureSection.removeFromTop(27).reduced(3, 2);") !=
           std::string::npos);
@@ -1199,6 +1243,9 @@ TEST_CASE("NAM and IR loader graph-node source guardrails keep chassis hooks rea
     CHECK(irSource->find("browseButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("clearButton2->setBounds") != std::string::npos);
     CHECK(irSource->find("Colours::white") == std::string::npos);
+    CHECK(irSource->find("const auto textColour = faceColour.contrasting(0.92f);") !=
+          std::string::npos);
+    CHECK(irSource->find("uint32 text") == std::string::npos);
     CHECK(irSource->find("auto area = bounds.reduced(5, 6);") != std::string::npos);
     CHECK(irSource->find(".reduced(5, 6)") != std::string::npos);
 
@@ -1583,6 +1630,12 @@ TEST_CASE("NAM and IR library polish source contract covers favorites and IR fol
           std::string::npos);
     CHECK(browserSource->find("const int railWidth = getLibraryRailWidth(bounds.getWidth(), compactLayout);") !=
           std::string::npos);
+    CHECK(browserSource->find("Rectangle<int> trimListBoxBoundsToFullRows(Rectangle<int> area, int rowHeight)") !=
+          std::string::npos);
+    CHECK(browserSource->find("modelList->setBounds(trimListBoxBoundsToFullRows(listArea, modelList->getRowHeight()));") !=
+          std::string::npos);
+    CHECK(browserSource->find("irList->setBounds(trimListBoxBoundsToFullRows(listArea, irList->getRowHeight()));") !=
+          std::string::npos);
     CHECK(browserSource->find("const bool showRail = !compactLayout && bounds.getWidth() >= 720;") ==
           std::string::npos);
     CHECK(browserSource->find("jlimit(210, 270, roundToInt(bounds.getWidth() * 0.48f))") != std::string::npos);
@@ -1667,19 +1720,25 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
     CHECK(onlineSource->find("surface.interpolatedWith(palette.accent, 0.16f)") != std::string::npos);
     CHECK(onlineSource->find("g.setColour(rowIsSelected ? palette.text : palette.text.withAlpha(0.95f));") !=
           std::string::npos);
-    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 26 : 34);") != std::string::npos);
-    CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 34 : 38);") !=
+    CHECK(onlineSource->find("bounds.removeFromTop(compactLayout ? 24 : 32);") != std::string::npos);
+    CHECK(onlineSource->find("auto searchRow = bounds.removeFromTop(compactLayout ? 36 : 40);") !=
           std::string::npos);
-    CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 76 : 86;") != std::string::npos);
+    CHECK(onlineSource->find("const int searchButtonWidth = compactLayout ? 82 : 94;") != std::string::npos);
     CHECK(onlineSource->find("const int searchButtonGap = compactLayout ? 10 : 12;") != std::string::npos);
-    const auto searchButtonLayout = onlineSource->find("searchButton->setBounds(searchRow.removeFromRight(");
-    const auto searchBoxLayout = onlineSource->find("searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));");
+    CHECK(onlineSource->find("const int searchGroupWidth = juce::jmin(maxSearchGroupWidth, searchRow.getWidth());") !=
+          std::string::npos);
+    CHECK(onlineSource->find("auto searchGroup = searchRow.withSizeKeepingCentre(searchGroupWidth, searchRow.getHeight());") !=
+          std::string::npos);
+    const auto searchButtonLayout = onlineSource->find("searchButton->setBounds(searchGroup.removeFromRight(");
+    const auto searchBoxLayout = onlineSource->find("searchBox->setBounds(searchGroup.removeFromLeft(searchBoxWidth));");
     REQUIRE(searchButtonLayout != std::string::npos);
     REQUIRE(searchBoxLayout != std::string::npos);
     CHECK(searchButtonLayout < searchBoxLayout);
     CHECK(onlineSource->find("auto toolbarBounds = outer.removeFromTop(compactLayout ? 106 : 118).toFloat();") !=
           std::string::npos);
-    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 210 : 240;") != std::string::npos);
+    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 280 : 380;") != std::string::npos);
+    CHECK(onlineSource->find("resultsList->setBounds(trimListBoxBoundsToFullRows(listArea, resultsList->getRowHeight()));") !=
+          std::string::npos);
     const auto selectedActionLayout =
         onlineSource->find("Keep the primary model actions visible directly under the selected-model hero.");
     const auto selectedDetailRows = onlineSource->find("auto row = detailsArea.removeFromTop(rowHeight);");
@@ -1693,8 +1752,8 @@ TEST_CASE("NAM online browser polish source contract matches library visual stru
           std::string::npos);
     CHECK(onlineSource->find("auto buttonRow = detailsArea.removeFromTop(compactLayout ? 30 : 32);") ==
           std::string::npos);
+    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 210 : 240;") == std::string::npos);
     CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 220 : 260;") == std::string::npos);
-    CHECK(onlineSource->find("const int maxSearchBoxWidth = compactLayout ? 250 : 300;") == std::string::npos);
     CHECK(onlineSource->find("class OnlineBrowserActionButtonLookAndFeel") != std::string::npos);
     CHECK(onlineSource->find("const auto searchFill = palette.accent;") != std::string::npos);
     CHECK(onlineSource->find("const auto downloadFill = palette.accent;") != std::string::npos);
@@ -1929,7 +1988,7 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
           std::string::npos);
     CHECK(pluginSource->find("bool shouldCreateHostMidiOrParamPin(AudioProcessor* plugin, const String& pluginName, int numInputs, int numOutputs)") !=
           std::string::npos);
-    CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))") !=
+    CHECK(pluginSource->find("if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != \"MIDI Input\")") !=
           std::string::npos);
 
     CHECK(oscilloscopeHeader->find("Point<int> getSize() override { return Point<int>(280, 154); }") !=
@@ -1957,6 +2016,10 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(toneSource->find("layout.pinY.push_back(kToneGeneratorRightOutputPinY);") != std::string::npos);
     CHECK(toneControl->find("setSize(360, 308);") != std::string::npos);
     CHECK(toneControl->find("Colour ToneGeneratorControl::getAccentColour() const") != std::string::npos);
+    CHECK(toneControl->find("Colour ToneGeneratorControl::getPanelTextColour(Colour surface, float alpha) const") !=
+          std::string::npos);
+    CHECK(toneControl->find("surface.withAlpha(1.0f).contrasting(0.92f).withAlpha(alpha)") !=
+          std::string::npos);
     CHECK(toneControl->find("Colour(0xFF39D3E6)") == std::string::npos);
     CHECK(toneControl->find("Colours::white") == std::string::npos);
     CHECK(toneControl->find("Colours::black") == std::string::npos);
@@ -1985,6 +2048,10 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(toneControl->find("void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, float normalisedValue, Colour accent)") !=
           std::string::npos);
     CHECK(toneControl->find("void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)") !=
+          std::string::npos);
+    CHECK(toneControl->find("button.setColour(TextButton::textColourOffId, getPanelTextColour(buttonBase, active ? 0.98f : 0.76f));") !=
+          std::string::npos);
+    CHECK(toneControl->find("slider.setColour(Slider::textBoxTextColourId, getPanelTextColour(textBoxBase, 0.90f));") !=
           std::string::npos);
     CHECK(toneControl->find("displayPanel = bounds.removeFromTop(60);") != std::string::npos);
     CHECK(toneControl->find("pitchPanel = bounds.removeFromTop(70);") != std::string::npos);

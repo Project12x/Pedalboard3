@@ -198,9 +198,9 @@ float FilterGraph::getNextInputNodeY() const
         {
             float y = static_cast<float>(node->properties.getWithDefault("y", 100.0));
 
-            // Virtual MIDI Input: getSize().y (40) + header (52) = 92px
+            // Virtual MIDI Input: getSize().y (60) + header (52) = 112px
             auto* proc = dynamic_cast<PedalboardProcessor*>(node->getProcessor());
-            float height = proc ? (proc->getSize().y + 52.0f) : 92.0f;
+            float height = proc ? (proc->getSize().y + 52.0f) : 112.0f;
 
             return y + height + gap;
         }

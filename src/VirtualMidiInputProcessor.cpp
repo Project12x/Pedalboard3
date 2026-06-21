@@ -9,7 +9,34 @@
 
 #include "VirtualMidiInputProcessor.h"
 
+#include "ColourScheme.h"
+#include "FontManager.h"
+
 #include <spdlog/spdlog.h>
+
+namespace
+{
+class VirtualMidiInputControl final : public Component
+{
+  public:
+    VirtualMidiInputControl()
+    {
+        setInterceptsMouseClicks(false, false);
+    }
+
+    void paint(Graphics& g) override
+    {
+        auto& colours = ColourScheme::getInstance().colours;
+        auto labelArea = getLocalBounds().reduced(5, 3);
+        labelArea = labelArea.removeFromBottom(16);
+
+        const auto surface = colours["Plugin Background"].interpolatedWith(colours["Parameter Connection"], 0.10f);
+        g.setFont(FontManager::getInstance().getCaptionFont().withHeight(10.5f));
+        g.setColour(surface.contrasting(0.90f).withAlpha(0.74f));
+        g.drawText("Virtual Keyboard", labelArea, Justification::centredRight, true);
+    }
+};
+} // namespace
 
 // Static instance pointer
 std::atomic<VirtualMidiInputProcessor*> VirtualMidiInputProcessor::instance{nullptr};
@@ -84,11 +111,7 @@ void VirtualMidiInputProcessor::addMidiMessage(const MidiMessage& msg)
 //==============================================================================
 Component* VirtualMidiInputProcessor::getControls()
 {
-    auto* label = new Label("info", "Virtual Keyboard");
-    label->setJustificationType(Justification::centredRight);
-    label->setFont(Font(FontOptions().withHeight(11.0f)));
-    label->setColour(Label::textColourId, Colours::white.withAlpha(0.7f));
-    return label;
+    return new VirtualMidiInputControl();
 }
 
 AudioProcessorEditor* VirtualMidiInputProcessor::createEditor()

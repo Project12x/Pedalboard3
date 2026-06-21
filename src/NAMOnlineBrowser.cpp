@@ -98,6 +98,15 @@ juce::String getDescriptionSummary(const std::string& description)
     return text;
 }
 
+juce::Rectangle<int> trimListBoxBoundsToFullRows(juce::Rectangle<int> area, int rowHeight)
+{
+    if (rowHeight <= 0 || area.getHeight() <= 0)
+        return area;
+
+    const int visibleRows = juce::jmax(1, area.getHeight() / rowHeight);
+    return area.withHeight(visibleRows * rowHeight);
+}
+
 juce::String getArchitectureDisplayText(const Tone3000::ToneInfo& tone)
 {
     if (!Tone3000::isNamPlatform(tone.platform))
@@ -559,7 +568,7 @@ NAMOnlineBrowserComponent::NAMOnlineBrowserComponent(NAMProcessor* processor, st
     searchBox->setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
     searchBox->setTextToShowWhenEmpty("Search TONE3000...", palette.text.withAlpha(0.5f));
     searchBox->setFont(FontManager::getInstance().getSubheadingFont()); // 15px fills pill better
-    searchBox->setIndents(28, 6); // Left indent for magnifying glass icon, top indent to center text
+    searchBox->setIndents(30, 7); // Left indent for magnifying glass icon, top indent to center text
     searchBox->addListener(this);
     addAndMakeVisible(searchBox.get());
 
@@ -1010,15 +1019,18 @@ void NAMOnlineBrowserComponent::resized()
     auto bounds = getLocalBounds().reduced(8);
 
     // Search row
-    bounds.removeFromTop(compactLayout ? 26 : 34);
-    auto searchRow = bounds.removeFromTop(compactLayout ? 34 : 38);
-    const int searchButtonWidth = compactLayout ? 76 : 86;
+    bounds.removeFromTop(compactLayout ? 24 : 32);
+    auto searchRow = bounds.removeFromTop(compactLayout ? 36 : 40);
+    const int searchButtonWidth = compactLayout ? 82 : 94;
     const int searchButtonGap = compactLayout ? 10 : 12;
-    searchButton->setBounds(searchRow.removeFromRight(juce::jmin(searchButtonWidth, searchRow.getWidth())));
-    searchRow.removeFromRight(juce::jmin(searchButtonGap, searchRow.getWidth()));
-    const int maxSearchBoxWidth = compactLayout ? 210 : 240;
-    const int searchBoxWidth = juce::jmin(maxSearchBoxWidth, searchRow.getWidth());
-    searchBox->setBounds(searchRow.removeFromLeft(searchBoxWidth));
+    const int maxSearchGroupWidth = compactLayout ? 410 : 540;
+    const int searchGroupWidth = juce::jmin(maxSearchGroupWidth, searchRow.getWidth());
+    auto searchGroup = searchRow.withSizeKeepingCentre(searchGroupWidth, searchRow.getHeight());
+    searchButton->setBounds(searchGroup.removeFromRight(juce::jmin(searchButtonWidth, searchGroup.getWidth())));
+    searchGroup.removeFromRight(juce::jmin(searchButtonGap, searchGroup.getWidth()));
+    const int maxSearchBoxWidth = compactLayout ? 280 : 380;
+    const int searchBoxWidth = juce::jmin(maxSearchBoxWidth, searchGroup.getWidth());
+    searchBox->setBounds(searchGroup.removeFromLeft(searchBoxWidth));
 
     bounds.removeFromTop(compactLayout ? 10 : 12);
 
@@ -1052,7 +1064,7 @@ void NAMOnlineBrowserComponent::resized()
     // Split remaining area between list and details
     int listWidth = bounds.getWidth() * 0.55f;
     auto listArea = bounds.removeFromLeft(listWidth);
-    resultsList->setBounds(listArea);
+    resultsList->setBounds(trimListBoxBoundsToFullRows(listArea, resultsList->getRowHeight()));
 
     bounds.removeFromLeft(16); // Gap
 

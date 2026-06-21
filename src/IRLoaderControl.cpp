@@ -42,34 +42,36 @@ IRLoaderPalette makeIRLoaderPalette()
     const auto preset = scheme.presetName;
 
     auto palette = [](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
-                      uint32 edgeHi, uint32 accent, uint32 accent2, uint32 led, uint32 text, uint32 textDim)
+                      uint32 edgeHi, uint32 accent, uint32 accent2, uint32 led)
     {
+        const auto faceColour = Colour(face);
+        const auto textColour = faceColour.contrasting(0.92f);
         return IRLoaderPalette{Colour(top),    Colour(bottom), Colour(face),  Colour(face2),
                                Colour(inset),  Colour(edge),   Colour(edgeHi), Colour(accent),
-                               Colour(accent2), Colour(led),   Colour(text),  Colour(textDim)};
+                               Colour(accent2), Colour(led),   textColour,    textColour.withAlpha(0.64f)};
     };
 
     if (preset == "Midnight")
         return palette(0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57,
-                       0xFF5B4C6E, 0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84, 0xFFF4ECDD, 0xFFB8AFC8);
+                       0xFF5B4C6E, 0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84);
     if (preset == "Deep Ocean")
         return palette(0xFF102029, 0xFF08131B, 0xFF142A36, 0xFF1B3543, 0xFF07121A, 0xFF2C5563,
-                       0xFF3C6B7A, 0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD, 0xFFEAF3F1, 0xFFA4C5CA);
+                       0xFF3C6B7A, 0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD);
     if (preset == "Synthwave")
         return palette(0xFF1E0A28, 0xFF0F0518, 0xFF2A1139, 0xFF351747, 0xFF0C0414, 0xFF5A2D72,
-                       0xFF76439A, 0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0, 0xFFF6EBFF, 0xFFC9A8D8);
+                       0xFF76439A, 0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0);
     if (preset == "Forest")
         return palette(0xFF1C1D13, 0xFF10110A, 0xFF26281A, 0xFF2F3120, 0xFF0E0F08, 0xFF4A4D2E,
-                       0xFF5F633D, 0xFFE6AD36, 0xFF79D479, 0xFF7CE87C, 0xFFF1EEDA, 0xFFBAB99B);
+                       0xFF5F633D, 0xFFE6AD36, 0xFF79D479, 0xFF7CE87C);
     if (preset == "Daylight")
         return palette(0xFF3B332A, 0xFF2B241C, 0xFF473E33, 0xFF52483B, 0xFF241F18, 0xFF615648,
-                       0xFF796B58, 0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84, 0xFFF5EDDE, 0xFFCABCA6);
+                       0xFF796B58, 0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84);
 
     const auto accent = colours["Warning Colour"];
     const auto accent2 = colours["Audio Connection"];
-    const auto text = colours["Text Colour"];
     const auto face = colours["Dialog Inner Background"].interpolatedWith(accent, 0.07f);
     const auto edge = colours["Plugin Border"].interpolatedWith(accent, 0.12f);
+    const auto text = face.contrasting(0.92f);
 
     return {colours["Window Background"].interpolatedWith(accent, 0.07f),
             colours["Window Background"].darker(0.18f),

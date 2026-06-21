@@ -43,6 +43,7 @@ static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String
 {
     auto& colours = ColourScheme::getInstance().colours;
     const auto base = primary ? accent.withAlpha(0.20f) : colours["Plugin Background"].brighter(0.08f);
+    const auto labelBase = primary ? colours["Plugin Background"].interpolatedWith(accent, 0.28f) : base;
     ColourGradient fill(base.brighter(0.12f), bounds.getX(), bounds.getY(), base.darker(0.24f), bounds.getX(),
                         bounds.getBottom(), false);
     fill.addColour(0.50, base);
@@ -52,7 +53,7 @@ static void paintRoutingBadge(Graphics& g, Rectangle<float> bounds, const String
     g.setColour(accent.withAlpha(primary ? 0.72f : 0.38f));
     g.drawRoundedRectangle(bounds.reduced(0.5f), 5.0f, 1.0f);
 
-    g.setColour((primary ? accent : colours["Text Colour"]).withAlpha(primary ? 0.96f : 0.70f));
+    g.setColour(labelBase.contrasting(0.90f).withAlpha(primary ? 0.96f : 0.70f));
     g.setFont(Font(10.5f, Font::bold));
     g.drawText(text, bounds.toNearestInt(), Justification::centred, false);
 }

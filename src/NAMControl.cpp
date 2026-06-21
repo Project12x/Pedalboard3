@@ -37,9 +37,8 @@ void NAMLookAndFeel::refreshColours()
     const auto preset = cs.presetName;
 
     auto setBrowserPalette = [&](uint32 top, uint32 bottom, uint32 face, uint32 face2, uint32 inset, uint32 edge,
-                                 uint32 edge2, uint32 accent, uint32 accent2, uint32 led, uint32 text)
+                                 uint32 edge2, uint32 accent, uint32 accent2, uint32 led)
     {
-        ignoreUnused(text);
         ampBackgroundTop = Colour(top);
         ampBackground = Colour(bottom);
         ampSurface = Colour(face);
@@ -48,10 +47,10 @@ void NAMLookAndFeel::refreshColours()
         ampHeaderBg = Colour(face2);
         ampAccent = Colour(accent);
         ampAccentSecondary = Colour(accent2);
-        ampTextBright = cs.colours["Text Colour"];
-        ampTextDim = cs.colours["Text Colour"].withAlpha(0.68f);
+        ampTextBright = ampSurface.contrasting(0.92f);
+        ampTextDim = ampTextBright.withAlpha(0.68f);
         ampLedOn = Colour(led);
-        ampLedOff = cs.colours["Text Colour"].withAlpha(0.42f);
+        ampLedOff = ampTextBright.withAlpha(0.42f);
         ampKnobBody = Colour(inset).brighter(0.08f);
         ampKnobRing = Colour(edge).brighter(0.42f);
         ampTrackBg = Colour(inset).darker(0.12f);
@@ -62,24 +61,23 @@ void NAMLookAndFeel::refreshColours()
 
     if (preset == "Midnight")
         setBrowserPalette(0xFF211A2B, 0xFF140F1B, 0xFF271F33, 0xFF30273D, 0xFF0E0A14, 0xFF473A57,
-                          0xFF5B4C6E, 0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84, 0xFFF4ECDD);
+                          0xFF5B4C6E, 0xFFFFB020, 0xFF36C8FF, 0xFF3DDC84);
     else if (preset == "Deep Ocean")
         setBrowserPalette(0xFF102029, 0xFF08131B, 0xFF142A36, 0xFF1B3543, 0xFF07121A, 0xFF2C5563,
-                          0xFF3C6B7A, 0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD, 0xFFEAF3F1);
+                          0xFF3C6B7A, 0xFFFF9E3D, 0xFF2BD4FF, 0xFF00E0AD);
     else if (preset == "Synthwave")
         setBrowserPalette(0xFF1E0A28, 0xFF0F0518, 0xFF2A1139, 0xFF351747, 0xFF0C0414, 0xFF5A2D72,
-                          0xFF76439A, 0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0, 0xFFF6EBFF);
+                          0xFF76439A, 0xFFFF8A3D, 0xFFFF45FF, 0xFF1FFFA0);
     else if (preset == "Forest")
         setBrowserPalette(0xFF1C1D13, 0xFF10110A, 0xFF26281A, 0xFF2F3120, 0xFF0E0F08, 0xFF4A4D2E,
-                          0xFF5F633D, 0xFFE6AD36, 0xFF79D479, 0xFF7CE87C, 0xFFF1EEDA);
+                          0xFF5F633D, 0xFFE6AD36, 0xFF79D479, 0xFF7CE87C);
     else if (preset == "Daylight")
         setBrowserPalette(0xFF3B332A, 0xFF2B241C, 0xFF473E33, 0xFF52483B, 0xFF241F18, 0xFF615648,
-                          0xFF796B58, 0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84, 0xFFF5EDDE);
+                          0xFF796B58, 0xFFFFB43A, 0xFF3AA6EC, 0xFF4DDC84);
     else
     {
         Colour pluginBg = cs.colours["Plugin Background"];
         Colour pluginBorder = cs.colours["Plugin Border"];
-        Colour textCol = cs.colours["Text Colour"];
         Colour paramCol = cs.colours["Audio Connection"];
         Colour warnCol = cs.colours["Warning Colour"];
         Colour fieldBg = cs.colours["Field Background"];
@@ -92,12 +90,12 @@ void NAMLookAndFeel::refreshColours()
         ampHeaderBg = pluginBg.interpolatedWith(warnCol, 0.16f);
         ampAccent = warnCol;
         ampAccentSecondary = paramCol;
-        ampTextBright = textCol;
-        ampTextDim = textCol.withAlpha(0.6f);
+        ampTextBright = ampSurface.contrasting(0.92f);
+        ampTextDim = ampTextBright.withAlpha(0.6f);
         ampLedOn = cs.colours["Success Colour"].brighter(0.4f);
         ampLedOff = fieldBg.interpolatedWith(pluginBg, 0.55f).darker(0.25f);
         ampKnobBody = pluginBg.darker(0.15f);
-        ampKnobRing = pluginBorder.interpolatedWith(textCol, 0.28f);
+        ampKnobRing = pluginBorder.interpolatedWith(ampTextBright, 0.28f);
         ampTrackBg = ampBackground.darker(0.4f);
         ampButtonBg = cs.colours["Button Colour"];
         ampButtonHover = cs.colours["Button Highlight"];

@@ -54,6 +54,15 @@ String makeEmptyStateCopy(const String& title, const String& action, const Strin
     return title + "\n\n" + action;
 }
 
+Rectangle<int> trimListBoxBoundsToFullRows(Rectangle<int> area, int rowHeight)
+{
+    if (rowHeight <= 0 || area.getHeight() <= 0)
+        return area;
+
+    const int visibleRows = jmax(1, area.getHeight() / rowHeight);
+    return area.withHeight(visibleRows * rowHeight);
+}
+
 File getDefaultIRLibraryDirectory()
 {
     return File::getSpecialLocation(File::userDocumentsDirectory).getChildFile("Pedalboard3").getChildFile("IR");
@@ -2301,7 +2310,7 @@ void NAMModelBrowserComponent::resized()
         auto listArea = bounds;
 
         // IR list
-        irList->setBounds(listArea);
+        irList->setBounds(trimListBoxBoundsToFullRows(listArea, irList->getRowHeight()));
         if (irEmptyStateLabel)
             irEmptyStateLabel->setBounds(listArea);
         updateIRBrowserState();
@@ -2430,7 +2439,7 @@ void NAMModelBrowserComponent::resized()
     auto listArea = bounds;
 
     // Model list or empty state
-    modelList->setBounds(listArea);
+    modelList->setBounds(trimListBoxBoundsToFullRows(listArea, modelList->getRowHeight()));
     emptyStateLabel->setBounds(listArea);
 
     // Details panel with section grouping

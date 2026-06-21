@@ -1386,13 +1386,16 @@ void PluginComponent::layoutFooterButtons()
     {
         const int y = getHeight() - 31;
         const int h = 22;
+        const int buttonGap = 8;
 
-        if (editButton != nullptr)
-            editButton->setBounds(getWidth() - 102, y, 54, h);
-        if (mappingsButton != nullptr)
-            mappingsButton->setBounds(getWidth() - 154, y, 46, h);
         if (bypassButton != nullptr)
             bypassButton->setBounds(getWidth() - 40, y, 26, h);
+        const int openButtonRight = bypassButton != nullptr ? bypassButton->getX() - buttonGap : getWidth() - 48;
+        if (editButton != nullptr)
+            editButton->setBounds(openButtonRight - 54, y, 54, h);
+        if (mappingsButton != nullptr)
+            mappingsButton->setBounds((editButton != nullptr ? editButton->getX() : openButtonRight) - buttonGap - 46,
+                                      y, 46, h);
 
         return;
     }
@@ -1810,10 +1813,10 @@ void PluginComponent::mouseDown(const MouseEvent& e)
         return;
     }
 
-    if (visualCategoryName == "rack" && e.getNumberOfClicks() == 1 &&
+    if (visualCategoryName == "rack" && e.getNumberOfClicks() >= 2 &&
         getEffectRackSubgraphPreviewBounds().contains(localEvent.position.toFloat()))
     {
-        openPluginEditor(false); // Open rack editor from preview click
+        openPluginEditor(false); // Open rack editor from preview double-click
         return;
     }
 
@@ -2246,7 +2249,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add input parameter/midi name.
-        if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))
+        if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != "MIDI Input")
         {
             // if(!ignorePinNames)
             {
@@ -2314,7 +2317,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
         }
 
         // Add output parameter/midi name.
-        if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
+        if (producesMidiSafe(plugin) || pluginName == "MIDI Input" || (plugin->getName() == "OSC Input"))
         {
             // if(!ignorePinNames)
             {
@@ -2833,7 +2836,7 @@ void PluginComponent::createPins()
 
     int numOut = countOutputChannelsFromBuses(plugin);
 
-    if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut))
+    if (shouldCreateHostMidiOrParamPin(plugin, pluginName, numIn, numOut) && pluginName != "MIDI Input")
     {
         Point<int> pinPos;
 
@@ -2879,7 +2882,7 @@ void PluginComponent::createPins()
     else
         y = outputLayout.pinY.back() + (numOut - outputLayout.pinY.size() + 1) * 22;
 
-    if (producesMidiSafe(plugin) || (plugin->getName() == "OSC Input"))
+    if (producesMidiSafe(plugin) || pluginName == "MIDI Input" || (plugin->getName() == "OSC Input"))
     {
         Point<int> pinPos;
 

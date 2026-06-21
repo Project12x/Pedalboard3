@@ -14,25 +14,49 @@
 #include "FontManager.h"
 #include "TunerProcessor.h"
 
+namespace
+{
+class TunerModeButtonLookAndFeel final : public LookAndFeel_V4
+{
+  public:
+    void drawButtonBackground(Graphics&, Button&, const Colour&, bool, bool) override {}
+
+    void drawButtonText(Graphics& g, TextButton& button, bool, bool) override
+    {
+        const auto text = button.findColour(button.getToggleState() ? TextButton::textColourOnId
+                                                                    : TextButton::textColourOffId);
+        g.setColour(text);
+        g.setFont(FontManager::getInstance().getBadgeFont().withHeight(9.4f));
+        g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(3, 1), Justification::centred, 1);
+    }
+};
+
+TunerModeButtonLookAndFeel tunerModeButtonLookAndFeel;
+} // namespace
+
 //==============================================================================
 TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor)
 {
     needleModeButton = std::make_unique<TextButton>("NEEDLE");
+    needleModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
     needleModeButton->setTooltip("Needle tuner view");
     needleModeButton->addListener(this);
     addAndMakeVisible(needleModeButton.get());
 
     strobeModeButton = std::make_unique<TextButton>("STROBE");
+    strobeModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
     strobeModeButton->setTooltip("Strobe tuner view");
     strobeModeButton->addListener(this);
     addAndMakeVisible(strobeModeButton.get());
 
     sixStringModeButton = std::make_unique<TextButton>("POLY");
+    sixStringModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
     sixStringModeButton->setTooltip("Six-string guitar tuner view");
     sixStringModeButton->addListener(this);
     addAndMakeVisible(sixStringModeButton.get());
 
     bypassButton = std::make_unique<TextButton>("BYPASS");
+    bypassButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
     bypassButton->setTooltip("Bypass tuner processing");
     bypassButton->setClickingTogglesState(true);
     bypassButton->addListener(this);
@@ -47,6 +71,14 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
 
 TunerControl::~TunerControl()
 {
+    if (needleModeButton != nullptr)
+        needleModeButton->setLookAndFeel(nullptr);
+    if (strobeModeButton != nullptr)
+        strobeModeButton->setLookAndFeel(nullptr);
+    if (sixStringModeButton != nullptr)
+        sixStringModeButton->setLookAndFeel(nullptr);
+    if (bypassButton != nullptr)
+        bypassButton->setLookAndFeel(nullptr);
     stopTimer();
 }
 
@@ -194,6 +226,7 @@ void TunerControl::drawTunerHeader(Graphics& g, Rectangle<float> bounds)
     const auto tunerAccent = colours["Tuner Active Colour"];
     const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
     const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
+    const bool showStatePill = bypassed || detected;
 
     ColourGradient headerFill(colours["Plugin Background"].interpolatedWith(tunerAccent, 0.20f).brighter(0.06f),
                               bounds.getX(), bounds.getY(),
@@ -218,7 +251,7 @@ void TunerControl::drawTunerHeader(Graphics& g, Rectangle<float> bounds)
     g.setColour(tunerAccent.withAlpha(0.88f));
     g.fillEllipse(icon.reduced(4.5f));
 
-    auto textArea = bounds.withTrimmedLeft(31.0f).withTrimmedRight(98.0f).reduced(0.0f, 4.0f);
+    auto textArea = bounds.withTrimmedLeft(31.0f).withTrimmedRight(showStatePill ? 98.0f : 10.0f).reduced(0.0f, 4.0f);
     g.setColour(tunerAccent.brighter(0.18f));
     g.setFont(fonts.getBadgeFont().withHeight(10.5f));
     g.drawText("TUNER", textArea.removeFromTop(12.0f), Justification::centredLeft, true);
@@ -228,23 +261,23 @@ void TunerControl::drawTunerHeader(Graphics& g, Rectangle<float> bounds)
     g.setFont(fonts.getSubheadingFont().withHeight(15.5f));
     g.drawText(statusText, textArea, Justification::centredLeft, true);
 
-    auto statePill = bounds.removeFromRight(88.0f).reduced(6.0f, 7.0f);
-    const auto stateColour = bypassed ? colours["Danger Colour"] : detected ? tunerAccent : colours["Text Colour"].withAlpha(0.44f);
-    g.setColour(colours["Field Background"].interpolatedWith(stateColour, bypassed || detected ? 0.13f : 0.05f));
-    g.fillRoundedRectangle(statePill, 9.0f);
-    g.setColour(stateColour.withAlpha(0.52f));
-    g.drawRoundedRectangle(statePill.reduced(0.5f), 9.0f, 0.8f);
-
-    auto led = Rectangle<float>(7.0f, 7.0f).withCentre({statePill.getX() + 12.0f, statePill.getCentreY()});
-    g.setColour(stateColour.withAlpha(bypassed || detected ? 0.24f : 0.10f));
-    g.fillEllipse(led.expanded(3.0f));
-    g.setColour(stateColour);
-    g.fillEllipse(led);
-
-    g.setColour(colours["Text Colour"].withAlpha(0.72f));
-    g.setFont(fonts.getBadgeFont().withHeight(10.0f));
     if (bypassed || detected)
     {
+        auto statePill = bounds.removeFromRight(88.0f).reduced(6.0f, 7.0f);
+        const auto stateColour = bypassed ? colours["Danger Colour"] : tunerAccent;
+        g.setColour(colours["Field Background"].interpolatedWith(stateColour, 0.13f));
+        g.fillRoundedRectangle(statePill, 9.0f);
+        g.setColour(stateColour.withAlpha(0.52f));
+        g.drawRoundedRectangle(statePill.reduced(0.5f), 9.0f, 0.8f);
+
+        auto led = Rectangle<float>(7.0f, 7.0f).withCentre({statePill.getX() + 12.0f, statePill.getCentreY()});
+        g.setColour(stateColour.withAlpha(0.24f));
+        g.fillEllipse(led.expanded(3.0f));
+        g.setColour(stateColour);
+        g.fillEllipse(led);
+
+        g.setColour(colours["Field Background"].interpolatedWith(stateColour, 0.13f).contrasting(0.90f).withAlpha(0.72f));
+        g.setFont(fonts.getBadgeFont().withHeight(10.0f));
         g.drawText(bypassed ? "BYPASS" : "ACTIVE", statePill.withTrimmedLeft(23.0f).withTrimmedRight(6.0f),
                    Justification::centredLeft, true);
     }
@@ -254,7 +287,9 @@ void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto tunerAccent = colours["Tuner Active Colour"];
-    const auto plate = bounds.withTrimmedRight(76.0f).reduced(1.0f);
+    auto bypassPlate = bounds.removeFromRight(76.0f).reduced(1.0f);
+    bounds.removeFromRight(4.0f);
+    const auto plate = bounds.reduced(1.0f);
 
     g.setColour(colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f).darker(0.12f));
     g.fillRoundedRectangle(plate, 7.0f);
@@ -270,6 +305,21 @@ void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds
     g.fillRoundedRectangle(selected, 5.0f);
     g.setColour(tunerAccent.withAlpha(0.42f));
     g.drawRoundedRectangle(selected.reduced(0.5f), 5.0f, 0.75f);
+
+    drawBypassPill(g, bypassPlate);
+}
+
+void TunerControl::drawBypassPill(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const bool bypassed = bypassButton != nullptr && bypassButton->getToggleState();
+    const auto accent = bypassed ? colours["Danger Colour"] : colours["Plugin Border"];
+    const auto fillBase = colours["Field Background"].interpolatedWith(accent, bypassed ? 0.18f : 0.08f);
+
+    g.setColour(fillBase.darker(0.08f));
+    g.fillRoundedRectangle(bounds, 7.0f);
+    g.setColour(accent.withAlpha(bypassed ? 0.58f : 0.42f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 7.0f, 0.9f);
 }
 
 void TunerControl::drawSixStringDisplay(Graphics& g, Rectangle<float> bounds)
@@ -842,8 +892,8 @@ void TunerControl::resized()
     auto bounds = getLocalBounds().reduced(8, 6);
     bounds.removeFromTop(43);
     auto modeArea = bounds.removeFromTop(29);
-    modeArea.removeFromRight(18);
-    auto bypassArea = modeArea.removeFromRight(72).reduced(2, 2);
+    auto bypassArea = modeArea.removeFromRight(76).reduced(2, 2);
+    modeArea.removeFromRight(4);
     const int thirdWidth = modeArea.getWidth() / 3;
     needleModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
     strobeModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
@@ -852,14 +902,17 @@ void TunerControl::resized()
 
     for (auto* button : {needleModeButton.get(), strobeModeButton.get(), sixStringModeButton.get()})
     {
-        button->setColour(TextButton::buttonColourId, colours["Field Background"].withAlpha(0.0f));
-        button->setColour(TextButton::buttonOnColourId, colours["Tuner Active Colour"].withAlpha(0.18f));
-        button->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.58f));
+        const auto plateBase = colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f)
+                                   .darker(0.12f);
+        button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
+        button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+        button->setColour(TextButton::textColourOffId, plateBase.contrasting(0.88f).withAlpha(0.62f));
         button->setColour(TextButton::textColourOnId, colours["Tuner Active Colour"].brighter(0.18f));
     }
-    bypassButton->setColour(TextButton::buttonColourId, colours["Field Background"].withAlpha(0.42f));
-    bypassButton->setColour(TextButton::buttonOnColourId, colours["Danger Colour"].withAlpha(0.30f));
-    bypassButton->setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(0.70f));
+    const auto bypassBase = colours["Field Background"].interpolatedWith(colours["Plugin Border"], 0.08f);
+    bypassButton->setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    bypassButton->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
+    bypassButton->setColour(TextButton::textColourOffId, bypassBase.contrasting(0.88f).withAlpha(0.70f));
     bypassButton->setColour(TextButton::textColourOnId, colours["Danger Colour"].brighter(0.22f));
 
     updateModeButtons();

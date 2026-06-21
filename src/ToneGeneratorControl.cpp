@@ -397,24 +397,27 @@ void ToneGeneratorControl::syncButtonStates()
 void ToneGeneratorControl::styleButtonChrome(TextButton& button, Colour accent, bool active)
 {
     auto& colours = ColourScheme::getInstance().colours;
-    button.setColour(TextButton::buttonColourId,
-                     active ? accent.darker(0.45f).withMultipliedSaturation(1.25f)
-                            : colours["Plugin Background"].interpolatedWith(accent, 0.12f).brighter(0.02f));
-    button.setColour(TextButton::buttonOnColourId, accent.darker(0.35f));
-    button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(active ? 0.98f : 0.68f));
-    button.setColour(TextButton::textColourOnId, accent.contrasting(0.92f).withAlpha(0.96f));
+    const auto buttonBase =
+        active ? accent.darker(0.45f).withMultipliedSaturation(1.25f)
+               : colours["Plugin Background"].interpolatedWith(accent, 0.12f).brighter(0.02f);
+    const auto buttonOnBase = accent.darker(0.35f);
+    button.setColour(TextButton::buttonColourId, buttonBase);
+    button.setColour(TextButton::buttonOnColourId, buttonOnBase);
+    button.setColour(TextButton::textColourOffId, getPanelTextColour(buttonBase, active ? 0.98f : 0.76f));
+    button.setColour(TextButton::textColourOnId, getPanelTextColour(buttonOnBase, 0.96f));
 }
 
 void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    const auto textBoxBase = colours["Field Background"].darker(0.22f).withAlpha(0.80f);
     slider.setTextValueSuffix(suffix);
     slider.setAlpha(1.0f);
     slider.setColour(Slider::backgroundColourId, Colours::transparentBlack);
     slider.setColour(Slider::trackColourId, Colours::transparentBlack);
     slider.setColour(Slider::thumbColourId, Colours::transparentBlack);
-    slider.setColour(Slider::textBoxTextColourId, colours["Text Colour"].withAlpha(0.90f));
-    slider.setColour(Slider::textBoxBackgroundColourId, colours["Field Background"].darker(0.22f).withAlpha(0.80f));
+    slider.setColour(Slider::textBoxTextColourId, getPanelTextColour(textBoxBase, 0.90f));
+    slider.setColour(Slider::textBoxBackgroundColourId, textBoxBase);
     slider.setColour(Slider::textBoxOutlineColourId, accent.withAlpha(0.48f));
     slider.setColour(Slider::textBoxHighlightColourId, accent.withAlpha(0.35f));
     ignoreUnused(textBoxWidth);
@@ -423,6 +426,11 @@ void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, co
 Colour ToneGeneratorControl::getAccentColour() const
 {
     return ColourScheme::getInstance().colours["Graph Category Source"];
+}
+
+Colour ToneGeneratorControl::getPanelTextColour(Colour surface, float alpha) const
+{
+    return surface.withAlpha(1.0f).contrasting(0.92f).withAlpha(alpha);
 }
 
 void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
@@ -442,7 +450,8 @@ void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
 
     g.setColour(accent.withAlpha(0.18f));
     g.drawRoundedRectangle(shell.reduced(0.5f), 8.0f, 1.4f);
-    g.setColour(colours["Text Colour"].withAlpha(0.08f));
+    const auto shellText = getPanelTextColour(colours["Plugin Background"].interpolatedWith(accent, 0.13f), 1.0f);
+    g.setColour(shellText.withAlpha(0.08f));
     g.drawLine(shell.getX() + 10.0f, shell.getY() + 1.0f, shell.getRight() - 10.0f, shell.getY() + 1.0f, 1.0f);
     g.setColour(colours["Window Background"].darker(0.35f).withAlpha(0.24f));
     g.drawLine(shell.getX() + 8.0f, shell.getBottom() - 1.0f, shell.getRight() - 8.0f, shell.getBottom() - 1.0f, 1.0f);
@@ -459,11 +468,11 @@ void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
     g.fillEllipse(led.expanded(3.0f));
     g.setColour(accent);
     g.fillEllipse(led);
-    g.setColour(colours["Text Colour"].withAlpha(0.62f));
+    g.setColour(shellText.withAlpha(0.62f));
     g.fillEllipse(led.withSizeKeepingCentre(3.0f, 3.0f).translated(-1.0f, -1.0f));
 
     g.setFont(fonts.getBadgeFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.90f));
+    g.setColour(shellText.withAlpha(0.90f));
     g.drawText("TONE GENERATOR", header.removeFromLeft(122.0f), Justification::centredLeft);
     g.setColour(accent.withAlpha(0.52f));
     g.drawText("CAL", header.removeFromRight(34.0f), Justification::centredRight);
@@ -485,7 +494,9 @@ void ToneGeneratorControl::drawDisplayPanel(Graphics& g, Rectangle<float> bounds
 
     g.setColour(accent.withAlpha(0.32f));
     g.drawRoundedRectangle(panel, 7.0f, 1.1f);
-    g.setColour(colours["Text Colour"].withAlpha(0.07f));
+    const auto displayTextColour =
+        getPanelTextColour(colours["Field Background"].darker(0.20f).interpolatedWith(accent, 0.06f), 1.0f);
+    g.setColour(displayTextColour.withAlpha(0.07f));
     g.drawLine(panel.getX() + 8.0f, panel.getY() + 1.0f, panel.getRight() - 8.0f, panel.getY() + 1.0f);
 
     g.setFont(fonts.getMonoDisplayFont(20.0f));
@@ -567,7 +578,8 @@ void ToneGeneratorControl::drawSectionLabel(Graphics& g, Rectangle<float> bounds
     g.drawRoundedRectangle(label, 5.0f, 0.7f);
 
     g.setFont(fonts.getBadgeFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.74f));
+    const auto labelSurface = colours["Window Background"].darker(0.35f).interpolatedWith(accent, 0.16f);
+    g.setColour(getPanelTextColour(labelSurface, 0.78f));
     g.drawText(text, label.reduced(6.0f, 0.0f), Justification::centredLeft, true);
 }
 
@@ -583,14 +595,15 @@ void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, 
     g.setColour(accent.withAlpha(0.13f));
     g.fillEllipse(knob.expanded(5.0f));
 
-    ColourGradient body(colours["Text Colour"].withAlpha(0.17f), knob.getX(), knob.getY(),
+    const auto knobSurface = colours["Window Background"].darker(0.35f).interpolatedWith(accent, 0.28f);
+    ColourGradient body(getPanelTextColour(knobSurface, 0.17f), knob.getX(), knob.getY(),
                         colours["Window Background"].darker(0.35f).withAlpha(0.48f), knob.getRight(),
                         knob.getBottom(), false);
     body.addColour(0.45, accent.darker(0.62f).withAlpha(0.68f));
     g.setGradientFill(body);
     g.fillEllipse(knob);
 
-    g.setColour(colours["Text Colour"].withAlpha(0.18f));
+    g.setColour(getPanelTextColour(knobSurface, 0.18f));
     g.drawEllipse(knob.reduced(1.0f), 1.0f);
     g.setColour(accent.withAlpha(0.50f));
     g.drawEllipse(knob, 1.2f);
@@ -608,7 +621,7 @@ void ToneGeneratorControl::drawOutputKnob(Graphics& g, Rectangle<float> bounds, 
     pointer.startNewSubPath(centre.x, centre.y);
     pointer.lineTo(centre.x + std::cos(valueAngle) * (radius - 7.0f),
                    centre.y + std::sin(valueAngle) * (radius - 7.0f));
-    g.setColour(colours["Text Colour"].withAlpha(0.88f));
+    g.setColour(getPanelTextColour(knobSurface, 0.88f));
     g.strokePath(pointer, PathStrokeType(1.7f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
@@ -618,13 +631,14 @@ void ToneGeneratorControl::drawValueChip(Graphics& g, Rectangle<float> bounds, c
     auto& fonts = FontManager::getInstance();
     auto chip = bounds.reduced(0.5f);
 
-    ColourGradient fill(colours["Window Background"].darker(0.35f).withAlpha(0.24f), chip.getX(), chip.getY(),
+    const auto chipSurface = colours["Window Background"].darker(0.35f).interpolatedWith(accent, 0.20f);
+    ColourGradient fill(chipSurface.withAlpha(0.24f), chip.getX(), chip.getY(),
                         accent.darker(0.60f).withAlpha(0.32f), chip.getX(), chip.getBottom(), false);
     g.setGradientFill(fill);
     g.fillRoundedRectangle(chip, 5.0f);
     g.setColour(accent.withAlpha(0.54f));
     g.drawRoundedRectangle(chip, 5.0f, 0.9f);
-    g.setColour(colours["Text Colour"].withAlpha(0.88f));
+    g.setColour(getPanelTextColour(chipSurface, 0.88f));
     g.setFont(fonts.getMonoDisplayFont(10.6f));
     g.drawText(text, chip.reduced(5.0f, 0.0f), Justification::centred, true);
 }
@@ -638,7 +652,8 @@ void ToneGeneratorControl::drawSliderLane(Graphics& g, Rectangle<float> bounds, 
     auto rail = bounds.reduced(1.0f, 3.0f);
 
     g.setFont(fonts.getBadgeFont());
-    g.setColour(colours["Text Colour"].withAlpha(0.56f));
+    const auto laneSurface = colours["Plugin Background"].interpolatedWith(accent, 0.08f);
+    g.setColour(getPanelTextColour(laneSurface, 0.62f));
     g.drawText(label, labelArea, Justification::centredLeft);
 
     ColourGradient bed(colours["Window Background"].darker(0.35f).withAlpha(0.34f), rail.getX(), rail.getY(),

@@ -46,6 +46,7 @@ class TunerControl : public Component, private Timer, public Button::Listener
     void drawNoteGlyph(Graphics& g, Rectangle<float> bounds, const String& noteName, Colour noteColour);
     void drawNeedleArcBackdrop(Graphics& g, Point<float> centre, float radius);
     void drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds);
+    void drawBypassPill(Graphics& g, Rectangle<float> bounds);
     void drawCoarseDeviationStrip(Graphics& g, Rectangle<float> bounds);
     void drawStatusBadge(Graphics& g, Rectangle<float> bounds);
 

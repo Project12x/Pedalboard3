@@ -581,15 +581,16 @@ void NotesControl::refreshWrappedTextLayout()
 
 void NotesControl::renderMarkdown(const String& markdown)
 {
-    if (!markdown.isNotEmpty())
-    {
-        renderedText = AttributedString();
-        return;
-    }
-
     renderedText = AttributedString();
     renderedText.setJustification(Justification::topLeft);
     renderedText.setWordWrap(AttributedString::byChar);
+
+    if (!markdown.isNotEmpty())
+    {
+        renderedText.append(kNotesEmptyHint, FontManager::getInstance().getBodyFont().withHeight(13.0f),
+                            noteInkColour().withAlpha(0.55f));
+        return;
+    }
 
     MarkdownRenderer::RenderContext ctx(renderedText);
 
