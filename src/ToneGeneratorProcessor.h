@@ -53,7 +53,7 @@ class ToneGeneratorProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(320, 190); }
+    Point<int> getSize() override { return Point<int>(340, 220); }
     PinLayout getOutputPinLayout() const override;
 
     void updateEditorBounds(const Rectangle<int>& bounds);

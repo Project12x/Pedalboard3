@@ -40,6 +40,7 @@ class ToneGeneratorControl : public Component, private Timer, public Button::Lis
     void updateDisplay();
     void syncButtonStates();
     void styleButtonChrome(TextButton& button, Colour accent, bool active);
+    void styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth);
     void drawChromeShell(Graphics& g, Rectangle<float> bounds);
     void drawDisplayPanel(Graphics& g, Rectangle<float> bounds);
     void drawWaveformGlyph(Graphics& g, Rectangle<float> bounds);

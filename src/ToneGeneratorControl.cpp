@@ -55,8 +55,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     frequencySlider->setSkewFactorFromMidPoint(440.0);
     frequencySlider->setValue(processor->getFrequency(), dontSendNotification);
     frequencySlider->addListener(this);
-    frequencySlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    frequencySlider->setAlpha(0.01f);
+    frequencySlider->setTextBoxStyle(Slider::TextBoxRight, false, 68, 18);
+    styleEditableSlider(*frequencySlider, Colour(0xFF39D3E6), " Hz", 68);
     addAndMakeVisible(frequencySlider.get());
 
     // Detune slider
@@ -64,8 +64,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     detuneSlider->setRange(-100.0, 100.0, 0.1);
     detuneSlider->setValue(processor->getDetuneCents(), dontSendNotification);
     detuneSlider->addListener(this);
-    detuneSlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    detuneSlider->setAlpha(0.01f);
+    detuneSlider->setTextBoxStyle(Slider::TextBoxRight, false, 54, 18);
+    styleEditableSlider(*detuneSlider, colours["Warning Colour"], String::fromUTF8(" \xC2\xA2"), 54);
     addAndMakeVisible(detuneSlider.get());
 
     // Detune preset buttons (boundary testing)
@@ -118,8 +118,8 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     amplitudeSlider->setRange(0.0, 1.0, 0.01);
     amplitudeSlider->setValue(processor->getAmplitude(), dontSendNotification);
     amplitudeSlider->addListener(this);
-    amplitudeSlider->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    amplitudeSlider->setAlpha(0.01f);
+    amplitudeSlider->setTextBoxStyle(Slider::TextBoxRight, false, 46, 18);
+    styleEditableSlider(*amplitudeSlider, colours["Success Colour"], {}, 46);
     addAndMakeVisible(amplitudeSlider.get());
 
     // Play button
@@ -134,7 +134,7 @@ ToneGeneratorControl::ToneGeneratorControl(ToneGeneratorProcessor* processor) : 
     // Update display at 30fps
     startTimerHz(30);
 
-    setSize(320, 190);
+    setSize(340, 220);
 }
 
 ToneGeneratorControl::~ToneGeneratorControl()
@@ -264,9 +264,6 @@ void ToneGeneratorControl::paint(Graphics& g)
     drawSliderLane(g, detuneRail.toFloat(), "FINE", detuneNorm, warning);
     drawSliderLane(g, amplitudeRail.toFloat(), "LVL", jlimit(0.0f, 1.0f, amplitude), success);
 
-    drawValueChip(g, detuneChipArea.toFloat(), String(detune, 1) + String::fromUTF8(" \xC2\xA2"), warning);
-    drawValueChip(g, amplitudeChipArea.toFloat(), String(static_cast<int>(std::round(amplitude * 100.0f))) + "%", success);
-
     if (toneProcessor != nullptr && toneProcessor->isPlaying())
     {
         auto led = headerArea.toFloat().removeFromLeft(18.0f).reduced(2.0f).withSizeKeepingCentre(9.0f, 9.0f);
@@ -285,58 +282,60 @@ void ToneGeneratorControl::resized()
     headerArea = bounds.removeFromTop(20);
     bounds.removeFromTop(4);
 
-    displayPanel = bounds.removeFromTop(54);
-    auto displayInner = displayPanel.reduced(8, 7);
-    waveformGlyphArea = displayInner.removeFromRight(70);
-    displayInner.removeFromRight(8);
+    displayPanel = bounds.removeFromTop(60);
+    auto displayInner = displayPanel.reduced(10, 8);
+    waveformGlyphArea = displayInner.removeFromRight(76);
+    displayInner.removeFromRight(10);
     frequencyChipArea = displayInner.removeFromTop(24);
     noteChipArea = displayInner.removeFromTop(18).withWidth(62);
 
-    bounds.removeFromTop(5);
-    pitchPanel = bounds.removeFromTop(38);
+    bounds.removeFromTop(7);
+    pitchPanel = bounds.removeFromTop(48);
 
-    auto pitchInner = pitchPanel.reduced(8, 5);
-    auto freqRow = pitchInner.removeFromTop(13);
+    auto pitchInner = pitchPanel.reduced(10, 7);
+    auto freqRow = pitchInner.removeFromTop(18);
     frequencyChipArea = frequencyChipArea.reduced(0, 1);
-    frequencyRail = freqRow.withTrimmedLeft(35);
-    frequencySlider->setBounds(frequencyRail.expanded(7, 6));
+    auto frequencyControl = freqRow.withTrimmedLeft(35);
+    frequencyRail = frequencyControl.withTrimmedRight(76).reduced(0, 4);
+    frequencySlider->setBounds(frequencyControl.expanded(7, 1));
 
     pitchInner.removeFromTop(4);
-    auto detuneRow = pitchInner.removeFromTop(13);
-    auto presetArea = detuneRow.removeFromRight(112);
-    detuneChipArea = detuneRow.removeFromRight(50).reduced(0, -2);
-    detuneRail = detuneRow.withTrimmedLeft(35);
-    detuneSlider->setBounds(detuneRail.expanded(7, 6));
+    auto detuneRow = pitchInner.removeFromTop(18);
+    auto presetArea = detuneRow.removeFromRight(114);
+    auto detuneControl = detuneRow.withTrimmedLeft(35);
+    detuneChipArea = detuneControl.removeFromRight(60);
+    detuneRail = detuneControl.reduced(0, 4);
+    detuneSlider->setBounds(detuneRow.withTrimmedLeft(35).expanded(7, 1));
 
     int btnW = 26;
-    detune1Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    detune1Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
     presetArea.removeFromLeft(2);
-    detune5Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    detune5Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
     presetArea.removeFromLeft(2);
-    detune50Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    detune50Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
     presetArea.removeFromLeft(2);
-    detune99Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, -2));
+    detune99Btn->setBounds(presetArea.removeFromLeft(btnW).reduced(0, 1));
 
-    bounds.removeFromTop(5);
-    waveformPanel = bounds.removeFromTop(22);
-    auto waveformButtons = waveformPanel.reduced(8, 2);
+    bounds.removeFromTop(7);
+    waveformPanel = bounds.removeFromTop(26);
+    auto waveformButtons = waveformPanel.reduced(10, 3);
     const int wfBtnW = waveformButtons.getWidth() / 4;
     sineBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
     sawBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
     squareBtn->setBounds(waveformButtons.removeFromLeft(wfBtnW).reduced(1, 0));
     noiseBtn->setBounds(waveformButtons.reduced(1, 0));
 
-    bounds.removeFromTop(4);
-    bottomPanel = bounds.removeFromTop(26);
-    auto bottomInner = bottomPanel.reduced(8, 4);
-    auto levelArea = bottomInner.removeFromLeft(118);
-    amplitudeChipArea = levelArea.removeFromRight(38).reduced(0, -1);
-    amplitudeRail = levelArea.withTrimmedLeft(30).reduced(0, 2);
-    amplitudeSlider->setBounds(amplitudeRail.expanded(7, 6));
+    bounds.removeFromTop(6);
+    bottomPanel = bounds.removeFromTop(32);
+    auto bottomInner = bottomPanel.reduced(10, 5);
+    auto levelArea = bottomInner.removeFromLeft(124);
+    amplitudeChipArea = levelArea.removeFromRight(52);
+    amplitudeRail = levelArea.withTrimmedLeft(30).reduced(0, 5);
+    amplitudeSlider->setBounds(levelArea.withTrimmedLeft(30).expanded(7, 1));
 
-    bottomInner.removeFromLeft(7);
+    bottomInner.removeFromLeft(9);
     modePanel = bottomInner;
-    const int modeBtnW = 43;
+    const int modeBtnW = 42;
     staticBtn->setBounds(modePanel.removeFromLeft(modeBtnW).reduced(1, 0));
     modePanel.removeFromLeft(2);
     sweepBtn->setBounds(modePanel.removeFromLeft(modeBtnW).reduced(1, 0));
@@ -402,6 +401,21 @@ void ToneGeneratorControl::styleButtonChrome(TextButton& button, Colour accent, 
     button.setColour(TextButton::buttonOnColourId, accent.darker(0.35f));
     button.setColour(TextButton::textColourOffId, colours["Text Colour"].withAlpha(active ? 0.98f : 0.68f));
     button.setColour(TextButton::textColourOnId, Colours::white.withAlpha(0.96f));
+}
+
+void ToneGeneratorControl::styleEditableSlider(Slider& slider, Colour accent, const String& suffix, int textBoxWidth)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    slider.setTextBoxStyle(Slider::TextBoxRight, false, textBoxWidth, 18);
+    slider.setTextValueSuffix(suffix);
+    slider.setAlpha(1.0f);
+    slider.setColour(Slider::backgroundColourId, Colours::transparentBlack);
+    slider.setColour(Slider::trackColourId, Colours::transparentBlack);
+    slider.setColour(Slider::thumbColourId, Colours::transparentBlack);
+    slider.setColour(Slider::textBoxTextColourId, colours["Text Colour"].withAlpha(0.90f));
+    slider.setColour(Slider::textBoxBackgroundColourId, colours["Field Background"].darker(0.22f).withAlpha(0.80f));
+    slider.setColour(Slider::textBoxOutlineColourId, accent.withAlpha(0.48f));
+    slider.setColour(Slider::textBoxHighlightColourId, accent.withAlpha(0.35f));
 }
 
 void ToneGeneratorControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)
