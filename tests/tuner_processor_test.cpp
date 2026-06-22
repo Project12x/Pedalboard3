@@ -47,6 +47,83 @@ bool waitForDetectedPitch(TunerProcessor& tuner, int attempts = 200)
 
     return tuner.isPitchDetected();
 }
+
+bool waitForCurrentString(TunerProcessor& tuner, int stringIndex, int attempts = 200)
+{
+    for (int attempt = 0; attempt < attempts; ++attempt)
+    {
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex)
+            return true;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    return tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex;
+}
+
+bool driveSineUntilCurrentString(TunerProcessor& tuner,
+                                 AudioSampleBuffer& buffer,
+                                 MidiBuffer& midi,
+                                 double& phase,
+                                 double sampleRate,
+                                 double frequency,
+                                 int stringIndex,
+                                 int maxBlocks = 220)
+{
+    for (int block = 0; block < maxBlocks; ++block)
+    {
+        fillSineBlock(buffer, phase, sampleRate, frequency);
+        tuner.processBlock(buffer, midi);
+
+        if ((block % 4) == 3)
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex)
+            return true;
+    }
+
+    return waitForCurrentString(tuner, stringIndex);
+}
+
+bool driveSineUntilCurrentStringCentsAbove(TunerProcessor& tuner,
+                                           AudioSampleBuffer& buffer,
+                                           MidiBuffer& midi,
+                                           double& phase,
+                                           double sampleRate,
+                                           double frequency,
+                                           int stringIndex,
+                                           float minCents,
+                                           int maxBlocks = 220)
+{
+    for (int block = 0; block < maxBlocks; ++block)
+    {
+        fillSineBlock(buffer, phase, sampleRate, frequency);
+        tuner.processBlock(buffer, midi);
+
+        if ((block % 4) == 3)
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+            tuner.getCurrentGuitarStringCents() > minCents)
+        {
+            return true;
+        }
+    }
+
+    for (int attempt = 0; attempt < 200; ++attempt)
+    {
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+            tuner.getCurrentGuitarStringCents() > minCents)
+        {
+            return true;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    return tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+           tuner.getCurrentGuitarStringCents() > minCents;
+}
 } // namespace
 
 TEST_CASE("TunerProcessor publishes background analysis while preserving pass-through and mute",
@@ -155,4 +232,55 @@ TEST_CASE("TunerProcessor pitch drift phase reports sharp and flat direction",
     CHECK(measureDriftPhase(445.0) > 0.025f);
     CHECK(measureDriftPhase(445.0) < 0.25f);
     CHECK(measureDriftPhase(435.0) > 0.75f);
+}
+
+TEST_CASE("TunerProcessor tracks standard guitar strings as an octave-specific serial checklist",
+          "[tuner][processor][strings]")
+{
+    constexpr double sampleRate = 48000.0;
+    constexpr int blockSize = 128;
+    constexpr double lowEHz = 82.4069;
+    constexpr double a2Hz = 110.0;
+    constexpr double highEHz = 329.6276;
+
+    TunerProcessor tuner;
+    tuner.setResponseMode(TunerProcessor::ResponseMode::Fast);
+    tuner.prepareToPlay(sampleRate, blockSize);
+
+    AudioSampleBuffer buffer(1, blockSize);
+    MidiBuffer midi;
+    double phase = 0.0;
+
+    CHECK(tuner.getGuitarStringInTuneMask() == 0);
+    CHECK(tuner.getCurrentGuitarStringIndex() == -1);
+
+    REQUIRE(driveSineUntilCurrentString(tuner, buffer, midi, phase, sampleRate, highEHz, 5));
+    CHECK(tuner.getCurrentGuitarStringIndex() == 5);
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 5)) != 0);
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 0)) == 0);
+
+    phase = 0.0;
+    REQUIRE(driveSineUntilCurrentString(tuner, buffer, midi, phase, sampleRate, lowEHz, 0));
+    CHECK(tuner.getCurrentGuitarStringIndex() == 0);
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 0)) != 0);
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 5)) != 0);
+
+    phase = 0.0;
+    REQUIRE(driveSineUntilCurrentString(tuner, buffer, midi, phase, sampleRate, a2Hz, 1));
+    CHECK(tuner.getCurrentGuitarStringIndex() == 1);
+    CHECK(tuner.getCurrentGuitarStringCents() == Catch::Approx(0.0f).margin(4.0f));
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 1)) != 0);
+
+    phase = 0.0;
+    const double sharpA2 = a2Hz * std::pow(2.0, 18.0 / 1200.0);
+    REQUIRE(driveSineUntilCurrentStringCentsAbove(tuner, buffer, midi, phase, sampleRate, sharpA2, 1, 12.0f));
+    CHECK(tuner.getCurrentGuitarStringIndex() == 1);
+    CHECK(tuner.getCurrentGuitarStringCents() > 12.0f);
+    CHECK((tuner.getGuitarStringInTuneMask() & (1 << 1)) == 0);
+
+    tuner.resetGuitarStringChecklist();
+    CHECK(tuner.getGuitarStringInTuneMask() == 0);
+    CHECK(tuner.getCurrentGuitarStringIndex() == -1);
+
+    tuner.releaseResources();
 }

@@ -275,6 +275,49 @@ Results:
 
 Commit target: `feat: add reusable meter ballistics source`
 
+## Task 6A: Six-String Checklist Feedback
+
+Files:
+
+- `src/TunerProcessor.h`
+- `src/TunerProcessor.cpp`
+- `src/TunerControl.cpp`
+- `tests/tuner_processor_test.cpp`
+- `tests/ui_regression_harness_test.cpp`
+
+Steps:
+
+- [x] Treat the six-string view as serial visual feedback for standard guitar tuning, not polyphonic tuning.
+- [x] Track low E, A, D, G, B, and high E as octave-specific string slots so E2 and E4 cannot both light from root-letter matching.
+- [x] Keep the string checklist outside the audio callback by updating atomics from the analyzer result path.
+- [x] Preserve checked-string state across short signal drops until the checklist is explicitly reset.
+- [x] Add source guards preventing a regression back to `strings[i].startsWith(root)` string matching.
+- [x] Add a compact all-strings-ready status in the direct-painted string view.
+
+Implementation note:
+
+- The processor now publishes `guitarStringInTuneMask`, `currentGuitarStringIndex`, and `currentGuitarStringCents` from the background analyzer path. The UI reads those atomics and renders current/checked states directly.
+- The checklist tolerance is intentionally tighter than capture range: a note can be associated with a string while still clearing that string's ready bit if it drifts out of tune.
+
+Latest verification:
+
+```powershell
+cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1
+.\build\tests\Debug\Pedalboard3_Tests.exe "[tuner]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[ui][regression][visual][source][nodes][tuner]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
+git -c safe.directory='C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2' diff --check
+```
+
+Results:
+
+- `[tuner]`: 483 assertions in 10 test cases.
+- `[ui][regression][visual][source][nodes][tuner]`: 103 assertions in 1 test case.
+- `[rt]`: 3,288 assertions in 17 test cases.
+- `diff --check`: clean, with existing CRLF normalization warnings only.
+
+Commit target: `feat: add tuner string checklist`
+
 ## Task 7: Manual Instrument And Stage Verification
 
 Steps:

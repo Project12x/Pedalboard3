@@ -52,6 +52,10 @@ class TunerProcessor : public PedalboardProcessor
     bool isPitchDetected() const { return pitchDetected.load(); }
     float getReferenceA4Hz() const { return referenceA4Hz.load(); }
     void setReferenceA4Hz(float frequencyHz) noexcept;
+    int getGuitarStringInTuneMask() const { return guitarStringInTuneMask.load(std::memory_order_acquire); }
+    int getCurrentGuitarStringIndex() const { return currentGuitarStringIndex.load(std::memory_order_acquire); }
+    float getCurrentGuitarStringCents() const { return currentGuitarStringCents.load(std::memory_order_acquire); }
+    void resetGuitarStringChecklist() noexcept;
     ResponseMode getResponseMode() const noexcept;
     void setResponseMode(ResponseMode mode) noexcept;
 
@@ -109,6 +113,7 @@ class TunerProcessor : public PedalboardProcessor
     void applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisResult& result) noexcept;
     void clearAnalysisResult() noexcept;
     void resetResponseSmoothing() noexcept;
+    void updateGuitarStringChecklist(float frequencyHz, float refA4Hz) noexcept;
 
     // Update display drift phase based on frequency error.
     void updateDriftPhase(float frequency, int midiNote, float refA4Hz) noexcept;
@@ -136,6 +141,9 @@ class TunerProcessor : public PedalboardProcessor
     std::atomic<bool> pitchDetected{false};
     std::atomic<float> driftPhase{0.0f};
     std::atomic<float> referenceA4Hz{440.0f};
+    std::atomic<int> guitarStringInTuneMask{0};
+    std::atomic<int> currentGuitarStringIndex{-1};
+    std::atomic<float> currentGuitarStringCents{0.0f};
     std::atomic<int> responseMode{static_cast<int>(ResponseMode::Stable)};
 
     // Processing state

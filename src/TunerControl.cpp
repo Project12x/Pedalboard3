@@ -350,10 +350,14 @@ void TunerControl::drawSixStringDisplay(Graphics& g, Rectangle<float> bounds)
     const StringArray strings{"E2", "A2", "D3", "G3", "B3", "E4"};
 
     const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected();
-    const auto detectedName = detected ? getNoteName(tunerProcessor->getDetectedNote()) : String();
-    const auto root = detectedName.retainCharacters("ABCDEFG");
-    const float cents = detected ? displayedCents : 0.0f;
-    const auto activeColour = detected ? getTuningColour(cents) : colours["Text Colour"].withAlpha(0.28f);
+    const int tunedMask = tunerProcessor != nullptr ? tunerProcessor->getGuitarStringInTuneMask() : 0;
+    const int currentString = detected && tunerProcessor != nullptr ? tunerProcessor->getCurrentGuitarStringIndex() : -1;
+    const float stringCents = detected && tunerProcessor != nullptr ? tunerProcessor->getCurrentGuitarStringCents() : 0.0f;
+    const bool allStringsReady = (tunedMask & 0x3f) == 0x3f;
+    int readyCount = 0;
+    for (int i = 0; i < 6; ++i)
+        if ((tunedMask & (1 << i)) != 0)
+            ++readyCount;
 
     auto panel = bounds.reduced(2.0f, 0.0f);
     g.setColour(colours["Field Background"].withAlpha(0.74f));
@@ -362,39 +366,65 @@ void TunerControl::drawSixStringDisplay(Graphics& g, Rectangle<float> bounds)
     g.drawRoundedRectangle(panel.reduced(0.5f), 8.0f, 0.8f);
 
     auto row = panel.reduced(8.0f, 6.0f);
+    auto statusRow = row.removeFromTop(16.0f);
+    row.removeFromTop(3.0f);
+    const auto statusAccent = allStringsReady ? colours["Tuner Active Colour"] : colours["Plugin Border"];
+    const auto statusText = allStringsReady ? String("ALL STRINGS READY") : String(readyCount) + "/6 READY";
+    auto statusPill = statusRow.withSizeKeepingCentre(jmin(132.0f, statusRow.getWidth()), statusRow.getHeight());
+    g.setColour(colours["Field Background"].interpolatedWith(statusAccent, allStringsReady ? 0.18f : 0.08f));
+    g.fillRoundedRectangle(statusPill, 6.0f);
+    g.setColour(statusAccent.withAlpha(allStringsReady ? 0.58f : 0.34f));
+    g.drawRoundedRectangle(statusPill.reduced(0.5f), 6.0f, 0.8f);
+    g.setColour(colours["Text Colour"].withAlpha(allStringsReady ? 0.88f : 0.58f));
+    g.setFont(fonts.getBadgeFont().withHeight(9.2f));
+    g.drawText(statusText, statusPill.reduced(5.0f, 0.0f), Justification::centred, true);
+
     const float slotW = row.getWidth() / 6.0f;
     for (int i = 0; i < 6; ++i)
     {
         auto slot = row.removeFromLeft(slotW).reduced(2.0f, 0.0f);
-        const bool likelyActive = detected && strings[i].startsWith(root);
-        const auto colour = likelyActive ? activeColour : colours["Text Colour"].withAlpha(0.30f);
+        const bool isCurrentString = currentString == i;
+        const bool isReadyString = (tunedMask & (1 << i)) != 0;
+        const auto currentColour = getTuningColour(stringCents);
+        const auto colour = isCurrentString ? currentColour
+                                            : isReadyString ? colours["Tuner Active Colour"]
+                                                            : colours["Text Colour"].withAlpha(0.30f);
 
         auto track = Rectangle<float>(16.0f, jmin(64.0f, slot.getHeight() - 17.0f))
                          .withCentre({slot.getCentreX(), slot.getCentreY() - 4.0f});
-        g.setColour(colours["Field Background"].interpolatedWith(colour, likelyActive ? 0.12f : 0.04f));
+        g.setColour(colours["Field Background"].interpolatedWith(colour, isCurrentString ? 0.14f : isReadyString ? 0.10f : 0.04f));
         g.fillRoundedRectangle(track, 5.0f);
-        g.setColour(colours["Plugin Border"].interpolatedWith(colour, likelyActive ? 0.30f : 0.08f).withAlpha(0.70f));
+        g.setColour(colours["Plugin Border"].interpolatedWith(colour, isCurrentString ? 0.36f : isReadyString ? 0.24f : 0.08f).withAlpha(0.70f));
         g.drawRoundedRectangle(track.reduced(0.5f), 5.0f, 0.8f);
 
         auto zone = Rectangle<float>(track.getX(), track.getCentreY() - 6.5f, track.getWidth(), 13.0f);
-        g.setColour((likelyActive ? activeColour : colours["Text Colour"]).withAlpha(likelyActive ? 0.22f : 0.06f));
+        g.setColour(colour.withAlpha(isCurrentString ? 0.24f : isReadyString ? 0.18f : 0.06f));
         g.fillRoundedRectangle(zone, 2.5f);
-        g.setColour((likelyActive ? activeColour : colours["Text Colour"]).withAlpha(likelyActive ? 0.45f : 0.13f));
+        g.setColour(colour.withAlpha(isCurrentString ? 0.48f : isReadyString ? 0.32f : 0.13f));
         g.drawLine(zone.getX() + 1.0f, zone.getY(), zone.getRight() - 1.0f, zone.getY(), 0.7f);
         g.drawLine(zone.getX() + 1.0f, zone.getBottom(), zone.getRight() - 1.0f, zone.getBottom(), 0.7f);
 
-        if (likelyActive)
+        if (isReadyString && !isCurrentString)
         {
-            const float y = jmap(jlimit(-50.0f, 50.0f, cents), -50.0f, 50.0f, track.getBottom() - 4.0f,
+            auto readyDot = Rectangle<float>(8.0f, 8.0f).withCentre(track.getCentre());
+            g.setColour(colour.withAlpha(0.18f));
+            g.fillRoundedRectangle(readyDot.expanded(3.0f), 5.0f);
+            g.setColour(colour.withAlpha(0.82f));
+            g.fillRoundedRectangle(readyDot, 3.5f);
+        }
+
+        if (isCurrentString)
+        {
+            const float y = jmap(jlimit(-50.0f, 50.0f, stringCents), -50.0f, 50.0f, track.getBottom() - 4.0f,
                                  track.getY() + 4.0f);
             auto dot = Rectangle<float>(12.0f, 6.0f).withCentre({track.getCentreX(), y});
-            g.setColour(activeColour.withAlpha(0.24f));
+            g.setColour(currentColour.withAlpha(0.24f));
             g.fillRoundedRectangle(dot.expanded(4.0f, 3.0f), 5.0f);
-            g.setColour(activeColour);
+            g.setColour(currentColour);
             g.fillRoundedRectangle(dot, 3.0f);
         }
 
-        g.setColour(colour.withAlpha(likelyActive ? 0.90f : 0.48f));
+        g.setColour(colour.withAlpha(isCurrentString ? 0.92f : isReadyString ? 0.78f : 0.48f));
         g.setFont(fonts.getMonoFont(9.5f));
         g.drawText(strings[i], slot.removeFromBottom(14.0f), Justification::centred, true);
     }

@@ -27,6 +27,15 @@ constexpr int kStableAcquireWindows = 2;
 constexpr int kFastAcquireWindows = 1;
 constexpr int kStableHoldWindows = 6;
 constexpr int kFastHoldWindows = 0;
+constexpr std::array<int, 6> kStandardGuitarStringMidiNotes{{40, 45, 50, 55, 59, 64}};
+constexpr float kGuitarStringInTuneCents = 4.0f;
+constexpr float kGuitarStringCaptureRangeCents = 250.0f;
+
+struct GuitarStringMatch
+{
+    int index = -1;
+    float cents = 0.0f;
+};
 
 float sanitizeReferenceA4Hz(float frequencyHz) noexcept
 {
@@ -34,6 +43,38 @@ float sanitizeReferenceA4Hz(float frequencyHz) noexcept
         return kDefaultReferenceA4Hz;
 
     return std::clamp(frequencyHz, kMinReferenceA4Hz, kMaxReferenceA4Hz);
+}
+
+float frequencyForMidiNote(int midiNote, float refA4Hz) noexcept
+{
+    return refA4Hz * std::pow(2.0f, static_cast<float>(midiNote - 69) / 12.0f);
+}
+
+GuitarStringMatch findClosestGuitarString(float frequencyHz, float refA4Hz) noexcept
+{
+    if (!std::isfinite(frequencyHz) || !std::isfinite(refA4Hz) || frequencyHz <= 0.0f || refA4Hz <= 0.0f)
+        return {};
+
+    GuitarStringMatch bestMatch;
+    float bestAbsCents = kGuitarStringCaptureRangeCents;
+
+    for (int i = 0; i < static_cast<int>(kStandardGuitarStringMidiNotes.size()); ++i)
+    {
+        const auto targetHz = frequencyForMidiNote(kStandardGuitarStringMidiNotes[static_cast<size_t>(i)], refA4Hz);
+        if (!std::isfinite(targetHz) || targetHz <= 0.0f)
+            continue;
+
+        const auto cents = 1200.0f * std::log2(frequencyHz / targetHz);
+        const auto absCents = std::abs(cents);
+        if (absCents <= bestAbsCents)
+        {
+            bestAbsCents = absCents;
+            bestMatch.index = i;
+            bestMatch.cents = cents;
+        }
+    }
+
+    return bestMatch;
 }
 }
 
@@ -70,6 +111,7 @@ void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPer
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
     driftPhase.store(0.0f, std::memory_order_release);
+    resetGuitarStringChecklist();
     resetResponseSmoothing();
 
     backgroundAnalyzer.prepare(newSampleRate, estimatedSamplesPerBlock);
@@ -220,6 +262,7 @@ void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisRe
         centsDeviation.store(result.cents, std::memory_order_release);
         pitchDetected.store(true, std::memory_order_release);
         updateDriftPhase(result.frequencyHz, result.midiNote, result.referenceA4Hz);
+        updateGuitarStringChecklist(result.frequencyHz, result.referenceA4Hz);
         return;
     }
 
@@ -241,6 +284,8 @@ void TunerProcessor::clearAnalysisResult() noexcept
     detectedFrequency.store(0.0f, std::memory_order_release);
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
+    currentGuitarStringIndex.store(-1, std::memory_order_release);
+    currentGuitarStringCents.store(0.0f, std::memory_order_release);
 }
 
 void TunerProcessor::resetResponseSmoothing() noexcept
@@ -248,6 +293,37 @@ void TunerProcessor::resetResponseSmoothing() noexcept
     candidateNote = -1;
     candidateHitCount = 0;
     heldMissCount = 0;
+}
+
+//==============================================================================
+void TunerProcessor::resetGuitarStringChecklist() noexcept
+{
+    guitarStringInTuneMask.store(0, std::memory_order_release);
+    currentGuitarStringIndex.store(-1, std::memory_order_release);
+    currentGuitarStringCents.store(0.0f, std::memory_order_release);
+}
+
+void TunerProcessor::updateGuitarStringChecklist(float frequencyHz, float refA4Hz) noexcept
+{
+    const auto match = findClosestGuitarString(frequencyHz, refA4Hz);
+    if (match.index < 0)
+    {
+        currentGuitarStringIndex.store(-1, std::memory_order_release);
+        currentGuitarStringCents.store(0.0f, std::memory_order_release);
+        return;
+    }
+
+    currentGuitarStringIndex.store(match.index, std::memory_order_release);
+    currentGuitarStringCents.store(match.cents, std::memory_order_release);
+
+    const int stringBit = 1 << match.index;
+    auto mask = guitarStringInTuneMask.load(std::memory_order_acquire);
+    if (std::abs(match.cents) <= kGuitarStringInTuneCents)
+        mask |= stringBit;
+    else
+        mask &= ~stringBit;
+
+    guitarStringInTuneMask.store(mask, std::memory_order_release);
 }
 
 //==============================================================================
