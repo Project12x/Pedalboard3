@@ -142,3 +142,25 @@ Steps:
 6. Toggle bypass and mappings from the node footer and confirm the direct-painted control surface remains readable.
 7. Check dark, light/daylight, and synthwave themes.
 8. Repeat at 75%, 100%, 150%, and 200% Pedalboard UI Scale, confirming the control text and pills do not clip.
+
+## Tuner And Meter Instrument Smoke
+
+Status: planned. This should run after the tuner/meter upgrade plan starts landing code.
+
+Reference plan:
+
+- `docs\superpowers\plans\2026-06-22-tuner-meter-upgrade.md`
+
+Steps:
+
+1. Launch Pedalboard3 with a real guitar/audio-interface input and audible output.
+2. Add a Tuner node and also open Stage/global tuner if available.
+3. Compare node tuner and Stage/global tuner on low E, A, D, G, B, and high E.
+4. Test quiet signal near the no-signal threshold and confirm stale notes do not flicker as valid detections.
+5. Test deliberate sharp/flat offsets against a trusted external tuner and record rough cent agreement.
+6. Confirm `Needle`, `Strobe`, and string views are labeled truthfully for the backend currently implemented.
+7. Confirm mute-output still silences the tuner path when expected.
+8. Confirm Stage View remains responsive while tuner is active.
+9. Confirm Audio I/O node meters remain live while tuning.
+10. Confirm Soundcheck/device meters distinguish silence, normal signal, and clipping once the meter upgrade lands.
+11. Repeat core visual checks at 75%, 100%, and 150% Pedalboard UI Scale.

@@ -2019,10 +2019,16 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
           std::string::npos);
     CHECK(tunerSource->find("strobeModeButton = std::make_unique<TextButton>(\"STROBE\");") !=
           std::string::npos);
-    CHECK(tunerSource->find("sixStringModeButton = std::make_unique<TextButton>(\"POLY\");") !=
+    CHECK(tunerSource->find("sixStringModeButton = std::make_unique<TextButton>(\"STRINGS\");") !=
           std::string::npos);
-    CHECK(tunerSource->find("sixStringModeButton->setTooltip(\"Six-string guitar tuner view\");") !=
+    CHECK(tunerSource->find("sixStringModeButton->setTooltip(\"Six-string guitar reference view\");") !=
           std::string::npos);
+    CHECK(tunerSource->find("\"POLY\"") == std::string::npos);
+    CHECK(tunerHeader->find("0.1 cent") == std::string::npos);
+    CHECK(tunerProcessorHeader->find("0.1 cent") == std::string::npos);
+    CHECK(tunerHeader->find("Turbo Tuner") == std::string::npos);
+    CHECK(tunerProcessorHeader->find("Phase-based strobe") == std::string::npos);
+    CHECK(tunerProcessorHeader->find("Pro:") == std::string::npos);
     CHECK(tunerSource->find("setSize(360, 276);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerGlassPanel(g, bounds);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerHeader(g, headerArea);") != std::string::npos);

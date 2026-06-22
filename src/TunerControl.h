@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerControl.h
-    Professional chromatic tuner with analog needle and strobe display
+    Chromatic tuner with needle, strobe-view, and string-reference displays
 
   ==============================================================================
 */
@@ -15,9 +15,10 @@ class TunerProcessor;
 
 //==============================================================================
 /**
-    Professional tuner display with two modes:
+    Tuner display with three views:
     - NEEDLE: Large analog-style needle meter
-    - STROBE: "Turbo Tuner" style strobe disc for ±0.1 cent accuracy
+    - STROBE: animated strobe-style view driven by detected pitch error
+    - SIX STRING: guitar-string reference view driven by the same monophonic detector
 */
 class TunerControl : public Component, private Timer, public Button::Listener
 {

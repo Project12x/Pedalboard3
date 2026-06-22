@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerProcessor.cpp
-    Dual-mode chromatic tuner implementation
+    Monophonic chromatic tuner implementation
 
   ==============================================================================
 */

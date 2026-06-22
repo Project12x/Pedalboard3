@@ -1,6 +1,6 @@
 # Pedalboard3 Lessons
 
-Last updated: 2026-06-20
+Last updated: 2026-06-22
 
 This document captures durable lessons from Pedalboard3's own roadmap and from source-led review of Element, Carla, Ardour, Spotify Pedalboard, Ildaeil, and `juce_clap_hosting`. It is intended to survive individual sprints and keep future implementation choices tied to observed host behavior rather than novelty.
 
@@ -108,6 +108,16 @@ Stage users need obvious controls and predictable failure modes. Pedalboard3 alr
 
 Safety systems should fail loud in the UI and silent in the speakers.
 
+## Tuner And Meter Utilities
+
+Tuner quality is not just pitch detection. Actual tuner products show that the missing layer is state: signal thresholding, confidence, note acquire/hold, stable versus fast response, reference pitch, and truthful display semantics.
+
+Pedalboard3's tuner currently has polished direct-painted UI, but its `Needle`, `Strobe`, and `POLY` surfaces all read from one monophonic YIN estimate. Until the backend grows true phase/comparator strobe behavior or polyphonic/string-separated detection, UI copy should describe display modes, not precision claims. A good first upgrade is a tested tuner analysis core and state machine behind the existing `TunerProcessor` boundary.
+
+Permissive tuner/product references should lead implementation: `Fannon/trace-tuner` for confidence/acquire/hold and response behavior, `duff2013/AudioTuner` for fixed-buffer low-level RT patterns, and `ZenTuner`/`chroma` for note model and UX lessons. GPL tuners such as `x42/tuna.lv2`, `lingot`, `fmit`, and `dsego/strobe-tuner` remain valuable behavior references for real strobe and analyzer-thread design, but should not be copied without an explicit license decision.
+
+Meter quality is also semantic, not just animated bars. Device meters, Soundcheck, and future utility nodes should distinguish peak, RMS, VU, clip, and later LUFS/true peak when those are in scope. `ff_meters` is the strongest permissive reference for audio/UI separation, while `sound_meter` is the stronger permissive reference for ballistics, scales, and peak hold.
+
 ## Testing And Verification
 
 The current test suite has useful coverage: audio-thread stress patterns, VST3 concurrent access, protection tests, patch-switch infrastructure tests, scratch recorder tests, NAM tests, and UI regression harness tests.
@@ -136,6 +146,7 @@ Reference ledger:
 - Spotify Pedalboard, `cd18ef0d9ccd972a7b7df33fbc36751d5fb29bfd`, GPLv3 source, pattern-only
 - DISTRHO Ildaeil, `af9fc9f73b1a1832da8d6dfa12f7d03c431293d6`, GPL-2.0-or-later source, pattern-only
 - `juce_clap_hosting`, `aa8a81232116ad017f9eee07a1b0a84433f61f5a`, MIT source, pattern-only
+- Tuner/meter research, recorded in `docs/superpowers/plans/2026-06-22-tuner-meter-upgrade.md`, includes permissive references for future close-port work and GPL tuner references for behavior-only study.
 
 If future work copies, ports, forks, or closely adapts any permissively reusable code, record the upstream repo, commit, license, source files, reuse mode, attribution, and change notes in the implementation plan and commit summary.
 

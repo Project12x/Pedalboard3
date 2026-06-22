@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerControl.cpp
-    Professional chromatic tuner with analog needle and strobe display
+    Chromatic tuner with needle, strobe-view, and string-reference displays
     Uses project fonts (Space Grotesk + JetBrains Mono) and drawn graphics
 
   ==============================================================================
@@ -49,9 +49,9 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     strobeModeButton->addListener(this);
     addAndMakeVisible(strobeModeButton.get());
 
-    sixStringModeButton = std::make_unique<TextButton>("POLY");
+    sixStringModeButton = std::make_unique<TextButton>("STRINGS");
     sixStringModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
-    sixStringModeButton->setTooltip("Six-string guitar tuner view");
+    sixStringModeButton->setTooltip("Six-string guitar reference view");
     sixStringModeButton->addListener(this);
     addAndMakeVisible(sixStringModeButton.get());
 

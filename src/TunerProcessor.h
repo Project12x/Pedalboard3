@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerProcessor.h
-    Dual-mode chromatic tuner: Simple (YIN) and Pro (Strobe) modes
+    Monophonic chromatic tuner with needle, strobe-view, and string-reference displays
 
   ==============================================================================
 */
@@ -16,9 +16,9 @@
 
 //==============================================================================
 /**
-    Chromatic tuner with two modes:
-    - Simple: YIN-based pitch detection (±2 cents)
-    - Pro: Phase-based strobe for ±0.1 cent accuracy
+    Chromatic tuner with YIN pitch detection and multiple display views.
+    The current backend is monophonic; strobe and string modes are visual
+    interpretations of the same detected pitch.
 */
 class TunerProcessor : public PedalboardProcessor
 {
@@ -43,7 +43,7 @@ class TunerProcessor : public PedalboardProcessor
     int getDetectedNote() const { return detectedNote.load(); }
     bool isPitchDetected() const { return pitchDetected.load(); }
 
-    /// For strobe mode: phase accumulator (0-1)
+    /// For strobe view: display phase accumulator (0-1)
     float getStrobePhase() const { return strobePhase.load(); }
 
     //==========================================================================
@@ -95,7 +95,7 @@ class TunerProcessor : public PedalboardProcessor
     // Calculate cents deviation from nearest note
     void updateNoteAndCents(float frequency);
 
-    // Update strobe phase based on frequency error
+    // Update display strobe phase based on frequency error
     void updateStrobePhase(float frequency);
 
     //==========================================================================
