@@ -16,7 +16,7 @@
 
 Included:
 
-- Make tuner capability labels honest: current `STROBE` and `POLY` views are display modes over a monophonic YIN estimate, not a true strobe backend or polyphonic tuner.
+- Make tuner capability labels honest: current `STROBE` and six-string views are display modes over a monophonic YIN estimate, not a true strobe backend or polyphonic detector.
 - Add tested pitch/tuning behavior around note acquire, note hold, silence timeout, confidence, reference pitch, and fast/stable response.
 - Decide and implement an RT-safe analyzer boundary before adding heavier detector variants.
 - Add focused algorithm tests using generated sine/noise input at multiple sample rates and buffer boundaries.
@@ -36,7 +36,7 @@ Excluded:
 - `src/TunerProcessor.cpp` runs YIN directly from `processBlock()` every `ANALYSIS_HOP = 512` samples over a 2048-sample window.
 - `src/TunerProcessor.cpp` copies the circular buffer into a stack `std::array<float, BUFFER_SIZE>` on each analysis hop, then runs an O(N^2) difference loop.
 - `src/TunerProcessor.h` and `src/TunerControl.h` describe a "Pro" phase-based strobe and `+/-0.1 cent` behavior that the backend does not currently implement.
-- `TunerControl` has `Needle`, `Strobe`, and `SixString` views. The `SixString` view maps one detected note to guitar strings; it is not polyphonic detection.
+- `TunerControl` has `Needle`, `Strobe`, and `SixString` views. The `SixString` view is for visual feedback against the six guitar string references using the detected pitch; it is not simultaneous polyphonic detection.
 - `ToneGenerator` tests cover frequency/cents math, but no tests directly exercise `TunerProcessor::detectPitchYIN()` or end-to-end tuner detection accuracy.
 - `DeviceMeterTap` already provides device-level atomic meter values for Audio I/O nodes and Soundcheck, but the current meter model is peak-with-decay rather than a reusable source with explicit peak/RMS/VU/clip semantics.
 - `VuMeterDsp.h` references a GPL VU source as inspiration; future close ports should prefer permissive references unless a GPL copy path is intentional.
@@ -105,12 +105,14 @@ Files:
 
 Steps:
 
-- [ ] Add a small JUCE-light or JUCE-free core with `prepare(sampleRate, maxBlockSize)`, `reset()`, `pushSamples()`, and `analyze()`/`pollResult()` style API.
-- [ ] Model result data as POD: frequency, midi note, cents, confidence, no-signal/unstable/stable state, and reference pitch.
-- [ ] Add generated sine tests for E2, A2, A4, C5, and boundary cents.
-- [ ] Add silence, low RMS, noise, and decaying note tests.
-- [ ] Add sample-rate coverage at 44.1 kHz, 48 kHz, and 96 kHz.
-- [ ] Add block-boundary coverage for block sizes 1, 17, 64, 511, 512, and 1024.
+- [x] Add a small JUCE-light or JUCE-free core with `prepare(sampleRate, maxBlockSize)`, `reset()`, `pushSamples()`, and `analyze()`/`pollResult()` style API.
+- [x] Model result data as POD: frequency, midi note, cents, confidence, no-signal/unstable/stable state, and reference pitch.
+- [x] Add generated sine tests for E2, A2, A4, C5, and boundary cents.
+- [x] Add silence, low RMS, noise, and decaying note tests.
+- [x] Add sample-rate coverage at 44.1 kHz, 48 kHz, and 96 kHz.
+- [x] Add block-boundary coverage for block sizes 1, 17, 64, 511, 512, and 1024.
+
+Implementation note: the portable core uses a 4096-sample analysis window. This is intentional because a 2048-sample window cannot cover low E at 96 kHz.
 
 Implementation notes:
 

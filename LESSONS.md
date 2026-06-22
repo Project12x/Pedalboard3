@@ -112,7 +112,7 @@ Safety systems should fail loud in the UI and silent in the speakers.
 
 Tuner quality is not just pitch detection. Actual tuner products show that the missing layer is state: signal thresholding, confidence, note acquire/hold, stable versus fast response, reference pitch, and truthful display semantics.
 
-Pedalboard3's tuner currently has polished direct-painted UI, but its `Needle`, `Strobe`, and `POLY` surfaces all read from one monophonic YIN estimate. Until the backend grows true phase/comparator strobe behavior or polyphonic/string-separated detection, UI copy should describe display modes, not precision claims. A good first upgrade is a tested tuner analysis core and state machine behind the existing `TunerProcessor` boundary.
+Pedalboard3's tuner currently has polished direct-painted UI, but its `Needle`, `Strobe`, and six-string visual surfaces all read from one monophonic YIN estimate. The six-string view is useful feedback against the six guitar string references, not a claim of simultaneous polyphonic pitch separation. Until the backend grows true phase/comparator strobe behavior, UI copy should describe display modes, not precision claims. A good first upgrade is a tested tuner analysis core and state machine behind the existing `TunerProcessor` boundary.
 
 Permissive tuner/product references should lead implementation: `Fannon/trace-tuner` for confidence/acquire/hold and response behavior, `duff2013/AudioTuner` for fixed-buffer low-level RT patterns, and `ZenTuner`/`chroma` for note model and UX lessons. GPL tuners such as `x42/tuna.lv2`, `lingot`, `fmit`, and `dsego/strobe-tuner` remain valuable behavior references for real strobe and analyzer-thread design, but should not be copied without an explicit license decision.
 
