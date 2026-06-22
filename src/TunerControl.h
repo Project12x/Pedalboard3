@@ -11,6 +11,8 @@
 
 #include <JuceHeader.h>
 
+#include <array>
+
 class TunerProcessor;
 
 //==============================================================================
@@ -50,6 +52,10 @@ class TunerControl : public Component, private Timer, public Button::Listener
     void drawBypassPill(Graphics& g, Rectangle<float> bounds);
     void drawCoarseDeviationStrip(Graphics& g, Rectangle<float> bounds);
     void drawStatusBadge(Graphics& g, Rectangle<float> bounds);
+    void drawSignalConfidenceStrip(Graphics& g, Rectangle<float> bounds);
+    void drawPitchTrace(Graphics& g, Rectangle<float> bounds);
+    void drawReferenceResponseRail(Graphics& g, Rectangle<float> bounds);
+    void pushPitchTraceSample();
 
     // Drawing methods - Needle mode
     void drawNeedleMeter(Graphics& g, Rectangle<float> bounds);
@@ -91,9 +97,17 @@ class TunerControl : public Component, private Timer, public Button::Listener
     float displayedCents = 0.0f;
     float needleAngle = 0.0f;    // Smoothed angle for needle
     float driftRotation = 0.0f; // For pitch-drift animation
+    float displayedConfidence = 0.0f;
 
     // Animation state
     float glowIntensity = 0.0f; // For in-tune glow effect
+
+    static constexpr int kPitchTraceSize = 80;
+    std::array<float, kPitchTraceSize> pitchTraceCents{};
+    std::array<float, kPitchTraceSize> pitchTraceConfidence{};
+    std::array<int, kPitchTraceSize> pitchTraceNote{};
+    int pitchTraceWriteIndex = 0;
+    int pitchTraceFrameCounter = 0;
 
     // Visual constants
     static constexpr float NEEDLE_SMOOTHING = 0.15f;

@@ -145,7 +145,7 @@ Steps:
 
 ## Tuner And Meter Instrument Smoke
 
-Status: planned. This should run after the tuner/meter upgrade plan starts landing code.
+Status: automated node/source/RT smoke is done for the June 22 tuner UI pass; real instrument and Stage/global verification remain planned.
 
 Reference plan:
 
@@ -158,7 +158,7 @@ Steps:
 3. Compare node tuner and Stage/global tuner on low E, A, D, G, B, and high E.
 4. Test quiet signal near the no-signal threshold and confirm stale notes do not flicker as valid detections.
 5. Test deliberate sharp/flat offsets against a trusted external tuner and record rough cent agreement.
-6. Confirm `Needle`, `Strobe`, and string views are labeled truthfully for the backend currently implemented.
+6. Confirm `Needle`, `DRIFT`, and string views are labeled truthfully for the backend currently implemented.
 7. Confirm mute-output still silences the tuner path when expected.
 8. Confirm Stage View remains responsive while tuner is active.
 9. Confirm Audio I/O node meters remain live while tuning.

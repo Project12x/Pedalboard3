@@ -32,11 +32,16 @@ class TunerModeButtonLookAndFeel final : public LookAndFeel_V4
 };
 
 TunerModeButtonLookAndFeel tunerModeButtonLookAndFeel;
+
+constexpr float kPitchTraceRangeCents = 50.0f;
+constexpr float kPitchTraceConnectBreakCents = 35.0f;
 } // namespace
 
 //==============================================================================
 TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor)
 {
+    pitchTraceNote.fill(-1);
+
     needleModeButton = std::make_unique<TextButton>("NEEDLE");
     needleModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
     needleModeButton->setTooltip("Needle tuner view");
@@ -66,7 +71,7 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     // 60 fps for smooth animation
     startTimerHz(60);
 
-    setSize(360, 276);
+    setSize(390, 320);
 }
 
 TunerControl::~TunerControl()
@@ -128,6 +133,8 @@ void TunerControl::timerCallback()
 
     float targetCents = tunerProcessor->getCentsDeviation();
     displayedCents += (targetCents - displayedCents) * NEEDLE_SMOOTHING;
+    const float targetConfidence = tunerProcessor->isPitchDetected() ? tunerProcessor->getDetectedConfidence() : 0.0f;
+    displayedConfidence += (targetConfidence - displayedConfidence) * 0.18f;
 
     float targetAngle = jlimit(-50.0f, 50.0f, displayedCents) * 0.9f;
     needleAngle += (targetAngle - needleAngle) * NEEDLE_SMOOTHING;
@@ -144,6 +151,12 @@ void TunerControl::timerCallback()
     if (bypassButton != nullptr && getBypassState)
         bypassButton->setToggleState(getBypassState(), dontSendNotification);
 
+    if (++pitchTraceFrameCounter >= 2)
+    {
+        pitchTraceFrameCounter = 0;
+        pushPitchTraceSample();
+    }
+
     repaint();
 }
 
@@ -159,35 +172,44 @@ void TunerControl::paint(Graphics& g)
     auto headerArea = area.removeFromTop(34);
     drawTunerHeader(g, headerArea);
 
-    area.removeFromTop(9);
+    area.removeFromTop(7);
 
     auto modeArea = area.removeFromTop(29);
     drawModeSegmentedControl(g, modeArea);
 
+    area.removeFromTop(5);
+
+    auto noteArea = area.removeFromTop(62);
+    drawNoteDisplay(g, noteArea);
+
+    auto confidenceArea = area.removeFromTop(8);
+    drawSignalConfidenceStrip(g, confidenceArea);
+
     area.removeFromTop(4);
 
-    auto noteArea = area.removeFromTop(50);
-    drawNoteDisplay(g, noteArea);
+    auto traceArea = area.removeFromTop(48);
+    drawPitchTrace(g, traceArea);
+
+    area.removeFromTop(3);
 
     auto coarseArea = area.removeFromTop(18);
     drawCoarseDeviationStrip(g, coarseArea);
 
-    area.removeFromTop(2);
+    area.removeFromTop(3);
 
-    auto meterArea = area.removeFromTop(66);
+    auto meterArea = area.removeFromTop(70);
     if (currentMode == TunerMode::Needle)
         drawNeedleMeter(g, meterArea);
     else if (currentMode == TunerMode::SixString)
-        drawSixStringDisplay(g, meterArea.expanded(0.0f, 10.0f));
+        drawSixStringDisplay(g, meterArea);
     else
         drawPitchDriftDisc(g, meterArea);
 
-    auto ledArea = area.removeFromTop(16);
-    if (currentMode == TunerMode::Needle)
-        drawLedIndicators(g, ledArea);
-
-    auto statusArea = area;
+    auto statusArea = area.removeFromTop(20);
+    auto railArea = statusArea.removeFromRight(130.0f);
+    statusArea.removeFromRight(5.0f);
     drawStatusBadge(g, statusArea);
+    drawReferenceResponseRail(g, railArea);
 }
 
 //==============================================================================
@@ -577,12 +599,12 @@ void TunerControl::drawStatusBadge(Graphics& g, Rectangle<float> bounds)
         detected ? (inTune ? tunerAccent : std::abs(cents) < 14.0f ? colours["Warning Colour"] : colours["Danger Colour"])
                  : colours["Text Colour"].withAlpha(0.42f);
 
-    auto badge = bounds.withTrimmedRight(76.0f).reduced(0.0f, 1.0f);
     const String statusText = detected ? (inTune ? "In Tune"
                                                  : ((cents >= 0.0f ? "+" : "") + String(static_cast<int>(std::round(cents))) +
                                                     " cents"))
                                        : "Waiting for signal";
 
+    auto badge = bounds.reduced(0.0f, 1.0f);
     g.setColour(colours["Field Background"].interpolatedWith(statusColour, detected ? 0.10f : 0.03f));
     g.fillRoundedRectangle(badge, 6.0f);
     g.setColour(statusColour.withAlpha(detected ? 0.48f : 0.20f));
@@ -597,12 +619,151 @@ void TunerControl::drawStatusBadge(Graphics& g, Rectangle<float> bounds)
     g.setColour(detected ? colours["Text Colour"].withAlpha(0.84f) : colours["Text Colour"].withAlpha(0.44f));
     g.setFont(fonts.getMonoFont(10.0f));
     g.drawText(statusText, badge.withTrimmedLeft(21.0f).withTrimmedRight(6.0f), Justification::centredLeft, true);
+}
 
-    g.setColour(colours["Text Colour"].withAlpha(0.46f));
-    g.setFont(fonts.getMonoFont(9.0f));
+void TunerControl::drawSignalConfidenceStrip(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto tunerAccent = colours["Tuner Active Colour"];
+    const auto confidence = jlimit(0.0f, 1.0f, displayedConfidence);
+
+    auto track = bounds.reduced(24.0f, 1.0f);
+    g.setColour(colours["Field Background"].darker(0.18f));
+    g.fillRoundedRectangle(track, 2.5f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.42f));
+    g.drawRoundedRectangle(track.reduced(0.5f), 2.5f, 0.6f);
+
+    auto fill = track.withWidth(track.getWidth() * confidence);
+    const auto signalColour = tunerAccent.interpolatedWith(colours["Warning Colour"], 1.0f - confidence);
+    g.setColour(signalColour.withAlpha(0.72f));
+    g.fillRoundedRectangle(fill, 2.5f);
+
+    g.setFont(FontManager::getInstance().getMonoFont(7.8f));
+    g.setColour(colours["Text Colour"].withAlpha(0.42f));
+    g.drawText("SIGNAL", bounds.withWidth(34.0f), Justification::centredLeft, true);
+    g.drawText(String(roundToInt(confidence * 100.0f)) + "%", bounds.removeFromRight(28.0f),
+               Justification::centredRight, true);
+}
+
+void TunerControl::drawPitchTrace(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto tunerAccent = colours["Tuner Active Colour"];
+
+    auto panel = bounds.reduced(1.0f);
+    g.setColour(colours["Field Background"].withAlpha(0.74f));
+    g.fillRoundedRectangle(panel, 7.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.44f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 7.0f, 0.75f);
+
+    auto trace = panel.reduced(9.0f, 6.0f);
+    const auto centsToY = [trace](float cents)
+    {
+        return trace.getCentreY() - (jlimit(-kPitchTraceRangeCents, kPitchTraceRangeCents, cents) /
+                                     kPitchTraceRangeCents) *
+                                        trace.getHeight() * 0.5f;
+    };
+
+    const auto inTuneTop = centsToY(5.0f);
+    const auto inTuneBottom = centsToY(-5.0f);
+    g.setColour(tunerAccent.withAlpha(0.08f));
+    g.fillRoundedRectangle(Rectangle<float>(trace.getX(), inTuneTop, trace.getWidth(), inTuneBottom - inTuneTop), 3.0f);
+
+    for (float cents : {-50.0f, -25.0f, -10.0f, 0.0f, 10.0f, 25.0f, 50.0f})
+    {
+        const auto y = centsToY(cents);
+        g.setColour(cents == 0.0f ? colours["Text Colour"].withAlpha(0.28f)
+                                  : colours["Plugin Border"].withAlpha(0.20f));
+        g.drawLine(trace.getX(), y, trace.getRight(), y, cents == 0.0f ? 1.2f : 0.55f);
+    }
+
+    const float step = trace.getWidth() / static_cast<float>(kPitchTraceSize - 1);
+    bool hasPrevious = false;
+    Point<float> previous;
+    float previousCents = 0.0f;
+    float previousConfidence = 0.0f;
+    int previousNote = -1;
+
+    for (int logical = 0; logical < kPitchTraceSize; ++logical)
+    {
+        const int index = (pitchTraceWriteIndex + logical) % kPitchTraceSize;
+        const auto confidence = pitchTraceConfidence[static_cast<size_t>(index)];
+        const auto note = pitchTraceNote[static_cast<size_t>(index)];
+        const auto cents = pitchTraceCents[static_cast<size_t>(index)];
+        const bool active = confidence > 0.05f && note >= 0;
+        const auto point = Point<float>(trace.getX() + step * static_cast<float>(logical), centsToY(cents));
+
+        if (active && hasPrevious && previousNote == note && std::abs(cents - previousCents) <= kPitchTraceConnectBreakCents)
+        {
+            const auto segmentConfidence = jmin(confidence, previousConfidence);
+            g.setColour(getTuningColour((cents + previousCents) * 0.5f).withAlpha(0.22f + segmentConfidence * 0.70f));
+            g.drawLine(previous.x, previous.y, point.x, point.y, 1.4f + segmentConfidence * 1.5f);
+        }
+
+        hasPrevious = active;
+        previous = point;
+        previousCents = cents;
+        previousConfidence = confidence;
+        previousNote = note;
+    }
+
+    g.setColour(colours["Text Colour"].withAlpha(0.36f));
+    g.setFont(fonts.getMonoFont(7.8f));
+    g.drawText("TRACE", panel.reduced(7.0f, 2.0f).withHeight(10.0f), Justification::centredLeft, true);
+    g.drawText("-50", trace.withWidth(25.0f).withY(trace.getBottom() - 10.0f), Justification::centredLeft, true);
+    g.drawText("+50", trace.withWidth(25.0f).withX(trace.getRight() - 25.0f).withY(trace.getY()), Justification::centredRight, true);
+}
+
+void TunerControl::drawReferenceResponseRail(Graphics& g, Rectangle<float> bounds)
+{
+    auto& colours = ColourScheme::getInstance().colours;
+    auto& fonts = FontManager::getInstance();
+    const auto tunerAccent = colours["Tuner Active Colour"];
+    const auto response = tunerProcessor != nullptr ? tunerProcessor->getResponseMode() : TunerProcessor::ResponseMode::Stable;
+    const auto responseText = response == TunerProcessor::ResponseMode::Fast ? String("FAST") : String("STABLE");
     const auto referenceText =
         tunerProcessor != nullptr ? "A=" + String(tunerProcessor->getReferenceA4Hz(), 0) : String("A=440");
-    g.drawText(referenceText, bounds.removeFromRight(70.0f), Justification::centredRight, true);
+
+    auto reference = bounds.removeFromLeft(bounds.getWidth() * 0.48f).reduced(0.0f, 1.0f);
+    bounds.removeFromLeft(4.0f);
+    auto responsePill = bounds.reduced(0.0f, 1.0f);
+
+    auto drawPill = [&](Rectangle<float> pill, const String& text, Colour accent, float blend)
+    {
+        g.setColour(colours["Field Background"].interpolatedWith(accent, blend));
+        g.fillRoundedRectangle(pill, 6.0f);
+        g.setColour(accent.withAlpha(0.42f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 6.0f, 0.75f);
+        g.setColour(colours["Text Colour"].withAlpha(0.76f));
+        g.setFont(fonts.getMonoFont(9.4f));
+        g.drawText(text, pill.reduced(4.0f, 0.0f), Justification::centred, true);
+    };
+
+    drawPill(reference, referenceText, colours["Plugin Border"], 0.08f);
+    drawPill(responsePill, responseText, tunerAccent, response == TunerProcessor::ResponseMode::Fast ? 0.18f : 0.10f);
+}
+
+void TunerControl::pushPitchTraceSample()
+{
+    if (tunerProcessor == nullptr)
+        return;
+
+    const auto index = static_cast<size_t>(pitchTraceWriteIndex);
+    if (tunerProcessor->isPitchDetected())
+    {
+        pitchTraceCents[index] = tunerProcessor->getCentsDeviation();
+        pitchTraceConfidence[index] = tunerProcessor->getDetectedConfidence();
+        pitchTraceNote[index] = tunerProcessor->getDetectedNote();
+    }
+    else
+    {
+        pitchTraceCents[index] = 0.0f;
+        pitchTraceConfidence[index] = 0.0f;
+        pitchTraceNote[index] = -1;
+    }
+
+    pitchTraceWriteIndex = (pitchTraceWriteIndex + 1) % kPitchTraceSize;
 }
 
 //==============================================================================
@@ -943,7 +1104,7 @@ void TunerControl::resized()
     auto& colours = ColourScheme::getInstance().colours;
 
     auto bounds = getLocalBounds().reduced(8, 6);
-    bounds.removeFromTop(43);
+    bounds.removeFromTop(41);
     auto modeArea = bounds.removeFromTop(29);
     auto bypassArea = modeArea.removeFromRight(82).reduced(2, 2);
     modeArea.removeFromRight(4);

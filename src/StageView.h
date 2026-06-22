@@ -12,6 +12,7 @@
 
 #include "JuceHeader.h"
 
+#include <array>
 #include <utility>
 #include <vector>
 
@@ -81,6 +82,7 @@ class StageView : public Component, public Button::Listener, public Slider::List
 
     // Tuner state
     float displayedCents = 0.0f;
+    float displayedConfidence = 0.0f;
     float needleAngle = 0.0f;
     int detectedNote = -1;
     bool showTuner = true;
@@ -116,6 +118,9 @@ class StageView : public Component, public Button::Listener, public Slider::List
     // Drawing helpers
     void drawPatchDisplay(Graphics& g, Rectangle<float> bounds);
     void drawTunerDisplay(Graphics& g, Rectangle<float> bounds);
+    void drawStageTunerTrace(Graphics& g, Rectangle<float> bounds);
+    void drawStageStringChecklist(Graphics& g, Rectangle<float> bounds);
+    void drawStageTunerRail(Graphics& g, Rectangle<float> bounds);
     void drawStatusBar(Graphics& g, Rectangle<float> bounds);
     void drawSafetyBar(Graphics& g, Rectangle<float> bounds);
     void drawPatchProgress(Graphics& g, Rectangle<float> bounds);
@@ -128,10 +133,18 @@ class StageView : public Component, public Button::Listener, public Slider::List
     void syncViewButtons();
     void updateAfterPatchChange();
     void switchToPatchIndex(int patchIndex);
+    void pushStageTunerTraceSample();
 
     std::vector<std::pair<Rectangle<float>, int>> gridTileHitboxes;
     std::vector<std::pair<Rectangle<float>, int>> gridBankHitboxes;
     std::vector<std::pair<Rectangle<float>, int>> setlistRowHitboxes;
+
+    static constexpr int kStagePitchTraceSize = 96;
+    std::array<float, kStagePitchTraceSize> stagePitchTraceCents{};
+    std::array<float, kStagePitchTraceSize> stagePitchTraceConfidence{};
+    std::array<int, kStagePitchTraceSize> stagePitchTraceNote{};
+    int stagePitchTraceWriteIndex = 0;
+    int stagePitchTraceFrameCounter = 0;
 
     // Smoothing constants
     static constexpr float NEEDLE_SMOOTHING = 0.15f;

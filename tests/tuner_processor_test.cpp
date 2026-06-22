@@ -10,6 +10,7 @@
 namespace
 {
 constexpr double kPi = 3.14159265358979323846;
+constexpr float kStringReadyCents = 4.0f;
 
 void fillSineBlock(AudioSampleBuffer& buffer, double& phase, double sampleRate, double frequency)
 {
@@ -52,13 +53,17 @@ bool waitForCurrentString(TunerProcessor& tuner, int stringIndex, int attempts =
 {
     for (int attempt = 0; attempt < attempts; ++attempt)
     {
-        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex)
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+            std::abs(tuner.getCurrentGuitarStringCents()) <= kStringReadyCents)
+        {
             return true;
+        }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    return tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex;
+    return tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+           std::abs(tuner.getCurrentGuitarStringCents()) <= kStringReadyCents;
 }
 
 bool driveSineUntilCurrentString(TunerProcessor& tuner,
@@ -78,8 +83,11 @@ bool driveSineUntilCurrentString(TunerProcessor& tuner,
         if ((block % 4) == 3)
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
-        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex)
+        if (tuner.isPitchDetected() && tuner.getCurrentGuitarStringIndex() == stringIndex &&
+            std::abs(tuner.getCurrentGuitarStringCents()) <= kStringReadyCents)
+        {
             return true;
+        }
     }
 
     return waitForCurrentString(tuner, stringIndex);

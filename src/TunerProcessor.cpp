@@ -110,6 +110,7 @@ void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPer
     detectedFrequency.store(0.0f, std::memory_order_release);
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
+    detectedConfidence.store(0.0f, std::memory_order_release);
     driftPhase.store(0.0f, std::memory_order_release);
     resetGuitarStringChecklist();
     resetResponseSmoothing();
@@ -260,6 +261,7 @@ void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisRe
         detectedFrequency.store(result.frequencyHz, std::memory_order_release);
         detectedNote.store(result.midiNote, std::memory_order_release);
         centsDeviation.store(result.cents, std::memory_order_release);
+        detectedConfidence.store(result.confidence, std::memory_order_release);
         pitchDetected.store(true, std::memory_order_release);
         updateDriftPhase(result.frequencyHz, result.midiNote, result.referenceA4Hz);
         updateGuitarStringChecklist(result.frequencyHz, result.referenceA4Hz);
@@ -284,6 +286,7 @@ void TunerProcessor::clearAnalysisResult() noexcept
     detectedFrequency.store(0.0f, std::memory_order_release);
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
+    detectedConfidence.store(0.0f, std::memory_order_release);
     currentGuitarStringIndex.store(-1, std::memory_order_release);
     currentGuitarStringCents.store(0.0f, std::memory_order_release);
 }

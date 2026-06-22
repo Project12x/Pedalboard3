@@ -18,8 +18,16 @@
 #include "ThemeSwitcherComponent.h"
 #include "TunerProcessor.h"
 
+#include <array>
+
 namespace
 {
+constexpr float kStagePitchTraceRangeCents = 50.0f;
+constexpr float kStagePitchTraceConnectBreakCents = 35.0f;
+constexpr int kStageStringCount = 6;
+constexpr std::array<int, kStageStringCount> kStageStringMidiNotes{40, 45, 50, 55, 59, 64};
+constexpr std::array<const char*, kStageStringCount> kStageStringLabels{"E2", "A2", "D3", "G3", "B3", "E4"};
+
 class StageButtonLookAndFeel : public LookAndFeel_V4
 {
   public:
@@ -125,6 +133,7 @@ StageButtonLookAndFeel stageButtonLookAndFeel;
 StageView::StageView(MainPanel* panel) : mainPanel(panel)
 {
     auto& colours = ColourScheme::getInstance().colours;
+    stagePitchTraceNote.fill(-1);
 
     // Ensure this component is opaque (draws its entire area)
     setOpaque(true);
@@ -276,13 +285,23 @@ void StageView::timerCallback()
 
     if (tunerProcessor != nullptr && showTuner)
     {
-        float targetCents = tunerProcessor->getCentsDeviation();
+        const bool detected = tunerProcessor->isPitchDetected();
+        float targetCents = detected ? tunerProcessor->getCentsDeviation() : 0.0f;
         displayedCents += (targetCents - displayedCents) * NEEDLE_SMOOTHING;
 
         float targetAngle = jlimit(-50.0f, 50.0f, displayedCents) * 0.9f;
         needleAngle += (targetAngle - needleAngle) * NEEDLE_SMOOTHING;
 
-        detectedNote = tunerProcessor->getDetectedNote();
+        const float targetConfidence = detected ? tunerProcessor->getDetectedConfidence() : 0.0f;
+        displayedConfidence += (targetConfidence - displayedConfidence) * 0.18f;
+
+        detectedNote = detected ? tunerProcessor->getDetectedNote() : -1;
+        if (++stagePitchTraceFrameCounter >= 2)
+        {
+            stagePitchTraceFrameCounter = 0;
+            pushStageTunerTraceSample();
+        }
+
         needsRepaint = true;
     }
 
@@ -1209,61 +1228,348 @@ void StageView::drawTunerDisplay(Graphics& g, Rectangle<float> bounds)
     auto& colours = ColourScheme::getInstance().colours;
     const auto metrics = StageLayout::calculateMetrics(getWidth(), getHeight(), showTuner);
 
-    auto panel = bounds.reduced((float)metrics.margin * 2.2f, (float)metrics.margin * 0.35f);
-    g.setColour(colours["Stage Panel Background"].withAlpha(0.34f));
+    const float insetX = juce::jlimit(12.0f, 42.0f, bounds.getWidth() * 0.032f);
+    const float insetY = juce::jlimit(5.0f, 18.0f, bounds.getHeight() * 0.075f);
+    auto panel = bounds.reduced(insetX, insetY);
+
+    ColourGradient panelFill(colours["Stage Panel Background"].withAlpha(0.44f), panel.getX(), panel.getY(),
+                             colours["Stage Panel Background"].interpolatedWith(colours["Field Background"], 0.24f)
+                                 .withAlpha(0.52f),
+                             panel.getX(), panel.getBottom(), false);
+    panelFill.addColour(0.44, colours["Stage Panel Background"].withAlpha(0.34f));
+    g.setGradientFill(panelFill);
     g.fillRoundedRectangle(panel, 14.0f);
     g.setColour(colours["Plugin Border"].withAlpha(0.35f));
     g.drawRoundedRectangle(panel, 14.0f, 1.0f);
 
-    auto labelArea = panel.removeFromTop(juce::jmax(24.0f, metrics.tunerCentsFontHeight * 0.95f));
+    auto body = panel.reduced(14.0f, 9.0f);
+    auto labelArea = body.removeFromTop(juce::jlimit(24.0f, 34.0f, panel.getHeight() * 0.16f));
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected() && detectedNote >= 0;
+    const auto noteCol = detected ? getTuningColour(displayedCents) : colours["Text Colour"].withAlpha(0.36f);
+
     g.setColour(colours["Tuner Active Colour"].withAlpha(0.82f));
     g.setFont(fonts.getDisplayFont(metrics.safetyFontHeight));
     g.drawText("TUNER ACTIVE", labelArea.reduced(14.0f, 0.0f), Justification::centredLeft);
 
-    auto centreX = panel.getCentreX();
-    auto centreY = panel.getCentreY();
-
-    if (tunerProcessor == nullptr || !tunerProcessor->isPitchDetected())
+    auto headerStatus = labelArea.removeFromRight(juce::jlimit(130.0f, 210.0f, labelArea.getWidth() * 0.24f))
+                            .reduced(0.0f, 2.0f);
     {
-        g.setColour(colours["Text Colour"].withAlpha(0.25f));
-        g.setFont(fonts.getDisplayFont(metrics.tunerWaitingFontHeight));
-        g.drawText("Waiting for signal...", panel, Justification::centred);
+        const String statusText = detected ? (std::abs(displayedCents) < 3.0f ? "IN TUNE" : "TRACKING") : "WAITING";
+        const auto statusColour =
+            detected ? (std::abs(displayedCents) < 3.0f ? colours["Tuner Active Colour"] : colours["Warning Colour"])
+                     : colours["Text Colour"].withAlpha(0.44f);
+        g.setColour(colours["Field Background"].interpolatedWith(statusColour, detected ? 0.16f : 0.05f));
+        g.fillRoundedRectangle(headerStatus, 8.0f);
+        g.setColour(statusColour.withAlpha(detected ? 0.60f : 0.24f));
+        g.drawRoundedRectangle(headerStatus.reduced(0.5f), 8.0f, 0.9f);
+        g.setColour(colours["Text Colour"].withAlpha(detected ? 0.88f : 0.48f));
+        g.setFont(fonts.getMonoFont(juce::jlimit(9.0f, 13.0f, headerStatus.getHeight() * 0.44f)));
+        g.drawText(statusText, headerStatus.reduced(8.0f, 0.0f), Justification::centred, true);
+    }
+
+    body.removeFromTop(juce::jlimit(4.0f, 8.0f, panel.getHeight() * 0.025f));
+
+    auto railArea = body.removeFromBottom(juce::jlimit(24.0f, 34.0f, panel.getHeight() * 0.16f));
+    body.removeFromBottom(juce::jlimit(4.0f, 8.0f, panel.getHeight() * 0.025f));
+
+    const auto drawNoteBlock = [&](Rectangle<float> noteArea)
+    {
+        g.setColour(colours["Field Background"].withAlpha(0.54f));
+        g.fillRoundedRectangle(noteArea, 12.0f);
+        g.setColour(colours["Plugin Border"].interpolatedWith(noteCol, detected ? 0.18f : 0.02f).withAlpha(0.48f));
+        g.drawRoundedRectangle(noteArea.reduced(0.5f), 12.0f, 0.9f);
+
+        auto inner = noteArea.reduced(12.0f, 7.0f);
+        auto noteLine = inner.removeFromTop(juce::jmax(36.0f, inner.getHeight() * 0.54f));
+        g.setColour(noteCol);
+        g.setFont(fonts.getDisplayFont(juce::jlimit(36.0f, metrics.tunerNoteFontHeight, noteLine.getHeight() * 0.82f)));
+        g.drawText(detected ? getNoteName(detectedNote) : "---", noteLine, Justification::centred);
+
+        const String centsStr = detected ? ((displayedCents >= 0 ? "+" : "") +
+                                            String(static_cast<int>(std::round(displayedCents))) + " cents")
+                                         : "no signal";
+        g.setColour(detected ? colours["Text Colour"].withAlpha(0.84f) : colours["Text Colour"].withAlpha(0.42f));
+        g.setFont(fonts.getMonoDisplayFont(juce::jlimit(15.0f, metrics.tunerCentsFontHeight, inner.getHeight() * 0.30f)));
+        g.drawText(centsStr, inner.removeFromTop(juce::jmax(18.0f, inner.getHeight() * 0.48f)), Justification::centred);
+
+        auto track = noteArea.reduced(18.0f, 0.0f).withY(noteArea.getBottom() - 13.0f).withHeight(7.0f);
+        g.setColour(colours["Plugin Border"].withAlpha(0.36f));
+        g.fillRoundedRectangle(track, 3.5f);
+        g.setColour(colours["Text Colour"].withAlpha(0.34f));
+        g.fillRect(track.getCentreX() - 1.0f, track.getY() - 3.0f, 2.0f, track.getHeight() + 6.0f);
+
+        const float indicatorPos = detected ? jlimit(-1.0f, 1.0f, displayedCents / 50.0f) : 0.0f;
+        const float indicatorX = track.getCentreX() + indicatorPos * (track.getWidth() * 0.5f - 8.0f);
+        g.setColour(noteCol);
+        g.fillEllipse(indicatorX - 5.0f, track.getCentreY() - 5.0f, 10.0f, 10.0f);
+    };
+
+    if (body.getWidth() >= 760.0f)
+    {
+        auto noteArea = body.removeFromLeft(juce::jlimit(180.0f, 288.0f, body.getWidth() * 0.25f));
+        body.removeFromLeft(10.0f);
+        auto stringArea = body.removeFromRight(juce::jlimit(214.0f, 330.0f, bounds.getWidth() * 0.23f));
+        body.removeFromRight(10.0f);
+
+        drawNoteBlock(noteArea);
+        drawStageTunerTrace(g, body);
+        drawStageStringChecklist(g, stringArea);
+    }
+    else
+    {
+        auto noteArea = body.removeFromTop(juce::jlimit(70.0f, 132.0f, body.getHeight() * 0.45f));
+        body.removeFromTop(7.0f);
+        auto stringArea = body.removeFromBottom(juce::jlimit(62.0f, 104.0f, body.getHeight() * 0.40f));
+        body.removeFromBottom(7.0f);
+
+        drawNoteBlock(noteArea);
+        drawStageTunerTrace(g, body);
+        drawStageStringChecklist(g, stringArea);
+    }
+
+    drawStageTunerRail(g, railArea);
+}
+
+void StageView::drawStageTunerTrace(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+    const auto tunerAccent = colours["Tuner Active Colour"];
+
+    auto panel = bounds.reduced(1.0f);
+    g.setColour(colours["Field Background"].withAlpha(0.52f));
+    g.fillRoundedRectangle(panel, 12.0f);
+    g.setColour(colours["Plugin Border"].interpolatedWith(tunerAccent, 0.08f).withAlpha(0.46f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 12.0f, 0.8f);
+
+    auto labelArea = panel.reduced(10.0f, 4.0f).removeFromTop(14.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.50f));
+    g.setFont(fonts.getMonoFont(9.2f));
+    g.drawText("PITCH HISTORY", labelArea, Justification::centredLeft, true);
+
+    auto trace = panel.reduced(12.0f, 16.0f).withTrimmedTop(8.0f);
+    if (trace.getWidth() <= 8.0f || trace.getHeight() <= 8.0f)
+        return;
+
+    const auto centsToY = [trace](float cents)
+    {
+        return trace.getCentreY() - (jlimit(-kStagePitchTraceRangeCents, kStagePitchTraceRangeCents, cents) /
+                                     kStagePitchTraceRangeCents) *
+                                        trace.getHeight() * 0.5f;
+    };
+
+    const auto inTuneTop = centsToY(5.0f);
+    const auto inTuneBottom = centsToY(-5.0f);
+    g.setColour(tunerAccent.withAlpha(0.10f));
+    g.fillRoundedRectangle(Rectangle<float>(trace.getX(), inTuneTop, trace.getWidth(), inTuneBottom - inTuneTop), 4.0f);
+
+    const std::array<float, 7> guideCents{{-50.0f, -25.0f, -10.0f, 0.0f, 10.0f, 25.0f, 50.0f}};
+    for (const auto cents : guideCents)
+    {
+        const auto y = centsToY(cents);
+        g.setColour(cents == 0.0f ? colours["Text Colour"].withAlpha(0.30f)
+                                  : colours["Plugin Border"].withAlpha(0.18f));
+        g.drawLine(trace.getX(), y, trace.getRight(), y, cents == 0.0f ? 1.2f : 0.55f);
+    }
+
+    const float step = trace.getWidth() / static_cast<float>(kStagePitchTraceSize - 1);
+    bool hasPrevious = false;
+    Point<float> previous;
+    float previousCents = 0.0f;
+    float previousConfidence = 0.0f;
+    int previousNote = -1;
+
+    for (int logical = 0; logical < kStagePitchTraceSize; ++logical)
+    {
+        const int index = (stagePitchTraceWriteIndex + logical) % kStagePitchTraceSize;
+        const auto confidence = stagePitchTraceConfidence[static_cast<size_t>(index)];
+        const auto note = stagePitchTraceNote[static_cast<size_t>(index)];
+        const auto cents = stagePitchTraceCents[static_cast<size_t>(index)];
+        const bool active = confidence > 0.05f && note >= 0;
+        const auto point = Point<float>(trace.getX() + step * static_cast<float>(logical), centsToY(cents));
+
+        if (active && hasPrevious && previousNote == note &&
+            std::abs(cents - previousCents) <= kStagePitchTraceConnectBreakCents)
+        {
+            const auto segmentConfidence = jmin(confidence, previousConfidence);
+            g.setColour(getTuningColour((cents + previousCents) * 0.5f).withAlpha(0.20f + segmentConfidence * 0.70f));
+            g.drawLine(previous.x, previous.y, point.x, point.y, 1.6f + segmentConfidence * 1.8f);
+        }
+
+        hasPrevious = active;
+        previous = point;
+        previousCents = cents;
+        previousConfidence = confidence;
+        previousNote = note;
+    }
+
+    g.setColour(colours["Text Colour"].withAlpha(0.38f));
+    g.setFont(fonts.getMonoFont(8.2f));
+    g.drawText("-50", trace.withWidth(28.0f).withY(trace.getBottom() - 11.0f), Justification::centredLeft, true);
+    g.drawText("+50", trace.withWidth(28.0f).withX(trace.getRight() - 28.0f).withY(trace.getY()), Justification::centredRight, true);
+}
+
+void StageView::drawStageStringChecklist(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+
+    auto panel = bounds.reduced(1.0f);
+    const int mask = tunerProcessor != nullptr ? tunerProcessor->getGuitarStringInTuneMask() : 0;
+    const int currentIndex = tunerProcessor != nullptr ? tunerProcessor->getCurrentGuitarStringIndex() : -1;
+    const float currentCents = tunerProcessor != nullptr ? tunerProcessor->getCurrentGuitarStringCents() : 0.0f;
+    const bool allReady = (mask & ((1 << kStageStringCount) - 1)) == ((1 << kStageStringCount) - 1);
+    const auto accent = allReady ? colours["Tuner Active Colour"] : colours["Plugin Border"];
+
+    g.setColour(colours["Field Background"].interpolatedWith(accent, allReady ? 0.14f : 0.04f).withAlpha(0.54f));
+    g.fillRoundedRectangle(panel, 12.0f);
+    g.setColour(accent.withAlpha(allReady ? 0.62f : 0.38f));
+    g.drawRoundedRectangle(panel.reduced(0.5f), 12.0f, 0.8f);
+
+    auto inner = panel.reduced(9.0f, 6.0f);
+    auto title = inner.removeFromTop(14.0f);
+    g.setColour((allReady ? colours["Tuner Active Colour"] : colours["Text Colour"]).withAlpha(allReady ? 0.86f : 0.50f));
+    g.setFont(fonts.getMonoFont(8.8f));
+    g.drawText(allReady ? "ALL STRINGS READY" : "STRING CHECK", title, Justification::centredLeft, true);
+
+    inner.removeFromTop(4.0f);
+    const int columns = inner.getWidth() >= 230.0f ? 3 : 2;
+    const int rows = (kStageStringCount + columns - 1) / columns;
+    const float gap = 5.0f;
+    const float tileW = (inner.getWidth() - gap * static_cast<float>(columns - 1)) / static_cast<float>(columns);
+    const float tileH = (inner.getHeight() - gap * static_cast<float>(rows - 1)) / static_cast<float>(rows);
+
+    for (int i = 0; i < kStageStringCount; ++i)
+    {
+        const int row = i / columns;
+        const int col = i % columns;
+        auto tile = Rectangle<float>(inner.getX() + static_cast<float>(col) * (tileW + gap),
+                                     inner.getY() + static_cast<float>(row) * (tileH + gap), tileW, tileH);
+        const bool isCurrent = i == currentIndex;
+        const bool isReady = (mask & (1 << i)) != 0;
+        const auto tileAccent = isCurrent ? getTuningColour(currentCents)
+                                          : isReady ? colours["Tuner Active Colour"]
+                                                    : colours["Text Colour"].withAlpha(0.32f);
+
+        g.setColour(colours["Stage Panel Background"].interpolatedWith(tileAccent, isCurrent ? 0.18f : isReady ? 0.12f : 0.03f)
+                        .withAlpha(0.72f));
+        g.fillRoundedRectangle(tile, 8.0f);
+        g.setColour(tileAccent.withAlpha(isCurrent ? 0.78f : isReady ? 0.58f : 0.26f));
+        g.drawRoundedRectangle(tile.reduced(0.5f), 8.0f, isCurrent ? 1.2f : 0.8f);
+
+        auto text = tile.reduced(6.0f, 2.0f);
+        g.setColour(tileAccent.withAlpha(isCurrent || isReady ? 0.92f : 0.55f));
+        g.setFont(fonts.getDisplayFont(juce::jlimit(10.0f, 15.0f, tile.getHeight() * 0.42f)));
+        g.drawText(kStageStringLabels[static_cast<size_t>(i)], text.removeFromTop(tile.getHeight() * 0.50f),
+                   Justification::centredLeft, true);
+
+        String status = "--";
+        if (isReady)
+            status = "OK";
+        if (isCurrent)
+            status = (currentCents >= 0.0f ? "+" : "") + String(static_cast<int>(std::round(currentCents)));
+        g.setFont(fonts.getMonoFont(juce::jlimit(8.0f, 11.5f, tile.getHeight() * 0.32f)));
+        g.drawText(status, text, Justification::centredLeft, true);
+    }
+}
+
+void StageView::drawStageTunerRail(Graphics& g, Rectangle<float> bounds)
+{
+    auto& fonts = FontManager::getInstance();
+    auto& colours = ColourScheme::getInstance().colours;
+    const bool detected = tunerProcessor != nullptr && tunerProcessor->isPitchDetected() && detectedNote >= 0;
+    const bool inTune = detected && std::abs(displayedCents) < 3.0f;
+    const auto statusColour =
+        detected ? (inTune ? colours["Tuner Active Colour"] : std::abs(displayedCents) < 14.0f
+                                                        ? colours["Warning Colour"]
+                                                        : colours["Danger Colour"])
+                 : colours["Text Colour"].withAlpha(0.42f);
+    const String statusText = detected ? (inTune ? "IN TUNE"
+                                                 : ((displayedCents >= 0.0f ? "+" : "") +
+                                                    String(static_cast<int>(std::round(displayedCents))) + " CENTS"))
+                                       : "WAITING";
+
+    auto rail = bounds.reduced(1.0f);
+    g.setColour(colours["Field Background"].withAlpha(0.48f));
+    g.fillRoundedRectangle(rail, 10.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.32f));
+    g.drawRoundedRectangle(rail.reduced(0.5f), 10.0f, 0.75f);
+
+    auto inner = rail.reduced(8.0f, 4.0f);
+    const auto drawPill = [&](Rectangle<float> pill, const String& text, Colour accent, float blend)
+    {
+        g.setColour(colours["Stage Panel Background"].interpolatedWith(accent, blend).withAlpha(0.82f));
+        g.fillRoundedRectangle(pill, 7.0f);
+        g.setColour(accent.withAlpha(0.48f));
+        g.drawRoundedRectangle(pill.reduced(0.5f), 7.0f, 0.75f);
+        g.setColour(colours["Text Colour"].withAlpha(0.82f));
+        g.setFont(fonts.getMonoFont(juce::jlimit(8.4f, 11.5f, pill.getHeight() * 0.44f)));
+        g.drawText(text, pill.reduced(6.0f, 0.0f), Justification::centred, true);
+    };
+
+    if (inner.getWidth() < 320.0f)
+    {
+        drawPill(inner, statusText, statusColour, detected ? 0.16f : 0.04f);
         return;
     }
 
-    // Note display
-    String noteName = getNoteName(detectedNote);
-    Colour noteCol = getTuningColour(displayedCents);
+    auto status = inner.removeFromLeft(juce::jlimit(138.0f, 230.0f, inner.getWidth() * 0.28f));
+    inner.removeFromLeft(6.0f);
+    auto signal = inner.removeFromLeft(juce::jlimit(142.0f, 235.0f, inner.getWidth() * 0.36f));
+    inner.removeFromLeft(6.0f);
+    auto reference = inner.removeFromLeft(juce::jlimit(72.0f, 118.0f, inner.getWidth() * 0.38f));
+    inner.removeFromLeft(6.0f);
+    auto response = inner;
 
-    g.setColour(noteCol);
-    g.setFont(fonts.getDisplayFont(metrics.tunerNoteFontHeight));
-    g.drawText(noteName, panel.withTrimmedBottom(metrics.tunerCentsFontHeight * 1.8f), Justification::centred);
+    drawPill(status, statusText, statusColour, detected ? 0.16f : 0.04f);
 
-    // Cents display
-    g.setFont(fonts.getMonoDisplayFont(metrics.tunerCentsFontHeight));
-    String centsStr = (displayedCents >= 0 ? "+" : "") + String(static_cast<int>(displayedCents)) + " cents";
-    g.drawText(centsStr, panel.withTrimmedTop(metrics.tunerNoteFontHeight * 1.15f), Justification::centred);
+    const auto confidence = juce::jlimit(0.0f, 1.0f, displayedConfidence);
+    g.setColour(colours["Stage Panel Background"].withAlpha(0.80f));
+    g.fillRoundedRectangle(signal, 7.0f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.36f));
+    g.drawRoundedRectangle(signal.reduced(0.5f), 7.0f, 0.75f);
+    auto signalInner = signal.reduced(8.0f, 0.0f);
+    auto signalLabel = signalInner.removeFromLeft(54.0f);
+    auto signalValue = signalInner.removeFromRight(38.0f);
+    auto track = signalInner.reduced(0.0f, signalInner.getHeight() * 0.34f);
+    g.setColour(colours["Plugin Border"].withAlpha(0.30f));
+    g.fillRoundedRectangle(track, 3.0f);
+    g.setColour(colours["Tuner Active Colour"].interpolatedWith(colours["Warning Colour"], 1.0f - confidence).withAlpha(0.76f));
+    g.fillRoundedRectangle(track.withWidth(track.getWidth() * confidence), 3.0f);
+    g.setColour(colours["Text Colour"].withAlpha(0.58f));
+    g.setFont(fonts.getMonoFont(9.0f));
+    g.drawText("SIGNAL", signalLabel, Justification::centredLeft, true);
+    g.drawText(String(roundToInt(confidence * 100.0f)) + "%", signalValue, Justification::centredRight, true);
 
-    // Simple bar indicator
-    float barWidth = metrics.tunerBarWidth;
-    float barHeight = metrics.tunerBarHeight;
-    float barX = centreX - barWidth / 2;
-    float barY = centreY + metrics.tunerCentsFontHeight * 1.6f;
+    const auto referenceText =
+        tunerProcessor != nullptr ? "A=" + String(tunerProcessor->getReferenceA4Hz(), 0) : String("A=440");
+    const auto responseMode =
+        tunerProcessor != nullptr ? tunerProcessor->getResponseMode() : TunerProcessor::ResponseMode::Stable;
+    drawPill(reference, referenceText, colours["Plugin Border"], 0.07f);
+    drawPill(response, responseMode == TunerProcessor::ResponseMode::Fast ? "FAST" : "STABLE",
+             colours["Tuner Active Colour"], responseMode == TunerProcessor::ResponseMode::Fast ? 0.18f : 0.10f);
+}
 
-    // Background bar
-    g.setColour(colours["Plugin Border"].darker(0.3f));
-    g.fillRoundedRectangle(barX, barY, barWidth, barHeight, 6.0f);
+void StageView::pushStageTunerTraceSample()
+{
+    if (tunerProcessor == nullptr)
+        return;
 
-    // Center marker
-    g.setColour(colours["Text Colour"].withAlpha(0.5f));
-    g.fillRect(centreX - 1.5f, barY - 4, 3.0f, barHeight + 8);
+    const auto index = static_cast<size_t>(stagePitchTraceWriteIndex);
+    if (tunerProcessor->isPitchDetected())
+    {
+        stagePitchTraceCents[index] = tunerProcessor->getCentsDeviation();
+        stagePitchTraceConfidence[index] = tunerProcessor->getDetectedConfidence();
+        stagePitchTraceNote[index] = tunerProcessor->getDetectedNote();
+    }
+    else
+    {
+        stagePitchTraceCents[index] = 0.0f;
+        stagePitchTraceConfidence[index] = 0.0f;
+        stagePitchTraceNote[index] = -1;
+    }
 
-    // Indicator position
-    float indicatorPos = jlimit(-1.0f, 1.0f, displayedCents / 50.0f);
-    float indicatorX = centreX + indicatorPos * (barWidth / 2 - 10);
-
-    g.setColour(noteCol);
-    g.fillEllipse(indicatorX - 8, barY - 2, 16, barHeight + 4);
+    stagePitchTraceWriteIndex = (stagePitchTraceWriteIndex + 1) % kStagePitchTraceSize;
 }
 
 void StageView::drawSafetyBar(Graphics& g, Rectangle<float> bounds)

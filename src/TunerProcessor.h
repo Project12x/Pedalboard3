@@ -37,7 +37,7 @@ class TunerProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(360, 276); }
+    Point<int> getSize() override { return Point<int>(390, 320); }
     NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(); }
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;
@@ -48,6 +48,7 @@ class TunerProcessor : public PedalboardProcessor
     // Pitch detection results (thread-safe getters)
     float getDetectedFrequency() const { return detectedFrequency.load(); }
     float getCentsDeviation() const { return centsDeviation.load(); }
+    float getDetectedConfidence() const { return detectedConfidence.load(std::memory_order_acquire); }
     int getDetectedNote() const { return detectedNote.load(); }
     bool isPitchDetected() const { return pitchDetected.load(); }
     float getReferenceA4Hz() const { return referenceA4Hz.load(); }
@@ -137,6 +138,7 @@ class TunerProcessor : public PedalboardProcessor
     // Detection results (atomic for thread safety)
     std::atomic<float> detectedFrequency{0.0f};
     std::atomic<float> centsDeviation{0.0f};
+    std::atomic<float> detectedConfidence{0.0f};
     std::atomic<int> detectedNote{-1};
     std::atomic<bool> pitchDetected{false};
     std::atomic<float> driftPhase{0.0f};

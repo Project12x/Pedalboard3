@@ -46,6 +46,8 @@ Excluded:
 | Project | Commit | License posture | Files inspected | Reuse mode |
 | --- | --- | --- | --- | --- |
 | `Fannon/trace-tuner` | `e4651fb89220783d4ad984a995590daa5bdbec8b` | MIT | `src/core.rs`, `src/ui.rs` | close-port / pattern-only for state machine, thresholds, response modes, and history trace |
+| `googlearchive/guitar-tuner` | `35bdc95a2388742e8e56c3c20c390b64797c7c97` | Apache-2.0 | `src/elements/audio-visualizer/audio-visualizer.html`, `src/elements/tuning-instructions/tuning-instructions.html` | pattern-only for central visualizer and direct tune-up/tune-down feedback |
+| `jbergknoff/guitar-tuner` | `ab22383925407d93d138c26d1eb776d43c23bd5c` | MIT | `index.html` | pattern-only for compact note/frequency/confidence presentation |
 | `jpsim/ZenTuner` | `74b6862009189f02747c69538e7422c62639b961` | MIT repo; pitch algorithm lineage needs provenance check | `ZenTuner/Models/TunerData.swift`, `ZenTuner/Models/ScaleNote.swift`, `Packages/MicrophonePitchDetector/Sources/ZenPTrack/ZenPTrack.swift`, `Packages/MicrophonePitchDetector/Sources/MicrophonePitchDetector/PitchTracker.swift` | note model, test fixture, UX reference; avoid algorithm copy until provenance is clear |
 | `adrielcafe/chroma` | `3f01f3608de295d2490d382dce3fe710196f932c` | MIT | `TunerManager.kt`, `Tuning.kt`, `TuningDeviationResult.kt`, `TunerState.kt` | UX/state/settings reference |
 | `duff2013/AudioTuner` | `962f7fb7740c08adc4f6abaa2dc6e8152e0c89bb` | MIT | `AudioTuner.h`, `AudioTuner.cpp` | RT fixed-buffer/decimation pattern reference |
@@ -317,6 +319,57 @@ Results:
 - `diff --check`: clean, with existing CRLF normalization warnings only.
 
 Commit target: `feat: add tuner string checklist`
+
+## Task 6B: Real Tuner UI Pass
+
+Files:
+
+- `src/TunerProcessor.h`
+- `src/TunerProcessor.cpp`
+- `src/TunerControl.h`
+- `src/TunerControl.cpp`
+- `src/StageView.h`
+- `src/StageView.cpp`
+- `tests/ui_regression_harness_test.cpp`
+
+Steps:
+
+- [x] Expose analyzer confidence to the UI through a processor atomic instead of deriving fake certainty in paint code.
+- [x] Add a pitch-history trace to the direct-painted Tuner node, inspired by `trace-tuner` but implemented against Pedalboard3 theme and processor APIs.
+- [x] Add a visible signal confidence strip and reference/response rail to the Tuner node.
+- [x] Bring Stage/global tuner closer to node parity with note, cents, confidence, recent pitch history, reference/response, and six-string checklist rendering.
+- [x] Add source guards so future changes cannot silently collapse the tuner back to a note plus one simple bar.
+
+Reference-code-first note:
+
+- `Fannon/trace-tuner` at `e4651fb89220783d4ad984a995590daa5bdbec8b`, MIT, `src/ui.rs`: pattern-only for confidence meter, large note/cents hierarchy, reference/response controls, and pitch trace with note-break behavior.
+- `googlearchive/guitar-tuner` at `35bdc95a2388742e8e56c3c20c390b64797c7c97`, Apache-2.0, tuner visualizer/instruction elements: pattern-only for central signal feedback and direct tuning direction.
+- `jbergknoff/guitar-tuner` at `ab22383925407d93d138c26d1eb776d43c23bd5c`, MIT, `index.html`: pattern-only for compact note/frequency/confidence display.
+- No source was copied. Reuse mode is pattern-only / clean-room JUCE implementation.
+
+Verification:
+
+```powershell
+cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1
+.\build\tests\Debug\Pedalboard3_Tests.exe "[ui][regression][visual][source][nodes][tuner]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[tuner]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
+cmake --build build --config Debug --target Pedalboard3 -- /m:1
+powershell -ExecutionPolicy Bypass -File scripts\run_d2_visual_qa.ps1 -Configuration Debug -OutputName 2026-06-22-tuner-ui-pass -NodeSnapshotsOnly -UiScalePercent 100
+git -c safe.directory='C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2' diff --check
+```
+
+Latest verification:
+
+- `cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1`: passed with existing warnings.
+- `[ui][regression][visual][source][nodes][tuner]`: 129 assertions in 1 test case.
+- `[tuner]`: 509 assertions in 10 test cases.
+- `[rt]`: 3,288 assertions in 17 test cases.
+- `cmake --build build --config Debug --target Pedalboard3 -- /m:1`: passed with existing warnings.
+- Visual QA node snapshots: `documentation\qa\2026-06-22-tuner-ui-pass`, captured with app UI scale 100% on a 175% OS-scale display.
+- `diff --check`: clean, with existing CRLF normalization warnings only.
+
+Commit target: `feat: polish tuner UI from real references`
 
 ## Task 7: Manual Instrument And Stage Verification
 
