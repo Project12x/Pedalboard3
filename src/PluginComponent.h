@@ -214,12 +214,18 @@ class PluginComponent : public Component,
     float cachedMeterLevels[16]{};
     /// Cached peak levels for peak hold indicator (instantaneous peak, linear)
     float cachedPeakLevels[16]{};
+    /// Cached RMS levels for Audio I/O node meter overlays (linear)
+    float cachedRmsLevels[16]{};
+    /// Cached clip state for Audio I/O node meter LEDs
+    bool cachedClipState[16]{};
     /// Number of channels for cached meter levels
     int cachedMeterChannelCount{0};
     /// Peak hold levels for VU meters (normalized 0.0-1.0)
     float peakHoldLevels[16]{};
     /// Peak hold countdown timers (frames remaining before decay)
     int peakHoldCounters[16]{};
+    /// Clip hold countdown timers (frames remaining before clearing LED)
+    int clipHoldCounters[16]{};
 
     /// Per-channel gain sliders for Audio I/O nodes
     OwnedArray<Slider> channelGainSliders;

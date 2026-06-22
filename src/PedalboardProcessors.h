@@ -21,6 +21,7 @@
 #define PEDALBOARDPROCESSORS_H_
 
 #include <JuceHeader.h>
+#include "dsp/MeterSource.h"
 #include <atomic>
 #include <stdint.h>
 #include <vector>
@@ -441,12 +442,21 @@ class VuMeterProcessor : public PedalboardProcessor
     ///	Returns the component which is added to the instance's PluginComponent.
     Component* getControls();
     ///	Returns the size of the controls component.
-    Point<int> getSize() { return Point<int>(64, 128); };
+    Point<int> getSize() { return Point<int>(180, 190); };
+    NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }
 
     ///	Returns the current left level.
-    float getLeftLevel() const { return levelLeft.load(); };
+    float getLeftLevel() const { return meterSource.getPeak(0); };
     ///	Returns the current right level.
-    float getRightLevel() const { return levelRight.load(); };
+    float getRightLevel() const { return meterSource.getPeak(1); };
+    float getLeftRmsLevel() const { return meterSource.getRms(0); };
+    float getRightRmsLevel() const { return meterSource.getRms(1); };
+    float getLeftVuLevel() const { return meterSource.getVu(0); };
+    float getRightVuLevel() const { return meterSource.getVu(1); };
+    bool getLeftClip() const { return meterSource.getClip(0); };
+    bool getRightClip() const { return meterSource.getClip(1); };
+    bool getLeftAndClearClip() { return meterSource.getAndClearClip(0); };
+    bool getRightAndClearClip() { return meterSource.getAndClearClip(1); };
 
     ///	Updates the bounds of our editor window.
     void updateEditorBounds(const Rectangle<int>& bounds);
@@ -459,8 +469,8 @@ class VuMeterProcessor : public PedalboardProcessor
 
     ///	Returns the name of the processor.
     const String getName() const { return "VU Meter"; };
-    ///	Ignored.
-    void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) {};
+    ///	Prepares the meter ballistics.
+    void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock);
     ///	Ignored.
     void releaseResources() {};
     ///	We have no audio inputs.
@@ -509,10 +519,7 @@ class VuMeterProcessor : public PedalboardProcessor
     void setStateInformation(const void* data, int sizeInBytes);
 
   private:
-    ///	The current level (audio thread writes, UI thread reads).
-    std::atomic<float> levelLeft{0.0f};
-    ///	The current level (audio thread writes, UI thread reads).
-    std::atomic<float> levelRight{0.0f};
+    PedalboardMeterSource meterSource;
 
     ///	The editor's bounds.
     Rectangle<int> editorBounds;

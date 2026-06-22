@@ -2233,3 +2233,55 @@ TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint cont
     CHECK(reverbSource->find("Colours::black") == std::string::npos);
     CHECK(reverbSource->find("Colour(0x") == std::string::npos);
 }
+
+TEST_CASE("VU meter nodes use shared meter semantics and polished direct-painted chrome",
+          "[ui][regression][visual][source][nodes][meters]")
+{
+    const auto processorHeader = loadSourceFile("src/PedalboardProcessors.h");
+    const auto processorSource = loadSourceFile("src/VuMeterProcessor.cpp");
+    const auto controlSource = loadSourceFile("src/VuMeterEditors.cpp");
+    const auto pluginHeader = loadSourceFile("src/PluginComponent.h");
+    const auto pluginSource = loadSourceFile("src/PluginComponent.cpp");
+
+    REQUIRE(processorHeader.has_value());
+    REQUIRE(processorSource.has_value());
+    REQUIRE(controlSource.has_value());
+    REQUIRE(pluginHeader.has_value());
+    REQUIRE(pluginSource.has_value());
+
+    CHECK(processorHeader->find("#include \"dsp/MeterSource.h\"") != std::string::npos);
+    CHECK(processorHeader->find("NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(true); }") !=
+          std::string::npos);
+    CHECK(processorHeader->find("float getLeftRmsLevel() const") != std::string::npos);
+    CHECK(processorHeader->find("float getRightRmsLevel() const") != std::string::npos);
+    CHECK(processorHeader->find("float getLeftVuLevel() const") != std::string::npos);
+    CHECK(processorHeader->find("float getRightVuLevel() const") != std::string::npos);
+    CHECK(processorHeader->find("bool getLeftAndClearClip()") != std::string::npos);
+    CHECK(processorHeader->find("PedalboardMeterSource meterSource;") != std::string::npos);
+    CHECK(processorHeader->find("std::atomic<float> levelLeft") == std::string::npos);
+
+    CHECK(processorSource->find("meterSource.prepare(sampleRate, 2);") != std::string::npos);
+    CHECK(processorSource->find("meterSource.process(channelData.data(), channelCount, buffer.getNumSamples());") !=
+          std::string::npos);
+    CHECK(processorSource->find("buffer.getWritePointer") == std::string::npos);
+
+    CHECK(controlSource->find("void VuMeterControl::drawChromeShell(Graphics& g, Rectangle<float> bounds)") !=
+          std::string::npos);
+    CHECK(controlSource->find("void VuMeterControl::drawVuMeterColumn(Graphics& g, Rectangle<float> bounds, const MeterSnapshot& snapshot, const String& label)") !=
+          std::string::npos);
+    CHECK(controlSource->find("void VuMeterControl::drawVuMeterScale(Graphics& g, Rectangle<float> bounds)") !=
+          std::string::npos);
+    CHECK(controlSource->find("void VuMeterControl::drawVuMeterValuePill(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent)") !=
+          std::string::npos);
+    CHECK(controlSource->find("Colour(0x") == std::string::npos);
+    CHECK(controlSource->find("Colours::white") == std::string::npos);
+    CHECK(controlSource->find("Colours::black") == std::string::npos);
+
+    CHECK(pluginHeader->find("float cachedRmsLevels[16]{};") != std::string::npos);
+    CHECK(pluginHeader->find("bool cachedClipState[16]{};") != std::string::npos);
+    CHECK(pluginSource->find("drawCompactAudioIoMeter(g,") != std::string::npos);
+    CHECK(pluginSource->find("limiter->getInputRmsLevel(ch)") != std::string::npos);
+    CHECK(pluginSource->find("limiter->getOutputRmsLevel(ch)") != std::string::npos);
+    CHECK(pluginSource->find("limiter->getInputAndClearClip(ch)") != std::string::npos);
+    CHECK(pluginSource->find("limiter->getOutputAndClearClip(ch)") != std::string::npos);
+}

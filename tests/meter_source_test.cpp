@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "DeviceMeterTap.h"
+#include "PedalboardProcessors.h"
 #include "SafetyLimiter.h"
 #include "dsp/MeterSource.h"
 
@@ -180,4 +181,34 @@ TEST_CASE("SafetyLimiter publishes explicit meter semantics from device buffers"
     REQUIRE(limiter.getOutputRmsLevel(0) > 0.0f);
     REQUIRE(limiter.getOutputVuLevel(0) > 0.0f);
     REQUIRE_FALSE(limiter.getOutputAndClearClip(0));
+}
+
+TEST_CASE("VuMeterProcessor publishes explicit stereo peak RMS VU and clip semantics", "[meter][vu-node]")
+{
+    VuMeterProcessor processor;
+    processor.prepareToPlay(48000.0, 4);
+
+    juce::AudioBuffer<float> buffer(2, 4);
+    buffer.setSample(0, 0, 0.1f);
+    buffer.setSample(0, 1, -0.5f);
+    buffer.setSample(0, 2, 1.02f);
+    buffer.setSample(0, 3, 0.2f);
+    buffer.setSample(1, 0, -0.25f);
+    buffer.setSample(1, 1, 0.4f);
+    buffer.setSample(1, 2, -0.75f);
+    buffer.setSample(1, 3, 0.3f);
+    juce::MidiBuffer midi;
+
+    processor.processBlock(buffer, midi);
+
+    REQUIRE(processor.getLeftLevel() == Approx(1.02f).margin(0.001f));
+    REQUIRE(processor.getLeftRmsLevel() > 0.0f);
+    REQUIRE(processor.getLeftVuLevel() > 0.0f);
+    REQUIRE(processor.getLeftAndClearClip());
+    REQUIRE_FALSE(processor.getLeftAndClearClip());
+
+    REQUIRE(processor.getRightLevel() == Approx(0.75f).margin(0.001f));
+    REQUIRE(processor.getRightRmsLevel() > 0.0f);
+    REQUIRE(processor.getRightVuLevel() > 0.0f);
+    REQUIRE_FALSE(processor.getRightAndClearClip());
 }

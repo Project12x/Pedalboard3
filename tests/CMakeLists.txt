@@ -40,6 +40,8 @@ add_executable(Pedalboard3_Tests
     ../src/dsp/TunerAnalysis.cpp
     ../src/TunerProcessor.cpp
     ../src/TunerControl.cpp
+    ../src/VuMeterProcessor.cpp
+    ../src/VuMeterEditors.cpp
     ../src/ReverbSCProcessor.cpp
     ../src/SafetyLimiter.cpp
     ../src/DeviceMeterTap.cpp

@@ -213,13 +213,28 @@ class VuMeterControl : public Component,
 
 
   private:
+    struct MeterSnapshot
+    {
+        float peakDb = -72.0f;
+        float rmsDb = -72.0f;
+        float vuDb = -72.0f;
+        int clipHoldFrames = 0;
+    };
+
+    void drawChromeShell(Graphics& g, Rectangle<float> bounds);
+    void drawMeterGlyph(Graphics& g, Rectangle<float> bounds);
+    void drawVuMeterColumn(Graphics& g, Rectangle<float> bounds, const MeterSnapshot& snapshot, const String& label);
+    void drawVuMeterScale(Graphics& g, Rectangle<float> bounds);
+    void drawVuMeterValuePill(Graphics& g, Rectangle<float> bounds, const String& text, Colour accent);
+    static float amplitudeToDb(float amplitude);
+    static float dbToNormalised(float db);
+    static String formatDb(float db);
+
 	///	Our copy of the associated VuMeterProcessor.
 	VuMeterProcessor *processor;
 
-	///	The current left level.
-	float levelLeft;
-	///	The current right level.
-	float levelRight;
+    MeterSnapshot leftMeter;
+    MeterSnapshot rightMeter;
 };
 
 //------------------------------------------------------------------------------

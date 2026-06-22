@@ -20,6 +20,7 @@
 #include "PedalboardProcessorEditors.h"
 #include "PedalboardProcessors.h"
 
+#include <array>
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -61,43 +62,22 @@ void VuMeterProcessor::fillInPluginDescription(PluginDescription& description) c
 }
 
 //------------------------------------------------------------------------------
+void VuMeterProcessor::prepareToPlay(double sampleRate, int /*estimatedSamplesPerBlock*/)
+{
+    meterSource.prepare(sampleRate, 2);
+}
+
+//------------------------------------------------------------------------------
 void VuMeterProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
-    int i;
-    float* dataLeft;
-    float* dataRight;
+    ignoreUnused(midiMessages);
 
-    jassert(buffer.getNumChannels() > 1);
+    std::array<const float*, 2> channelData{};
+    const int channelCount = jmin(buffer.getNumChannels(), static_cast<int>(channelData.size()));
+    for (int channel = 0; channel < channelCount; ++channel)
+        channelData[static_cast<size_t>(channel)] = buffer.getReadPointer(channel);
 
-    dataLeft = buffer.getWritePointer(0);
-    dataRight = buffer.getWritePointer(1);
-
-    float curLeft = levelLeft.load();
-    float curRight = levelRight.load();
-
-    for (i = 0; i < buffer.getNumSamples(); ++i)
-    {
-        if (fabsf(dataLeft[i]) > curLeft)
-            curLeft = fabsf(dataLeft[i]);
-        else if (curLeft > 0.0f)
-        {
-            curLeft -= 0.00001f;
-            if (curLeft < 0.0f)
-                curLeft = 0.0f;
-        }
-
-        if (fabsf(dataRight[i]) > curRight)
-            curRight = fabsf(dataRight[i]);
-        else if (curRight > 0.0f)
-        {
-            curRight -= 0.00001f;
-            if (curRight < 0.0f)
-                curRight = 0.0f;
-        }
-    }
-
-    levelLeft.store(curLeft);
-    levelRight.store(curRight);
+    meterSource.process(channelData.data(), channelCount, buffer.getNumSamples());
 }
 
 //------------------------------------------------------------------------------

@@ -112,6 +112,95 @@ bool producesMidiSafe(AudioProcessor* proc)
     return proc->producesMidi();
 }
 
+float meterDbFromAmplitude(float amplitude)
+{
+    if (!std::isfinite(amplitude) || amplitude <= 0.001f)
+        return -60.0f;
+
+    return jlimit(-60.0f, 12.0f, 20.0f * std::log10(amplitude));
+}
+
+float normaliseCompactMeterDb(float db)
+{
+    return jlimit(0.0f, 1.0f, (db + 60.0f) / 66.0f);
+}
+
+void drawCompactAudioIoMeter(Graphics& g, Rectangle<float> bounds, int channelIndex, float vuLevel, float rmsLevel,
+                             float peakHoldLevel, bool clipped, map<String, Colour>& colours)
+{
+    ignoreUnused(channelIndex);
+
+    const auto background = colours["Plugin Background"].darker(0.5f);
+    const auto border = colours["Plugin Border"];
+    const auto low = colours["VU Meter Lower Colour"];
+    const auto high = colours["VU Meter Upper Colour"];
+    const auto over = colours["VU Meter Over Colour"];
+    const auto warning = colours["Warning Colour"];
+
+    auto clipLed = bounds.removeFromRight(8.0f).reduced(1.0f, 0.5f);
+    bounds.removeFromRight(2.0f);
+
+    g.setColour(background.withAlpha(0.86f));
+    g.fillRoundedRectangle(bounds, 2.0f);
+
+    const float vuNorm = normaliseCompactMeterDb(meterDbFromAmplitude(vuLevel));
+    const float rmsNorm = normaliseCompactMeterDb(meterDbFromAmplitude(rmsLevel));
+
+    if (vuNorm > 0.0f)
+    {
+        const float barWidth = bounds.getWidth() * vuNorm;
+
+        if (vuNorm > 0.9f)
+        {
+            const float glowAlpha = jlimit(0.0f, 1.0f, (vuNorm - 0.9f) * 3.0f);
+            const auto glowColour = (clipped || vuLevel >= 1.0f) ? over.withAlpha(glowAlpha)
+                                                                 : warning.withAlpha(glowAlpha * 0.7f);
+            Path meterBar;
+            meterBar.addRoundedRectangle(bounds.withWidth(barWidth), 2.0f);
+            melatonin::DropShadow meterGlow{glowColour, 6, {0, 0}};
+            meterGlow.render(g, meterBar);
+        }
+
+        ColourGradient gradient(low, bounds.getX(), bounds.getCentreY(), over, bounds.getRight(), bounds.getCentreY(),
+                                false);
+        gradient.addColour(0.68, high);
+        g.setGradientFill(gradient);
+        g.saveState();
+        g.reduceClipRegion(bounds.withWidth(barWidth + 1.0f).toNearestInt());
+        g.fillRoundedRectangle(bounds, 2.0f);
+        g.restoreState();
+    }
+
+    if (rmsNorm > 0.0f)
+    {
+        auto rmsStrip = bounds.reduced(1.0f, 2.0f).withWidth(bounds.getWidth() * rmsNorm);
+        g.setColour(colours["Text Colour"].withAlpha(0.22f));
+        g.fillRoundedRectangle(rmsStrip, 1.5f);
+    }
+
+    if (peakHoldLevel > 0.01f)
+    {
+        const float peakX = bounds.getX() + bounds.getWidth() * peakHoldLevel;
+        const auto peakColour = peakHoldLevel > 0.95f ? over : (peakHoldLevel > 0.68f ? high : low.brighter(0.3f));
+        g.setColour(peakColour.withAlpha(0.92f));
+        g.fillRect(peakX - 1.0f, bounds.getY(), 2.0f, bounds.getHeight());
+    }
+
+    g.setColour(border.withAlpha(0.24f));
+    const float dbMarks[] = {-48.0f, -24.0f, -12.0f, -6.0f, 0.0f};
+    for (float db : dbMarks)
+    {
+        const float tickX = bounds.getX() + bounds.getWidth() * normaliseCompactMeterDb(db);
+        g.drawVerticalLine(static_cast<int>(tickX), bounds.getY(), bounds.getBottom());
+    }
+
+    g.setColour(border.withAlpha(0.36f));
+    g.drawRoundedRectangle(bounds, 2.0f, 0.6f);
+
+    g.setColour(clipped ? over.withAlpha(0.95f) : border.withAlpha(0.24f));
+    g.fillRoundedRectangle(clipLed, 2.5f);
+}
+
 String getRackBoundaryRole(AudioProcessorGraph::Node* node)
 {
     if (node == nullptr)
@@ -1746,78 +1835,10 @@ void PluginComponent::paint(Graphics& g)
 
         for (int ch = 0; ch < cachedMeterChannelCount && ch < 16; ++ch)
         {
-            float level = cachedMeterLevels[ch];
-            float levelDb = (level > 0.001f) ? 20.0f * std::log10(level) : -60.0f;
-            float normalizedLevel = jlimit(0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
-
             float mx = (pluginName == "Audio Input") ? edgeMargin : pinMargin;
             float my = meterStartY + ch * pinSpacing;
-
-            // Meter background
-            g.setColour(colours["Plugin Background"].darker(0.5f));
-            g.fillRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f);
-
-            // Gradient-filled meter bar
-            if (normalizedLevel > 0.0f)
-            {
-                float barWidth = meterWidth * normalizedLevel;
-
-                // Glow effect when level is hot (> -6 dB = 0.9 normalized)
-                if (normalizedLevel > 0.9f)
-                {
-                    float glowAlpha = jlimit(0.0f, 1.0f, (normalizedLevel - 0.9f) * 3.0f);
-                    Colour glowColour = (level >= 1.0f) ? colours["Danger Colour"].withAlpha(glowAlpha)
-                                                        : colours["Warning Colour"].withAlpha(glowAlpha * 0.7f);
-                    Path meterBar;
-                    meterBar.addRoundedRectangle(mx, my, barWidth, meterHeight, 2.0f);
-                    melatonin::DropShadow meterGlow{glowColour, 6, {0, 0}};
-                    meterGlow.render(g, meterBar);
-                }
-
-                // Green-to-yellow-to-red gradient across full meter width
-                ColourGradient gradient(colours["VU Meter Lower Colour"], mx, my, colours["VU Meter Over Colour"],
-                                        mx + meterWidth, my, false);
-                gradient.addColour(0.65, colours["VU Meter Upper Colour"]);
-                g.setGradientFill(gradient);
-
-                // Clip to actual level width
-                g.saveState();
-                g.reduceClipRegion(Rectangle<int>((int)mx, (int)my, (int)(barWidth + 1.0f), (int)(meterHeight + 1.0f)));
-                g.fillRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f);
-                g.restoreState();
-            }
-
-            // Peak hold indicator
-            if (peakHoldLevels[ch] > 0.01f)
-            {
-                float peakX = mx + meterWidth * peakHoldLevels[ch];
-                // Color based on peak position
-                Colour peakColour;
-                if (peakHoldLevels[ch] > 0.95f)
-                    peakColour = colours["VU Meter Over Colour"];
-                else if (peakHoldLevels[ch] > 0.65f)
-                    peakColour = colours["VU Meter Upper Colour"];
-                else
-                    peakColour = colours["VU Meter Lower Colour"].brighter(0.3f);
-
-                float alpha = (peakHoldCounters[ch] > 0) ? 1.0f : jmax(0.3f, peakHoldLevels[ch]);
-                g.setColour(peakColour.withAlpha(alpha));
-                g.fillRect(peakX - 1.0f, my, 2.0f, meterHeight);
-            }
-
-            // dB scale tick marks
-            g.setColour(colours["Plugin Border"].withAlpha(0.25f));
-            const float dbMarks[] = {-48.0f, -24.0f, -12.0f, -6.0f, -3.0f, 0.0f};
-            for (float db : dbMarks)
-            {
-                float tickNorm = (db + 60.0f) / 60.0f;
-                float tickX = mx + meterWidth * tickNorm;
-                g.drawVerticalLine((int)tickX, my, my + meterHeight);
-            }
-
-            // Border
-            g.setColour(colours["Plugin Border"].withAlpha(0.3f));
-            g.drawRoundedRectangle(mx, my, meterWidth, meterHeight, 2.0f, 0.5f);
+            drawCompactAudioIoMeter(g, Rectangle<float>(mx, my, meterWidth, meterHeight), ch, cachedMeterLevels[ch],
+                                    cachedRmsLevels[ch], peakHoldLevels[ch], cachedClipState[ch], colours);
         }
     }
 }
@@ -1863,14 +1884,44 @@ void PluginComponent::timerUpdate()
                 float peakLevel =
                     (pluginName == "Audio Input") ? limiter->getInputLevel(ch) : limiter->getOutputLevel(ch);
                 cachedPeakLevels[ch] = peakLevel;
+
+                float rmsLevel =
+                    (pluginName == "Audio Input") ? limiter->getInputRmsLevel(ch) : limiter->getOutputRmsLevel(ch);
+                if (std::abs(rmsLevel - cachedRmsLevels[ch]) > 0.001f)
+                {
+                    cachedRmsLevels[ch] = rmsLevel;
+                    needsRepaint = true;
+                }
+
+                const bool clipped = (pluginName == "Audio Input") ? limiter->getInputAndClearClip(ch)
+                                                                    : limiter->getOutputAndClearClip(ch);
+                if (clipped)
+                {
+                    clipHoldCounters[ch] = 24;
+                    cachedClipState[ch] = true;
+                    needsRepaint = true;
+                }
             }
         }
 
         cachedMeterChannelCount = numChannels;
 
         // Update peak hold indicators
-        for (int ch = 0; ch < numChannels; ++ch)
+        bool anyMeterHoldActive = false;
+        for (int ch = 0; ch < 16; ++ch)
         {
+            if (ch >= numChannels)
+            {
+                cachedMeterLevels[ch] = 0.0f;
+                cachedPeakLevels[ch] = 0.0f;
+                cachedRmsLevels[ch] = 0.0f;
+                peakHoldLevels[ch] = 0.0f;
+                peakHoldCounters[ch] = 0;
+                clipHoldCounters[ch] = 0;
+                cachedClipState[ch] = false;
+                continue;
+            }
+
             // Peak hold uses peak (not VU) for accurate transient capture
             float peakDb = (cachedPeakLevels[ch] > 0.001f) ? 20.0f * std::log10(cachedPeakLevels[ch]) : -60.0f;
             float normalized = jlimit(0.0f, 1.0f, (peakDb + 60.0f) / 60.0f);
@@ -1891,9 +1942,23 @@ void PluginComponent::timerUpdate()
                 if (peakHoldLevels[ch] < 0.01f)
                     peakHoldLevels[ch] = 0.0f;
             }
+
+            if (clipHoldCounters[ch] > 0)
+            {
+                --clipHoldCounters[ch];
+                cachedClipState[ch] = true;
+            }
+            else if (cachedClipState[ch])
+            {
+                cachedClipState[ch] = false;
+                needsRepaint = true;
+            }
+
+            if (peakHoldLevels[ch] > 0.0f || cachedClipState[ch])
+                anyMeterHoldActive = true;
         }
 
-        if (needsRepaint || peakHoldLevels[0] > 0.0f || peakHoldLevels[1] > 0.0f)
+        if (needsRepaint || anyMeterHoldActive)
             repaint();
 
         // Sync per-channel gain sliders from MasterGainState (when not being dragged)
