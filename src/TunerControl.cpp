@@ -570,7 +570,9 @@ void TunerControl::drawStatusBadge(Graphics& g, Rectangle<float> bounds)
 
     g.setColour(colours["Text Colour"].withAlpha(0.46f));
     g.setFont(fonts.getMonoFont(9.0f));
-    g.drawText("A=440", bounds.removeFromRight(70.0f), Justification::centredRight, true);
+    const auto referenceText =
+        tunerProcessor != nullptr ? "A=" + String(tunerProcessor->getReferenceA4Hz(), 0) : String("A=440");
+    g.drawText(referenceText, bounds.removeFromRight(70.0f), Justification::centredRight, true);
 }
 
 //==============================================================================

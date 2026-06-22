@@ -2070,6 +2070,18 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerProcessorHeader->find("void stopAnalysisThread() noexcept;") != std::string::npos);
     CHECK(tunerProcessorHeader->find("void publishAnalysisWindow() noexcept;") != std::string::npos);
     CHECK(tunerProcessorHeader->find("void analysisThreadMain() noexcept;") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("enum class ResponseMode") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void setReferenceA4Hz(float frequencyHz) noexcept;") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("float getReferenceA4Hz() const") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void setResponseMode(ResponseMode mode) noexcept;") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("ResponseMode getResponseMode() const noexcept;") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("std::atomic<float> referenceA4Hz{440.0f};") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("std::atomic<int> responseMode") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("int heldMissCount = 0;") != std::string::npos);
     CHECK(tunerProcessorHeader->find("std::thread analysisThread;") != std::string::npos);
     CHECK(tunerProcessorHeader->find("std::atomic<bool> analysisWindowPending{false};") !=
           std::string::npos);
@@ -2081,6 +2093,13 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerProcessorSource->find("analysisWindowPending.exchange(false") != std::string::npos);
     CHECK(tunerProcessorSource->find("backgroundAnalyzer.pushSamples(analysisWindows") != std::string::npos);
     CHECK(tunerProcessorSource->find("backgroundAnalyzer.analyze();") != std::string::npos);
+    CHECK(tunerProcessorSource->find("backgroundAnalyzer.setReferenceA4Hz(referenceA4Hz.load") !=
+          std::string::npos);
+    CHECK(tunerProcessorSource->find("constexpr int kTunerStateVersion = 2;") != std::string::npos);
+    CHECK(tunerProcessorSource->find("stream.writeFloat(getReferenceA4Hz());") != std::string::npos);
+    CHECK(tunerProcessorSource->find("stream.writeInt(static_cast<int>(getResponseMode()));") !=
+          std::string::npos);
+    CHECK(tunerSource->find("tunerProcessor->getReferenceA4Hz()") != std::string::npos);
     CHECK(tunerProcessorSource->find("std::this_thread::sleep_for") != std::string::npos);
     CHECK(tunerProcessorSource->find("detectPitchYIN") == std::string::npos);
     CHECK(tunerProcessorSource->find("yinBuffer") == std::string::npos);

@@ -177,11 +177,11 @@ Files:
 
 Steps:
 
-- [ ] Add reference pitch state with safe default `A=440`.
-- [ ] Add stable/fast response mode state based on the `trace-tuner` pattern.
-- [ ] Add note acquire/hold behavior so the display does not flicker during short confidence drops.
-- [ ] Serialize versioned tuner state.
-- [ ] Surface current reference pitch in the node without crowding the existing direct-painted layout.
+- [x] Add reference pitch state with safe default `A=440`.
+- [x] Add stable/fast response mode state based on the `trace-tuner` pattern.
+- [x] Add note acquire/hold behavior so the display does not flicker during short confidence drops.
+- [x] Serialize versioned tuner state.
+- [x] Surface current reference pitch in the node without crowding the existing direct-painted layout.
 
 Verification:
 

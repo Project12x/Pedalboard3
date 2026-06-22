@@ -11,6 +11,7 @@
 
 #include "TunerControl.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <thread>
@@ -18,6 +19,22 @@
 namespace
 {
 constexpr int kTunerAudioPinY = 78;
+constexpr int kTunerStateVersion = 2;
+constexpr float kDefaultReferenceA4Hz = 440.0f;
+constexpr float kMinReferenceA4Hz = 400.0f;
+constexpr float kMaxReferenceA4Hz = 480.0f;
+constexpr int kStableAcquireWindows = 2;
+constexpr int kFastAcquireWindows = 1;
+constexpr int kStableHoldWindows = 6;
+constexpr int kFastHoldWindows = 0;
+
+float sanitizeReferenceA4Hz(float frequencyHz) noexcept
+{
+    if (!std::isfinite(frequencyHz))
+        return kDefaultReferenceA4Hz;
+
+    return std::clamp(frequencyHz, kMinReferenceA4Hz, kMaxReferenceA4Hz);
+}
 }
 
 //==============================================================================
@@ -53,6 +70,7 @@ void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPer
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
     strobePhase.store(0.0f, std::memory_order_release);
+    resetResponseSmoothing();
 
     backgroundAnalyzer.prepare(newSampleRate, estimatedSamplesPerBlock);
     startAnalysisThread();
@@ -61,6 +79,23 @@ void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPer
 void TunerProcessor::releaseResources()
 {
     stopAnalysisThread();
+}
+
+void TunerProcessor::setReferenceA4Hz(float frequencyHz) noexcept
+{
+    referenceA4Hz.store(sanitizeReferenceA4Hz(frequencyHz), std::memory_order_release);
+}
+
+TunerProcessor::ResponseMode TunerProcessor::getResponseMode() const noexcept
+{
+    const auto rawMode = responseMode.load(std::memory_order_acquire);
+    return rawMode == static_cast<int>(ResponseMode::Fast) ? ResponseMode::Fast : ResponseMode::Stable;
+}
+
+void TunerProcessor::setResponseMode(ResponseMode mode) noexcept
+{
+    const auto sanitizedMode = mode == ResponseMode::Fast ? ResponseMode::Fast : ResponseMode::Stable;
+    responseMode.store(static_cast<int>(sanitizedMode), std::memory_order_release);
 }
 
 //==============================================================================
@@ -151,6 +186,7 @@ void TunerProcessor::analysisThreadMain() noexcept
         if (slot < 0 || slot >= 2)
             continue;
 
+        backgroundAnalyzer.setReferenceA4Hz(referenceA4Hz.load(std::memory_order_acquire));
         backgroundAnalyzer.reset();
         backgroundAnalyzer.pushSamples(analysisWindows[static_cast<size_t>(slot)].data(),
                                        pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize);
@@ -161,8 +197,24 @@ void TunerProcessor::analysisThreadMain() noexcept
 
 void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisResult& result) noexcept
 {
+    const auto mode = getResponseMode();
+    const int requiredHits = mode == ResponseMode::Fast ? kFastAcquireWindows : kStableAcquireWindows;
+    const int holdWindows = mode == ResponseMode::Fast ? kFastHoldWindows : kStableHoldWindows;
+
     if (result.detected && result.frequencyHz > 20.0f && result.frequencyHz < 5000.0f && result.midiNote >= 0)
     {
+        if (candidateNote == result.midiNote)
+            ++candidateHitCount;
+        else
+        {
+            candidateNote = result.midiNote;
+            candidateHitCount = 1;
+        }
+
+        if (candidateHitCount < requiredHits)
+            return;
+
+        heldMissCount = 0;
         detectedFrequency.store(result.frequencyHz, std::memory_order_release);
         detectedNote.store(result.midiNote, std::memory_order_release);
         centsDeviation.store(result.cents, std::memory_order_release);
@@ -171,19 +223,40 @@ void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisRe
         return;
     }
 
+    candidateNote = -1;
+    candidateHitCount = 0;
+
+    if (pitchDetected.load(std::memory_order_acquire) && heldMissCount < holdWindows)
+    {
+        ++heldMissCount;
+        return;
+    }
+
+    clearAnalysisResult();
+}
+
+void TunerProcessor::clearAnalysisResult() noexcept
+{
     pitchDetected.store(false, std::memory_order_release);
     detectedFrequency.store(0.0f, std::memory_order_release);
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
 }
 
-//==============================================================================
-void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float referenceA4Hz) noexcept
+void TunerProcessor::resetResponseSmoothing() noexcept
 {
-    if (!std::isfinite(frequency) || !std::isfinite(referenceA4Hz) || frequency <= 0.0f || referenceA4Hz <= 0.0f)
+    candidateNote = -1;
+    candidateHitCount = 0;
+    heldMissCount = 0;
+}
+
+//==============================================================================
+void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float refA4Hz) noexcept
+{
+    if (!std::isfinite(frequency) || !std::isfinite(refA4Hz) || frequency <= 0.0f || refA4Hz <= 0.0f)
         return;
 
-    const float targetFreq = referenceA4Hz * std::pow(2.0f, static_cast<float>(midiNote - A4_MIDI) / 12.0f);
+    const float targetFreq = refA4Hz * std::pow(2.0f, static_cast<float>(midiNote - A4_MIDI) / 12.0f);
     if (!std::isfinite(targetFreq) || targetFreq <= 0.0f)
         return;
 
@@ -206,16 +279,23 @@ void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float refe
 //==============================================================================
 void TunerProcessor::getStateInformation(MemoryBlock& destData)
 {
-    // Save strobe mode preference if desired
     MemoryOutputStream stream(destData, false);
-    stream.writeInt(1); // version
+    stream.writeInt(kTunerStateVersion);
+    stream.writeFloat(getReferenceA4Hz());
+    stream.writeInt(static_cast<int>(getResponseMode()));
 }
 
 void TunerProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     MemoryInputStream stream(data, static_cast<size_t>(sizeInBytes), false);
-    int version = stream.readInt();
-    ignoreUnused(version);
+    const int version = stream.readInt();
+
+    if (version >= 2)
+    {
+        setReferenceA4Hz(stream.readFloat());
+        const auto storedMode = stream.readInt();
+        setResponseMode(storedMode == static_cast<int>(ResponseMode::Fast) ? ResponseMode::Fast : ResponseMode::Stable);
+    }
 }
 
 //==============================================================================
