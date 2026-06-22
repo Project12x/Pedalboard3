@@ -138,16 +138,22 @@ Files:
 - `src/dsp/TunerAnalysis.*`
 - tests
 
+Decision:
+
+- Use a background analyzer boundary for this sprint. `TunerAnalysis` currently performs a 4096-sample YIN pass; keeping that O(N^2) work in `processBlock()` is the wrong reliability shape for a stage utility.
+- The audio callback will keep fixed-size ring/snapshot storage only, publish complete windows with atomics, and preserve pass-through/mute behavior.
+- The analyzer thread will own `TunerAnalysis`, consume the latest complete snapshot without making the audio thread wait, and publish frequency/note/cents/strobe state through the existing atomics.
+
 Steps:
 
-- [ ] Decide between two acceptable boundaries:
+- [x] Decide between two acceptable boundaries:
   - Audio callback fills fixed analysis storage and performs only bounded lightweight analysis after RMS gating.
   - Audio callback writes to a fixed ring buffer and a background analyzer computes heavier pitch estimates.
-- [ ] Record the decision in this plan before implementation.
-- [ ] If using a background analyzer, make thread lifecycle explicit in `prepareToPlay()`, `releaseResources()`, and destruction, and ensure the audio callback never waits on it.
-- [ ] If keeping analysis on the audio callback, cap work with RMS gating, min/max frequency constraints, and measurable CPU tests.
-- [ ] Publish results through atomics or double-buffered POD snapshots.
-- [ ] Preserve mute-output behavior and direct graph pass-through semantics.
+- [x] Record the decision in this plan before implementation.
+- [x] If using a background analyzer, make thread lifecycle explicit in `prepareToPlay()`, `releaseResources()`, and destruction, and ensure the audio callback never waits on it.
+- [x] If keeping analysis on the audio callback, cap work with RMS gating, min/max frequency constraints, and measurable CPU tests. N/A for this sprint because the background analyzer path was chosen.
+- [x] Publish results through atomics or double-buffered POD snapshots.
+- [x] Preserve mute-output behavior and direct graph pass-through semantics.
 
 Verification:
 

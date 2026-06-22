@@ -10,15 +10,17 @@
 #pragma once
 
 #include "PedalboardProcessors.h"
+#include "dsp/TunerAnalysis.h"
 
 #include <array>
 #include <atomic>
+#include <thread>
 
 //==============================================================================
 /**
-    Chromatic tuner with YIN pitch detection and multiple display views.
-    The current backend is monophonic; strobe and string modes are visual
-    interpretations of the same detected pitch.
+    Chromatic tuner with background monophonic pitch analysis and multiple
+    display views. Strobe and string modes are visual interpretations of the
+    same detected pitch.
 */
 class TunerProcessor : public PedalboardProcessor
 {
@@ -53,7 +55,7 @@ class TunerProcessor : public PedalboardProcessor
 
     const String getName() const override { return "Tuner"; }
     void prepareToPlay(double sampleRate, int estimatedSamplesPerBlock) override;
-    void releaseResources() override {}
+    void releaseResources() override;
 
     const String getInputChannelName(int channelIndex) const override { return ""; }
     const String getOutputChannelName(int channelIndex) const override { return ""; }
@@ -89,23 +91,31 @@ class TunerProcessor : public PedalboardProcessor
     std::atomic<bool> muteOutput{false};
 
     //==========================================================================
-    // YIN pitch detection
-    float detectPitchYIN(const float* samples, int numSamples);
+    // Background analysis boundary
+    void startAnalysisThread();
+    void stopAnalysisThread() noexcept;
+    void publishAnalysisWindow() noexcept;
+    void analysisThreadMain() noexcept;
+    void applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisResult& result) noexcept;
 
-    // Calculate cents deviation from nearest note
-    void updateNoteAndCents(float frequency);
-
-    // Update display strobe phase based on frequency error
-    void updateStrobePhase(float frequency);
+    // Update display strobe phase based on frequency error.
+    void updateStrobePhase(float frequency, int midiNote, float referenceA4Hz) noexcept;
 
     //==========================================================================
-    // Audio buffer for analysis
-    static constexpr int BUFFER_SIZE = 2048;
-    std::array<float, BUFFER_SIZE> analysisBuffer;
+    // Fixed audio-thread storage for publishing complete analysis windows.
+    static constexpr int ANALYSIS_HOP = pedalboard3::dsp::TunerAnalysis::kAnalysisHopSize;
+    std::array<float, pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize> analysisRing;
+    std::array<std::array<float, pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize>, 2> analysisWindows;
     int bufferWritePos = 0;
-
-    // YIN working arrays
-    std::array<float, BUFFER_SIZE / 2> yinBuffer;
+    int samplesAvailable = 0;
+    int samplesUntilNextAnalysis = 0;
+    int writeAnalysisWindowSlot = 0;
+    std::atomic<int> publishedAnalysisWindowSlot{-1};
+    std::atomic<unsigned int> publishedAnalysisSequence{0};
+    std::atomic<bool> analysisWindowPending{false};
+    std::atomic<bool> stopAnalysisThreadFlag{false};
+    std::thread analysisThread;
+    pedalboard3::dsp::TunerAnalysis backgroundAnalyzer;
 
     // Detection results (atomic for thread safety)
     std::atomic<float> detectedFrequency{0.0f};
@@ -116,11 +126,8 @@ class TunerProcessor : public PedalboardProcessor
 
     // Processing state
     double sampleRate = 44100.0;
-    int samplesUntilNextAnalysis = 0;
-    static constexpr int ANALYSIS_HOP = 512;
 
     // Tuning reference (A4 = 440 Hz)
-    static constexpr float A4_FREQ = 440.0f;
     static constexpr int A4_MIDI = 69;
 
     // Editor bounds

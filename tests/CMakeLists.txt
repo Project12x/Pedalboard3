@@ -17,6 +17,7 @@ add_executable(Pedalboard3_Tests
     ui_scale_test.cpp
     ui_regression_harness_test.cpp
     tuner_analysis_test.cpp
+    tuner_processor_test.cpp
     nam_processor_test.cpp
     patch_switch_test.cpp
     vst3_loading_test.cpp
@@ -35,6 +36,8 @@ add_executable(Pedalboard3_Tests
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
     ../src/dsp/TunerAnalysis.cpp
+    ../src/TunerProcessor.cpp
+    ../src/TunerControl.cpp
     ../src/ReverbSCProcessor.cpp
     ../src/SafetyLimiter.cpp
     ../src/VirtualMidiInputProcessor.cpp

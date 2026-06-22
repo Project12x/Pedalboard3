@@ -2064,6 +2064,27 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerProcessorSource->find("setPlayConfigDetails(1, 1, 0, 0);") != std::string::npos);
     CHECK(tunerProcessorSource->find("constexpr int kTunerAudioPinY = 78;") != std::string::npos);
     CHECK(tunerProcessorSource->find("layout.pinY.push_back(kTunerAudioPinY);") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("#include \"dsp/TunerAnalysis.h\"") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("#include <thread>") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void startAnalysisThread();") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void stopAnalysisThread() noexcept;") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void publishAnalysisWindow() noexcept;") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("void analysisThreadMain() noexcept;") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("std::thread analysisThread;") != std::string::npos);
+    CHECK(tunerProcessorHeader->find("std::atomic<bool> analysisWindowPending{false};") !=
+          std::string::npos);
+    CHECK(tunerProcessorHeader->find("std::array<std::array<float, pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize>, 2> analysisWindows;") !=
+          std::string::npos);
+    CHECK(tunerProcessorSource->find("stopAnalysisThread();") != std::string::npos);
+    CHECK(tunerProcessorSource->find("startAnalysisThread();") != std::string::npos);
+    CHECK(tunerProcessorSource->find("publishAnalysisWindow();") != std::string::npos);
+    CHECK(tunerProcessorSource->find("analysisWindowPending.exchange(false") != std::string::npos);
+    CHECK(tunerProcessorSource->find("backgroundAnalyzer.pushSamples(analysisWindows") != std::string::npos);
+    CHECK(tunerProcessorSource->find("backgroundAnalyzer.analyze();") != std::string::npos);
+    CHECK(tunerProcessorSource->find("std::this_thread::sleep_for") != std::string::npos);
+    CHECK(tunerProcessorSource->find("detectPitchYIN") == std::string::npos);
+    CHECK(tunerProcessorSource->find("yinBuffer") == std::string::npos);
+    CHECK(tunerProcessorSource->find("contiguousBuffer") == std::string::npos);
 }
 
 TEST_CASE("Utility scope and tone nodes keep explicit bus and pin footprint contracts",

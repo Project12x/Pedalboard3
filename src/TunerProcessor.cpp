@@ -11,7 +11,9 @@
 
 #include "TunerControl.h"
 
+#include <chrono>
 #include <cmath>
+#include <thread>
 
 namespace
 {
@@ -24,16 +26,41 @@ TunerProcessor::TunerProcessor() : PedalboardProcessor()
     setPlayConfigDetails(1, 1, 0, 0);
 }
 
-TunerProcessor::~TunerProcessor() {}
+TunerProcessor::~TunerProcessor()
+{
+    stopAnalysisThread();
+}
 
 //==============================================================================
 void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPerBlock)
 {
+    stopAnalysisThread();
+
     sampleRate = newSampleRate;
     bufferWritePos = 0;
+    samplesAvailable = 0;
     samplesUntilNextAnalysis = 0;
-    analysisBuffer.fill(0.0f);
-    yinBuffer.fill(0.0f);
+    writeAnalysisWindowSlot = 0;
+    analysisRing.fill(0.0f);
+    for (auto& window : analysisWindows)
+        window.fill(0.0f);
+
+    publishedAnalysisWindowSlot.store(-1, std::memory_order_release);
+    publishedAnalysisSequence.store(0, std::memory_order_release);
+    analysisWindowPending.store(false, std::memory_order_release);
+    pitchDetected.store(false, std::memory_order_release);
+    detectedFrequency.store(0.0f, std::memory_order_release);
+    detectedNote.store(-1, std::memory_order_release);
+    centsDeviation.store(0.0f, std::memory_order_release);
+    strobePhase.store(0.0f, std::memory_order_release);
+
+    backgroundAnalyzer.prepare(newSampleRate, estimatedSamplesPerBlock);
+    startAnalysisThread();
+}
+
+void TunerProcessor::releaseResources()
+{
+    stopAnalysisThread();
 }
 
 //==============================================================================
@@ -44,45 +71,26 @@ void TunerProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMes
     if (buffer.getNumChannels() == 0 || buffer.getNumSamples() == 0)
         return;
 
-    // Use first channel for pitch detection
     const float* inputData = buffer.getReadPointer(0);
     const int numSamples = buffer.getNumSamples();
+    constexpr int analysisWindowSize = pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize;
 
     for (int i = 0; i < numSamples; ++i)
     {
-        // Fill analysis buffer
-        analysisBuffer[bufferWritePos] = inputData[i];
-        bufferWritePos = (bufferWritePos + 1) % BUFFER_SIZE;
+        analysisRing[static_cast<size_t>(bufferWritePos)] = inputData[i];
+        bufferWritePos = (bufferWritePos + 1) % analysisWindowSize;
+
+        if (samplesAvailable < analysisWindowSize)
+        {
+            ++samplesAvailable;
+            continue;
+        }
 
         --samplesUntilNextAnalysis;
-
         if (samplesUntilNextAnalysis <= 0)
         {
             samplesUntilNextAnalysis = ANALYSIS_HOP;
-
-            // Create contiguous buffer for analysis
-            std::array<float, BUFFER_SIZE> contiguousBuffer;
-            for (int j = 0; j < BUFFER_SIZE; ++j)
-            {
-                contiguousBuffer[j] = analysisBuffer[(bufferWritePos + j) % BUFFER_SIZE];
-            }
-
-            // Run pitch detection
-            float frequency = detectPitchYIN(contiguousBuffer.data(), BUFFER_SIZE);
-
-            if (frequency > 20.0f && frequency < 5000.0f)
-            {
-                detectedFrequency.store(frequency);
-                pitchDetected.store(true);
-                updateNoteAndCents(frequency);
-                updateStrobePhase(frequency);
-            }
-            else
-            {
-                pitchDetected.store(false);
-                detectedNote.store(-1);
-                centsDeviation.store(0.0f);
-            }
+            publishAnalysisWindow();
         }
     }
 
@@ -91,90 +99,102 @@ void TunerProcessor::processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMes
 }
 
 //==============================================================================
-float TunerProcessor::detectPitchYIN(const float* samples, int numSamples)
+void TunerProcessor::startAnalysisThread()
 {
-    const int halfSize = numSamples / 2;
-    const float yinThreshold = 0.15f;
+    if (analysisThread.joinable())
+        return;
 
-    // Step 1 & 2: Calculate difference function and cumulative mean normalized difference
-    yinBuffer[0] = 1.0f;
-    float runningSum = 0.0f;
+    stopAnalysisThreadFlag.store(false, std::memory_order_release);
+    analysisThread = std::thread([this] { analysisThreadMain(); });
+}
 
-    for (int tau = 1; tau < halfSize; ++tau)
+void TunerProcessor::stopAnalysisThread() noexcept
+{
+    stopAnalysisThreadFlag.store(true, std::memory_order_release);
+
+    if (analysisThread.joinable() && analysisThread.get_id() != std::this_thread::get_id())
+        analysisThread.join();
+
+    analysisWindowPending.store(false, std::memory_order_release);
+}
+
+void TunerProcessor::publishAnalysisWindow() noexcept
+{
+    if (analysisWindowPending.load(std::memory_order_acquire))
+        return;
+
+    constexpr int analysisWindowSize = pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize;
+    auto& target = analysisWindows[static_cast<size_t>(writeAnalysisWindowSlot)];
+    for (int i = 0; i < analysisWindowSize; ++i)
     {
-        float sum = 0.0f;
-        for (int j = 0; j < halfSize; ++j)
+        const int sourceIndex = (bufferWritePos + i) % analysisWindowSize;
+        target[static_cast<size_t>(i)] = analysisRing[static_cast<size_t>(sourceIndex)];
+    }
+
+    publishedAnalysisWindowSlot.store(writeAnalysisWindowSlot, std::memory_order_release);
+    publishedAnalysisSequence.fetch_add(1, std::memory_order_acq_rel);
+    analysisWindowPending.store(true, std::memory_order_release);
+    writeAnalysisWindowSlot = (writeAnalysisWindowSlot + 1) % 2;
+}
+
+void TunerProcessor::analysisThreadMain() noexcept
+{
+    while (!stopAnalysisThreadFlag.load(std::memory_order_acquire))
+    {
+        if (!analysisWindowPending.exchange(false, std::memory_order_acquire))
         {
-            float delta = samples[j] - samples[j + tau];
-            sum += delta * delta;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            continue;
         }
 
-        runningSum += sum;
-        yinBuffer[tau] = (runningSum > 0.0f) ? (sum * tau / runningSum) : 1.0f;
-    }
+        const int slot = publishedAnalysisWindowSlot.load(std::memory_order_acquire);
+        if (slot < 0 || slot >= 2)
+            continue;
 
-    // Step 3: Absolute threshold
-    int tauEstimate = -1;
-    for (int tau = 2; tau < halfSize; ++tau)
+        backgroundAnalyzer.reset();
+        backgroundAnalyzer.pushSamples(analysisWindows[static_cast<size_t>(slot)].data(),
+                                       pedalboard3::dsp::TunerAnalysis::kAnalysisWindowSize);
+        auto result = backgroundAnalyzer.analyze();
+        applyAnalysisResult(result);
+    }
+}
+
+void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisResult& result) noexcept
+{
+    if (result.detected && result.frequencyHz > 20.0f && result.frequencyHz < 5000.0f && result.midiNote >= 0)
     {
-        if (yinBuffer[tau] < yinThreshold)
-        {
-            // Find local minimum
-            while (tau + 1 < halfSize && yinBuffer[tau + 1] < yinBuffer[tau])
-            {
-                ++tau;
-            }
-            tauEstimate = tau;
-            break;
-        }
+        detectedFrequency.store(result.frequencyHz, std::memory_order_release);
+        detectedNote.store(result.midiNote, std::memory_order_release);
+        centsDeviation.store(result.cents, std::memory_order_release);
+        pitchDetected.store(true, std::memory_order_release);
+        updateStrobePhase(result.frequencyHz, result.midiNote, result.referenceA4Hz);
+        return;
     }
 
-    if (tauEstimate == -1)
-        return 0.0f;
-
-    // Step 4: Parabolic interpolation for better accuracy
-    float betterTau = static_cast<float>(tauEstimate);
-    if (tauEstimate > 0 && tauEstimate < halfSize - 1)
-    {
-        float s0 = yinBuffer[tauEstimate - 1];
-        float s1 = yinBuffer[tauEstimate];
-        float s2 = yinBuffer[tauEstimate + 1];
-        betterTau = tauEstimate + (s2 - s0) / (2.0f * (2.0f * s1 - s2 - s0));
-    }
-
-    return static_cast<float>(sampleRate) / betterTau;
+    pitchDetected.store(false, std::memory_order_release);
+    detectedFrequency.store(0.0f, std::memory_order_release);
+    detectedNote.store(-1, std::memory_order_release);
+    centsDeviation.store(0.0f, std::memory_order_release);
 }
 
 //==============================================================================
-void TunerProcessor::updateNoteAndCents(float frequency)
+void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float referenceA4Hz) noexcept
 {
-    // Calculate MIDI note number from frequency
-    float midiNoteFloat = 12.0f * std::log2(frequency / A4_FREQ) + A4_MIDI;
-    int midiNote = static_cast<int>(std::round(midiNoteFloat));
+    if (!std::isfinite(frequency) || !std::isfinite(referenceA4Hz) || frequency <= 0.0f || referenceA4Hz <= 0.0f)
+        return;
 
-    // Calculate cents deviation
-    float exactNote = 12.0f * std::log2(frequency / A4_FREQ) + A4_MIDI;
-    float cents = (exactNote - midiNote) * 100.0f;
+    const float targetFreq = referenceA4Hz * std::pow(2.0f, static_cast<float>(midiNote - A4_MIDI) / 12.0f);
+    if (!std::isfinite(targetFreq) || targetFreq <= 0.0f)
+        return;
 
-    detectedNote.store(midiNote);
-    centsDeviation.store(cents);
-}
-
-//==============================================================================
-void TunerProcessor::updateStrobePhase(float frequency)
-{
-    // Calculate target frequency for the detected note
-    int midiNote = detectedNote.load();
-    float targetFreq = A4_FREQ * std::pow(2.0f, (midiNote - A4_MIDI) / 12.0f);
-
-    // Phase rotates based on frequency error
-    float freqError = frequency - targetFreq;
-    float phaseRate = freqError * 0.01f; // Scale down for visible rotation
+    // Phase rotates based on frequency error.
+    const float freqError = frequency - targetFreq;
+    const float phaseRate = freqError * 0.01f;
 
     float currentPhase = strobePhase.load();
     currentPhase += phaseRate;
 
-    // Wrap phase to 0-1
+    // Wrap phase to 0-1.
     while (currentPhase >= 1.0f)
         currentPhase -= 1.0f;
     while (currentPhase < 0.0f)
