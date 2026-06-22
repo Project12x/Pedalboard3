@@ -726,7 +726,7 @@ Do not run Worker A and Worker C against the same `BypassableInstance` or graph 
 - [x] `docs/host-midi-routing-contract.md` exists and matches implemented MIDI routing behavior.
 - [ ] `tests/rt_hosting_sprint_test.cpp` covers all accepted audit findings.
 - [x] Graph restore uses preparation plus bounded commit.
-- [ ] Callback bounds reject counters are visible in tests.
+- [x] Callback bounds reject counters are visible in tests.
 - [x] Virtual MIDI has no audio-thread logging.
 - [x] MIDI FIFO overflow is observable through counters and no producer-side `SpinLock`.
 - [x] MIDI mapping uses cached realtime-safe state and deferred app commands.

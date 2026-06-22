@@ -29,6 +29,7 @@
 #include "FontManager.h"
 #include "MasterBusProcessor.h"
 #include "MasterGainState.h"
+#include "MeteringCallbackBounds.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
@@ -51,8 +52,8 @@ class TunerProcessor;
 class MeteringProcessorPlayer : public AudioProcessorPlayer
 {
   public:
-    static constexpr int MaxChannels = 16;
-    static constexpr int MaxCallbackBlockSize = 8192;
+    static constexpr int MaxChannels = MeteringCallbackBounds::MaxChannels;
+    static constexpr int MaxCallbackBlockSize = MeteringCallbackBounds::MaxBlockSize;
 
     int getCallbackBoundsRejectCount() const noexcept
     {
@@ -90,17 +91,22 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         auto& gainState = MasterGainState::getInstance();
         auto* recorder = scratchRecorder.load(std::memory_order_acquire);
 
-        if (numSamples <= 0)
-            return;
-
-        if (numSamples > MaxCallbackBlockSize)
+        const auto bufferPlan = makeMeteringCallbackBufferPlan(numInputChannels, numOutputChannels, numSamples);
+        if (!bufferPlan.valid)
         {
             callbackBoundsRejectCount.fetch_add(1, std::memory_order_relaxed);
-            for (int ch = 0; ch < numOutputChannels; ++ch)
-                if (outputChannelData[ch] != nullptr)
-                    FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+            if (outputChannelData != nullptr && numOutputChannels > 0 && numSamples > 0)
+            {
+                for (int ch = 0; ch < numOutputChannels; ++ch)
+                    if (outputChannelData[ch] != nullptr)
+                        FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+            }
             return;
         }
+
+        numInputChannels = bufferPlan.numInputChannels;
+        numOutputChannels = bufferPlan.numOutputChannels;
+        numSamples = bufferPlan.numSamples;
 
         if (recorder != nullptr)
             recorder->writeRawBlock(inputChannelData, numInputChannels, numSamples);
@@ -145,8 +151,6 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             {
                 actualInput = gainedInputPtrs;
                 actualInputChannels = chCount;
-                if (numInputChannels > MaxChannels)
-                    callbackBoundsRejectCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 

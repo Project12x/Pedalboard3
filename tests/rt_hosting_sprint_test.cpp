@@ -1,4 +1,5 @@
 #include "../src/BypassableInstance.h"
+#include "../src/MeteringCallbackBounds.h"
 #include "../src/SafetyLimiter.h"
 #include "../src/VirtualMidiInputProcessor.h"
 
@@ -127,6 +128,41 @@ TEST_CASE("Virtual MIDI destructor does not clear a newer active instance", "[rt
 
     REQUIRE(VirtualMidiInputProcessor::getInstance() == &second);
     VirtualMidiInputProcessor::setInstance(nullptr);
+}
+
+TEST_CASE("Metering callback rejects unsafe buffer dimensions before scratch access", "[rt][callback]")
+{
+    const auto nominal = makeMeteringCallbackBufferPlan(2, 2, MeteringCallbackBounds::MaxBlockSize);
+    REQUIRE(nominal.valid);
+    REQUIRE(nominal.numInputChannels == 2);
+    REQUIRE(nominal.numOutputChannels == 2);
+    REQUIRE(nominal.numSamples == MeteringCallbackBounds::MaxBlockSize);
+    REQUIRE(nominal.rejectReason == MeteringCallbackRejectReason::None);
+
+    const auto maxChannels = makeMeteringCallbackBufferPlan(MeteringCallbackBounds::MaxChannels,
+                                                            MeteringCallbackBounds::MaxChannels, 512);
+    REQUIRE(maxChannels.valid);
+
+    const auto oversizedBlock =
+        makeMeteringCallbackBufferPlan(2, 2, MeteringCallbackBounds::MaxBlockSize + 1);
+    REQUIRE_FALSE(oversizedBlock.valid);
+    REQUIRE(oversizedBlock.rejectReason == MeteringCallbackRejectReason::BlockTooLarge);
+
+    const auto tooManyInputs = makeMeteringCallbackBufferPlan(MeteringCallbackBounds::MaxChannels + 1, 2, 512);
+    REQUIRE_FALSE(tooManyInputs.valid);
+    REQUIRE(tooManyInputs.rejectReason == MeteringCallbackRejectReason::TooManyInputChannels);
+
+    const auto tooManyOutputs = makeMeteringCallbackBufferPlan(2, MeteringCallbackBounds::MaxChannels + 1, 512);
+    REQUIRE_FALSE(tooManyOutputs.valid);
+    REQUIRE(tooManyOutputs.rejectReason == MeteringCallbackRejectReason::TooManyOutputChannels);
+
+    const auto negativeSamples = makeMeteringCallbackBufferPlan(2, 2, -1);
+    REQUIRE_FALSE(negativeSamples.valid);
+    REQUIRE(negativeSamples.rejectReason == MeteringCallbackRejectReason::InvalidSampleCount);
+
+    const auto negativeChannels = makeMeteringCallbackBufferPlan(-1, 2, 512);
+    REQUIRE_FALSE(negativeChannels.valid);
+    REQUIRE(negativeChannels.rejectReason == MeteringCallbackRejectReason::InvalidChannelCount);
 }
 
 TEST_CASE("BypassableInstance forwards nonmatching MIDI channel messages unchanged", "[rt][bypassable][midi]")
