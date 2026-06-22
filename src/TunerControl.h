@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerControl.h
-    Chromatic tuner with needle, strobe-view, and string-reference displays
+    Chromatic tuner with needle, pitch-drift, and string-reference displays
 
   ==============================================================================
 */
@@ -17,7 +17,7 @@ class TunerProcessor;
 /**
     Tuner display with three views:
     - NEEDLE: Large analog-style needle meter
-    - STROBE: animated strobe-style view driven by detected pitch error
+    - DRIFT: animated pitch-drift view driven by detected pitch error
     - SIX STRING: guitar-string reference view driven by the same monophonic detector
 */
 class TunerControl : public Component, private Timer, public Button::Listener
@@ -27,7 +27,7 @@ class TunerControl : public Component, private Timer, public Button::Listener
     enum class TunerMode
     {
         Needle,
-        Strobe,
+        PitchDrift,
         SixString
     };
 
@@ -55,8 +55,8 @@ class TunerControl : public Component, private Timer, public Button::Listener
     void drawNeedleMeter(Graphics& g, Rectangle<float> bounds);
     void drawLedIndicators(Graphics& g, Rectangle<float> bounds);
 
-    // Drawing methods - Strobe mode
-    void drawStrobeDisc(Graphics& g, Rectangle<float> bounds);
+    // Drawing methods - pitch-drift mode
+    void drawPitchDriftDisc(Graphics& g, Rectangle<float> bounds);
     void drawSixStringDisplay(Graphics& g, Rectangle<float> bounds);
 
     // Common drawing methods
@@ -74,14 +74,14 @@ class TunerControl : public Component, private Timer, public Button::Listener
     void drawFlatSymbol(Graphics& g, float x, float y, float size, Colour colour) const;
     void drawSharpSymbol(Graphics& g, float x, float y, float size, Colour colour) const;
     void updateModeButtons();
-    bool isStrobeMode() const { return currentMode == TunerMode::Strobe; }
+    bool isPitchDriftMode() const { return currentMode == TunerMode::PitchDrift; }
 
     TunerProcessor* tunerProcessor;
 
     // Current mode
     TunerMode currentMode = TunerMode::Needle;
     std::unique_ptr<TextButton> needleModeButton;
-    std::unique_ptr<TextButton> strobeModeButton;
+    std::unique_ptr<TextButton> driftModeButton;
     std::unique_ptr<TextButton> sixStringModeButton;
     std::unique_ptr<TextButton> bypassButton;
     std::function<bool()> getBypassState;
@@ -90,7 +90,7 @@ class TunerControl : public Component, private Timer, public Button::Listener
     // Display values with smoothing
     float displayedCents = 0.0f;
     float needleAngle = 0.0f;    // Smoothed angle for needle
-    float strobeRotation = 0.0f; // For strobe animation
+    float driftRotation = 0.0f; // For pitch-drift animation
 
     // Animation state
     float glowIntensity = 0.0f; // For in-tune glow effect
@@ -99,7 +99,7 @@ class TunerControl : public Component, private Timer, public Button::Listener
     static constexpr float NEEDLE_SMOOTHING = 0.15f;
     static constexpr float GLOW_SMOOTHING = 0.1f;
     static constexpr int NUM_LEDS = 11;    // -50 to +50 cents
-    static constexpr int STROBE_BANDS = 8; // Number of strobe bands
+    static constexpr int DRIFT_BANDS = 8; // Number of drift bands
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TunerControl)
 };

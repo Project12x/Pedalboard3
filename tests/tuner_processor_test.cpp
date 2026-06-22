@@ -128,3 +128,31 @@ TEST_CASE("TunerProcessor applies reference pitch and serializes tuner response 
     CHECK(restored.getReferenceA4Hz() == Catch::Approx(referenceA4));
     CHECK(restored.getResponseMode() == TunerProcessor::ResponseMode::Fast);
 }
+
+TEST_CASE("TunerProcessor pitch drift phase reports sharp and flat direction",
+          "[tuner][processor]")
+{
+    constexpr double sampleRate = 48000.0;
+    constexpr int blockSize = 128;
+
+    auto measureDriftPhase = [=](double frequency) {
+        TunerProcessor tuner;
+        tuner.setResponseMode(TunerProcessor::ResponseMode::Fast);
+        tuner.prepareToPlay(sampleRate, blockSize);
+
+        AudioSampleBuffer buffer(1, blockSize);
+        MidiBuffer midi;
+        double phase = 0.0;
+        driveSineBlocks(tuner, buffer, midi, phase, sampleRate, frequency, 90);
+
+        REQUIRE(waitForDetectedPitch(tuner));
+        const auto driftPhase = tuner.getDriftPhase();
+        tuner.releaseResources();
+        return driftPhase;
+    };
+
+    CHECK(measureDriftPhase(440.0) == Catch::Approx(0.0f).margin(0.025f));
+    CHECK(measureDriftPhase(445.0) > 0.025f);
+    CHECK(measureDriftPhase(445.0) < 0.25f);
+    CHECK(measureDriftPhase(435.0) > 0.75f);
+}

@@ -16,7 +16,7 @@
 
 Included:
 
-- Make tuner capability labels honest: current `STROBE` and six-string views are display modes over a monophonic YIN estimate, not a true strobe backend or polyphonic detector.
+- Make tuner capability labels honest: the former `STROBE` view is now a `DRIFT` display over a monophonic YIN estimate, and the six-string view is not a true polyphonic detector.
 - Add tested pitch/tuning behavior around note acquire, note hold, silence timeout, confidence, reference pitch, and fast/stable response.
 - Decide and implement an RT-safe analyzer boundary before adding heavier detector variants.
 - Add focused algorithm tests using generated sine/noise input at multiple sample rates and buffer boundaries.
@@ -36,7 +36,7 @@ Excluded:
 - `src/TunerProcessor.cpp` runs YIN directly from `processBlock()` every `ANALYSIS_HOP = 512` samples over a 2048-sample window.
 - `src/TunerProcessor.cpp` copies the circular buffer into a stack `std::array<float, BUFFER_SIZE>` on each analysis hop, then runs an O(N^2) difference loop.
 - `src/TunerProcessor.h` and `src/TunerControl.h` describe a "Pro" phase-based strobe and `+/-0.1 cent` behavior that the backend does not currently implement.
-- `TunerControl` has `Needle`, `Strobe`, and `SixString` views. The `SixString` view is for visual feedback against the six guitar string references using the detected pitch; it is not simultaneous polyphonic detection.
+- `TunerControl` has `Needle`, `PitchDrift`, and `SixString` views. `PitchDrift` is an animated pitch-error display over the detected monophonic pitch, not a real hardware/comparator strobe. The `SixString` view is for visual feedback against the six guitar string references using the detected pitch; it is not simultaneous polyphonic detection.
 - `ToneGenerator` tests cover frequency/cents math, but no tests directly exercise `TunerProcessor::detectPitchYIN()` or end-to-end tuner detection accuracy.
 - `DeviceMeterTap` already provides device-level atomic meter values for Audio I/O nodes and Soundcheck, but the current meter model is peak-with-decay rather than a reusable source with explicit peak/RMS/VU/clip semantics.
 - `VuMeterDsp.h` references a GPL VU source as inspiration; future close ports should prefer permissive references unless a GPL copy path is intentional.
@@ -201,12 +201,18 @@ Files:
 - `src/TunerControl.*`
 - tests
 
+Decision:
+
+- Defer a true phase/comparator strobe backend in this sprint. The current YIN-based result is enough for a visual pitch-error drift display, but not enough to claim hardware-style strobe or PLL behavior.
+- Rename the user-facing mode from `STROBE` to `DRIFT` and keep GPL strobe projects as behavior references only until a clean-room spec is explicitly written.
+- Add processor tests for the pitch-drift phase direction so the visual mode has a concrete, tested meaning even while true strobe is deferred.
+
 Steps:
 
-- [ ] Decide whether this sprint implements a real phase/comparator strobe backend or keeps strobe as a visual mode with honest labeling.
-- [ ] If implementing real strobe, use `x42/tuna.lv2`, `lingot`, and `dsego/strobe-tuner` as behavior references and write a clean-room spec first.
-- [ ] Add tests proving strobe phase advances in the correct direction and rate for sharp/flat tones.
-- [ ] If deferring, rename/copy-adjust the view so it does not imply `+/-0.1 cent` hardware-strobe accuracy.
+- [x] Decide whether this sprint implements a real phase/comparator strobe backend or keeps strobe as a visual mode with honest labeling.
+- [x] If implementing real strobe, use `x42/tuna.lv2`, `lingot`, and `dsego/strobe-tuner` as behavior references and write a clean-room spec first. N/A for this sprint because true strobe is deferred.
+- [x] Add tests proving pitch-drift phase advances in the correct direction for sharp/flat tones.
+- [x] If deferring, rename/copy-adjust the view so it does not imply `+/-0.1 cent` hardware-strobe accuracy.
 
 Verification:
 

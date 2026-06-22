@@ -69,7 +69,7 @@ void TunerProcessor::prepareToPlay(double newSampleRate, int estimatedSamplesPer
     detectedFrequency.store(0.0f, std::memory_order_release);
     detectedNote.store(-1, std::memory_order_release);
     centsDeviation.store(0.0f, std::memory_order_release);
-    strobePhase.store(0.0f, std::memory_order_release);
+    driftPhase.store(0.0f, std::memory_order_release);
     resetResponseSmoothing();
 
     backgroundAnalyzer.prepare(newSampleRate, estimatedSamplesPerBlock);
@@ -219,7 +219,7 @@ void TunerProcessor::applyAnalysisResult(const pedalboard3::dsp::TunerAnalysisRe
         detectedNote.store(result.midiNote, std::memory_order_release);
         centsDeviation.store(result.cents, std::memory_order_release);
         pitchDetected.store(true, std::memory_order_release);
-        updateStrobePhase(result.frequencyHz, result.midiNote, result.referenceA4Hz);
+        updateDriftPhase(result.frequencyHz, result.midiNote, result.referenceA4Hz);
         return;
     }
 
@@ -251,7 +251,7 @@ void TunerProcessor::resetResponseSmoothing() noexcept
 }
 
 //==============================================================================
-void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float refA4Hz) noexcept
+void TunerProcessor::updateDriftPhase(float frequency, int midiNote, float refA4Hz) noexcept
 {
     if (!std::isfinite(frequency) || !std::isfinite(refA4Hz) || frequency <= 0.0f || refA4Hz <= 0.0f)
         return;
@@ -264,7 +264,7 @@ void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float refA
     const float freqError = frequency - targetFreq;
     const float phaseRate = freqError * 0.01f;
 
-    float currentPhase = strobePhase.load();
+    float currentPhase = driftPhase.load();
     currentPhase += phaseRate;
 
     // Wrap phase to 0-1.
@@ -273,7 +273,7 @@ void TunerProcessor::updateStrobePhase(float frequency, int midiNote, float refA
     while (currentPhase < 0.0f)
         currentPhase += 1.0f;
 
-    strobePhase.store(currentPhase);
+    driftPhase.store(currentPhase);
 }
 
 //==============================================================================

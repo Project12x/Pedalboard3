@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerProcessor.h
-    Monophonic chromatic tuner with needle, strobe-view, and string-reference displays
+    Monophonic chromatic tuner with needle, pitch-drift, and string-reference displays
 
   ==============================================================================
 */
@@ -19,8 +19,8 @@
 //==============================================================================
 /**
     Chromatic tuner with background monophonic pitch analysis and multiple
-    display views. Strobe and string modes are visual interpretations of the
-    same detected pitch.
+    display views. Pitch-drift and string modes are visual interpretations of
+    the same detected pitch.
 */
 class TunerProcessor : public PedalboardProcessor
 {
@@ -55,8 +55,8 @@ class TunerProcessor : public PedalboardProcessor
     ResponseMode getResponseMode() const noexcept;
     void setResponseMode(ResponseMode mode) noexcept;
 
-    /// For strobe view: display phase accumulator (0-1)
-    float getStrobePhase() const { return strobePhase.load(); }
+    /// For pitch-drift view: display phase accumulator (0-1)
+    float getDriftPhase() const { return driftPhase.load(); }
 
     //==========================================================================
     // AudioProcessor overrides
@@ -110,8 +110,8 @@ class TunerProcessor : public PedalboardProcessor
     void clearAnalysisResult() noexcept;
     void resetResponseSmoothing() noexcept;
 
-    // Update display strobe phase based on frequency error.
-    void updateStrobePhase(float frequency, int midiNote, float refA4Hz) noexcept;
+    // Update display drift phase based on frequency error.
+    void updateDriftPhase(float frequency, int midiNote, float refA4Hz) noexcept;
 
     //==========================================================================
     // Fixed audio-thread storage for publishing complete analysis windows.
@@ -134,7 +134,7 @@ class TunerProcessor : public PedalboardProcessor
     std::atomic<float> centsDeviation{0.0f};
     std::atomic<int> detectedNote{-1};
     std::atomic<bool> pitchDetected{false};
-    std::atomic<float> strobePhase{0.0f};
+    std::atomic<float> driftPhase{0.0f};
     std::atomic<float> referenceA4Hz{440.0f};
     std::atomic<int> responseMode{static_cast<int>(ResponseMode::Stable)};
 

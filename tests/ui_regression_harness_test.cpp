@@ -2010,21 +2010,26 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerHeader->find("void drawStatusBadge(Graphics& g, Rectangle<float> bounds);") !=
           std::string::npos);
     CHECK(tunerHeader->find("std::unique_ptr<TextButton> needleModeButton;") != std::string::npos);
-    CHECK(tunerHeader->find("std::unique_ptr<TextButton> strobeModeButton;") != std::string::npos);
+    CHECK(tunerHeader->find("std::unique_ptr<TextButton> driftModeButton;") != std::string::npos);
     CHECK(tunerHeader->find("TunerMode::Needle") != std::string::npos);
-    CHECK(tunerHeader->find("TunerMode::Strobe") != std::string::npos);
+    CHECK(tunerHeader->find("TunerMode::PitchDrift") != std::string::npos);
+    CHECK(tunerHeader->find("TunerMode::Strobe") == std::string::npos);
     CHECK(tunerHeader->find("TunerMode::Poly") == std::string::npos);
 
     CHECK(tunerSource->find("needleModeButton = std::make_unique<TextButton>(\"NEEDLE\");") !=
           std::string::npos);
-    CHECK(tunerSource->find("strobeModeButton = std::make_unique<TextButton>(\"STROBE\");") !=
+    CHECK(tunerSource->find("driftModeButton = std::make_unique<TextButton>(\"DRIFT\");") !=
           std::string::npos);
+    CHECK(tunerSource->find("driftModeButton->setTooltip(\"Pitch drift view\");") != std::string::npos);
     CHECK(tunerSource->find("sixStringModeButton = std::make_unique<TextButton>(\"STRINGS\");") !=
           std::string::npos);
     CHECK(tunerSource->find("sixStringModeButton->setTooltip(\"Six-string guitar reference view\");") !=
           std::string::npos);
+    CHECK(tunerSource->find("\"STROBE\"") == std::string::npos);
     CHECK(tunerSource->find("\"POLY\"") == std::string::npos);
     CHECK(tunerHeader->find("0.1 cent") == std::string::npos);
+    CHECK(tunerHeader->find("strobe-view") == std::string::npos);
+    CHECK(tunerHeader->find("STROBE:") == std::string::npos);
     CHECK(tunerProcessorHeader->find("0.1 cent") == std::string::npos);
     CHECK(tunerHeader->find("Turbo Tuner") == std::string::npos);
     CHECK(tunerProcessorHeader->find("Phase-based strobe") == std::string::npos);
@@ -2054,7 +2059,7 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerSource->find("const float dotX = track.getX() + track.getWidth() * normalized;") !=
           std::string::npos);
     CHECK(tunerSource->find("needleModeButton->setBounds") != std::string::npos);
-    CHECK(tunerSource->find("strobeModeButton->setBounds") != std::string::npos);
+    CHECK(tunerSource->find("driftModeButton->setBounds") != std::string::npos);
     CHECK(tunerSource->find("modeButton") == std::string::npos);
     CHECK(tunerSource->find("polyModeButton") == std::string::npos);
     CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(360, 276); }") !=

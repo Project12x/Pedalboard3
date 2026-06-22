@@ -2,7 +2,7 @@
   ==============================================================================
 
     TunerControl.cpp
-    Chromatic tuner with needle, strobe-view, and string-reference displays
+    Chromatic tuner with needle, pitch-drift, and string-reference displays
     Uses project fonts (Space Grotesk + JetBrains Mono) and drawn graphics
 
   ==============================================================================
@@ -43,11 +43,11 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     needleModeButton->addListener(this);
     addAndMakeVisible(needleModeButton.get());
 
-    strobeModeButton = std::make_unique<TextButton>("STROBE");
-    strobeModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
-    strobeModeButton->setTooltip("Strobe tuner view");
-    strobeModeButton->addListener(this);
-    addAndMakeVisible(strobeModeButton.get());
+    driftModeButton = std::make_unique<TextButton>("DRIFT");
+    driftModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
+    driftModeButton->setTooltip("Pitch drift view");
+    driftModeButton->addListener(this);
+    addAndMakeVisible(driftModeButton.get());
 
     sixStringModeButton = std::make_unique<TextButton>("STRINGS");
     sixStringModeButton->setLookAndFeel(&tunerModeButtonLookAndFeel);
@@ -73,8 +73,8 @@ TunerControl::~TunerControl()
 {
     if (needleModeButton != nullptr)
         needleModeButton->setLookAndFeel(nullptr);
-    if (strobeModeButton != nullptr)
-        strobeModeButton->setLookAndFeel(nullptr);
+    if (driftModeButton != nullptr)
+        driftModeButton->setLookAndFeel(nullptr);
     if (sixStringModeButton != nullptr)
         sixStringModeButton->setLookAndFeel(nullptr);
     if (bypassButton != nullptr)
@@ -100,9 +100,9 @@ void TunerControl::buttonClicked(Button* button)
         updateModeButtons();
         repaint();
     }
-    else if (button == strobeModeButton.get())
+    else if (button == driftModeButton.get())
     {
-        currentMode = TunerMode::Strobe;
+        currentMode = TunerMode::PitchDrift;
         updateModeButtons();
         repaint();
     }
@@ -136,9 +136,9 @@ void TunerControl::timerCallback()
     float targetGlow = (absCents < 5.0f) ? 1.0f - (absCents / 5.0f) : 0.0f;
     glowIntensity += (targetGlow - glowIntensity) * GLOW_SMOOTHING;
 
-    if (currentMode == TunerMode::Strobe)
+    if (currentMode == TunerMode::PitchDrift)
     {
-        strobeRotation = tunerProcessor->getStrobePhase() * MathConstants<float>::twoPi * STROBE_BANDS;
+        driftRotation = tunerProcessor->getDriftPhase() * MathConstants<float>::twoPi * DRIFT_BANDS;
     }
 
     if (bypassButton != nullptr && getBypassState)
@@ -180,7 +180,7 @@ void TunerControl::paint(Graphics& g)
     else if (currentMode == TunerMode::SixString)
         drawSixStringDisplay(g, meterArea.expanded(0.0f, 10.0f));
     else
-        drawStrobeDisc(g, meterArea);
+        drawPitchDriftDisc(g, meterArea);
 
     auto ledArea = area.removeFromTop(16);
     if (currentMode == TunerMode::Needle)
@@ -312,7 +312,7 @@ void TunerControl::drawModeSegmentedControl(Graphics& g, Rectangle<float> bounds
         g.drawLine(separatorX, plate.getY() + 5.0f, separatorX, plate.getBottom() - 5.0f, 0.8f);
     }
 
-    const int modeIndex = currentMode == TunerMode::Needle ? 0 : currentMode == TunerMode::Strobe ? 1 : 2;
+    const int modeIndex = currentMode == TunerMode::Needle ? 0 : currentMode == TunerMode::PitchDrift ? 1 : 2;
     const auto selected = Rectangle<float>(plate.getX() + segmentW * (float)modeIndex, plate.getY(), segmentW,
                                            plate.getHeight())
                               .reduced(2.0f);
@@ -716,7 +716,7 @@ void TunerControl::drawNeedleMeter(Graphics& g, Rectangle<float> bounds)
 }
 
 //==============================================================================
-void TunerControl::drawStrobeDisc(Graphics& g, Rectangle<float> bounds)
+void TunerControl::drawPitchDriftDisc(Graphics& g, Rectangle<float> bounds)
 {
     auto& colours = ColourScheme::getInstance().colours;
     auto& fonts = FontManager::getInstance();
@@ -745,14 +745,14 @@ void TunerControl::drawStrobeDisc(Graphics& g, Rectangle<float> bounds)
         return;
     }
 
-    // Strobe bands
-    float bandAngle = MathConstants<float>::twoPi / STROBE_BANDS;
+    // Drift bands
+    float bandAngle = MathConstants<float>::twoPi / DRIFT_BANDS;
     Colour brightCol = getTuningColour(displayedCents);
     Colour darkCol = colours["Plugin Background"].darker(0.4f);
 
-    for (int i = 0; i < STROBE_BANDS; ++i)
+    for (int i = 0; i < DRIFT_BANDS; ++i)
     {
-        float startAngle = (i * bandAngle) + strobeRotation;
+        float startAngle = (i * bandAngle) + driftRotation;
 
         Path brightSeg;
         brightSeg.addPieSegment(centreX - radius, centreY - radius, radius * 2, radius * 2, startAngle,
@@ -919,11 +919,11 @@ void TunerControl::resized()
     modeArea.removeFromRight(4);
     const int thirdWidth = modeArea.getWidth() / 3;
     needleModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
-    strobeModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
+    driftModeButton->setBounds(modeArea.removeFromLeft(thirdWidth).reduced(2, 2));
     sixStringModeButton->setBounds(modeArea.reduced(2, 2));
     bypassButton->setBounds(bypassArea);
 
-    for (auto* button : {needleModeButton.get(), strobeModeButton.get(), sixStringModeButton.get()})
+    for (auto* button : {needleModeButton.get(), driftModeButton.get(), sixStringModeButton.get()})
     {
         const auto plateBase = colours["Field Background"].interpolatedWith(colours["Plugin Background"], 0.45f)
                                    .darker(0.12f);
@@ -945,8 +945,8 @@ void TunerControl::updateModeButtons()
 {
     if (needleModeButton != nullptr)
         needleModeButton->setToggleState(currentMode == TunerMode::Needle, dontSendNotification);
-    if (strobeModeButton != nullptr)
-        strobeModeButton->setToggleState(currentMode == TunerMode::Strobe, dontSendNotification);
+    if (driftModeButton != nullptr)
+        driftModeButton->setToggleState(currentMode == TunerMode::PitchDrift, dontSendNotification);
     if (sixStringModeButton != nullptr)
         sixStringModeButton->setToggleState(currentMode == TunerMode::SixString, dontSendNotification);
 }
