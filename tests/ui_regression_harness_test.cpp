@@ -2160,6 +2160,10 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(stageViewSource->find("tunerProcessor->getDetectedConfidence()") != std::string::npos);
     CHECK(stageViewSource->find("tunerProcessor->getGuitarStringInTuneMask()") != std::string::npos);
     CHECK(stageViewSource->find("kStageStringMidiNotes{40, 45, 50, 55, 59, 64}") != std::string::npos);
+    CHECK(stageViewSource->find("const bool showPatchNavigation = viewMode != ViewMode::Tuner;") !=
+          std::string::npos);
+    CHECK(stageViewSource->find("prevButton->setVisible(showPatchNavigation);") != std::string::npos);
+    CHECK(stageViewSource->find("nextButton->setVisible(showPatchNavigation);") != std::string::npos);
     CHECK(stageViewSource->find("PITCH HISTORY") != std::string::npos);
     CHECK(stageViewSource->find("STRING CHECK") != std::string::npos);
 }

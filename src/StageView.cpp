@@ -1661,6 +1661,10 @@ void StageView::resized()
         performanceArea.removeFromBottom(metrics.tunerHeight);
 
     // Navigation buttons
+    const bool showPatchNavigation = viewMode != ViewMode::Tuner;
+    prevButton->setVisible(showPatchNavigation);
+    nextButton->setVisible(showPatchNavigation);
+
     const int navY = performanceArea.getCentreY() - metrics.navButtonHeight / 2;
     if (viewMode == ViewMode::Grid || viewMode == ViewMode::Patch)
     {
