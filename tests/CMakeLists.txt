@@ -16,6 +16,7 @@ add_executable(Pedalboard3_Tests
     stage_layout_test.cpp
     ui_scale_test.cpp
     ui_regression_harness_test.cpp
+    meter_source_test.cpp
     tuner_analysis_test.cpp
     tuner_processor_test.cpp
     nam_processor_test.cpp
@@ -35,11 +36,13 @@ add_executable(Pedalboard3_Tests
     ../src/AudioSingletons.cpp
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
+    ../src/dsp/MeterSource.cpp
     ../src/dsp/TunerAnalysis.cpp
     ../src/TunerProcessor.cpp
     ../src/TunerControl.cpp
     ../src/ReverbSCProcessor.cpp
     ../src/SafetyLimiter.cpp
+    ../src/DeviceMeterTap.cpp
     ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp
     ../src/FontManager.cpp

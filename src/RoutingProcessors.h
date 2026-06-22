@@ -12,7 +12,6 @@
 #pragma once
 
 #include "PedalboardProcessors.h"
-#include "VuMeterDsp.h"
 
 #include <JuceHeader.h>
 #include <array>
@@ -65,13 +64,10 @@ class SplitterProcessor : public PedalboardProcessor
 
     struct StripDsp
     {
-        VuMeterDsp vuL, vuR;
         SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedGain;
 
         void init(double sampleRate)
         {
-            vuL.init(static_cast<float>(sampleRate));
-            vuR.init(static_cast<float>(sampleRate));
             smoothedGain.reset(sampleRate, GainRampSeconds);
             smoothedGain.setCurrentAndTargetValue(1.0f);
         }
@@ -155,7 +151,6 @@ class SplitterProcessor : public PedalboardProcessor
     std::array<StripState, MaxStrips> strips_;
     std::atomic<int> numStrips_{0};
     std::array<StripDsp, MaxStrips> stripDsp_;
-    VuMeterDsp inputVuDspL_, inputVuDspR_;
     AudioBuffer<float> inputSnapshot_;
     double currentSampleRate_ = 44100.0;
     float peakDecay_ = 0.0f;
@@ -219,13 +214,10 @@ class MixerProcessor : public PedalboardProcessor
 
     struct StripDsp
     {
-        VuMeterDsp vuL, vuR;
         SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedGain;
 
         void init(double sampleRate)
         {
-            vuL.init(static_cast<float>(sampleRate));
-            vuR.init(static_cast<float>(sampleRate));
             smoothedGain.reset(sampleRate, GainRampSeconds);
             smoothedGain.setCurrentAndTargetValue(1.0f);
         }
@@ -329,7 +321,6 @@ class MixerProcessor : public PedalboardProcessor
     std::atomic<bool> verticalLayout_{false};
     std::array<StripDsp, MaxStrips> stripDsp_;
     SmoothedValue<float, ValueSmoothingTypes::Multiplicative> smoothedMasterGain_;
-    VuMeterDsp masterVuDspL_, masterVuDspR_;
     AudioBuffer<float> tempBuffer_;
     double currentSampleRate_ = 44100.0;
     float peakDecay_ = 0.0f;

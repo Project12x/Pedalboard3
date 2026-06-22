@@ -546,8 +546,6 @@ void SplitterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
         }
     }
 
-    inputVuDspL_.init(static_cast<float>(sampleRate));
-    inputVuDspR_.init(static_cast<float>(sampleRate));
     inputSnapshot_.setSize(2, samplesPerBlock, false, true, true);
 }
 
@@ -955,8 +953,6 @@ void MixerProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
     smoothedMasterGain_.reset(sampleRate, GainRampSeconds);
     smoothedMasterGain_.setCurrentAndTargetValue(Decibels::decibelsToGain(masterGainDb.load(std::memory_order_relaxed)));
-    masterVuDspL_.init(static_cast<float>(sampleRate));
-    masterVuDspR_.init(static_cast<float>(sampleRate));
     tempBuffer_.setSize(2, samplesPerBlock, false, true, true);
 }
 

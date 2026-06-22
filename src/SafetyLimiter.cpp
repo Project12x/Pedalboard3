@@ -30,24 +30,9 @@ void SafetyLimiterProcessor::prepareToPlay(double sampleRate, int /*samplesPerBl
     // Release coefficient for ~50ms release time
     releaseCoeff = std::exp(-1.0f / static_cast<float>(sampleRate * 0.05));
 
-    // Output meter decay: ~300ms from peak to -60dB
-    double samplesFor300ms = sampleRate * 0.3;
-    outputDecayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor300ms));
-
     resetRuntimeState();
-    outputLevels[0].store(0.0f, std::memory_order_relaxed);
-    outputLevels[1].store(0.0f, std::memory_order_relaxed);
-    inputLevels[0].store(0.0f, std::memory_order_relaxed);
-    inputLevels[1].store(0.0f, std::memory_order_relaxed);
-
-    // Initialize VU meter DSP
-    for (int ch = 0; ch < 2; ++ch)
-    {
-        inputVu[ch].init(static_cast<float>(sampleRate));
-        outputVu[ch].init(static_cast<float>(sampleRate));
-        inputVuLevels[ch].store(0.0f, std::memory_order_relaxed);
-        outputVuLevels[ch].store(0.0f, std::memory_order_relaxed);
-    }
+    inputMeters.prepare(sampleRate, 2);
+    outputMeters.prepare(sampleRate, 2);
 
     setInstance(this);
 }
@@ -209,64 +194,10 @@ void SafetyLimiterProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuffer
 void SafetyLimiterProcessor::updateOutputLevelsFromDevice(const float* const* outputData, int numChannels,
                                                           int numSamples)
 {
-    int chCount = jmin(numChannels, 2);
-    for (int ch = 0; ch < chCount; ++ch)
-    {
-        if (outputData[ch] == nullptr)
-            continue;
-        // Peak metering (existing)
-        float peak = outputLevels[ch].load(std::memory_order_relaxed);
-        for (int i = 0; i < numSamples; ++i)
-        {
-            float s = std::abs(outputData[ch][i]);
-            if (s > peak)
-                peak = s;
-            else
-                peak *= outputDecayCoeff;
-        }
-        if (peak < 1e-10f)
-            peak = 0.0f;
-        outputLevels[ch].store(peak, std::memory_order_relaxed);
-
-        // VU metering (300ms integration)
-        outputVu[ch].process(outputData[ch], numSamples);
-        outputVuLevels[ch].store(outputVu[ch].read(), std::memory_order_relaxed);
-    }
-    for (int ch = chCount; ch < 2; ++ch)
-    {
-        outputLevels[ch].store(0.0f, std::memory_order_relaxed);
-        outputVuLevels[ch].store(0.0f, std::memory_order_relaxed);
-    }
+    outputMeters.process(outputData, jmin(numChannels, 2), numSamples);
 }
 
 void SafetyLimiterProcessor::updateInputLevelsFromDevice(const float* const* inputData, int numChannels, int numSamples)
 {
-    int chCount = jmin(numChannels, 2);
-    for (int ch = 0; ch < chCount; ++ch)
-    {
-        if (inputData[ch] == nullptr)
-            continue;
-        // Peak metering (existing)
-        float peak = inputLevels[ch].load(std::memory_order_relaxed);
-        for (int i = 0; i < numSamples; ++i)
-        {
-            float s = std::abs(inputData[ch][i]);
-            if (s > peak)
-                peak = s;
-            else
-                peak *= outputDecayCoeff;
-        }
-        if (peak < 1e-10f)
-            peak = 0.0f;
-        inputLevels[ch].store(peak, std::memory_order_relaxed);
-
-        // VU metering (300ms integration)
-        inputVu[ch].process(inputData[ch], numSamples);
-        inputVuLevels[ch].store(inputVu[ch].read(), std::memory_order_relaxed);
-    }
-    for (int ch = chCount; ch < 2; ++ch)
-    {
-        inputLevels[ch].store(0.0f, std::memory_order_relaxed);
-        inputVuLevels[ch].store(0.0f, std::memory_order_relaxed);
-    }
+    inputMeters.process(inputData, jmin(numChannels, 2), numSamples);
 }

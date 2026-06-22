@@ -10,7 +10,7 @@
 #ifndef SAFETYLIMITER_H_INCLUDED
 #define SAFETYLIMITER_H_INCLUDED
 
-#include "VuMeterDsp.h"
+#include "dsp/MeterSource.h"
 
 #include <JuceHeader.h>
 #include <atomic>
@@ -76,31 +76,48 @@ class SafetyLimiterProcessor : public AudioProcessor
     // Output level metering (peak with decay, read by UI for Audio Output VU)
     float getOutputLevel(int channel) const
     {
-        if (channel >= 0 && channel < 2)
-            return outputLevels[channel].load(std::memory_order_relaxed);
-        return 0.0f;
+        return outputMeters.getPeak(channel);
     }
 
     // Input level metering (peak with decay, read by UI for Audio Input VU)
     float getInputLevel(int channel) const
     {
-        if (channel >= 0 && channel < 2)
-            return inputLevels[channel].load(std::memory_order_relaxed);
-        return 0.0f;
+        return inputMeters.getPeak(channel);
     }
 
     // VU-ballistic level (300ms integration, read by UI for VU meter display)
     float getOutputVuLevel(int channel) const
     {
-        if (channel >= 0 && channel < 2)
-            return outputVuLevels[channel].load(std::memory_order_relaxed);
-        return 0.0f;
+        return outputMeters.getVu(channel);
     }
     float getInputVuLevel(int channel) const
     {
-        if (channel >= 0 && channel < 2)
-            return inputVuLevels[channel].load(std::memory_order_relaxed);
-        return 0.0f;
+        return inputMeters.getVu(channel);
+    }
+
+    float getOutputRmsLevel(int channel) const
+    {
+        return outputMeters.getRms(channel);
+    }
+    float getInputRmsLevel(int channel) const
+    {
+        return inputMeters.getRms(channel);
+    }
+    bool getOutputClip(int channel) const
+    {
+        return outputMeters.getClip(channel);
+    }
+    bool getInputClip(int channel) const
+    {
+        return inputMeters.getClip(channel);
+    }
+    bool getOutputAndClearClip(int channel)
+    {
+        return outputMeters.getAndClearClip(channel);
+    }
+    bool getInputAndClearClip(int channel)
+    {
+        return inputMeters.getAndClearClip(channel);
     }
 
     // Called from MeteringProcessorPlayer after graph processes (RT-safe).
@@ -153,16 +170,9 @@ class SafetyLimiterProcessor : public AudioProcessor
 
     double currentSampleRate = 44100.0;
 
-    // Level metering (per-channel peak with decay, updated from device callback)
-    std::atomic<float> outputLevels[2] = {{0.0f}, {0.0f}};
-    std::atomic<float> inputLevels[2] = {{0.0f}, {0.0f}};
-    float outputDecayCoeff = 0.9995f; // ~300ms decay at 44100Hz, refined in prepareToPlay
-
-    // VU meter DSP (2-pole lowpass, 300ms integration per IEC 60268-17)
-    VuMeterDsp inputVu[2];
-    VuMeterDsp outputVu[2];
-    std::atomic<float> inputVuLevels[2] = {{0.0f}, {0.0f}};
-    std::atomic<float> outputVuLevels[2] = {{0.0f}, {0.0f}};
+    // Explicit peak/RMS/VU/clip metering, updated from device callback.
+    PedalboardMeterSource inputMeters;
+    PedalboardMeterSource outputMeters;
 
     static SafetyLimiterProcessor* instance;
 

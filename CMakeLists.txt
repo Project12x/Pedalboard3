@@ -293,6 +293,8 @@ target_sources(Pedalboard3 PRIVATE
     src/StageView.h
     src/RoutingProcessors.cpp
     src/RoutingProcessors.h
+    src/dsp/MeterSource.cpp
+    src/dsp/MeterSource.h
     src/dsp/TunerAnalysis.cpp
     src/dsp/TunerAnalysis.h
     src/dsp/ReverbSC.cpp

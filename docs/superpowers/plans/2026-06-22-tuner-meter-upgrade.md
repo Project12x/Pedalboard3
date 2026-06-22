@@ -235,12 +235,19 @@ Files:
 
 Steps:
 
-- [ ] Introduce a reusable meter source model with explicit peak, RMS, VU, clip, and decay/hold behavior.
-- [ ] Use `ff_meters` as the primary audio/UI separation reference.
-- [ ] Use `sound_meter` as the primary ballistics/scale reference.
-- [ ] Keep `DeviceMeterTap` fixed-size and callback-safe.
-- [ ] Add tests for peak decay, RMS window behavior, VU response, clip latch/clear, channel bounds, and stopped-device reset.
-- [ ] Keep existing Audio I/O node meter behavior visually stable unless product polish is explicitly in-scope.
+- [x] Introduce a reusable meter source model with explicit peak, RMS, VU, clip, and decay/hold behavior.
+- [x] Use `ff_meters` as the primary audio/UI separation reference.
+- [x] Use `sound_meter` as the primary ballistics/scale reference.
+- [x] Keep `DeviceMeterTap` fixed-size and callback-safe.
+- [x] Add tests for peak decay, RMS window behavior, VU response, clip latch/clear, channel bounds, and stopped-device reset.
+- [x] Keep existing Audio I/O node meter behavior visually stable unless product polish is explicitly in-scope.
+
+Implementation note:
+
+- Added `PedalboardMeterSource` as a fixed-capacity, no-lazy-allocation source with peak, rolling block RMS, VU one-pole ballistics, and clip latch semantics.
+- `SafetyLimiter` and `DeviceMeterTap` now use the shared source and keep legacy peak getters compatible with existing Audio I/O node drawing.
+- Removed the unused GPL-inspired `VuMeterDsp.h` path after confirming no production code referenced it.
+- `RoutingProcessors` still paints its strip meters from peak-with-decay values for visual stability; converting mixer/splitter strip displays to true VU is a separate UI-visible follow-up.
 
 Verification:
 
@@ -249,6 +256,22 @@ cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1
 .\build\tests\Debug\Pedalboard3_Tests.exe "[mixer][metering]"
 .\build\tests\Debug\Pedalboard3_Tests.exe "[meter]"
 ```
+
+Latest verification:
+
+```powershell
+cmake --build build --config Debug --target Pedalboard3_Tests -- /m:1
+cmake --build build --config Debug --target Pedalboard3 -- /m:1
+.\build\tests\Debug\Pedalboard3_Tests.exe "[meter]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[mixer][metering]"
+.\build\tests\Debug\Pedalboard3_Tests.exe "[rt]"
+```
+
+Results:
+
+- `[meter]`: 121 assertions in 8 test cases.
+- `[mixer][metering]`: 4 assertions in 1 test case.
+- `[rt]`: 3,288 assertions in 17 test cases.
 
 Commit target: `feat: add reusable meter ballistics source`
 

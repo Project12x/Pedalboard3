@@ -18,7 +18,7 @@
 //  ----------------------------------------------------------------------------
 
 #include "DeviceMeterTap.h"
-#include <cmath>
+#include <algorithm>
 
 // Static instance pointer
 DeviceMeterTap* DeviceMeterTap::instance = nullptr;
@@ -26,12 +26,8 @@ DeviceMeterTap* DeviceMeterTap::instance = nullptr;
 //------------------------------------------------------------------------------
 DeviceMeterTap::DeviceMeterTap()
 {
-    // Initialize all levels to zero
-    for (int i = 0; i < MaxChannels; ++i)
-    {
-        inputLevels[i].store(0.0f, std::memory_order_relaxed);
-        outputLevels[i].store(0.0f, std::memory_order_relaxed);
-    }
+    inputMeters.prepare(44100.0, 0);
+    outputMeters.prepare(44100.0, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -50,39 +46,31 @@ void DeviceMeterTap::audioDeviceIOCallbackWithContext(
     int numSamples,
     const juce::AudioIODeviceCallbackContext& /*context*/)
 {
-    // Update input levels from device inputs
-    int inputCount = juce::jmin(numInputChannels, MaxChannels);
-    for (int ch = 0; ch < inputCount; ++ch)
-    {
-        if (inputChannelData[ch] != nullptr)
-            updateLevel(inputLevels[ch], inputChannelData[ch], numSamples);
-    }
-    // Zero out unused input channels
-    for (int ch = inputCount; ch < MaxChannels; ++ch)
-        inputLevels[ch].store(0.0f, std::memory_order_relaxed);
+    const int sampleCount = std::max(0, numSamples);
 
-    // Update output levels from processed output buffer
-    // (contains audio from graphPlayer callback that ran before us)
-    int outputCount = juce::jmin(numOutputChannels, MaxChannels);
+    // Update input levels from device inputs.
+    const int inputCount = juce::jlimit(0, MaxChannels, numInputChannels);
+    inputMeters.process(inputChannelData, inputCount, sampleCount);
+
+    // Update output levels from processed output buffer. The output buffer
+    // contains audio from the graphPlayer callback that ran before us.
+    const int outputCount = juce::jlimit(0, MaxChannels, numOutputChannels);
+    const float* outputReadPtrs[MaxChannels] = {};
     for (int ch = 0; ch < outputCount; ++ch)
-    {
-        if (outputChannelData[ch] != nullptr)
-            updateLevel(outputLevels[ch], outputChannelData[ch], numSamples);
-    }
-    // Zero out unused output channels
-    for (int ch = outputCount; ch < MaxChannels; ++ch)
-        outputLevels[ch].store(0.0f, std::memory_order_relaxed);
+        outputReadPtrs[ch] = outputChannelData != nullptr ? outputChannelData[ch] : nullptr;
+    outputMeters.process(outputReadPtrs, outputCount, sampleCount);
 
-    numInputs.store(numInputChannels, std::memory_order_relaxed);
-    numOutputs.store(numOutputChannels, std::memory_order_relaxed);
+    numInputs.store(inputCount, std::memory_order_relaxed);
+    numOutputs.store(outputCount, std::memory_order_relaxed);
 
     // CRITICAL: Zero our output contribution!
     // When JUCE has multiple callbacks, it mixes their outputs together.
     // If we don't zero our output buffers, garbage gets mixed into the audio.
-    for (int ch = 0; ch < numOutputChannels; ++ch)
+    const int channelsToClear = std::max(0, numOutputChannels);
+    for (int ch = 0; ch < channelsToClear; ++ch)
     {
-        if (outputChannelData[ch] != nullptr)
-            juce::FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+        if (outputChannelData != nullptr && outputChannelData[ch] != nullptr)
+            juce::FloatVectorOperations::clear(outputChannelData[ch], sampleCount);
     }
 }
 
@@ -94,71 +82,84 @@ void DeviceMeterTap::audioDeviceAboutToStart(juce::AudioIODevice* device)
         // Store device name for display
         deviceName = device->getName();
 
-        // Calculate decay coefficient based on sample rate
-        // Target: ~3 second decay time from 1.0 to ~0.001 (-60dB)
         double sampleRate = device->getCurrentSampleRate();
-        if (sampleRate > 0)
-        {
-            // decayCoeff^(samples_for_3_seconds) = 0.001
-            // samples_for_3_seconds = sampleRate * 3
-            // decayCoeff = 0.001^(1/(sampleRate*3))
-            double samplesFor3Seconds = sampleRate * 3.0;
-            decayCoeff = static_cast<float>(std::pow(0.001, 1.0 / samplesFor3Seconds));
-        }
+        const int inputCount = juce::jlimit(0, MaxChannels, device->getActiveInputChannels().countNumberOfSetBits());
+        const int outputCount = juce::jlimit(0, MaxChannels, device->getActiveOutputChannels().countNumberOfSetBits());
+
+        inputMeters.prepare(sampleRate, inputCount);
+        outputMeters.prepare(sampleRate, outputCount);
+        numInputs.store(inputCount, std::memory_order_relaxed);
+        numOutputs.store(outputCount, std::memory_order_relaxed);
     }
 }
 
 //------------------------------------------------------------------------------
 void DeviceMeterTap::audioDeviceStopped()
 {
-    // Reset all levels when device stops
-    for (int i = 0; i < MaxChannels; ++i)
-    {
-        inputLevels[i].store(0.0f, std::memory_order_relaxed);
-        outputLevels[i].store(0.0f, std::memory_order_relaxed);
-    }
+    inputMeters.prepare(44100.0, 0);
+    outputMeters.prepare(44100.0, 0);
     numInputs.store(0, std::memory_order_relaxed);
     numOutputs.store(0, std::memory_order_relaxed);
 }
 
 //------------------------------------------------------------------------------
-void DeviceMeterTap::updateLevel(std::atomic<float>& level, const float* data, int numSamples)
-{
-    float currentLevel = level.load(std::memory_order_relaxed);
-
-    for (int i = 0; i < numSamples; ++i)
-    {
-        float sample = std::abs(data[i]);
-        // Sanity check: ignore unreasonable values (likely garbage/uninitialized data)
-        if (sample > 10.0f)
-            continue;
-        if (sample > currentLevel)
-            currentLevel = sample;
-        else
-            currentLevel *= decayCoeff;
-    }
-
-    // Clamp very small values to zero to avoid denormals
-    if (currentLevel < 1e-10f)
-        currentLevel = 0.0f;
-
-    level.store(currentLevel, std::memory_order_relaxed);
-}
-
-//------------------------------------------------------------------------------
 float DeviceMeterTap::getInputLevel(int channel) const
 {
-    if (channel >= 0 && channel < MaxChannels)
-        return inputLevels[channel].load(std::memory_order_relaxed);
-    return 0.0f;
+    return inputMeters.getPeak(channel);
 }
 
 //------------------------------------------------------------------------------
 float DeviceMeterTap::getOutputLevel(int channel) const
 {
-    if (channel >= 0 && channel < MaxChannels)
-        return outputLevels[channel].load(std::memory_order_relaxed);
-    return 0.0f;
+    return outputMeters.getPeak(channel);
+}
+
+//------------------------------------------------------------------------------
+float DeviceMeterTap::getInputRmsLevel(int channel) const
+{
+    return inputMeters.getRms(channel);
+}
+
+//------------------------------------------------------------------------------
+float DeviceMeterTap::getOutputRmsLevel(int channel) const
+{
+    return outputMeters.getRms(channel);
+}
+
+//------------------------------------------------------------------------------
+float DeviceMeterTap::getInputVuLevel(int channel) const
+{
+    return inputMeters.getVu(channel);
+}
+
+//------------------------------------------------------------------------------
+float DeviceMeterTap::getOutputVuLevel(int channel) const
+{
+    return outputMeters.getVu(channel);
+}
+
+//------------------------------------------------------------------------------
+bool DeviceMeterTap::getInputClip(int channel) const
+{
+    return inputMeters.getClip(channel);
+}
+
+//------------------------------------------------------------------------------
+bool DeviceMeterTap::getOutputClip(int channel) const
+{
+    return outputMeters.getClip(channel);
+}
+
+//------------------------------------------------------------------------------
+bool DeviceMeterTap::getInputAndClearClip(int channel)
+{
+    return inputMeters.getAndClearClip(channel);
+}
+
+//------------------------------------------------------------------------------
+bool DeviceMeterTap::getOutputAndClearClip(int channel)
+{
+    return outputMeters.getAndClearClip(channel);
 }
 
 //------------------------------------------------------------------------------
@@ -190,3 +191,14 @@ juce::String DeviceMeterTap::getDeviceName() const
 {
     return deviceName;
 }
+
+//------------------------------------------------------------------------------
+#if PEDALBOARD3_TESTS
+void DeviceMeterTap::prepareForTest(double sampleRate)
+{
+    inputMeters.prepare(sampleRate, 0);
+    outputMeters.prepare(sampleRate, 0);
+    numInputs.store(0, std::memory_order_relaxed);
+    numOutputs.store(0, std::memory_order_relaxed);
+}
+#endif

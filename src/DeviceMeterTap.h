@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "dsp/MeterSource.h"
+
 #include <JuceHeader.h>
 #include <atomic>
 
@@ -50,6 +52,23 @@ public:
     /// Returns the current output level for a channel (linear 0.0-1.0+)
     float getOutputLevel(int channel) const;
 
+    /// Returns the rolling RMS input level for a channel (linear 0.0-1.0+)
+    float getInputRmsLevel(int channel) const;
+
+    /// Returns the rolling RMS output level for a channel (linear 0.0-1.0+)
+    float getOutputRmsLevel(int channel) const;
+
+    /// Returns the VU-ballistic input level for a channel (linear 0.0-1.0+)
+    float getInputVuLevel(int channel) const;
+
+    /// Returns the VU-ballistic output level for a channel (linear 0.0-1.0+)
+    float getOutputVuLevel(int channel) const;
+
+    bool getInputClip(int channel) const;
+    bool getOutputClip(int channel) const;
+    bool getInputAndClearClip(int channel);
+    bool getOutputAndClearClip(int channel);
+
     /// Returns the number of active input channels
     int getNumInputChannels() const;
 
@@ -63,20 +82,17 @@ public:
     static DeviceMeterTap* getInstance();
     static void setInstance(DeviceMeterTap* instance);
 
-private:
-    /// Updates level with peak detection and exponential decay
-    void updateLevel(std::atomic<float>& level, const float* data, int numSamples);
+#if PEDALBOARD3_TESTS
+    void prepareForTest(double sampleRate);
+#endif
 
-    // Per-channel levels (atomic for thread-safety)
-    std::atomic<float> inputLevels[MaxChannels];
-    std::atomic<float> outputLevels[MaxChannels];
+private:
+    PedalboardMeterSource inputMeters;
+    PedalboardMeterSource outputMeters;
 
     // Channel counts
     std::atomic<int> numInputs{0};
     std::atomic<int> numOutputs{0};
-
-    // Decay coefficient (per-sample multiplier for exponential decay)
-    float decayCoeff{0.99995f};
 
     // Static instance pointer
     static DeviceMeterTap* instance;
