@@ -46,6 +46,8 @@ add_executable(Pedalboard3_Tests
     ../src/SupportedPluginFormats.cpp
     ../src/PluginFormatIdentity.cpp
     ../src/PluginScanCoordinator.cpp
+    ../src/PluginScanOrchestration.cpp
+    ../src/ScannerResponseWorker.cpp
     ../src/AtomicFileWriter.cpp
     ../src/PluginQuarantine.cpp
     ../src/PluginScannerTransport.cpp

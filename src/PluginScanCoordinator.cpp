@@ -2,6 +2,9 @@
 
 #include "PluginQuarantine.h"
 #include "SafePluginScanner.h"
+#include "PluginScanOrchestration.h"
+
+#include <algorithm>
 
 namespace
 {
@@ -123,29 +126,41 @@ void PluginScanCoordinator::publishFinished(const PluginScanSummary& summary)
 
 void PluginScanCoordinator::run()
 {
-    std::vector<PluginScanCandidateOutcome> outcomes;
     const auto jobs = makePluginScanPlan(formatManager, dataDirectory);
-    bool isolationUnavailable = false;
+    std::vector<PluginScanPlanJob> plan;
+    plan.reserve(jobs.size());
+    for (const auto& job : jobs)
+        plan.push_back({ job.formatName.toStdString(), { job.formatName.toStdString() } });
 
-    for (size_t jobIndex = 0; jobIndex < jobs.size() && ! threadShouldExit(); ++jobIndex)
+    const auto planResult = runPluginScanPlan(plan, [this, &jobs] (const std::string& formatName, const std::string&)
     {
+        const auto jobIndex = static_cast<size_t>(std::find_if(jobs.begin(), jobs.end(), [&] (const auto& job)
+        {
+            return job.formatName.toStdString() == formatName;
+        }) - jobs.begin());
+        if (jobIndex >= jobs.size() || threadShouldExit())
+            return PluginCandidateDecision::cancelled;
+
         const auto& job = jobs[jobIndex];
         activeScanner = std::make_unique<SafePluginScanner>(pluginList, *job.format, job.locations, true,
                                                              job.deadMansPedalFile, job.allowAsyncInstantiation,
                                                              true, diagnosticInProcessFallback, quarantine.get());
 
         if (activeScanner->isIsolationUnavailable())
-        {
-            isolationUnavailable = true;
-            break;
-        }
+            return PluginCandidateDecision::isolationUnavailable;
 
+        auto aggregate = PluginCandidateDecision::skipped;
         while (! threadShouldExit())
         {
             juce::String candidate;
             const auto hasMore = activeScanner->scanNextFile(true, candidate);
-            if (candidate.isNotEmpty())
-                outcomes.push_back(activeScanner->getLastOutcome());
+            if (candidate.isNotEmpty() && activeScanner->getLastOutcome() == PluginScanCandidateOutcome::discovered)
+                aggregate = PluginCandidateDecision::discovered;
+            else if (candidate.isNotEmpty() && activeScanner->getLastOutcome() == PluginScanCandidateOutcome::quarantined
+                     && aggregate != PluginCandidateDecision::discovered)
+                aggregate = PluginCandidateDecision::quarantined;
+            if (activeScanner->isIsolationUnavailable())
+                return PluginCandidateDecision::isolationUnavailable;
 
             publishProgress({ job.formatName, candidate, activeScanner->getProgress(),
                               calculateOverallPluginScanProgress(static_cast<int>(jobIndex), activeScanner->getProgress(),
@@ -154,10 +169,16 @@ void PluginScanCoordinator::run()
                 break;
         }
         activeScanner.reset();
-    }
+        return threadShouldExit() ? PluginCandidateDecision::cancelled : aggregate;
+    });
 
-    auto summary = makePluginScanSummary(outcomes, cancellationRequested.load(std::memory_order_acquire));
-    summary.isolationUnavailable = isolationUnavailable;
+    PluginScanSummary summary;
+    summary.discovered = planResult.discovered;
+    summary.skipped = planResult.skipped;
+    summary.quarantined = planResult.quarantined;
+    summary.failed = planResult.failed;
+    summary.cancelled = planResult.cancelled || cancellationRequested.load(std::memory_order_acquire);
+    summary.isolationUnavailable = planResult.isolationUnavailable;
     publishFinished(summary);
     scanning.store(false, std::memory_order_release);
 }

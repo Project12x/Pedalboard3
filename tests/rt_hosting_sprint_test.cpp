@@ -436,6 +436,18 @@ TEST_CASE("scanner helper discovery has one worker and a message-thread response
     REQUIRE(source.find("findAllTypesForFile") != std::string::npos);
 }
 
+TEST_CASE("scanner transport faults do not blacklist a candidate", "[rt][scanner]")
+{
+    const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/PluginScannerClient.cpp");
+    const auto scanStart = source.find("bool PluginScannerClient::scanPlugin");
+    const auto crashHandler = source.find("void PluginScannerClient::handleScannerCrash", scanStart);
+    REQUIRE(scanStart != std::string::npos);
+    REQUIRE(crashHandler != std::string::npos);
+    const auto scanBody = source.substr(scanStart, crashHandler - scanStart);
+    REQUIRE(scanBody.find("PluginBlacklist::getInstance().addToBlacklist") == std::string::npos);
+    REQUIRE(scanBody.find("lastScanResult = ScanResult::isolationUnavailable") != std::string::npos);
+}
+
 TEST_CASE("Plugin scanner IPC uses bounded named-pipe waits", "[rt][scanner]")
 {
     const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/PluginScannerClient.cpp");

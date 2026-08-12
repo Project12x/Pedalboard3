@@ -25,6 +25,7 @@
 class PluginScannerClient
 {
   public:
+    enum class ScanResult { success, candidateFailure, isolationUnavailable };
     PluginScannerClient();
     ~PluginScannerClient();
 
@@ -37,6 +38,7 @@ class PluginScannerClient
      */
     bool scanPlugin(const juce::String& pluginPath, const juce::String& formatName,
                     juce::OwnedArray<juce::PluginDescription>& results);
+    ScanResult getLastScanResult() const { return lastScanResult; }
 
     /**
      * @brief Check if the scanner process is currently running.
@@ -93,6 +95,7 @@ class PluginScannerClient
 #endif
 
     juce::String lastScannedPlugin;
+    ScanResult lastScanResult = ScanResult::isolationUnavailable;
     juce::ListenerList<Listener> listeners;
     juce::CriticalSection scanLock;
 

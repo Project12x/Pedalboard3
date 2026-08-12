@@ -14,6 +14,7 @@
 #include "PluginBlacklist.h"
 #include "PluginQuarantine.h"
 #include "PluginScanCoordinator.h"
+#include "PluginScanOrchestration.h"
 
 #include <spdlog/spdlog.h>
 
@@ -91,6 +92,16 @@ bool SafePluginScanner::scanNextFile(bool dontRescanIfAlreadyInList, juce::Strin
 
     nameOfPluginBeingScanned = juce::File(nextFile).getFileName();
 
+    // Quarantine is persisted by exact format+identifier. Never give an already
+    // known unsafe candidate another helper (or host-process) load until a user
+    // explicitly clears/retries it.
+    if (quarantine != nullptr && quarantine->contains(format.getName(), nextFile))
+    {
+        spdlog::debug("[SafePluginScanner] Skipping quarantined plugin: {}", nextFile.toStdString());
+        lastOutcome = PluginScanCandidateOutcome::quarantined;
+        return baseScanner->skipNextFile();
+    }
+
     // Check if blacklisted
     if (PluginBlacklist::getInstance().isBlacklisted(nextFile))
     {
@@ -106,7 +117,9 @@ bool SafePluginScanner::scanNextFile(bool dontRescanIfAlreadyInList, juce::Strin
 
         bool scanSuccess = scannerClient->scanPlugin(nextFile, format.getName(), results);
 
-        if (scanSuccess)
+        const auto decision = classifyHelperResult(scanSuccess,
+            scannerClient->getLastScanResult() == PluginScannerClient::ScanResult::candidateFailure);
+        if (decision == PluginCandidateDecision::discovered)
         {
             // Add found plugins to the list
             for (auto* desc : results)
@@ -121,6 +134,12 @@ bool SafePluginScanner::scanNextFile(bool dontRescanIfAlreadyInList, juce::Strin
         else
         {
             spdlog::warn("[SafePluginScanner] Out-of-process scan failed for: {}", nextFile.toStdString());
+            if (decision == PluginCandidateDecision::isolationUnavailable)
+            {
+                isolationUnavailable = true;
+                lastOutcome = PluginScanCandidateOutcome::failed;
+                return false;
+            }
             lastOutcome = PluginScanCandidateOutcome::quarantined;
             if (quarantine != nullptr)
                 quarantine->record({ format.getName(), nextFile, PluginQuarantineReason::loadFailure,
@@ -389,7 +408,7 @@ void SafePluginListComponent::timerCallback()
         progressLabel->setText("Scanning " + progress.formatName + ": " + progress.candidate,
                                juce::dontSendNotification);
     else
-        progressLabel->setText("Cancelling scan...", juce::dontSendNotification);
+        progressLabel->setText("Starting scan...", juce::dontSendNotification);
 
     updateList();
 }

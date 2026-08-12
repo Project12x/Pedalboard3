@@ -251,6 +251,10 @@ target_sources(Pedalboard3 PRIVATE
     src/PluginFormatIdentity.h
     src/PluginScanCoordinator.cpp
     src/PluginScanCoordinator.h
+    src/PluginScanOrchestration.cpp
+    src/PluginScanOrchestration.h
+    src/ScannerResponseWorker.cpp
+    src/ScannerResponseWorker.h
     src/BypassableInstance.cpp
     src/BypassableInstance.h
     src/InternalFilters.cpp
@@ -675,6 +679,8 @@ if(WIN32 OR APPLE)
 
     target_sources(Pedalboard3Scanner PRIVATE
         src/scanner/PluginScannerMain.cpp
+        src/ScannerResponseWorker.cpp
+        src/ScannerResponseWorker.h
         src/PluginScannerIPC.h
         src/PluginScannerTransport.cpp
         src/PluginScannerTransport.h

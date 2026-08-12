@@ -19,6 +19,20 @@ TEST_CASE("quarantine is scoped by format and survives reload", "[plugins][quara
     REQUIRE(PluginQuarantine(file).contains("AudioUnit", "vendor.twin"));
 }
 
+TEST_CASE("persisted quarantine remains until explicitly cleared", "[plugins][quarantine]")
+{
+    juce::TemporaryFile temp;
+    const auto file = temp.getFile();
+    PluginQuarantine quarantine(file);
+    REQUIRE(quarantine.record({ "VST3", "/Plugins/unsafe.vst3", PluginQuarantineReason::crash,
+                                juce::Time::getCurrentTime(), "helper crash" }));
+
+    PluginQuarantine reloaded(file);
+    REQUIRE(reloaded.contains("VST3", "/Plugins/unsafe.vst3"));
+    REQUIRE(reloaded.remove("VST3", "/Plugins/unsafe.vst3"));
+    REQUIRE_FALSE(PluginQuarantine(file).contains("VST3", "/Plugins/unsafe.vst3"));
+}
+
 TEST_CASE("atomic replacement keeps existing target when writer fails", "[plugins][atomic replacement]")
 {
     juce::TemporaryFile temp;

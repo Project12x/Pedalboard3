@@ -14,10 +14,9 @@
 #include "../PluginScannerIPC.h"
 #include "../PluginScannerTransport.h"
 #include "../SupportedPluginFormats.h"
+#include "../ScannerResponseWorker.h"
 
 #include <iostream>
-#include <deque>
-#include <mutex>
 
 using namespace PluginScannerIPC;
 
@@ -79,7 +78,11 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
     void shutdown() override
     {
         std::cerr << "[Scanner] Shutting down" << std::endl;
+        stopping.store(true, std::memory_order_release);
         stopTimer();
+        // Jobs capture this and may enqueue replies. Join them while every captured
+        // queue/state member is still alive, before channel or member teardown.
+        scanWorker.shutdown();
         disconnectFromHost();
     }
 
@@ -88,19 +91,14 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
     void anotherInstanceStarted(const juce::String&) override {}
 
   private:
-    struct PendingScanResponse
-    {
-        PluginScannerIPC::MessageType type = PluginScannerIPC::MessageType::ScanError;
-        juce::String payload;
-    };
-
+    std::atomic<bool> requestActive { false };
+    std::atomic<bool> stopping { false };
+    // Must be declared after the captured queue/state: destruction is reverse
+    // order, so the pool joins before those members disappear.
+    ScannerResponseWorker scanWorker;
     juce::AudioPluginFormatManager formatManager;
-    juce::ThreadPool scanWorker { 1 };
     ScannerLaunchInfo launchInfo;
     std::unique_ptr<ScannerChannel> channel;
-    std::mutex responseMutex;
-    std::deque<PendingScanResponse> completedResponses;
-    std::atomic<bool> requestActive { false };
 
     bool connectToHost()
     {
@@ -129,6 +127,8 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
     void timerCallback()
     {
+        if (stopping.load(std::memory_order_acquire))
+            return;
         drainCompletedResponses();
         processMessages();
 
@@ -142,20 +142,8 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
     void drainCompletedResponses()
     {
-        std::deque<PendingScanResponse> responses;
-        {
-            std::lock_guard<std::mutex> lock(responseMutex);
-            responses.swap(completedResponses);
-        }
-
-        for (const auto& response : responses)
-            sendMessage(response.type, response.payload);
-    }
-
-    void queueResponse(PendingScanResponse response)
-    {
-        std::lock_guard<std::mutex> lock(responseMutex);
-        completedResponses.push_back(std::move(response));
+        for (const auto& response : scanWorker.drainResponses())
+            sendMessage(static_cast<MessageType>(response.type), juce::String(response.payload));
     }
 
     void processMessages()
@@ -189,6 +177,8 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
     void handleScanRequest(const juce::String& payload)
     {
+        if (stopping.load(std::memory_order_acquire))
+            return;
         auto request = ScanRequest::deserialize(payload);
         std::cerr << "[Scanner] Scanning: " << request.pluginPath.toStdString() << std::endl;
 
@@ -201,9 +191,11 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
             return;
         }
 
-        scanWorker.addJob([this, request]
+        scanWorker.submit([this, request]
         {
-            PendingScanResponse pending;
+            if (stopping.load(std::memory_order_acquire))
+                return ScannerWorkerResponse {};
+            ScannerWorkerResponse pending;
             ScanResponse response;
 
             // The sole worker owns potentially blocking plug-in discovery. The scanner's
@@ -223,7 +215,7 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
             {
                 response.resultCode = ScanResultCode::InvalidFormat;
                 response.errorMessage = "Unknown format: " + request.formatName;
-                pending.type = MessageType::ScanError;
+                pending.type = static_cast<int>(MessageType::ScanError);
             }
             else
             {
@@ -234,7 +226,7 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
                 {
                     response.resultCode = ScanResultCode::LoadFailed;
                     response.errorMessage = "No plugins found in file";
-                    pending.type = MessageType::ScanError;
+                    pending.type = static_cast<int>(MessageType::ScanError);
                 }
                 else
                 {
@@ -245,13 +237,13 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
                     response.resultCode = ScanResultCode::Success;
                     response.pluginXml = root.toString();
-                    pending.type = MessageType::ScanResult;
+                    pending.type = static_cast<int>(MessageType::ScanResult);
                 }
             }
 
-            pending.payload = response.serialize();
-            queueResponse(std::move(pending));
+            pending.payload = response.serialize().toStdString();
             requestActive.store(false);
+            return pending;
         });
     }
 };

@@ -10,8 +10,6 @@
 
 #include "PluginScannerClient.h"
 
-#include "PluginBlacklist.h"
-
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
@@ -395,6 +393,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     if (!ensureScannerRunning())
     {
         spdlog::error("[PluginScannerClient] Failed to start scanner for: {}", pluginPath.toStdString());
+        lastScanResult = ScanResult::isolationUnavailable;
         return false;
     }
 
@@ -404,6 +403,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     request.formatName = formatName;
     if (macChannel == nullptr || !macChannel->send(MessageType::ScanPlugin, request.serialize()))
     {
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
@@ -412,12 +412,13 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     juce::String responsePayload;
     if (!macChannel->receive(header, responsePayload, SCAN_TIMEOUT_MS))
     {
-        PluginBlacklist::getInstance().addToBlacklist(pluginPath);
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
     if (header.type != MessageType::ScanResult && header.type != MessageType::ScanError)
     {
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
@@ -437,6 +438,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     if (!writeExact(hPipe, &header, sizeof(header)))
     {
         spdlog::error("[PluginScannerClient] Failed to send scan request header");
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
@@ -447,6 +449,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         if (!writeExact(hPipe, payloadBytes.getAddress(), header.payloadSize))
         {
             spdlog::error("[PluginScannerClient] Failed to send scan request payload");
+            lastScanResult = ScanResult::isolationUnavailable;
             handleScannerCrash();
             return false;
         }
@@ -456,6 +459,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     if (!isScannerRunning())
     {
         spdlog::error("[PluginScannerClient] Scanner crashed during scan of: {}", pluginPath.toStdString());
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
@@ -463,6 +467,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     // Read response header
     if (!readExactWithTimeout(hPipe, static_cast<HANDLE>(scannerProcess), &header, sizeof(header), SCAN_TIMEOUT_MS))
     {
+        lastScanResult = ScanResult::isolationUnavailable;
         if (!isScannerRunning())
         {
             spdlog::error("[PluginScannerClient] Scanner crashed during scan of: {}", pluginPath.toStdString());
@@ -471,8 +476,6 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         else
         {
             spdlog::error("[PluginScannerClient] Timeout waiting for scan response: {}", pluginPath.toStdString());
-            // Timeout - blacklist the plugin
-            PluginBlacklist::getInstance().addToBlacklist(pluginPath);
             stopScanner();  // Kill the hung scanner
         }
         return false;
@@ -481,6 +484,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     if (header.payloadSize > kMaxScannerPayloadBytes)
     {
         spdlog::error("[PluginScannerClient] Scanner response payload too large: {} bytes", header.payloadSize);
+        lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
@@ -494,6 +498,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
                                   SCAN_TIMEOUT_MS))
         {
             spdlog::error("[PluginScannerClient] Failed to read response payload");
+            lastScanResult = ScanResult::isolationUnavailable;
             return false;
         }
         buffer[header.payloadSize] = 0;
@@ -512,6 +517,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     {
         spdlog::warn("[PluginScannerClient] Scan failed for {}: {}", pluginPath.toStdString(),
                      response.errorMessage.toStdString());
+        lastScanResult = ScanResult::candidateFailure;
         listeners.call(&Listener::scanComplete, pluginPath, false);
         return false;
     }
@@ -531,6 +537,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
 
     spdlog::info("[PluginScannerClient] Successfully scanned {}: {} plugin(s) found", pluginPath.toStdString(),
                  results.size());
+    lastScanResult = ScanResult::success;
     listeners.call(&Listener::scanComplete, pluginPath, true);
 
     return true;
@@ -540,13 +547,6 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
 void PluginScannerClient::handleScannerCrash()
 {
     spdlog::error("[PluginScannerClient] Scanner crashed while scanning: {}", lastScannedPlugin.toStdString());
-
-    // Auto-blacklist the plugin that caused the crash
-    if (lastScannedPlugin.isNotEmpty())
-    {
-        spdlog::warn("[PluginScannerClient] Auto-blacklisting crashed plugin: {}", lastScannedPlugin.toStdString());
-        PluginBlacklist::getInstance().addToBlacklist(lastScannedPlugin);
-    }
 
     listeners.call(&Listener::scannerCrashed, lastScannedPlugin);
 
