@@ -21,6 +21,7 @@
 
 #include "Images.h"
 
+#ifndef __APPLE__
 
 //------------------------------------------------------------------------------
 TrayIcon::TrayIcon(DocumentWindow* win) : window(win)
@@ -72,3 +73,5 @@ void TrayIcon::mouseDoubleClick(const MouseEvent& e)
             window->setVisible(true);
     }
 }
+
+#endif
