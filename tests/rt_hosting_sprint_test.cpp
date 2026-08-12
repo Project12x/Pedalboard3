@@ -394,12 +394,15 @@ TEST_CASE("NAM A2 core build stays isolated from legacy runtime path", "[rt][nam
 TEST_CASE("SafePluginListComponent keeps plugin scanning off the message timer", "[rt][scanner]")
 {
     const auto header = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/SafePluginScanner.h");
+    const auto coordinatorHeader = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/PluginScanCoordinator.h");
+    const auto coordinatorSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/PluginScanCoordinator.cpp");
     const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/SafePluginScanner.cpp");
 
-    REQUIRE(header.find("private juce::Thread") != std::string::npos);
-    REQUIRE(header.find("void run() override;") != std::string::npos);
+    REQUIRE(coordinatorHeader.find("private juce::Thread") != std::string::npos);
+    REQUIRE(coordinatorHeader.find("void run() override;") != std::string::npos);
+    REQUIRE(header.find("std::unique_ptr<PluginScanCoordinator> coordinator") != std::string::npos);
 
-    const auto runStart = source.find("void SafePluginListComponent::run()");
+    const auto runStart = coordinatorSource.find("void PluginScanCoordinator::run()");
     REQUIRE(runStart != std::string::npos);
     const auto timerStart = source.find("void SafePluginListComponent::timerCallback()");
     REQUIRE(timerStart != std::string::npos);
@@ -407,8 +410,30 @@ TEST_CASE("SafePluginListComponent keeps plugin scanning off the message timer",
     REQUIRE(updateStart != std::string::npos);
 
     const auto timerBody = source.substr(timerStart, updateStart - timerStart);
-    REQUIRE(source.substr(runStart, timerStart - runStart).find("scanNextFile") != std::string::npos);
+    REQUIRE(coordinatorSource.substr(runStart).find("scanNextFile") != std::string::npos);
     REQUIRE(timerBody.find("scanNextFile") == std::string::npos);
+}
+
+TEST_CASE("safe scanner never re-scans helper-success candidates in process", "[rt][scanner]")
+{
+    const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/SafePluginScanner.cpp");
+    const auto helperStart = source.find("if (useOutOfProcessScanning && scannerClient)");
+    REQUIRE(helperStart != std::string::npos);
+    const auto inProcessStart = source.find("else\n    {", helperStart);
+    REQUIRE(inProcessStart != std::string::npos);
+    const auto helperBody = source.substr(helperStart, inProcessStart - helperStart);
+
+    REQUIRE(helperBody.find("baseScanner->skipNextFile()") != std::string::npos);
+    REQUIRE(helperBody.find("baseScanner->scanNextFile") == std::string::npos);
+}
+
+TEST_CASE("scanner helper discovery has one worker and a message-thread response queue", "[rt][scanner]")
+{
+    const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/scanner/PluginScannerMain.cpp");
+    REQUIRE(source.find("juce::ThreadPool scanWorker { 1 }") != std::string::npos);
+    REQUIRE(source.find("PendingScanResponse") != std::string::npos);
+    REQUIRE(source.find("drainCompletedResponses") != std::string::npos);
+    REQUIRE(source.find("findAllTypesForFile") != std::string::npos);
 }
 
 TEST_CASE("Plugin scanner IPC uses bounded named-pipe waits", "[rt][scanner]")

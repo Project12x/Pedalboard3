@@ -16,6 +16,8 @@
 #include "../SupportedPluginFormats.h"
 
 #include <iostream>
+#include <deque>
+#include <mutex>
 
 using namespace PluginScannerIPC;
 
@@ -86,9 +88,19 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
     void anotherInstanceStarted(const juce::String&) override {}
 
   private:
+    struct PendingScanResponse
+    {
+        PluginScannerIPC::MessageType type = PluginScannerIPC::MessageType::ScanError;
+        juce::String payload;
+    };
+
     juce::AudioPluginFormatManager formatManager;
+    juce::ThreadPool scanWorker { 1 };
     ScannerLaunchInfo launchInfo;
     std::unique_ptr<ScannerChannel> channel;
+    std::mutex responseMutex;
+    std::deque<PendingScanResponse> completedResponses;
+    std::atomic<bool> requestActive { false };
 
     bool connectToHost()
     {
@@ -117,6 +129,7 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
     void timerCallback()
     {
+        drainCompletedResponses();
         processMessages();
 
         // Schedule next callback if still running
@@ -125,6 +138,24 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
             return;
 
         juce::Timer::callAfterDelay(10, [this]() { timerCallback(); });
+    }
+
+    void drainCompletedResponses()
+    {
+        std::deque<PendingScanResponse> responses;
+        {
+            std::lock_guard<std::mutex> lock(responseMutex);
+            responses.swap(completedResponses);
+        }
+
+        for (const auto& response : responses)
+            sendMessage(response.type, response.payload);
+    }
+
+    void queueResponse(PendingScanResponse response)
+    {
+        std::lock_guard<std::mutex> lock(responseMutex);
+        completedResponses.push_back(std::move(response));
     }
 
     void processMessages()
@@ -161,54 +192,67 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
         auto request = ScanRequest::deserialize(payload);
         std::cerr << "[Scanner] Scanning: " << request.pluginPath.toStdString() << std::endl;
 
-        ScanResponse response;
-
-        // Find the appropriate format
-        juce::AudioPluginFormat* format = nullptr;
-        for (int i = 0; i < formatManager.getNumFormats(); ++i)
+        if (requestActive.exchange(true))
         {
-            auto* f = formatManager.getFormat(i);
-            if (f->getName() == request.formatName)
-            {
-                format = f;
-                break;
-            }
-        }
-
-        if (!format)
-        {
-            response.resultCode = ScanResultCode::InvalidFormat;
-            response.errorMessage = "Unknown format: " + request.formatName;
-            sendMessage(MessageType::ScanError, response.serialize());
-            return;
-        }
-
-        // Try to scan the plugin
-        juce::OwnedArray<juce::PluginDescription> results;
-        format->findAllTypesForFile(results, request.pluginPath);
-
-        if (results.isEmpty())
-        {
+            ScanResponse response;
             response.resultCode = ScanResultCode::LoadFailed;
-            response.errorMessage = "No plugins found in file";
+            response.errorMessage = "Scanner already has an active request";
             sendMessage(MessageType::ScanError, response.serialize());
             return;
         }
 
-        // Serialize all found plugins to XML
-        juce::XmlElement root("PLUGINS");
-        for (auto* desc : results)
+        scanWorker.addJob([this, request]
         {
-            if (auto xml = desc->createXml())
-                root.addChildElement(xml.release());
-        }
+            PendingScanResponse pending;
+            ScanResponse response;
 
-        response.resultCode = ScanResultCode::Success;
-        response.pluginXml = root.toString();
+            // The sole worker owns potentially blocking plug-in discovery. The scanner's
+            // JUCE message thread remains free for AUv3 completion callbacks.
+            juce::AudioPluginFormat* format = nullptr;
+            for (int i = 0; i < formatManager.getNumFormats(); ++i)
+            {
+                auto* candidate = formatManager.getFormat(i);
+                if (candidate->getName() == request.formatName)
+                {
+                    format = candidate;
+                    break;
+                }
+            }
 
-        std::cerr << "[Scanner] Found " << results.size() << " plugin(s)" << std::endl;
+            if (!format)
+            {
+                response.resultCode = ScanResultCode::InvalidFormat;
+                response.errorMessage = "Unknown format: " + request.formatName;
+                pending.type = MessageType::ScanError;
+            }
+            else
+            {
+                juce::OwnedArray<juce::PluginDescription> results;
+                format->findAllTypesForFile(results, request.pluginPath);
 
-        sendMessage(MessageType::ScanResult, response.serialize());
+                if (results.isEmpty())
+                {
+                    response.resultCode = ScanResultCode::LoadFailed;
+                    response.errorMessage = "No plugins found in file";
+                    pending.type = MessageType::ScanError;
+                }
+                else
+                {
+                    juce::XmlElement root("PLUGINS");
+                    for (auto* desc : results)
+                        if (auto xml = desc->createXml())
+                            root.addChildElement(xml.release());
+
+                    response.resultCode = ScanResultCode::Success;
+                    response.pluginXml = root.toString();
+                    pending.type = MessageType::ScanResult;
+                }
+            }
+
+            pending.payload = response.serialize();
+            queueResponse(std::move(pending));
+            requestActive.store(false);
+        });
     }
 };
 

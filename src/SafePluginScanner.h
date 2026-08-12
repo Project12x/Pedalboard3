@@ -16,6 +16,17 @@
 #include <JuceHeader.h>
 #include <atomic>
 
+class PluginQuarantine;
+class PluginScanCoordinator;
+
+enum class PluginScanCandidateOutcome
+{
+    discovered,
+    skipped,
+    quarantined,
+    failed
+};
+
 /**
  * @class SafePluginScanner
  * @brief Provides safe plugin scanning with crash isolation and timeouts.
@@ -43,7 +54,8 @@ class SafePluginScanner
                       juce::FileSearchPath directoriesToSearch, bool searchRecursively,
                       const juce::File& deadMansPedalFile,
                       bool allowPluginsWhichRequireAsyncInstantiation = false,
-                      bool useOutOfProcess = true);
+                      bool useOutOfProcess = true, bool allowDiagnosticInProcessFallback = false,
+                      PluginQuarantine* quarantine = nullptr);
 
     ~SafePluginScanner();
 
@@ -69,6 +81,8 @@ class SafePluginScanner
      * @brief Check if out-of-process scanning is being used.
      */
     bool isUsingOutOfProcess() const { return useOutOfProcessScanning && scannerClient != nullptr; }
+    bool isIsolationUnavailable() const { return isolationUnavailable; }
+    PluginScanCandidateOutcome getLastOutcome() const;
 
     /**
      * @brief Set timeout for individual plugin scans (ms).
@@ -80,6 +94,10 @@ class SafePluginScanner
     bool useOutOfProcessScanning;
     std::unique_ptr<PluginScannerClient> scannerClient;
     int scanTimeoutMs = 30000;
+    bool allowDiagnosticInProcessFallback = false;
+    bool isolationUnavailable = false;
+    PluginQuarantine* quarantine = nullptr;
+    PluginScanCandidateOutcome lastOutcome = PluginScanCandidateOutcome::skipped;
 
     juce::KnownPluginList& pluginList;
     juce::AudioPluginFormat& format;
@@ -96,8 +114,7 @@ class SafePluginScanner
 class SafePluginListComponent : public juce::Component,
                                 public juce::TableListBoxModel,
                                 public juce::Button::Listener,
-                                private juce::Timer,
-                                private juce::Thread
+                                private juce::Timer
 {
   public:
     SafePluginListComponent(juce::AudioPluginFormatManager& formatManager, juce::KnownPluginList& listToRepresent,
@@ -135,7 +152,6 @@ class SafePluginListComponent : public juce::Component,
     bool isScanning() const { return scanning; }
 
   private:
-    void run() override;
     void timerCallback() override;
     void updateList();
     void scanFinished();
@@ -151,13 +167,7 @@ class SafePluginListComponent : public juce::Component,
     std::unique_ptr<juce::Label> progressLabel;
     std::unique_ptr<juce::ProgressBar> progressBar;
 
-    std::unique_ptr<SafePluginScanner> scanner;
-    mutable juce::CriticalSection scanStateLock;
-    juce::String pluginBeingScanned;
-    std::atomic<double> workerScanProgress{0.0};
-    std::atomic<bool> scannerThreadFinished{false};
-    std::atomic<bool> scanCancellationRequested{false};
-    std::atomic<bool> pendingListUpdate{false};
+    std::unique_ptr<PluginScanCoordinator> coordinator;
     double scanProgress = 0.0;
     bool scanning = false;
 

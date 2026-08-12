@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 TEST_CASE("exact identity includes format", "[plugins][scan-plan]")
 {
@@ -33,4 +34,30 @@ TEST_CASE("mac scan plan enables asynchronous Audio Units", "[plugins][scan-plan
     REQUIRE(au != jobs.end());
     REQUIRE(au->allowAsyncInstantiation);
 #endif
+}
+
+TEST_CASE("scan progress is format ordered and counts completed candidates", "[plugins][scan-coordinator]")
+{
+    REQUIRE(std::abs(calculateOverallPluginScanProgress(0, 0.5f, 2) - 0.25f) < 0.0001f);
+    REQUIRE(std::abs(calculateOverallPluginScanProgress(1, 0.5f, 2) - 0.75f) < 0.0001f);
+
+    const auto summary = makePluginScanSummary({ PluginScanCandidateOutcome::discovered,
+                                                  PluginScanCandidateOutcome::skipped,
+                                                  PluginScanCandidateOutcome::quarantined,
+                                                  PluginScanCandidateOutcome::failed }, false);
+    REQUIRE(summary.discovered == 1);
+    REQUIRE(summary.skipped == 1);
+    REQUIRE(summary.quarantined == 1);
+    REQUIRE(summary.failed == 1);
+    REQUIRE_FALSE(summary.cancelled);
+}
+
+TEST_CASE("cancelled scan preserves resolved results and marks cancellation", "[plugins][scan-coordinator]")
+{
+    const auto summary = makePluginScanSummary({ PluginScanCandidateOutcome::discovered,
+                                                  PluginScanCandidateOutcome::quarantined }, true);
+    REQUIRE(summary.discovered == 1);
+    REQUIRE(summary.quarantined == 1);
+    REQUIRE(summary.failed == 0);
+    REQUIRE(summary.cancelled);
 }
