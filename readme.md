@@ -115,6 +115,18 @@ For a deterministic startup check, run:
 build/macos-arm64-debug/Pedalboard3_artefacts/Debug/Pedalboard3.app/Contents/MacOS/Pedalboard3 --startup-smoke-test
 ```
 
+For a Release bundle, use:
+
+```bash
+cmake --preset macos-arm64-release
+cmake --build --preset macos-arm64-release --target Pedalboard3 -j 4
+build/macos-arm64-release/Pedalboard3_artefacts/Release/Pedalboard3.app/Contents/MacOS/Pedalboard3 --startup-smoke-test
+```
+
+The development build is an Apple Silicon-only, ad-hoc-signed application.
+Developer ID signing, notarization, Audio Unit hosting, and verified macOS 13
+compatibility are later distribution milestones.
+
 ---
 
 ## Quick Start
