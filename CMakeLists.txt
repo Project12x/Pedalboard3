@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.22)
 project(Pedalboard3
     VERSION 3.0.0
     DESCRIPTION "Modern VST3 Pedalboard Software for Live Performance"
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 if(MSVC)
