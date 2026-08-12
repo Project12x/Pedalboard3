@@ -1,4 +1,5 @@
 #include "SettingsManager.h"
+#include "AtomicFileWriter.h"
 #include "PlatformPaths.h"
 
 SettingsManager& SettingsManager::getInstance()
@@ -56,8 +57,10 @@ void SettingsManager::save()
     try
     {
         std::string jsonStr = settingsData.dump(4);
-        file.replaceWithText(jsonStr);
-        needsSaving = false;
+        if (replaceTextAtomically(file, juce::String(jsonStr)))
+            needsSaving = false;
+        else
+            juce::Logger::writeToLog("Error saving settings.json atomically");
     }
     catch (const std::exception& e)
     {

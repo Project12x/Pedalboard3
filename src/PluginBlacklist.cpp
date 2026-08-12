@@ -10,6 +10,7 @@
 
 #include "PluginBlacklist.h"
 
+#include "PluginFormatIdentity.h"
 #include "SettingsManager.h"
 
 #include <spdlog/spdlog.h>
@@ -54,6 +55,12 @@ bool PluginBlacklist::isBlacklistedById(const juce::String& pluginId) const
 }
 
 //------------------------------------------------------------------------------
+bool PluginBlacklist::isBlacklisted(const juce::PluginDescription& description) const
+{
+    return isBlacklistedById(makeExactPluginKey(description));
+}
+
+//------------------------------------------------------------------------------
 void PluginBlacklist::addToBlacklist(const juce::String& pluginPath)
 {
     {
@@ -76,6 +83,12 @@ void PluginBlacklist::addToBlacklistById(const juce::String& pluginId)
 }
 
 //------------------------------------------------------------------------------
+void PluginBlacklist::addToBlacklist(const juce::PluginDescription& description)
+{
+    addToBlacklistById(makeExactPluginKey(description));
+}
+
+//------------------------------------------------------------------------------
 void PluginBlacklist::removeFromBlacklist(const juce::String& pluginPath)
 {
     {
@@ -95,6 +108,12 @@ void PluginBlacklist::removeFromBlacklistById(const juce::String& pluginId)
     }
     spdlog::info("[PluginBlacklist] Removed ID from blacklist: {}", pluginId.toStdString());
     saveToSettings();
+}
+
+//------------------------------------------------------------------------------
+void PluginBlacklist::removeFromBlacklist(const juce::PluginDescription& description)
+{
+    removeFromBlacklistById(makeExactPluginKey(description));
 }
 
 //------------------------------------------------------------------------------

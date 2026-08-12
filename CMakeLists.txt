@@ -486,8 +486,12 @@ target_sources(Pedalboard3 PRIVATE
     src/WaveformDisplay.h
     
     # Utilities
+    src/AtomicFileWriter.cpp
+    src/AtomicFileWriter.h
     src/SettingsManager.cpp
     src/SettingsManager.h
+    src/PluginQuarantine.cpp
+    src/PluginQuarantine.h
     src/PluginBlacklist.cpp
     src/PluginBlacklist.h
     src/BlacklistWindow.cpp

@@ -35,17 +35,26 @@ class PluginBlacklist
     /// Check if a plugin identifier is blacklisted
     bool isBlacklistedById(const juce::String& pluginId) const;
 
+    /// Check whether a plug-in description is blacklisted using its exact format-scoped key.
+    bool isBlacklisted(const juce::PluginDescription& description) const;
+
     /// Add a plugin to the blacklist by path
     void addToBlacklist(const juce::String& pluginPath);
 
     /// Add a plugin to the blacklist by identifier
     void addToBlacklistById(const juce::String& pluginId);
 
+    /// Add a plug-in description to the manual blacklist using its exact format-scoped key.
+    void addToBlacklist(const juce::PluginDescription& description);
+
     /// Remove a plugin from the blacklist by path
     void removeFromBlacklist(const juce::String& pluginPath);
 
     /// Remove a plugin from the blacklist by identifier
     void removeFromBlacklistById(const juce::String& pluginId);
+
+    /// Remove a plug-in description from the manual blacklist using its exact format-scoped key.
+    void removeFromBlacklist(const juce::PluginDescription& description);
 
     /// Get all blacklisted paths
     juce::StringArray getBlacklistedPaths() const;
