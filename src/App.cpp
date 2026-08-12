@@ -35,6 +35,7 @@
 #include "NAMModelBrowser.h"
 #include "NiallsAudioPluginFormat.h"
 #include "OscMappingManager.h"
+#include "PluginPoolManager.h"
 #include "SettingsManager.h"
 #include "TrayIcon.h"
 #include "UiScale.h"
@@ -320,6 +321,7 @@ StupidWindow::~StupidWindow()
     setContentOwned(0, true);
     LookAndFeel::setDefaultLookAndFeel(0);
 
+    PluginPoolManager::killInstance();
     AudioPluginFormatManagerSingleton::killInstance();
     AudioFormatManagerSingleton::killInstance();
     AudioThumbnailCacheSingleton::killInstance();
