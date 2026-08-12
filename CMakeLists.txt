@@ -218,6 +218,8 @@ target_sources(Pedalboard3 PRIVATE
     src/App.h
     src/PlatformPaths.cpp
     src/PlatformPaths.h
+    src/StartupOptions.cpp
+    src/StartupOptions.h
     src/UiScale.cpp
     src/UiScale.h
     src/ThemeSwitcherComponent.cpp

@@ -23,6 +23,7 @@
 // #include "LADSPAPluginFormat.h"
 #include "App.h"
 #include "PlatformPaths.h"
+#include "StartupOptions.h"
 #include "AudioSingletons.h"
 #include "ColourScheme.h"
 #include "CrashProtection.h"
@@ -106,6 +107,11 @@ void App::initialise(const String& commandLine)
     if (pan)
         MenuBarModel::setMacMainMenu(pan);
 #endif
+
+    if (pedalboard3::StartupOptions::parse(commandLine).startupSmokeTest)
+    {
+        Timer::callAfterDelay(1500, [] { JUCEApplicationBase::quit(); });
+    }
 }
 
 //------------------------------------------------------------------------------
