@@ -43,6 +43,36 @@
       }
     },
     {
+      "name": "macos-arm64-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "Pedalboard3_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "macos-arm64-debug",
+      "displayName": "macOS Apple Silicon Debug",
+      "inherits": "macos-arm64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "macos-arm64-release",
+      "displayName": "macOS Apple Silicon Release",
+      "inherits": "macos-arm64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "msvc-debug",
       "displayName": "MSVC Debug",
       "description": "Debug build using Visual Studio generator",
@@ -79,6 +109,14 @@
       "configurePreset": "relwithdebinfo"
     },
     {
+      "name": "macos-arm64-debug",
+      "configurePreset": "macos-arm64-debug"
+    },
+    {
+      "name": "macos-arm64-release",
+      "configurePreset": "macos-arm64-release"
+    },
+    {
       "name": "msvc-debug",
       "configurePreset": "msvc-debug",
       "configuration": "Debug"
@@ -100,6 +138,20 @@
     {
       "name": "release",
       "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-arm64-debug",
+      "configurePreset": "macos-arm64-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-arm64-release",
+      "configurePreset": "macos-arm64-release",
       "output": {
         "outputOnFailure": true
       }
