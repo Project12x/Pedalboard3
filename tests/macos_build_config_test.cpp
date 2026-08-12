@@ -18,6 +18,7 @@ TEST_CASE("macOS build configuration isolates platform code", "[macos][build]")
     const auto cmake = readSource("CMakeLists.txt");
     const auto pluginHeader = readSource("src/PluginComponent.h");
     const auto persistence = readSource("src/PluginFieldPersistence.cpp");
+    const auto app = readSource("src/App.cpp");
     const auto compileCommands = readSource("build/macos-arm64-debug/compile_commands.json");
 
     REQUIRE_FALSE(cmake.empty());
@@ -25,6 +26,11 @@ TEST_CASE("macOS build configuration isolates platform code", "[macos][build]")
     CHECK(cmake.find("MICROPHONE_PERMISSION_ENABLED TRUE") != std::string::npos);
     CHECK(cmake.find("if(WIN32)\n    juce_add_console_app(Pedalboard3Scanner") != std::string::npos);
     CHECK(pluginHeader.find("c0xHeaders.h") == std::string::npos);
+    const auto poolShutdown = app.find("PluginPoolManager::killInstance()");
+    const auto formatShutdown = app.find("AudioPluginFormatManagerSingleton::killInstance()");
+    REQUIRE(poolShutdown != std::string::npos);
+    REQUIRE(formatShutdown != std::string::npos);
+    CHECK(poolShutdown < formatShutdown);
     CHECK(pluginHeader.find("std::shared_ptr<MemoryBlock>") != std::string::npos);
     CHECK(persistence.find("#ifdef __APPLE__\nstruct NodeAndId") == std::string::npos);
     CHECK(persistence.find("AudioProcessorGraph::Node::Ptr node;") != std::string::npos);
