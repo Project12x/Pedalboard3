@@ -39,6 +39,18 @@ TEST_CASE("scanner protocol rejects invalid framing before allocation", "[scanne
     REQUIRE_FALSE(ScannerChannel::validateFrame(malformed, 0));
 }
 
+TEST_CASE("scanner response requires a complete well-formed payload", "[scanner protocol]")
+{
+    REQUIRE_FALSE(ScanResponse::deserialize("not json").valid);
+    REQUIRE_FALSE(ScanResponse::deserialize("{\"code\": 1}").valid);
+    REQUIRE_FALSE(ScanResponse::deserialize("{\"code\":99,\"error\":\"x\",\"xml\":\"\"}").valid);
+    REQUIRE_FALSE(ScanResponse::deserialize("{\"code\":\"oops\",\"error\":\"x\",\"xml\":\"\"}").valid);
+    REQUIRE_FALSE(ScanResponse::deserialize("{\"code\":1,\"error\":false,\"xml\":\"\"}").valid);
+    const auto explicitFailure = ScanResponse::deserialize("{\"code\":1,\"error\":\"load failed\",\"xml\":\"\"}");
+    REQUIRE(explicitFailure.valid);
+    REQUIRE(explicitFailure.resultCode == ScanResultCode::LoadFailed);
+}
+
 TEST_CASE("Windows scanner transport remains named-pipe capable", "[scanner transport][windows-contract]")
 {
     std::ifstream transport(PEDALBOARD3_SOURCE_DIR "/src/PluginScannerTransport.cpp");

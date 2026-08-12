@@ -45,7 +45,7 @@ add_executable(Pedalboard3_Tests
     ../src/AudioSingletons.cpp
     ../src/SupportedPluginFormats.cpp
     ../src/PluginFormatIdentity.cpp
-    ../src/PluginScanCoordinator.cpp
+    ../src/PluginScanCoordinatorCore.cpp
     ../src/PluginScanOrchestration.cpp
     ../src/ScannerResponseWorker.cpp
     ../src/AtomicFileWriter.cpp

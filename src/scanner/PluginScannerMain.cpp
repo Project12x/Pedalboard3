@@ -20,7 +20,8 @@
 
 using namespace PluginScannerIPC;
 
-class PluginScannerApplication : public juce::JUCEApplicationBase
+class PluginScannerApplication : public juce::JUCEApplicationBase,
+                                 private juce::Timer
 {
   public:
     PluginScannerApplication() = default;
@@ -72,14 +73,14 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
         sendMessage(MessageType::Ready, Handshake { PROTOCOL_VERSION, launchInfo.sessionToken }.serialize());
 
         // Start message processing
-        startTimer(10);
+        juce::Timer::startTimer(10);
     }
 
     void shutdown() override
     {
         std::cerr << "[Scanner] Shutting down" << std::endl;
         stopping.store(true, std::memory_order_release);
-        stopTimer();
+        juce::Timer::stopTimer();
         // Jobs capture this and may enqueue replies. Join them while every captured
         // queue/state member is still alive, before channel or member teardown.
         scanWorker.shutdown();
@@ -121,23 +122,13 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
         return channel != nullptr && channel->receive(header, payload, 0);
     }
 
-    void startTimer(int intervalMs) { juce::Timer::callAfterDelay(intervalMs, [this]() { timerCallback(); }); }
-
-    void stopTimer() {}
-
-    void timerCallback()
+    void timerCallback() override
     {
         if (stopping.load(std::memory_order_acquire))
             return;
         drainCompletedResponses();
         processMessages();
 
-        // Schedule next callback if still running
-        if (!juce::JUCEApplicationBase::isStandaloneApp() ||
-            juce::JUCEApplicationBase::getInstance()->isInitialising())
-            return;
-
-        juce::Timer::callAfterDelay(10, [this]() { timerCallback(); });
     }
 
     void drainCompletedResponses()

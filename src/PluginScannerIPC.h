@@ -137,6 +137,7 @@ struct ScanResponse
     ScanResultCode resultCode = ScanResultCode::LoadFailed;
     juce::String errorMessage;
     juce::String pluginXml;  // Serialized PluginDescription if successful
+    bool valid = true;
 
     juce::String serialize() const
     {
@@ -151,12 +152,26 @@ struct ScanResponse
     {
         ScanResponse resp;
         auto parsed = juce::JSON::parse(json);
-        if (auto* obj = parsed.getDynamicObject())
+        if (auto* obj = parsed.getDynamicObject(); obj != nullptr && obj->hasProperty("code")
+            && obj->hasProperty("error") && obj->hasProperty("xml"))
         {
-            resp.resultCode = static_cast<ScanResultCode>(static_cast<int>(obj->getProperty("code")));
-            resp.errorMessage = obj->getProperty("error").toString();
-            resp.pluginXml = obj->getProperty("xml").toString();
+            const auto code = obj->getProperty("code");
+            const auto error = obj->getProperty("error");
+            const auto xml = obj->getProperty("xml");
+            const auto numericCode = code.isInt() || code.isInt64();
+            const auto codeValue = static_cast<int>(code);
+            const auto validCode = codeValue >= static_cast<int>(ScanResultCode::Success)
+                && codeValue <= static_cast<int>(ScanResultCode::Blacklisted);
+
+            if (numericCode && validCode && error.isString() && xml.isString())
+            {
+                resp.resultCode = static_cast<ScanResultCode>(codeValue);
+                resp.errorMessage = error.toString();
+                resp.pluginXml = xml.toString();
+                return resp;
+            }
         }
+        resp.valid = false;
         return resp;
     }
 };

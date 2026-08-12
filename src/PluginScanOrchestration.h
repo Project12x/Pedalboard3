@@ -14,6 +14,14 @@ enum class PluginCandidateDecision
     isolationUnavailable
 };
 
+enum class PluginScanCandidateOutcome
+{
+    discovered,
+    skipped,
+    quarantined,
+    failed
+};
+
 struct PluginScanPlanJob
 {
     std::string formatName;

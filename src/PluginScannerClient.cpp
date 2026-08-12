@@ -513,6 +513,13 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     // Parse response
     auto response = ScanResponse::deserialize(responsePayload);
 
+    if (! response.valid)
+    {
+        lastScanResult = ScanResult::isolationUnavailable;
+        handleScannerCrash();
+        return false;
+    }
+
     if (response.resultCode != ScanResultCode::Success)
     {
         spdlog::warn("[PluginScannerClient] Scan failed for {}: {}", pluginPath.toStdString(),

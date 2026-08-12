@@ -251,6 +251,7 @@ target_sources(Pedalboard3 PRIVATE
     src/PluginFormatIdentity.h
     src/PluginScanCoordinator.cpp
     src/PluginScanCoordinator.h
+    src/PluginScanCoordinatorCore.cpp
     src/PluginScanOrchestration.cpp
     src/PluginScanOrchestration.h
     src/ScannerResponseWorker.cpp

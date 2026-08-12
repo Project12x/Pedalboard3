@@ -430,10 +430,15 @@ TEST_CASE("safe scanner never re-scans helper-success candidates in process", "[
 TEST_CASE("scanner helper discovery has one worker and a message-thread response queue", "[rt][scanner]")
 {
     const auto source = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/scanner/PluginScannerMain.cpp");
-    REQUIRE(source.find("juce::ThreadPool scanWorker { 1 }") != std::string::npos);
-    REQUIRE(source.find("PendingScanResponse") != std::string::npos);
+    const auto workerHeader = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/ScannerResponseWorker.h");
+    const auto workerSource = readTextFileForRtTest(PEDALBOARD3_SOURCE_DIR "/src/ScannerResponseWorker.cpp");
+    REQUIRE(source.find("ScannerResponseWorker scanWorker") != std::string::npos);
     REQUIRE(source.find("drainCompletedResponses") != std::string::npos);
     REQUIRE(source.find("findAllTypesForFile") != std::string::npos);
+    REQUIRE(source.find("callAfterDelay") == std::string::npos);
+    REQUIRE(source.find("[this]") == std::string::npos);
+    REQUIRE(workerHeader.find("void shutdown()") != std::string::npos);
+    REQUIRE(workerSource.find("thread.join()") != std::string::npos);
 }
 
 TEST_CASE("scanner transport faults do not blacklist a candidate", "[rt][scanner]")

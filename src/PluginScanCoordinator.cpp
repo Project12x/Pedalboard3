@@ -1,68 +1,11 @@
 #include "PluginScanCoordinator.h"
 
-#include "PluginQuarantine.h"
 #include "SafePluginScanner.h"
 #include "PluginScanOrchestration.h"
 
+#include "PluginQuarantine.h"
+
 #include <algorithm>
-
-namespace
-{
-juce::String deadMansPedalSuffix(const juce::String& formatName)
-{
-    auto suffix = formatName.toLowerCase().retainCharacters("abcdefghijklmnopqrstuvwxyz0123456789");
-    return suffix.isEmpty() ? "plugin" : suffix;
-}
-} // namespace
-
-float calculateOverallPluginScanProgress(int jobIndex, float formatProgress, int jobCount)
-{
-    if (jobCount <= 0)
-        return 1.0f;
-
-    return juce::jlimit(0.0f, 1.0f, (static_cast<float>(jobIndex) + juce::jlimit(0.0f, 1.0f, formatProgress))
-                                             / static_cast<float>(jobCount));
-}
-
-PluginScanSummary makePluginScanSummary(const std::vector<PluginScanCandidateOutcome>& outcomes, bool cancelled)
-{
-    PluginScanSummary summary;
-    summary.cancelled = cancelled;
-    for (const auto outcome : outcomes)
-    {
-        switch (outcome)
-        {
-            case PluginScanCandidateOutcome::discovered: ++summary.discovered; break;
-            case PluginScanCandidateOutcome::skipped: ++summary.skipped; break;
-            case PluginScanCandidateOutcome::quarantined: ++summary.quarantined; break;
-            case PluginScanCandidateOutcome::failed: ++summary.failed; break;
-        }
-    }
-    return summary;
-}
-
-std::vector<PluginScanJob> makePluginScanPlan(juce::AudioPluginFormatManager& manager,
-                                              const juce::File& dataDirectory)
-{
-    std::vector<PluginScanJob> jobs;
-
-    for (int index = 0; index < manager.getNumFormats(); ++index)
-    {
-        auto* format = manager.getFormat(index);
-        const auto formatName = format->getName();
-
-        if (formatName == "Internal")
-            continue;
-
-        jobs.push_back({formatName,
-                        format,
-                        format->getDefaultLocationsToSearch(),
-                        formatName == "AudioUnit",
-                        dataDirectory.getChildFile("RecentlyCrashedPluginsList-" + deadMansPedalSuffix(formatName))});
-    }
-
-    return jobs;
-}
 
 PluginScanCoordinator::PluginScanCoordinator(juce::AudioPluginFormatManager& manager, juce::KnownPluginList& list,
                                              const juce::File& directory, bool diagnosticFallback)
@@ -128,11 +71,12 @@ void PluginScanCoordinator::run()
 {
     const auto jobs = makePluginScanPlan(formatManager, dataDirectory);
     std::vector<PluginScanPlanJob> plan;
+    std::vector<PluginScanCandidateOutcome> outcomes;
     plan.reserve(jobs.size());
     for (const auto& job : jobs)
         plan.push_back({ job.formatName.toStdString(), { job.formatName.toStdString() } });
 
-    const auto planResult = runPluginScanPlan(plan, [this, &jobs] (const std::string& formatName, const std::string&)
+    const auto planResult = runPluginScanPlan(plan, [this, &jobs, &outcomes] (const std::string& formatName, const std::string&)
     {
         const auto jobIndex = static_cast<size_t>(std::find_if(jobs.begin(), jobs.end(), [&] (const auto& job)
         {
@@ -154,6 +98,8 @@ void PluginScanCoordinator::run()
         {
             juce::String candidate;
             const auto hasMore = activeScanner->scanNextFile(true, candidate);
+            if (candidate.isNotEmpty())
+                outcomes.push_back(activeScanner->getLastOutcome());
             if (candidate.isNotEmpty() && activeScanner->getLastOutcome() == PluginScanCandidateOutcome::discovered)
                 aggregate = PluginCandidateDecision::discovered;
             else if (candidate.isNotEmpty() && activeScanner->getLastOutcome() == PluginScanCandidateOutcome::quarantined
@@ -172,12 +118,7 @@ void PluginScanCoordinator::run()
         return threadShouldExit() ? PluginCandidateDecision::cancelled : aggregate;
     });
 
-    PluginScanSummary summary;
-    summary.discovered = planResult.discovered;
-    summary.skipped = planResult.skipped;
-    summary.quarantined = planResult.quarantined;
-    summary.failed = planResult.failed;
-    summary.cancelled = planResult.cancelled || cancellationRequested.load(std::memory_order_acquire);
+    auto summary = makePluginScanSummary(outcomes, planResult.cancelled || cancellationRequested.load(std::memory_order_acquire));
     summary.isolationUnavailable = planResult.isolationUnavailable;
     publishFinished(summary);
     scanning.store(false, std::memory_order_release);

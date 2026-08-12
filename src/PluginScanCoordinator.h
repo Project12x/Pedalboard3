@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SafePluginScanner.h"
+#include "PluginScanOrchestration.h"
 
 #include <JuceHeader.h>
 
