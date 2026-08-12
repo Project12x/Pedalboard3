@@ -34,6 +34,7 @@ Makefile
 *.cmake
 !CMakeLists.txt
 !cmake/
+!cmake/CPM.cmake
 
 # Visual Studio
 .vs/
@@ -86,5 +87,9 @@ temp_nam_juce/
 # Vendored source intentionally tracked even when a global ignore excludes external/
 !external/
 external/*
+!external/AudioDSPTools/
+!external/AudioDSPTools/**
+!external/NeuralAmpModelerCore/
+!external/NeuralAmpModelerCore/**
 !external/NeuralAmpModelerCoreA2/
 !external/NeuralAmpModelerCoreA2/**
