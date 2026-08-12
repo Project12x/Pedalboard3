@@ -190,6 +190,8 @@ juce_add_gui_app(Pedalboard3
     BUNDLE_ID "com.pedalboard3.app"
     ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-512.png"
     ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-48.png"
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT "Pedalboard3 uses audio input for live processing, recording, metering, and tuning."
 )
 
 # Generate JUCE header
@@ -543,15 +545,10 @@ target_compile_definitions(Pedalboard3 PRIVATE
     JUCE_PLUGINHOST_LADSPA=0
     
     # Audio Settings
-    JUCE_ASIO=1
-    JUCE_WASAPI=1
-    JUCE_DIRECTSOUND=1
     JUCE_USE_FLAC=1
     JUCE_USE_OGGVORBIS=1
     
     # Graphics - Enable HiDPI
-    JUCE_WIN_PER_MONITOR_DPI_AWARE=1
-    
     # Modern features
     JUCE_MODAL_LOOPS_PERMITTED=1
     JUCE_STRICT_REFCOUNTEDPOINTER=1
@@ -559,7 +556,6 @@ target_compile_definitions(Pedalboard3 PRIVATE
     # NAM (Neural Amp Modeler) settings
     NAM_SAMPLE_FLOAT
     DSP_SAMPLE_FLOAT
-    NOMINMAX
 )
 
 target_include_directories(Pedalboard3 PRIVATE
@@ -611,6 +607,11 @@ target_link_libraries(Pedalboard3 PRIVATE
 # Windows-specific settings
 if(WIN32)
     target_compile_definitions(Pedalboard3 PRIVATE
+        JUCE_ASIO=1
+        JUCE_WASAPI=1
+        JUCE_DIRECTSOUND=1
+        JUCE_WIN_PER_MONITOR_DPI_AWARE=1
+        NOMINMAX
         _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
     )
     
@@ -630,45 +631,47 @@ add_custom_command(TARGET Pedalboard3 POST_BUILD
 # ==============================================================================
 # Out-of-Process Plugin Scanner
 # ==============================================================================
-juce_add_console_app(Pedalboard3Scanner
-    PRODUCT_NAME "Pedalboard3Scanner"
-    COMPANY_NAME "Pedalboard3 Project"
-)
+if(WIN32)
+    juce_add_console_app(Pedalboard3Scanner
+        PRODUCT_NAME "Pedalboard3Scanner"
+        COMPANY_NAME "Pedalboard3 Project"
+    )
 
-# Generate JUCE header for scanner
-juce_generate_juce_header(Pedalboard3Scanner)
+    # Generate JUCE header for scanner
+    juce_generate_juce_header(Pedalboard3Scanner)
 
-target_sources(Pedalboard3Scanner PRIVATE
-    src/scanner/PluginScannerMain.cpp
-    src/PluginScannerIPC.h
-)
+    target_sources(Pedalboard3Scanner PRIVATE
+        src/scanner/PluginScannerMain.cpp
+        src/PluginScannerIPC.h
+    )
 
-target_compile_definitions(Pedalboard3Scanner PRIVATE
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_PLUGINHOST_VST3=1
-    JUCE_PLUGINHOST_VST=0
-    JUCE_PLUGINHOST_AU=0
-    JUCE_PLUGINHOST_LADSPA=0
-    JUCE_STANDALONE_APPLICATION=1
-    JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=0
-)
+    target_compile_definitions(Pedalboard3Scanner PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_PLUGINHOST_VST=0
+        JUCE_PLUGINHOST_AU=0
+        JUCE_PLUGINHOST_LADSPA=0
+        JUCE_STANDALONE_APPLICATION=1
+        JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=0
+    )
 
-# Minimal dependencies for plugin scanning - no audio devices, formats, or utils needed
-target_link_libraries(Pedalboard3Scanner PRIVATE
-    juce::juce_audio_processors  # Required for plugin loading (pulls in gui_basics, graphics)
-    juce::juce_core
-    juce::juce_data_structures
-    juce::juce_events
-    juce::juce_recommended_config_flags
-)
+    # Minimal dependencies for plugin scanning - no audio devices, formats, or utils needed
+    target_link_libraries(Pedalboard3Scanner PRIVATE
+        juce::juce_audio_processors  # Required for plugin loading (pulls in gui_basics, graphics)
+        juce::juce_core
+        juce::juce_data_structures
+        juce::juce_events
+        juce::juce_recommended_config_flags
+    )
 
-# Copy scanner to same directory as main app
-add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        "$<TARGET_FILE:Pedalboard3Scanner>"
-        "$<TARGET_FILE_DIR:Pedalboard3>/"
-)
+    # Copy scanner to same directory as main app
+    add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "$<TARGET_FILE:Pedalboard3Scanner>"
+            "$<TARGET_FILE_DIR:Pedalboard3>/"
+    )
+endif()
 
 # ==============================================================================
 # Tests

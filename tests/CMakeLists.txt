@@ -29,6 +29,7 @@ add_executable(Pedalboard3_Tests
     mixer_splitter_test.cpp
     master_bus_test.cpp
     font_manager_test.cpp
+    macos_build_config_test.cpp
     ../src/ScratchRecorder.cpp
     ../src/ScratchTake.cpp
     ../src/PluginPoolManager.cpp
