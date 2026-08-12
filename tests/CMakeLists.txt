@@ -57,6 +57,9 @@ add_executable(Pedalboard3_Tests
     ../src/UiScale.cpp
 )
 
+# JUCE 9 generates JuceHeader.h as part of the Pedalboard3 target.
+# The tests include that generated header through production source headers.
+add_dependencies(Pedalboard3_Tests Pedalboard3)
 
 
 # Link Catch2 and project dependencies needed for testing
