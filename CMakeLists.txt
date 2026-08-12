@@ -499,6 +499,8 @@ target_sources(Pedalboard3 PRIVATE
     src/CrashProtection.cpp
     src/CrashProtection.h
     src/PluginScannerIPC.h
+    src/PluginScannerTransport.cpp
+    src/PluginScannerTransport.h
     src/PluginScannerClient.cpp
     src/PluginScannerClient.h
     src/SafePluginScanner.cpp
@@ -662,7 +664,7 @@ endif()
 # ==============================================================================
 # Out-of-Process Plugin Scanner
 # ==============================================================================
-if(WIN32)
+if(WIN32 OR APPLE)
     juce_add_console_app(Pedalboard3Scanner
         PRODUCT_NAME "Pedalboard3Scanner"
         COMPANY_NAME "Pedalboard3 Project"
@@ -674,6 +676,8 @@ if(WIN32)
     target_sources(Pedalboard3Scanner PRIVATE
         src/scanner/PluginScannerMain.cpp
         src/PluginScannerIPC.h
+        src/PluginScannerTransport.cpp
+        src/PluginScannerTransport.h
         src/SupportedPluginFormats.cpp
         src/SupportedPluginFormats.h
     )
@@ -698,12 +702,21 @@ if(WIN32)
         juce::juce_recommended_config_flags
     )
 
-    # Copy scanner to same directory as main app
-    add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "$<TARGET_FILE:Pedalboard3Scanner>"
-            "$<TARGET_FILE_DIR:Pedalboard3>/"
-    )
+    if(APPLE)
+        target_link_libraries(Pedalboard3Scanner PRIVATE "-framework CoreAudioKit")
+    endif()
+
+    if(APPLE)
+        add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:Pedalboard3>/Helpers"
+            COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:Pedalboard3Scanner>"
+                "$<TARGET_BUNDLE_CONTENT_DIR:Pedalboard3>/Helpers/Pedalboard3Scanner"
+        )
+    else()
+        add_custom_command(TARGET Pedalboard3Scanner POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:Pedalboard3Scanner>" "$<TARGET_FILE_DIR:Pedalboard3>/"
+        )
+    endif()
 endif()
 
 # ==============================================================================

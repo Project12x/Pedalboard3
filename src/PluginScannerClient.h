@@ -11,6 +11,7 @@
 #pragma once
 
 #include "PluginScannerIPC.h"
+#include "PluginScannerTransport.h"
 
 #include <JuceHeader.h>
 
@@ -84,6 +85,12 @@ class PluginScannerClient
     // Platform-specific handles stored as void* to avoid Windows header in header file
     void* pipeHandle = nullptr;
     void* scannerProcess = nullptr;
+
+#if JUCE_MAC
+    std::unique_ptr<juce::ChildProcess> macScannerProcess;
+    std::unique_ptr<ScannerHostEndpoint> macEndpoint;
+    std::unique_ptr<ScannerChannel> macChannel;
+#endif
 
     juce::String lastScannedPlugin;
     juce::ListenerList<Listener> listeners;

@@ -33,6 +33,7 @@ add_executable(Pedalboard3_Tests
     plugin_format_registration_test.cpp
     plugin_scan_coordinator_test.cpp
     plugin_quarantine_test.cpp
+    plugin_scanner_transport_test.cpp
     platform_paths_test.cpp
     startup_options_test.cpp
     ../src/PlatformPaths.cpp
@@ -47,6 +48,7 @@ add_executable(Pedalboard3_Tests
     ../src/PluginScanCoordinator.cpp
     ../src/AtomicFileWriter.cpp
     ../src/PluginQuarantine.cpp
+    ../src/PluginScannerTransport.cpp
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
     ../src/dsp/MeterSource.cpp

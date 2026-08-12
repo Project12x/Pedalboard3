@@ -26,10 +26,14 @@
 
 using namespace PluginScannerIPC;
 
-#ifdef _WIN32
 namespace
 {
 constexpr int kScannerStartupTimeoutMs = 5000;
+}
+
+#ifdef _WIN32
+namespace
+{
 constexpr uint32_t kMaxScannerPayloadBytes = 16u * 1024u * 1024u;
 constexpr DWORD kPipePollIntervalMs = 10;
 
@@ -143,6 +147,8 @@ juce::File PluginScannerClient::getScannerExecutable()
 
 #ifdef _WIN32
     return appDir.getChildFile("Pedalboard3Scanner.exe");
+#elif JUCE_MAC
+    return appDir.getParentDirectory().getChildFile("Helpers").getChildFile("Pedalboard3Scanner");
 #else
     return appDir.getChildFile("Pedalboard3Scanner");
 #endif
@@ -151,7 +157,9 @@ juce::File PluginScannerClient::getScannerExecutable()
 //------------------------------------------------------------------------------
 bool PluginScannerClient::isScannerRunning() const
 {
-#ifdef _WIN32
+#if JUCE_MAC
+    return macScannerProcess != nullptr && macScannerProcess->isRunning() && macChannel != nullptr;
+#elif defined(_WIN32)
     HANDLE hProcess = static_cast<HANDLE>(scannerProcess);
     if (hProcess == nullptr || hProcess == INVALID_HANDLE_VALUE)
         return false;
@@ -169,7 +177,52 @@ bool PluginScannerClient::isScannerRunning() const
 //------------------------------------------------------------------------------
 bool PluginScannerClient::startScanner()
 {
-#ifdef _WIN32
+#if JUCE_MAC
+    if (isScannerRunning())
+        return true;
+
+    stopScanner();
+    auto endpoint = std::make_unique<ScannerHostEndpoint>();
+    if (!endpoint->create())
+    {
+        spdlog::error("[PluginScannerClient] Failed to create scanner endpoint");
+        return false;
+    }
+
+    const auto scannerExe = getScannerExecutable();
+    if (!scannerExe.existsAsFile())
+    {
+        spdlog::error("[PluginScannerClient] Scanner executable not found: {}", scannerExe.getFullPathName().toStdString());
+        return false;
+    }
+
+    const auto launch = endpoint->launchInfo();
+    auto process = std::make_unique<juce::ChildProcess>();
+    const auto command = "\"" + scannerExe.getFullPathName() + "\" --scanner-endpoint \"" + launch.endpoint
+        + "\" --scanner-token \"" + launch.sessionToken + "\"";
+    if (!process->start(command))
+    {
+        spdlog::error("[PluginScannerClient] Failed to launch scanner helper");
+        return false;
+    }
+
+    auto channel = endpoint->accept(kScannerStartupTimeoutMs);
+    MessageHeader header;
+    juce::String payload;
+    if (channel == nullptr || !channel->receive(header, payload, kScannerStartupTimeoutMs)
+        || header.type != MessageType::Ready || !Handshake::deserialize(payload).matches(launch))
+    {
+        spdlog::error("[PluginScannerClient] Scanner failed authenticated Ready handshake");
+        process->kill();
+        return false;
+    }
+
+    macEndpoint = std::move(endpoint);
+    macScannerProcess = std::move(process);
+    macChannel = std::move(channel);
+    listeners.call(&Listener::scannerStarted);
+    return true;
+#elif defined(_WIN32)
     if (isScannerRunning())
         return true;
 
@@ -275,7 +328,16 @@ bool PluginScannerClient::startScanner()
 //------------------------------------------------------------------------------
 void PluginScannerClient::stopScanner()
 {
-#ifdef _WIN32
+#if JUCE_MAC
+    if (macChannel != nullptr)
+        macChannel->send(MessageType::Shutdown);
+    macChannel.reset();
+    macEndpoint.reset();
+    if (macScannerProcess != nullptr && macScannerProcess->isRunning())
+        macScannerProcess->kill();
+    macScannerProcess.reset();
+    listeners.call(&Listener::scannerStopped);
+#elif defined(_WIN32)
     HANDLE hPipe = static_cast<HANDLE>(pipeHandle);
     HANDLE hProcess = static_cast<HANDLE>(scannerProcess);
 
@@ -336,7 +398,30 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         return false;
     }
 
-#ifdef _WIN32
+#if JUCE_MAC
+    ScanRequest request;
+    request.pluginPath = pluginPath;
+    request.formatName = formatName;
+    if (macChannel == nullptr || !macChannel->send(MessageType::ScanPlugin, request.serialize()))
+    {
+        handleScannerCrash();
+        return false;
+    }
+
+    MessageHeader header;
+    juce::String responsePayload;
+    if (!macChannel->receive(header, responsePayload, SCAN_TIMEOUT_MS))
+    {
+        PluginBlacklist::getInstance().addToBlacklist(pluginPath);
+        handleScannerCrash();
+        return false;
+    }
+    if (header.type != MessageType::ScanResult && header.type != MessageType::ScanError)
+    {
+        handleScannerCrash();
+        return false;
+    }
+#elif defined(_WIN32)
     HANDLE hPipe = static_cast<HANDLE>(pipeHandle);
 
     // Build and send request
@@ -415,6 +500,11 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         responsePayload = juce::String::fromUTF8(buffer.get(), static_cast<int>(header.payloadSize));
     }
 
+#else
+    juce::ignoreUnused(pluginPath, formatName, results);
+    return false;
+#endif
+
     // Parse response
     auto response = ScanResponse::deserialize(responsePayload);
 
@@ -444,10 +534,6 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     listeners.call(&Listener::scanComplete, pluginPath, true);
 
     return true;
-#else
-    juce::ignoreUnused(pluginPath, formatName, results);
-    return false;
-#endif
 }
 
 //------------------------------------------------------------------------------

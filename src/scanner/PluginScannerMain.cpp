@@ -12,13 +12,10 @@
 #include <JuceHeader.h>
 
 #include "../PluginScannerIPC.h"
+#include "../PluginScannerTransport.h"
 #include "../SupportedPluginFormats.h"
 
 #include <iostream>
-
-#ifdef _WIN32
-    #include <windows.h>
-#endif
 
 using namespace PluginScannerIPC;
 
@@ -46,7 +43,20 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
         std::cerr << "[Scanner] Registered " << formatManager.getNumFormats() << " plugin formats" << std::endl;
 
-        // Connect to the host's named pipe
+        const auto arguments = juce::StringArray::fromTokens(commandLine, true);
+        const auto endpointIndex = arguments.indexOf("--scanner-endpoint");
+        const auto tokenIndex = arguments.indexOf("--scanner-token");
+        if (endpointIndex < 0 || tokenIndex < 0 || endpointIndex + 1 >= arguments.size() || tokenIndex + 1 >= arguments.size())
+        {
+            std::cerr << "[Scanner] Missing authenticated transport arguments" << std::endl;
+            setApplicationReturnValue(1);
+            quit();
+            return;
+        }
+        launchInfo.endpoint = arguments[endpointIndex + 1];
+        launchInfo.sessionToken = arguments[tokenIndex + 1];
+
+        // Connect to the host's private endpoint.
         if (!connectToHost())
         {
             std::cerr << "[Scanner] Failed to connect to host pipe" << std::endl;
@@ -58,7 +68,7 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
         std::cerr << "[Scanner] Connected to host, entering message loop" << std::endl;
 
         // Send ready message
-        sendMessage(MessageType::Ready);
+        sendMessage(MessageType::Ready, Handshake { PROTOCOL_VERSION, launchInfo.sessionToken }.serialize());
 
         // Start message processing
         startTimer(10);
@@ -77,121 +87,28 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
 
   private:
     juce::AudioPluginFormatManager formatManager;
-
-#ifdef _WIN32
-    HANDLE pipeHandle = INVALID_HANDLE_VALUE;
-#endif
+    ScannerLaunchInfo launchInfo;
+    std::unique_ptr<ScannerChannel> channel;
 
     bool connectToHost()
     {
-#ifdef _WIN32
-        // Try to connect to the named pipe created by the host
-        for (int attempt = 0; attempt < 10; ++attempt)
-        {
-            pipeHandle = CreateFileA(PIPE_NAME, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
-
-            if (pipeHandle != INVALID_HANDLE_VALUE)
-            {
-                // Set pipe to message mode
-                DWORD mode = PIPE_READMODE_BYTE;
-                SetNamedPipeHandleState(pipeHandle, &mode, nullptr, nullptr);
-                return true;
-            }
-
-            // Wait a bit before retry
-            if (GetLastError() == ERROR_PIPE_BUSY)
-            {
-                WaitNamedPipeA(PIPE_NAME, 1000);
-            }
-            else
-            {
-                Sleep(100);
-            }
-        }
-        return false;
-#else
-        // Unix implementation would use Unix domain sockets
-        return false;
-#endif
+        channel = connectScannerChannel(launchInfo, 5000);
+        return channel != nullptr;
     }
 
     void disconnectFromHost()
     {
-#ifdef _WIN32
-        if (pipeHandle != INVALID_HANDLE_VALUE)
-        {
-            CloseHandle(pipeHandle);
-            pipeHandle = INVALID_HANDLE_VALUE;
-        }
-#endif
+        channel.reset();
     }
 
     bool sendMessage(MessageType type, const juce::String& payload = {})
     {
-#ifdef _WIN32
-        if (pipeHandle == INVALID_HANDLE_VALUE)
-            return false;
-
-        MessageHeader header;
-        header.type = type;
-        auto payloadBytes = payload.toUTF8();
-        header.payloadSize = static_cast<uint32_t>(payloadBytes.length());
-
-        DWORD bytesWritten;
-        if (!WriteFile(pipeHandle, &header, sizeof(header), &bytesWritten, nullptr))
-            return false;
-
-        if (header.payloadSize > 0)
-        {
-            if (!WriteFile(pipeHandle, payloadBytes.getAddress(), header.payloadSize, &bytesWritten, nullptr))
-                return false;
-        }
-
-        FlushFileBuffers(pipeHandle);
-        return true;
-#else
-        return false;
-#endif
+        return channel != nullptr && channel->send(type, payload);
     }
 
     bool readMessage(MessageHeader& header, juce::String& payload)
     {
-#ifdef _WIN32
-        if (pipeHandle == INVALID_HANDLE_VALUE)
-            return false;
-
-        // Check if data is available
-        DWORD bytesAvailable = 0;
-        if (!PeekNamedPipe(pipeHandle, nullptr, 0, nullptr, &bytesAvailable, nullptr))
-            return false;
-
-        if (bytesAvailable < sizeof(MessageHeader))
-            return false;
-
-        DWORD bytesRead;
-        if (!ReadFile(pipeHandle, &header, sizeof(header), &bytesRead, nullptr))
-            return false;
-
-        if (header.magic != 0x50444233)
-            return false;
-
-        if (header.payloadSize > 0)
-        {
-            juce::HeapBlock<char> buffer(header.payloadSize + 1);
-            if (!ReadFile(pipeHandle, buffer.get(), header.payloadSize, &bytesRead, nullptr))
-                return false;
-            buffer[header.payloadSize] = 0;
-            payload = juce::String::fromUTF8(buffer.get(), header.payloadSize);
-        }
-        else
-        {
-            payload.clear();
-        }
-
-        return true;
-#else
-        return false;
-#endif
+        return channel != nullptr && channel->receive(header, payload, 0);
     }
 
     void startTimer(int intervalMs) { juce::Timer::callAfterDelay(intervalMs, [this]() { timerCallback(); }); }

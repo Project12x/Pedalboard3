@@ -20,7 +20,8 @@ namespace PluginScannerIPC
 constexpr const char* PIPE_NAME = "\\\\.\\pipe\\Pedalboard3PluginScanner";
 
 // Protocol version for compatibility checking
-constexpr int PROTOCOL_VERSION = 1;
+constexpr int PROTOCOL_VERSION = 2;
+constexpr uint32_t MAX_SCANNER_PAYLOAD_BYTES = 16u * 1024u * 1024u;
 
 // Timeout for scanner operations (ms)
 constexpr int SCAN_TIMEOUT_MS = 30000;
@@ -61,6 +62,42 @@ struct MessageHeader
     uint8_t version = PROTOCOL_VERSION;
     MessageType type;
     uint32_t payloadSize = 0;
+};
+
+struct ScannerLaunchInfo
+{
+    juce::String endpoint;
+    juce::String sessionToken;
+};
+
+struct Handshake
+{
+    int protocolVersion = PROTOCOL_VERSION;
+    juce::String sessionToken;
+
+    juce::String serialize() const
+    {
+        auto object = juce::DynamicObject::Ptr(new juce::DynamicObject());
+        object->setProperty("protocolVersion", protocolVersion);
+        object->setProperty("sessionToken", sessionToken);
+        return juce::JSON::toString(juce::var(object.get()));
+    }
+
+    static Handshake deserialize(const juce::String& json)
+    {
+        Handshake handshake;
+        if (auto* object = juce::JSON::parse(json).getDynamicObject())
+        {
+            handshake.protocolVersion = static_cast<int>(object->getProperty("protocolVersion"));
+            handshake.sessionToken = object->getProperty("sessionToken").toString();
+        }
+        return handshake;
+    }
+
+    bool matches(const ScannerLaunchInfo& launchInfo) const
+    {
+        return protocolVersion == PROTOCOL_VERSION && sessionToken == launchInfo.sessionToken;
+    }
 };
 
 /**
@@ -133,6 +170,8 @@ inline bool writeMessage(juce::OutputStream& stream, MessageType type, const juc
     header.type = type;
     auto payloadBytes = payload.toUTF8();
     header.payloadSize = static_cast<uint32_t>(payloadBytes.length());
+    if (header.payloadSize > MAX_SCANNER_PAYLOAD_BYTES)
+        return false;
 
     if (!stream.write(&header, sizeof(header)))
         return false;
@@ -155,7 +194,8 @@ inline bool readMessage(juce::InputStream& stream, MessageHeader& header, juce::
     if (stream.read(&header, static_cast<int>(sizeof(header))) != static_cast<int>(sizeof(header)))
         return false;
 
-    if (header.magic != 0x50444233)
+    if (header.magic != 0x50444233 || header.version != PROTOCOL_VERSION ||
+        header.payloadSize > MAX_SCANNER_PAYLOAD_BYTES)
         return false;
 
     if (header.payloadSize > 0)
