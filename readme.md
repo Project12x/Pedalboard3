@@ -96,6 +96,25 @@ cmake --build build --config Release
 
 Output: `build/Pedalboard3_artefacts/Release/`
 
+### macOS (Apple Silicon)
+
+Install the native build tools, then configure and build with the Apple Silicon
+preset:
+
+```bash
+brew install cmake ninja
+cmake --preset macos-arm64-debug
+cmake --build --preset macos-arm64-debug -j 4
+```
+
+The app bundle is written to
+`build/macos-arm64-debug/Pedalboard3_artefacts/Debug/Pedalboard3.app`.
+For a deterministic startup check, run:
+
+```bash
+build/macos-arm64-debug/Pedalboard3_artefacts/Debug/Pedalboard3.app/Contents/MacOS/Pedalboard3 --startup-smoke-test
+```
+
 ---
 
 ## Quick Start
