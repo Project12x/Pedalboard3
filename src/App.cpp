@@ -37,6 +37,7 @@
 #include "OscMappingManager.h"
 #include "PluginPoolManager.h"
 #include "SettingsManager.h"
+#include "SupportedPluginFormats.h"
 #include "TrayIcon.h"
 #include "UiScale.h"
 
@@ -172,13 +173,8 @@ StupidWindow::StupidWindow(const String& commandLine, bool startHidden)
 {
     // Make sure we've loaded all the available plugin formats before we create
     // the main panel.
-    {
-        InternalPluginFormat* internalFormat = new InternalPluginFormat;
-        VST3PluginFormat* vst3Format = new VST3PluginFormat;
-
-        AudioPluginFormatManagerSingleton::getInstance().addFormat(internalFormat);
-        AudioPluginFormatManagerSingleton::getInstance().addFormat(vst3Format);
-    }
+    registerSupportedPluginFormats(AudioPluginFormatManagerSingleton::getInstance(), PluginFormatRole::application,
+                                   [] (auto& manager) { manager.addFormat(new InternalPluginFormat); });
 
     // Load correct colour scheme.
     {

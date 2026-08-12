@@ -12,6 +12,7 @@
 #include <JuceHeader.h>
 
 #include "../PluginScannerIPC.h"
+#include "../SupportedPluginFormats.h"
 
 #include <iostream>
 
@@ -41,8 +42,7 @@ class PluginScannerApplication : public juce::JUCEApplicationBase
     {
         std::cerr << "[Scanner] Starting Pedalboard3 Plugin Scanner" << std::endl;
 
-        // Initialize plugin formats - JUCE 8 requires explicit format registration
-        formatManager.addFormat(std::make_unique<juce::VST3PluginFormat>());
+        registerSupportedPluginFormats(formatManager, PluginFormatRole::scanner);
 
         std::cerr << "[Scanner] Registered " << formatManager.getNumFormats() << " plugin formats" << std::endl;
 

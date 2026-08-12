@@ -198,6 +198,12 @@ juce_add_gui_app(Pedalboard3
 # Generate JUCE header
 juce_generate_juce_header(Pedalboard3)
 
+if(APPLE)
+    set(PEDALBOARD3_PLUGINHOST_AU 1)
+else()
+    set(PEDALBOARD3_PLUGINHOST_AU 0)
+endif()
+
 # Add custom fonts as binary data
 juce_add_binary_data(Pedalboard3_fonts
     HEADER_NAME "FontData.h"
@@ -239,6 +245,8 @@ target_sources(Pedalboard3 PRIVATE
     src/UndoActions.h
     src/AudioSingletons.cpp
     src/AudioSingletons.h
+    src/SupportedPluginFormats.cpp
+    src/SupportedPluginFormats.h
     src/BypassableInstance.cpp
     src/BypassableInstance.h
     src/InternalFilters.cpp
@@ -546,7 +554,7 @@ target_compile_definitions(Pedalboard3 PRIVATE
     # Plugin Hosting - VST3 is primary
     JUCE_PLUGINHOST_VST3=1
     JUCE_PLUGINHOST_VST=0
-    JUCE_PLUGINHOST_AU=0
+    JUCE_PLUGINHOST_AU=${PEDALBOARD3_PLUGINHOST_AU}
     JUCE_PLUGINHOST_LADSPA=0
     
     # Audio Settings
@@ -658,6 +666,8 @@ if(WIN32)
     target_sources(Pedalboard3Scanner PRIVATE
         src/scanner/PluginScannerMain.cpp
         src/PluginScannerIPC.h
+        src/SupportedPluginFormats.cpp
+        src/SupportedPluginFormats.h
     )
 
     target_compile_definitions(Pedalboard3Scanner PRIVATE
@@ -665,7 +675,7 @@ if(WIN32)
         JUCE_USE_CURL=0
         JUCE_PLUGINHOST_VST3=1
         JUCE_PLUGINHOST_VST=0
-        JUCE_PLUGINHOST_AU=0
+        JUCE_PLUGINHOST_AU=${PEDALBOARD3_PLUGINHOST_AU}
         JUCE_PLUGINHOST_LADSPA=0
         JUCE_STANDALONE_APPLICATION=1
         JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=0

@@ -30,6 +30,7 @@ add_executable(Pedalboard3_Tests
     master_bus_test.cpp
     font_manager_test.cpp
     macos_build_config_test.cpp
+    plugin_format_registration_test.cpp
     platform_paths_test.cpp
     startup_options_test.cpp
     ../src/PlatformPaths.cpp
@@ -39,6 +40,7 @@ add_executable(Pedalboard3_Tests
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
+    ../src/SupportedPluginFormats.cpp
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
     ../src/dsp/MeterSource.cpp
@@ -93,6 +95,7 @@ target_compile_definitions(Pedalboard3_Tests PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_PLUGINHOST_VST3=1
+    JUCE_PLUGINHOST_AU=${PEDALBOARD3_PLUGINHOST_AU}
 )
 
 set(PEDALBOARD3_NAM_RUNTIME_SOURCES

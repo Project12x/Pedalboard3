@@ -48,16 +48,6 @@ void AudioPluginFormatManagerSingleton::killInstance()
 AudioPluginFormatManagerSingleton::AudioPluginFormatManagerSingleton() : instance(0)
 {
     instance = new AudioPluginFormatManager();
-    // JUCE 8: addDefaultFormats() was removed, manually add formats
-#if JUCE_PLUGINHOST_VST3
-    instance->addFormat(new juce::VST3PluginFormat());
-#endif
-#if JUCE_PLUGINHOST_AU && JUCE_MAC
-    instance->addFormat(new juce::AudioUnitPluginFormat());
-#endif
-#if JUCE_PLUGINHOST_LADSPA && JUCE_LINUX
-    instance->addFormat(new juce::LADSPAPluginFormat());
-#endif
 }
 
 //------------------------------------------------------------------------------
