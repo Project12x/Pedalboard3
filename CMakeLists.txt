@@ -247,6 +247,10 @@ target_sources(Pedalboard3 PRIVATE
     src/AudioSingletons.h
     src/SupportedPluginFormats.cpp
     src/SupportedPluginFormats.h
+    src/PluginFormatIdentity.cpp
+    src/PluginFormatIdentity.h
+    src/PluginScanCoordinator.cpp
+    src/PluginScanCoordinator.h
     src/BypassableInstance.cpp
     src/BypassableInstance.h
     src/InternalFilters.cpp

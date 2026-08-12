@@ -21,12 +21,14 @@
 
 SafePluginScanner::SafePluginScanner(juce::KnownPluginList& listToAddTo, juce::AudioPluginFormat& formatToScan,
                                      juce::FileSearchPath directoriesToSearch, bool searchRecursively,
-                                     const juce::File& deadMansPedalFile, bool useOutOfProcess)
+                                     const juce::File& deadMansPedalFile,
+                                     bool allowPluginsWhichRequireAsyncInstantiation, bool useOutOfProcess)
     : useOutOfProcessScanning(useOutOfProcess), pluginList(listToAddTo), format(formatToScan)
 {
     // Create the base scanner
     baseScanner = std::make_unique<juce::PluginDirectoryScanner>(listToAddTo, formatToScan, directoriesToSearch,
-                                                                  searchRecursively, deadMansPedalFile);
+                                                                  searchRecursively, deadMansPedalFile,
+                                                                  allowPluginsWhichRequireAsyncInstantiation);
 
     if (useOutOfProcessScanning)
     {
@@ -350,7 +352,8 @@ void SafePluginListComponent::startScan()
         if (format->getName() == "VST3")
         {
             auto searchPaths = format->getDefaultLocationsToSearch();
-            scanner = std::make_unique<SafePluginScanner>(pluginList, *format, searchPaths, true, deadMansPedal, true);
+            scanner = std::make_unique<SafePluginScanner>(pluginList, *format, searchPaths, true, deadMansPedal,
+                                                           false, true);
             break;
         }
     }

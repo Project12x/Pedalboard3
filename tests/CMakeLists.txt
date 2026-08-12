@@ -31,6 +31,7 @@ add_executable(Pedalboard3_Tests
     font_manager_test.cpp
     macos_build_config_test.cpp
     plugin_format_registration_test.cpp
+    plugin_scan_coordinator_test.cpp
     platform_paths_test.cpp
     startup_options_test.cpp
     ../src/PlatformPaths.cpp
@@ -41,6 +42,8 @@ add_executable(Pedalboard3_Tests
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp
     ../src/SupportedPluginFormats.cpp
+    ../src/PluginFormatIdentity.cpp
+    ../src/PluginScanCoordinator.cpp
     ../src/BypassableInstance.cpp
     ../src/dsp/ReverbSC.cpp
     ../src/dsp/MeterSource.cpp

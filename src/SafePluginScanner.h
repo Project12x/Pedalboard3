@@ -36,11 +36,14 @@ class SafePluginScanner
      * @param directoriesToSearch Directories to search for plugins
      * @param searchRecursively Whether to search subdirectories
      * @param deadMansPedalFile File for tracking crashed plugins (JUCE crash protection)
+     * @param allowPluginsWhichRequireAsyncInstantiation Whether asynchronous plug-ins, such as AUv3, may be loaded
      * @param useOutOfProcess Whether to use out-of-process scanning (default: true)
      */
     SafePluginScanner(juce::KnownPluginList& listToAddTo, juce::AudioPluginFormat& formatToScan,
                       juce::FileSearchPath directoriesToSearch, bool searchRecursively,
-                      const juce::File& deadMansPedalFile, bool useOutOfProcess = true);
+                      const juce::File& deadMansPedalFile,
+                      bool allowPluginsWhichRequireAsyncInstantiation = false,
+                      bool useOutOfProcess = true);
 
     ~SafePluginScanner();
 
