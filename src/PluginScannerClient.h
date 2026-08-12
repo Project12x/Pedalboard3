@@ -86,7 +86,7 @@ class PluginScannerClient
     void* pipeHandle = nullptr;
     void* scannerProcess = nullptr;
 
-#if JUCE_MAC
+#if JUCE_MAC || defined(_WIN32)
     std::unique_ptr<juce::ChildProcess> macScannerProcess;
     std::unique_ptr<ScannerHostEndpoint> macEndpoint;
     std::unique_ptr<ScannerChannel> macChannel;

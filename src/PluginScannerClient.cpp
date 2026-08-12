@@ -157,7 +157,7 @@ juce::File PluginScannerClient::getScannerExecutable()
 //------------------------------------------------------------------------------
 bool PluginScannerClient::isScannerRunning() const
 {
-#if JUCE_MAC
+#if JUCE_MAC || defined(_WIN32)
     return macScannerProcess != nullptr && macScannerProcess->isRunning() && macChannel != nullptr;
 #elif defined(_WIN32)
     HANDLE hProcess = static_cast<HANDLE>(scannerProcess);
@@ -177,7 +177,7 @@ bool PluginScannerClient::isScannerRunning() const
 //------------------------------------------------------------------------------
 bool PluginScannerClient::startScanner()
 {
-#if JUCE_MAC
+#if JUCE_MAC || defined(_WIN32)
     if (isScannerRunning())
         return true;
 
@@ -328,7 +328,7 @@ bool PluginScannerClient::startScanner()
 //------------------------------------------------------------------------------
 void PluginScannerClient::stopScanner()
 {
-#if JUCE_MAC
+#if JUCE_MAC || defined(_WIN32)
     if (macChannel != nullptr)
         macChannel->send(MessageType::Shutdown);
     macChannel.reset();
@@ -398,7 +398,7 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
         return false;
     }
 
-#if JUCE_MAC
+#if JUCE_MAC || defined(_WIN32)
     ScanRequest request;
     request.pluginPath = pluginPath;
     request.formatName = formatName;

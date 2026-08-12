@@ -9,6 +9,8 @@
 #include "PluginScannerIPC.h"
 
 #include <memory>
+#include <cstdint>
+#include <vector>
 
 class ScannerChannel
 {
@@ -27,8 +29,9 @@ class ScannerChannel
   private:
     friend class ScannerHostEndpoint;
     friend std::unique_ptr<ScannerChannel> connectScannerChannel(const PluginScannerIPC::ScannerLaunchInfo&, int);
-    explicit ScannerChannel(int nativeHandle);
-    int handle = -1;
+    explicit ScannerChannel(intptr_t nativeHandle);
+    intptr_t handle = -1;
+    std::vector<uint8_t> receiveBuffer;
 
     JUCE_DECLARE_NON_COPYABLE(ScannerChannel)
 };
@@ -46,7 +49,7 @@ class ScannerHostEndpoint
     std::unique_ptr<ScannerChannel> accept(int timeoutMs);
 
   private:
-    int listener = -1;
+    intptr_t listener = -1;
     juce::File socketFile;
     PluginScannerIPC::ScannerLaunchInfo info;
 
