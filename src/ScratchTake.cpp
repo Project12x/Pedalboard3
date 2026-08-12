@@ -1,4 +1,5 @@
 #include "ScratchTake.h"
+#include "PlatformPaths.h"
 
 #include <nlohmann/json.hpp>
 
@@ -16,9 +17,7 @@ juce::String makeDateFolder(const juce::Time& time)
 
 juce::File getDefaultScratchRoot()
 {
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("Pedalboard3")
-        .getChildFile("Scratch Ideas");
+    return pedalboard3::platform::getUserDataDirectory().getChildFile("Scratch Ideas");
 }
 
 bool isEmptyFile(const juce::File& file)

@@ -18,6 +18,7 @@
 //	----------------------------------------------------------------------------
 
 #include "LogFile.h"
+#include "PlatformPaths.h"
 
 //------------------------------------------------------------------------------
 void LogFile::start()
@@ -35,9 +36,9 @@ void LogFile::start()
         tempstr << String(timmy.getHours()).paddedLeft('0', 2) << ".";
         tempstr << String(timmy.getMinutes()).paddedLeft('0', 2) << ".";
         tempstr << String(timmy.getSeconds()).paddedLeft('0', 2) << ".txt";
-        logFile.reset(new FileOutputStream(File::getSpecialLocation(File::userApplicationDataDirectory)
-                                               .getChildFile("Pedalboard3")
-                                               .getChildFile(tempstr)));
+        auto logDirectory = pedalboard3::platform::getUserDataDirectory();
+        logDirectory.createDirectory();
+        logFile.reset(new FileOutputStream(logDirectory.getChildFile(tempstr)));
 
         if (logFile->failedToOpen())
         {

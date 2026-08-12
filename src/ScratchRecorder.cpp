@@ -1,4 +1,5 @@
 #include "ScratchRecorder.h"
+#include "PlatformPaths.h"
 
 #include <algorithm>
 
@@ -308,9 +309,7 @@ bool ScratchRecorder::isRecording() const noexcept
 
 juce::File ScratchRecorder::getDefaultScratchRoot()
 {
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-        .getChildFile("Pedalboard3")
-        .getChildFile("Scratch Ideas");
+    return pedalboard3::platform::getUserDataDirectory().getChildFile("Scratch Ideas");
 }
 
 juce::File ScratchRecorder::getScratchRoot() const

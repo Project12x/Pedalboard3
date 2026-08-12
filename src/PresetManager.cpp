@@ -18,11 +18,12 @@
 //	----------------------------------------------------------------------------
 
 #include "PresetManager.h"
+#include "PlatformPaths.h"
 
 //------------------------------------------------------------------------------
 PresetManager::PresetManager()
 {
-	File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
+	auto presetDir = pedalboard3::platform::getUserDataDirectory().getChildFile("presets");
 
 	if(!presetDir.exists())
 		presetDir.createDirectory();
@@ -90,5 +91,5 @@ void PresetManager::getListOfUserPresets(const String& pluginName,
 //------------------------------------------------------------------------------
 File PresetManager::getPluginPresetDir(const String& pluginName)
 {
-	return File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets").getChildFile(pluginName);
+	return pedalboard3::platform::getUserDataDirectory().getChildFile("presets").getChildFile(pluginName);
 }

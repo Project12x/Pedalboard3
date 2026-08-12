@@ -216,6 +216,8 @@ target_sources(Pedalboard3 PRIVATE
     # Application
     src/App.cpp
     src/App.h
+    src/PlatformPaths.cpp
+    src/PlatformPaths.h
     src/UiScale.cpp
     src/UiScale.h
     src/ThemeSwitcherComponent.cpp
@@ -622,11 +624,21 @@ if(WIN32)
 endif()
 
 # Copy resources to build directory (for development)
-add_custom_command(TARGET Pedalboard3 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
-        "$<TARGET_FILE_DIR:Pedalboard3>/documentation"
-)
+if(APPLE)
+    add_custom_command(TARGET Pedalboard3 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
+            "$<TARGET_BUNDLE_CONTENT_DIR:Pedalboard3>/Resources/documentation"
+        VERBATIM
+    )
+else()
+    add_custom_command(TARGET Pedalboard3 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/documentation"
+            "$<TARGET_FILE_DIR:Pedalboard3>/documentation"
+        VERBATIM
+    )
+endif()
 
 # ==============================================================================
 # Out-of-Process Plugin Scanner
