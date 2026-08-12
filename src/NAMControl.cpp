@@ -2036,7 +2036,7 @@ void NAMControl::buttonClicked(Button* button)
         // Open the effects loop editor
         if (auto* fxLoop = namProcessor->getEffectsLoop())
         {
-            if (auto* editor = fxLoop->createEditor())
+            if (auto* editor = fxLoop->createEditorAndMakeActive())
             {
                 // Create self-deleting window
                 class FXLoopWindow : public DocumentWindow

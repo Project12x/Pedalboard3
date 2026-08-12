@@ -33,12 +33,14 @@ This document lists all third-party software used by Pedalboard3 and their respe
 
 The JUCE Framework is copyright ROLI Ltd / Raw Material Software Limited.
 
+**Pinned version:** 9.0.0 (`f8f8864172464b9adf9eba6101e1f784838d1597`)
+
 JUCE is dual-licensed under the GNU Affero General Public License v3 (AGPLv3)
 and a commercial license. Pedalboard3 uses JUCE under the AGPLv3.
 
 For full license terms, see:
 - https://www.gnu.org/licenses/agpl-3.0.en.html
-- https://juce.com/legal/juce-8-licence/
+- https://juce.com/legal/juce-9-licence/
 
 ### JUCE Embedded Dependencies
 

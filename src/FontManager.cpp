@@ -23,9 +23,10 @@ FontManager& FontManager::getInstance()
 //------------------------------------------------------------------------------
 FontManager::FontManager()
 {
-    // Load Space Grotesk Regular + Bold
+    // Load Space Grotesk Variable + Bold. The legacy static Regular file is
+    // rejected by the Windows font loader, while the variable face is valid.
     spaceGroteskTypeface =
-        Typeface::createSystemTypefaceFor(FontData::SpaceGroteskRegular_ttf, FontData::SpaceGroteskRegular_ttfSize);
+        Typeface::createSystemTypefaceFor(FontData::SpaceGroteskVariable_ttf, FontData::SpaceGroteskVariable_ttfSize);
     spaceGroteskBoldTypeface =
         Typeface::createSystemTypefaceFor(FontData::SpaceGroteskBold_ttf, FontData::SpaceGroteskBold_ttfSize);
 

@@ -35,13 +35,13 @@ MidiFilePlayerControl::MidiFilePlayerControl(MidiFilePlayerProcessor* proc) : pr
     addAndMakeVisible(fileChooser.get());
 
     // Play button (SVG path for play triangle)
-    playImage = Drawable::createFromSVG(
-        *XmlDocument::parse("<svg viewBox='0 0 24 24'><polygon points='6,4 20,12 6,20' fill='currentColor'/></svg>"));
-    pauseImage = Drawable::createFromSVG(
-        *XmlDocument::parse("<svg viewBox='0 0 24 24'><rect x='5' y='4' width='4' height='16' fill='currentColor'/>"
-                            "<rect x='15' y='4' width='4' height='16' fill='currentColor'/></svg>"));
-    stopImage = Drawable::createFromSVG(*XmlDocument::parse(
-        "<svg viewBox='0 0 24 24'><rect x='5' y='5' width='14' height='14' fill='currentColor'/></svg>"));
+    playImage = Drawable::createFromSVGString(
+        "<svg viewBox='0 0 24 24'><polygon points='6,4 20,12 6,20' fill='currentColor'/></svg>");
+    pauseImage = Drawable::createFromSVGString(
+        "<svg viewBox='0 0 24 24'><rect x='5' y='4' width='4' height='16' fill='currentColor'/>"
+        "<rect x='15' y='4' width='4' height='16' fill='currentColor'/></svg>");
+    stopImage = Drawable::createFromSVGString(
+        "<svg viewBox='0 0 24 24'><rect x='5' y='5' width='14' height='14' fill='currentColor'/></svg>");
 
     playButton = std::make_unique<DrawableButton>("play", DrawableButton::ImageFitted);
     playButton->setImages(playImage.get());

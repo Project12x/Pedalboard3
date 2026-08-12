@@ -3,7 +3,7 @@
 A free, open-source VST3 plugin host for live performance and studio workflows.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![JUCE](https://img.shields.io/badge/JUCE-8.x-orange.svg)](https://juce.com)
+[![JUCE](https://img.shields.io/badge/JUCE-9.0.0-orange.svg)](https://juce.com)
 
 ---
 

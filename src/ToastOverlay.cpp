@@ -59,7 +59,7 @@ void ToastOverlay::show(const String& message, int durationMs)
 
     // Calculate size based on message
     auto font = FontManager::getInstance().getBodyFont();
-    int textWidth = font.getStringWidth(currentMessage);
+    const int textWidth = roundToInt(GlyphArrangement::getStringWidth(font, currentMessage));
     int width = jmax(200, textWidth + 48);
     int height = 40;
 

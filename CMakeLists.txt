@@ -1,6 +1,6 @@
 # ==============================================================================
 # Pedalboard3 Modern - CMake Build Configuration
-# Based on JUCE 8.x with VST3 plugin hosting support
+# Based on JUCE 9.0.0 with VST3 plugin hosting support
 # ==============================================================================
 
 cmake_minimum_required(VERSION 3.22)
@@ -8,7 +8,8 @@ cmake_minimum_required(VERSION 3.22)
 project(Pedalboard3
     VERSION 3.0.0
     DESCRIPTION "Modern VST3 Pedalboard Software for Live Performance"
-    LANGUAGES CXX
+    # JUCE 9 builds generated C sources in addition to C++ modules.
+    LANGUAGES C CXX
 )
 
 if(MSVC)
@@ -200,7 +201,7 @@ juce_add_binary_data(Pedalboard3_fonts
     HEADER_NAME "FontData.h"
     NAMESPACE FontData
     SOURCES
-        fonts/SpaceGrotesk-Regular.ttf
+        fonts/SpaceGrotesk-Variable.ttf
         fonts/SpaceGrotesk-Bold.ttf
         fonts/IBMPlexSans-Regular.ttf
         fonts/IBMPlexSans-Bold.ttf

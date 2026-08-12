@@ -74,7 +74,7 @@ void LabelControl::autoResize()
     int maxWidth = 60; // Minimum width
     for (const auto& line : lines)
     {
-        int lineWidth = labelFont.getStringWidth(line);
+        const int lineWidth = roundToInt(GlyphArrangement::getStringWidth(labelFont, line));
         maxWidth = jmax(maxWidth, lineWidth);
     }
 

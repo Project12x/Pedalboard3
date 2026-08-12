@@ -147,7 +147,7 @@ void SubGraphCanvas::paint(Graphics& g)
         g.setColour(colours["Text Colour"].withAlpha(0.60f));
 
         String hintText = "Double-click to add a plugin";
-        auto textWidth = g.getCurrentFont().getStringWidth(hintText);
+        const auto textWidth = roundToInt(GlyphArrangement::getStringWidth(g.getCurrentFont(), hintText));
         g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
                    Justification::centred, false);
 
@@ -155,7 +155,7 @@ void SubGraphCanvas::paint(Graphics& g)
         g.setColour(colours["Accent Colour"].interpolatedWith(colours["Text Colour"], 0.35f).withAlpha(0.38f));
 
         String subHint = "This is an Effect Rack sub-graph";
-        auto subWidth = g.getCurrentFont().getStringWidth(subHint);
+        const auto subWidth = roundToInt(GlyphArrangement::getStringWidth(g.getCurrentFont(), subHint));
         g.drawText(subHint, (int)(centerX - subWidth / 2), (int)(centerY + 18), subWidth + 20, 24,
                    Justification::centred, false);
     }

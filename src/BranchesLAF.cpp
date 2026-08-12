@@ -338,7 +338,8 @@ void BranchesLAF::drawMenuBarItem(Graphics& g, int width, int height, int itemIn
 //------------------------------------------------------------------------------
 int BranchesLAF::getMenuBarItemWidth(MenuBarComponent& menuBar, int itemIndex, const String& itemText)
 {
-    return getMenuBarFont(menuBar, itemIndex, itemText).getStringWidth(itemText) + menuBar.getHeight() - 8;
+    return roundToInt(GlyphArrangement::getStringWidth(getMenuBarFont(menuBar, itemIndex, itemText), itemText))
+           + menuBar.getHeight() - 8;
 }
 
 //------------------------------------------------------------------------------

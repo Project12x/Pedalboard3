@@ -95,7 +95,7 @@ UI for a single plugin in the graph.
 
 ---
 
-## JUCE 8 API Patterns
+## JUCE 8/9 API Patterns
 
 ### NodeID is a Struct
 
@@ -169,6 +169,17 @@ g.setColour(Colours::white);  // Color first!
 g.setFont(Font(FontOptions().withHeight(15.0f)));
 g.drawText(...);  // Now color is applied
 ```
+
+### JUCE 9 Integration
+
+JUCE 9 requires CMake projects to enable both `C` and `CXX` languages. Its
+SVG parser accepts SVG strings or files rather than `XmlElement` instances;
+use `Drawable::createFromSVGString()` for in-memory assets. Plugin editors
+must be opened with `AudioProcessor::createEditorAndMakeActive()` so JUCE can
+track the active editor and clear the pointer when it is destroyed.
+`Font::getStringWidth*()` has moved to
+`GlyphArrangement::getStringWidth()` (or `getStringWidthInt()` when integral
+layout is required).
 
 ---
 

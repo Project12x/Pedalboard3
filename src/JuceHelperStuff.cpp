@@ -22,15 +22,9 @@
 
 //------------------------------------------------------------------------------
 Drawable *JuceHelperStuff::loadSVGFromMemory(const void *dataToInitialiseFrom,
-                                             size_t sizeInBytes) {
+                                              size_t sizeInBytes) {
   MemoryBlock memBlock(dataToInitialiseFrom, sizeInBytes);
-  XmlDocument doc(memBlock.toString());
-  auto svgData = doc.getDocumentElement();
-
-  if (svgData != nullptr)
-    return Drawable::createFromSVG(*svgData).release();
-
-  return nullptr;
+  return Drawable::createFromSVGString(memBlock.toString()).release();
 }
 
 //------------------------------------------------------------------------------

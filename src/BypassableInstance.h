@@ -144,8 +144,8 @@ class BypassableInstance : public AudioPluginInstance
     bool producesMidi() const { return plugin->producesMidi(); };
     ///	Can be used to reset the plugin.
     void reset() { plugin->reset(); };
-    ///	Creates the plugin's editor.
-    AudioProcessorEditor* createEditor() { return plugin->createEditor(); };
+    ///	Creates the plugin's editor and registers it as the active editor.
+    AudioProcessorEditor* createEditor() { return plugin->createEditorAndMakeActive(); };
     ///	Returns true if the plugin has an editor.
     bool hasEditor() const { return plugin->hasEditor(); };
 

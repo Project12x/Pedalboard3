@@ -291,7 +291,7 @@ void PluginField::paint(Graphics& g)
         g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.6f));
 
         String hintText = "Double-click to add a plugin";
-        auto textWidth = g.getCurrentFont().getStringWidth(hintText);
+        const auto textWidth = roundToInt(GlyphArrangement::getStringWidth(g.getCurrentFont(), hintText));
         g.drawText(hintText, (int)(centerX - textWidth / 2), (int)(centerY - 10), textWidth + 20, 30,
                    Justification::centred, false);
 
@@ -300,7 +300,7 @@ void PluginField::paint(Graphics& g)
         g.setColour(ColourScheme::getInstance().colours["Text Colour"].withAlpha(0.35f));
 
         String subHint = "or drag & drop VST/preset files";
-        auto subWidth = g.getCurrentFont().getStringWidth(subHint);
+        const auto subWidth = roundToInt(GlyphArrangement::getStringWidth(g.getCurrentFont(), subHint));
         g.drawText(subHint, (int)(centerX - subWidth / 2), (int)(centerY + 18), subWidth + 20, 24,
                    Justification::centred, false);
     }

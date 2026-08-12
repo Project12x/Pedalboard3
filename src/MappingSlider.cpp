@@ -35,7 +35,7 @@ class MappingSlider::PopupDisplayComponent : public BubbleComponent, public Time
 
     void getContentSize(int& w, int& h)
     {
-        w = font.getStringWidth(text) + 18;
+        w = roundToInt(GlyphArrangement::getStringWidth(font, text)) + 18;
         h = (int)(font.getHeight() * 1.6f);
     }
 

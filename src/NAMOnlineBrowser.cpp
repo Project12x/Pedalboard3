@@ -378,7 +378,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (architectureText.isNotEmpty())
     {
         g.setFont(fm.getBadgeFont());
-        const int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(architectureText)) + 13;
+        const int badgeW = static_cast<int>(GlyphArrangement::getStringWidth(fm.getBadgeFont(), architectureText)) + 13;
         rightEdge -= badgeW;
 
         juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
@@ -397,7 +397,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (modelCountsText.isNotEmpty())
     {
         g.setFont(fm.getBadgeFont());
-        const int badgeW = juce::jmin(150, static_cast<int>(fm.getBadgeFont().getStringWidthFloat(modelCountsText)) + 13);
+        const int badgeW = juce::jmin(150, static_cast<int>(GlyphArrangement::getStringWidth(fm.getBadgeFont(), modelCountsText)) + 13);
         rightEdge -= badgeW;
 
         juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
@@ -417,7 +417,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (gearText.isNotEmpty())
     {
         g.setFont(fm.getBadgeFont());
-        const int badgeW = static_cast<int>(fm.getBadgeFont().getStringWidthFloat(gearText)) + 13;
+        const int badgeW = static_cast<int>(GlyphArrangement::getStringWidth(fm.getBadgeFont(), gearText)) + 13;
         rightEdge -= badgeW;
 
         juce::Rectangle<float> badgeBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
@@ -466,7 +466,7 @@ void Tone3000ResultsListModel::paintListBoxItem(int rowNumber, juce::Graphics& g
     if (statusText.isNotEmpty())
     {
         g.setFont(progress >= 0.0f && progress <= 1.0f ? fm.getMonoFont(9.0f) : fm.getCaptionFont());
-        const int statusW = static_cast<int>(g.getCurrentFont().getStringWidthFloat(statusText)) + 14;
+        const int statusW = static_cast<int>(GlyphArrangement::getStringWidth(g.getCurrentFont(), statusText)) + 14;
         rightEdge -= statusW;
         juce::Rectangle<float> statusBounds(static_cast<float>(rightEdge), (height - badgeHeight) / 2.0f,
                                             static_cast<float>(statusW), static_cast<float>(badgeHeight));
@@ -913,7 +913,7 @@ void NAMOnlineBrowserComponent::paint(juce::Graphics& g)
         auto chip = heroText.removeFromBottom(20.0f);
         const auto gearText = getGearDisplayText(selectedTone->gearType);
         const float chipWidth = juce::jlimit(52.0f, 108.0f,
-                                             FontManager::getInstance().getCaptionFont().getStringWidthFloat(gearText) +
+                                             GlyphArrangement::getStringWidth(FontManager::getInstance().getCaptionFont(), gearText) +
                                                  24.0f);
         auto chipBounds = chip.withWidth(chipWidth);
         g.setColour(gearAccent.withAlpha(0.16f));

@@ -913,7 +913,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
         const auto archDisplay = getNAMArchitectureDisplay(model);
         const int archBadgeWidth = juce::jlimit(34, 72,
                                                 static_cast<int>(
-                                                    FontManager::getInstance().getBadgeFont().getStringWidthFloat(archShort))
+                                                    GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), archShort))
                                                     + 14);
 
         const auto archColour = colourForNAMArchitecture(archDisplay, palette);
@@ -944,7 +944,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
                 const auto typeColour = colourForNAMModelType(modelType, palette);
 
                 int typeBadgeWidth =
-                    static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeDisplay)) + 12;
+                    static_cast<int>(GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), typeDisplay)) + 12;
                 badgeX -= typeBadgeWidth;
 
                 Rectangle<float> typeBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
@@ -958,7 +958,7 @@ void NAMModelListModel::paintListBoxItem(int rowNumber, Graphics& g, int width, 
                 badgeX -= badgeSpacing;
                 const auto toneColour = toneColourForTag(toneTag);
                 const int toneBadgeWidth =
-                    static_cast<int>(FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag)) + 14;
+                    static_cast<int>(GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), toneTag)) + 14;
                 badgeX -= toneBadgeWidth;
                 Rectangle<float> toneBadgeBounds(static_cast<float>(badgeX), (height - badgeHeight) / 2.0f,
                                                  static_cast<float>(toneBadgeWidth), static_cast<float>(badgeHeight));
@@ -1987,15 +1987,18 @@ void NAMModelBrowserComponent::paint(Graphics& g)
                 {
                     archChip = getNAMArchitectureBadge(*selectedModel);
                     archChipWidth =
-                        jlimit(36.0f, 72.0f, FontManager::getInstance().getBadgeFont().getStringWidthFloat(archChip) + 16.0f);
+                        jlimit(36.0f, 72.0f,
+                               GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), archChip) + 16.0f);
 
                     typeChip = normaliseNAMModelType(fields.modelType);
                     typeChipWidth =
-                        jlimit(48.0f, 82.0f, FontManager::getInstance().getBadgeFont().getStringWidthFloat(typeChip) + 16.0f);
+                        jlimit(48.0f, 82.0f,
+                               GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), typeChip) + 16.0f);
 
                     toneTag = inferToneTag(String(selectedModel->name) + " " + fields.rig + " " + fields.modelType);
                     if (toneTag.isNotEmpty())
-                        toneChipWidth = FontManager::getInstance().getBadgeFont().getStringWidthFloat(toneTag) + 18.0f;
+                        toneChipWidth = GlyphArrangement::getStringWidth(FontManager::getInstance().getBadgeFont(), toneTag)
+                                        + 18.0f;
                 }
 
                 const float gap = 6.0f;

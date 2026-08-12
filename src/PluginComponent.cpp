@@ -2136,11 +2136,12 @@ void PluginComponent::openPluginEditor(bool forceGeneric)
     {
         // Wrap in crash protection to catch SEH exceptions from misbehaving plugins
         bool editorCreated = CrashProtection::getInstance().executeWithProtection(
-            [&]() { editor = node->getProcessor()->createEditor(); }, "createEditor", pluginName);
+            [&]() { editor = node->getProcessor()->createEditorAndMakeActive(); }, "createEditorAndMakeActive",
+            pluginName);
 
         if (!editorCreated)
         {
-            spdlog::error("[PluginComponent::openPluginEditor] createEditor() failed with exception for: {}",
+            spdlog::error("[PluginComponent::openPluginEditor] createEditorAndMakeActive() failed with exception for: {}",
                           pluginName.toStdString());
             return;
         }
@@ -2650,7 +2651,7 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
     {
         // Compute common width from the longer name so both nodes are identical
         Font midiFont = FontManager::getInstance().getSubheadingFont();
-        int refWidth = (int)(midiFont.getStringWidthFloat("Virtual MIDI Input") + 40.0f);
+        const int refWidth = roundToInt(GlyphArrangement::getStringWidth(midiFont, "Virtual MIDI Input") + 40.0f);
         spdlog::info("[determineSize] '{}': w={} h={} refWidth={} nameWidth={:.1f}", pluginName.toStdString(), w, h,
                      refWidth, nameWidth);
         w = jmax(w, refWidth);
@@ -3373,9 +3374,9 @@ PluginEditorWindow::EditorWrapper::EditorWrapper(AudioProcessorEditor* ed, Plugi
 //------------------------------------------------------------------------------
 PluginEditorWindow::EditorWrapper::~EditorWrapper()
 {
-    // Since we use createEditor() (not createEditorIfNeeded()), the caller owns
-    // the editor and must delete it. The old comment was incorrect - we MUST delete
-    // the editor here, otherwise the plugin won't be able to create a new one.
+    // createEditorAndMakeActive() returns an editor owned by this wrapper. Deleting
+    // it also clears the processor's active-editor pointer, allowing a new editor
+    // to be opened safely later.
     if (editor)
     {
         removeChildComponent(editor);

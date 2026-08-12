@@ -180,7 +180,7 @@ std::unique_ptr<Drawable> IconManager::createFromSvg(const String& svgData, Colo
         modifiedSvg = modifiedSvg.replace("stroke-width=", String("stroke=\"#") + colourHex + "\" stroke-width=");
     }
 
-    auto drawable = Drawable::createFromSVG(*XmlDocument::parse(modifiedSvg));
+    auto drawable = Drawable::createFromSVGString(modifiedSvg);
     return drawable;
 }
 
