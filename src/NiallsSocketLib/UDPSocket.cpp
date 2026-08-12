@@ -27,6 +27,7 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #ifndef inet_addr
 #include <arpa/inet.h>
@@ -120,7 +121,7 @@ void UDPSocket::bindSocket(bool loopback)
 		localAddress.sin_addr.s_addr = INADDR_ANY;
 	memset(&(localAddress.sin_zero), 0, sizeof(localAddress.sin_zero));
 
-	if(bind(sock, (sockaddr *)(&localAddress), sizeof(sockaddr_in)) != 0)
+	if(::bind(sock, (sockaddr *)(&localAddress), sizeof(sockaddr_in)) != 0)
 	{
 #ifdef WIN32
 		int err = WSAGetLastError();
