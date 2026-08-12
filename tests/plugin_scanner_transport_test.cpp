@@ -51,6 +51,58 @@ TEST_CASE("scanner response requires a complete well-formed payload", "[scanner 
     REQUIRE(explicitFailure.resultCode == ScanResultCode::LoadFailed);
 }
 
+TEST_CASE("scanner response validates message type and successful plugin XML", "[scanner protocol]")
+{
+    ScanResponse success;
+    success.resultCode = ScanResultCode::Success;
+    success.errorMessage = "";
+
+    juce::PluginDescription description;
+    description.name = "Valid";
+    description.pluginFormatName = "VST3";
+    description.fileOrIdentifier = "/tmp/valid.vst3";
+    juce::XmlElement root("PLUGINS");
+    root.addChildElement(description.createXml().release());
+    success.pluginXml = root.toString();
+
+    juce::OwnedArray<juce::PluginDescription> descriptions;
+    REQUIRE(validateScanResponse(MessageType::ScanResult, success, descriptions) == ScanResponseValidation::success);
+    REQUIRE(descriptions.size() == 1);
+
+    descriptions.clear();
+    REQUIRE(validateScanResponse(MessageType::ScanError, success, descriptions)
+            == ScanResponseValidation::isolationUnavailable);
+
+    ScanResponse failure;
+    failure.resultCode = ScanResultCode::LoadFailed;
+    failure.errorMessage = "explicit load failure";
+    failure.pluginXml = "";
+    REQUIRE(validateScanResponse(MessageType::ScanError, failure, descriptions)
+            == ScanResponseValidation::candidateFailure);
+    REQUIRE(validateScanResponse(MessageType::ScanResult, failure, descriptions)
+            == ScanResponseValidation::isolationUnavailable);
+
+    for (const auto& invalidXml : { juce::String(), juce::String("not xml"), juce::String("<OTHER/>") })
+    {
+        success.pluginXml = invalidXml;
+        REQUIRE(validateScanResponse(MessageType::ScanResult, success, descriptions)
+                == ScanResponseValidation::isolationUnavailable);
+    }
+
+    success.pluginXml = "<PLUGINS><NOT_A_PLUGIN/></PLUGINS>";
+    REQUIRE(validateScanResponse(MessageType::ScanResult, success, descriptions)
+            == ScanResponseValidation::isolationUnavailable);
+
+    juce::XmlElement mixedRoot("PLUGINS");
+    mixedRoot.addChildElement(description.createXml().release());
+    mixedRoot.createNewChildElement("NOT_A_PLUGIN");
+    success.pluginXml = mixedRoot.toString();
+    descriptions.clear();
+    REQUIRE(validateScanResponse(MessageType::ScanResult, success, descriptions)
+            == ScanResponseValidation::isolationUnavailable);
+    REQUIRE(descriptions.isEmpty());
+}
+
 TEST_CASE("Windows scanner transport remains named-pipe capable", "[scanner transport][windows-contract]")
 {
     std::ifstream transport(PEDALBOARD3_SOURCE_DIR "/src/PluginScannerTransport.cpp");

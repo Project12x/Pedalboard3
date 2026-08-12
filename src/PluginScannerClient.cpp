@@ -513,33 +513,21 @@ bool PluginScannerClient::scanPlugin(const juce::String& pluginPath, const juce:
     // Parse response
     auto response = ScanResponse::deserialize(responsePayload);
 
-    if (! response.valid)
+    const auto validation = validateScanResponse(header.type, response, results);
+    if (validation == ScanResponseValidation::isolationUnavailable)
     {
         lastScanResult = ScanResult::isolationUnavailable;
         handleScannerCrash();
         return false;
     }
 
-    if (response.resultCode != ScanResultCode::Success)
+    if (validation == ScanResponseValidation::candidateFailure)
     {
         spdlog::warn("[PluginScannerClient] Scan failed for {}: {}", pluginPath.toStdString(),
                      response.errorMessage.toStdString());
         lastScanResult = ScanResult::candidateFailure;
         listeners.call(&Listener::scanComplete, pluginPath, false);
         return false;
-    }
-
-    // Parse plugin descriptions from XML
-    if (auto xml = juce::XmlDocument::parse(response.pluginXml))
-    {
-        for (auto* pluginXml : xml->getChildIterator())
-        {
-            auto desc = std::make_unique<juce::PluginDescription>();
-            if (desc->loadFromXml(*pluginXml))
-            {
-                results.add(desc.release());
-            }
-        }
     }
 
     spdlog::info("[PluginScannerClient] Successfully scanned {}: {} plugin(s) found", pluginPath.toStdString(),

@@ -176,6 +176,48 @@ struct ScanResponse
     }
 };
 
+enum class ScanResponseValidation
+{
+    success,
+    candidateFailure,
+    isolationUnavailable
+};
+
+/** Validates the complete helper reply and extracts only well-formed successful descriptions. */
+inline ScanResponseValidation validateScanResponse(MessageType messageType, const ScanResponse& response,
+                                                   juce::OwnedArray<juce::PluginDescription>& descriptions)
+{
+    if (! response.valid)
+        return ScanResponseValidation::isolationUnavailable;
+
+    if (response.resultCode != ScanResultCode::Success)
+        return messageType == MessageType::ScanError ? ScanResponseValidation::candidateFailure
+                                                      : ScanResponseValidation::isolationUnavailable;
+
+    if (messageType != MessageType::ScanResult)
+        return ScanResponseValidation::isolationUnavailable;
+
+    auto xml = juce::XmlDocument::parse(response.pluginXml);
+    if (xml == nullptr || ! xml->hasTagName("PLUGINS"))
+        return ScanResponseValidation::isolationUnavailable;
+
+    juce::OwnedArray<juce::PluginDescription> validatedDescriptions;
+    for (auto* pluginXml : xml->getChildIterator())
+    {
+        auto description = std::make_unique<juce::PluginDescription>();
+        if (! description->loadFromXml(*pluginXml))
+            return ScanResponseValidation::isolationUnavailable;
+
+        validatedDescriptions.add(description.release());
+    }
+
+    if (validatedDescriptions.isEmpty())
+        return ScanResponseValidation::isolationUnavailable;
+
+    descriptions.addCopiesOf(validatedDescriptions);
+    return ScanResponseValidation::success;
+}
+
 /**
  * @brief Helper to write a message to a pipe/stream.
  */
