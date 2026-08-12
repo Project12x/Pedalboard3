@@ -21,10 +21,9 @@
 #ifndef PLUGINCOMPONENT_H_
 #define PLUGINCOMPONENT_H_
 
-#include "c0xHeaders.h"
-
 #include <JuceHeader.h>
 #include <map>
+#include <memory>
 #include <melatonin_blur/melatonin_blur.h>
 
 class PresetBar;
@@ -208,7 +207,7 @@ class PluginComponent : public Component,
     int dragY;
 
     ///	Any cached presets we have.
-    std::map<int, shared_ptr<MemoryBlock>> cachedPresets;
+    std::map<int, std::shared_ptr<MemoryBlock>> cachedPresets;
 
     /// Cached meter levels for Audio I/O nodes (VU ballistic, linear)
     float cachedMeterLevels[16]{};

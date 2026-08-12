@@ -2340,13 +2340,13 @@ void PluginComponent::cacheCurrentPreset()
 
     node->getProcessor()->getCurrentProgramStateInformation(*preset);
 
-    cachedPresets.insert(make_pair(node->getProcessor()->getCurrentProgram(), shared_ptr<MemoryBlock>(preset)));
+    cachedPresets.insert(make_pair(node->getProcessor()->getCurrentProgram(), std::shared_ptr<MemoryBlock>(preset)));
 }
 
 //------------------------------------------------------------------------------
 void PluginComponent::getCachedPreset(int index, MemoryBlock& memBlock)
 {
-    map<int, shared_ptr<MemoryBlock>>::iterator it;
+    map<int, std::shared_ptr<MemoryBlock>>::iterator it;
 
     it = cachedPresets.find(index);
 

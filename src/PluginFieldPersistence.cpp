@@ -75,14 +75,6 @@ XmlElement* PluginField::getXml() const
     return retval;
 }
 
-#ifdef __APPLE__
-struct NodeAndId
-{
-    AudioProcessorGraph::Node* node;
-    uint32 id;
-};
-#endif
-
 //------------------------------------------------------------------------------
 void PluginField::loadFromXml(XmlElement* patch)
 {
@@ -188,13 +180,11 @@ void PluginField::loadFromXml(XmlElement* patch)
 
     // Add the audio/midi connections.
     {
-#ifndef __APPLE__ // Stupid gcc...
         struct NodeAndId
         {
             AudioProcessorGraph::Node::Ptr node; // JUCE 8: Use smart pointer
             uint32 id;
         };
-#endif
         Array<NodeAndId> tempNodes;
 
         // Stick all the nodes and their ids in an array.
