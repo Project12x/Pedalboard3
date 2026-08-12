@@ -30,6 +30,8 @@ add_executable(Pedalboard3_Tests
     master_bus_test.cpp
     font_manager_test.cpp
     macos_build_config_test.cpp
+    platform_paths_test.cpp
+    ../src/PlatformPaths.cpp
     ../src/ScratchRecorder.cpp
     ../src/ScratchTake.cpp
     ../src/PluginPoolManager.cpp

@@ -1,4 +1,5 @@
 #include "SettingsManager.h"
+#include "PlatformPaths.h"
 
 SettingsManager& SettingsManager::getInstance()
 {
@@ -15,8 +16,7 @@ void SettingsManager::initialise()
 
 juce::File SettingsManager::getUserDataDirectory() const
 {
-    auto appData = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
-    return appData.getChildFile("Pedalboard3");
+    return pedalboard3::platform::getUserDataDirectory();
 }
 
 void SettingsManager::load()

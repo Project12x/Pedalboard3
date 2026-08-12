@@ -25,6 +25,7 @@
 //[Headers]     -- You can add your own extra header files here --
 
 #include "ColourScheme.h"
+#include "PlatformPaths.h"
 
 #include <JuceHeader.h>
 
@@ -186,7 +187,7 @@ private:
 		void itemOpennessChanged(bool isNowOpen)
 		{
 			int i;
-			File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
+			auto presetDir = pedalboard3::platform::getUserDataDirectory().getChildFile("presets");
 			Array<File> pluginDirs;
 
 			clearSubItems();

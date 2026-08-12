@@ -18,6 +18,7 @@
 //	----------------------------------------------------------------------------
 
 #include "JuceHelperStuff.h"
+#include "PlatformPaths.h"
 #include "Images.h"
 
 //------------------------------------------------------------------------------
@@ -103,17 +104,7 @@ void JuceHelperStuff::showNonModalDialog(
 
 //------------------------------------------------------------------------------
 File JuceHelperStuff::getAppDataFolder() {
-#ifdef __APPLE__
-  File retval = File::getSpecialLocation(File::userApplicationDataDirectory)
-                    .getChildFile("Application Support")
-                    .getChildFile("Pedalboard3");
-
-  if (!retval.exists())
-    retval.createDirectory();
-
-  return retval;
-#else
-  return File::getSpecialLocation(File::userApplicationDataDirectory)
-      .getChildFile("Pedalboard3");
-#endif
+  auto directory = pedalboard3::platform::getUserDataDirectory();
+  directory.createDirectory();
+  return directory;
 }

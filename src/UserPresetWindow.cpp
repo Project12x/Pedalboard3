@@ -23,6 +23,7 @@
 //[/Headers]
 
 #include "UserPresetWindow.h"
+#include "PlatformPaths.h"
 
 
 //[MiscUserDefs] You can add your own user definitions and misc code here...
@@ -228,7 +229,7 @@ void UserPresetWindow::buttonClicked (Button* buttonThatWasClicked)
 			if(phil.browseForFileToOpen())
 			{
 				String pluginName = whichPlugin.getComboBoxComponent("plugins")->getText();
-				File presetDir = File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Pedalboard3").getChildFile("presets");
+				auto presetDir = pedalboard3::platform::getUserDataDirectory().getChildFile("presets");
 				File pluginDir = presetDir.getChildFile(pluginName);
 				File srcPreset = phil.getResult();
 

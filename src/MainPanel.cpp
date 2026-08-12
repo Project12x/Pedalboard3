@@ -77,6 +77,7 @@ using namespace std;
 //[/Headers]
 
 #include "MainPanel.h"
+#include "PlatformPaths.h"
 
 namespace
 {
@@ -2465,17 +2466,7 @@ bool MainPanel::perform(const InvocationInfo& info)
     break;
     case HelpDocumentation:
     {
-#ifdef WIN32
-        File docDir(
-            File::getSpecialLocation(File::currentApplicationFile).getParentDirectory().getChildFile("documentation"));
-#elif defined(LINUX)
-
-#elif defined(__APPLE__)
-        File docDir(File::getSpecialLocation(File::currentApplicationFile)
-                        .getChildFile("Contents")
-                        .getChildFile("Resources")
-                        .getChildFile("documentation"));
-#endif
+        const auto docDir = pedalboard3::platform::getDocumentationDirectory();
         File docIndex(docDir.getChildFile("index.htm"));
 
         if (docIndex.existsAsFile())

@@ -22,6 +22,7 @@
 
 // #include "LADSPAPluginFormat.h"
 #include "App.h"
+#include "PlatformPaths.h"
 #include "AudioSingletons.h"
 #include "ColourScheme.h"
 #include "CrashProtection.h"
@@ -60,11 +61,9 @@ void App::initialise(const String& commandLine)
     // Initialize spdlog with file output for debugging
     try
     {
-        auto logPath = File::getSpecialLocation(File::userApplicationDataDirectory)
-                           .getChildFile("Pedalboard3")
-                           .getChildFile("debug.log")
-                           .getFullPathName()
-                           .toStdString();
+        auto dataDirectory = pedalboard3::platform::getUserDataDirectory();
+        dataDirectory.createDirectory();
+        auto logPath = dataDirectory.getChildFile("debug.log").getFullPathName().toStdString();
         auto file_logger = spdlog::basic_logger_mt("pedalboard", logPath, true);
         spdlog::set_default_logger(file_logger);
         spdlog::set_level(spdlog::level::debug);
