@@ -31,13 +31,6 @@ using namespace PluginScannerIPC;
 
 namespace
 {
-juce::String makeRandomToken()
-{
-    auto& random = juce::Random::getSystemRandom();
-    return juce::String::toHexString(random.nextInt64()) + juce::String::toHexString(random.nextInt64());
-}
-
-#if JUCE_MAC || JUCE_LINUX
 using Deadline = std::chrono::steady_clock::time_point;
 
 Deadline makeDeadline(int timeoutMs)
@@ -51,6 +44,13 @@ int remainingMilliseconds(const Deadline& deadline)
         deadline - std::chrono::steady_clock::now()).count()));
 }
 
+juce::String makeRandomToken()
+{
+    auto& random = juce::Random::getSystemRandom();
+    return juce::String::toHexString(random.nextInt64()) + juce::String::toHexString(random.nextInt64());
+}
+
+#if JUCE_MAC || JUCE_LINUX
 bool waitFor(int handle, short events, const Deadline& deadline)
 {
     pollfd descriptor { handle, events, 0 };
@@ -102,28 +102,67 @@ juce::String randomPipeName()
         + juce::String::toHexString(random.nextInt64());
 }
 
-bool readPipeExact(HANDLE pipe, void* destination, DWORD bytes)
+bool waitForOverlapped(HANDLE pipe, OVERLAPPED& operation, const Deadline& deadline, DWORD& transferred)
+{
+    const auto result = WaitForSingleObject(operation.hEvent, static_cast<DWORD>(remainingMilliseconds(deadline)));
+    if (result == WAIT_OBJECT_0)
+        return GetOverlappedResult(pipe, &operation, &transferred, FALSE) != FALSE;
+
+    CancelIoEx(pipe, &operation);
+    WaitForSingleObject(operation.hEvent, INFINITE);
+    return false;
+}
+
+bool startAndWait(HANDLE pipe, bool started, DWORD error, OVERLAPPED& operation,
+                  const Deadline& deadline, DWORD& transferred)
+{
+    if (started)
+        return transferred != 0;
+    if (error != ERROR_IO_PENDING)
+        return false;
+    return waitForOverlapped(pipe, operation, deadline, transferred) && transferred != 0;
+}
+
+bool readPipeExact(HANDLE pipe, void* destination, DWORD bytes, const Deadline& deadline)
 {
     auto* cursor = static_cast<char*>(destination);
     DWORD received = 0;
     while (received < bytes)
     {
+        HANDLE event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+        if (event == nullptr)
+            return false;
+        OVERLAPPED operation {};
+        operation.hEvent = event;
         DWORD read = 0;
-        if (!ReadFile(pipe, cursor + received, bytes - received, &read, nullptr) || read == 0)
+        const auto started = ReadFile(pipe, cursor + received, bytes - received, &read, &operation) != FALSE;
+        const auto error = started ? ERROR_SUCCESS : GetLastError();
+        const auto completed = startAndWait(pipe, started, error, operation, deadline, read);
+        CloseHandle(event);
+        if (!completed)
             return false;
         received += read;
     }
     return true;
 }
 
-bool writePipeExact(HANDLE pipe, const void* source, DWORD bytes)
+bool writePipeExact(HANDLE pipe, const void* source, DWORD bytes, const Deadline& deadline)
 {
     const auto* cursor = static_cast<const char*>(source);
     DWORD writtenTotal = 0;
     while (writtenTotal < bytes)
     {
+        HANDLE event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+        if (event == nullptr)
+            return false;
+        OVERLAPPED operation {};
+        operation.hEvent = event;
         DWORD written = 0;
-        if (!WriteFile(pipe, cursor + writtenTotal, bytes - writtenTotal, &written, nullptr) || written == 0)
+        const auto started = WriteFile(pipe, cursor + writtenTotal, bytes - writtenTotal, &written, &operation) != FALSE;
+        const auto error = started ? ERROR_SUCCESS : GetLastError();
+        const auto completed = startAndWait(pipe, started, error, operation, deadline, written);
+        CloseHandle(event);
+        if (!completed)
             return false;
         writtenTotal += written;
     }
@@ -198,8 +237,9 @@ bool ScannerChannel::send(MessageType type, const juce::String& payload)
     MessageHeader header;
     header.type = type;
     header.payloadSize = static_cast<uint32_t>(bytes.length());
-    return writePipeExact(toHandle(handle), &header, sizeof(header))
-        && (header.payloadSize == 0 || writePipeExact(toHandle(handle), bytes.getAddress(), header.payloadSize));
+    const auto deadline = makeDeadline(5000);
+    return writePipeExact(toHandle(handle), &header, sizeof(header), deadline)
+        && (header.payloadSize == 0 || writePipeExact(toHandle(handle), bytes.getAddress(), header.payloadSize, deadline));
 #else
     juce::ignoreUnused(type, payload);
     return false;
@@ -233,13 +273,13 @@ bool ScannerChannel::receive(MessageHeader& header, juce::String& payload, int t
             return false;
     }
 #elif defined(_WIN32)
-    juce::ignoreUnused(timeoutMs);
-    if (!isOpen() || !readPipeExact(toHandle(handle), &header, sizeof(header))
+    const auto deadline = makeDeadline(timeoutMs);
+    if (!isOpen() || !readPipeExact(toHandle(handle), &header, sizeof(header), deadline)
         || header.magic != 0x50444233 || header.version != PROTOCOL_VERSION
         || header.payloadSize > MAX_SCANNER_PAYLOAD_BYTES)
         return false;
     juce::MemoryBlock data(header.payloadSize);
-    if (header.payloadSize > 0 && !readPipeExact(toHandle(handle), data.getData(), header.payloadSize))
+    if (header.payloadSize > 0 && !readPipeExact(toHandle(handle), data.getData(), header.payloadSize, deadline))
         return false;
     payload = juce::String::fromUTF8(static_cast<const char*>(data.getData()), static_cast<int>(header.payloadSize));
     return true;
@@ -326,7 +366,7 @@ bool ScannerHostEndpoint::create()
 #if defined(_WIN32)
     info.sessionToken = makeRandomToken();
     info.endpoint = randomPipeName();
-    const auto pipe = CreateNamedPipeA(info.endpoint.toRawUTF8(), PIPE_ACCESS_DUPLEX,
+    const auto pipe = CreateNamedPipeA(info.endpoint.toRawUTF8(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                                        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
                                        1, 65536, 65536, 0, nullptr);
     if (pipe == INVALID_HANDLE_VALUE)
@@ -348,9 +388,18 @@ std::unique_ptr<ScannerChannel> ScannerHostEndpoint::accept(int timeoutMs)
     return accepted >= 0 ? std::unique_ptr<ScannerChannel>(new ScannerChannel(accepted)) : nullptr;
 #else
 #if defined(_WIN32)
-    juce::ignoreUnused(timeoutMs);
     const auto pipe = toHandle(listener);
-    const auto connected = ConnectNamedPipe(pipe, nullptr) || GetLastError() == ERROR_PIPE_CONNECTED;
+    HANDLE event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    if (event == nullptr)
+        return {};
+    OVERLAPPED operation {};
+    operation.hEvent = event;
+    const auto started = ConnectNamedPipe(pipe, &operation) != FALSE;
+    const auto error = started ? ERROR_SUCCESS : GetLastError();
+    DWORD ignored = 0;
+    const auto connected = started || error == ERROR_PIPE_CONNECTED
+        || startAndWait(pipe, started, error, operation, makeDeadline(timeoutMs), ignored);
+    CloseHandle(event);
     if (!connected)
         return {};
     listener = -1;
@@ -385,7 +434,7 @@ std::unique_ptr<ScannerChannel> connectScannerChannel(const ScannerLaunchInfo& l
     do
     {
         const auto pipe = CreateFileA(launchInfo.endpoint.toRawUTF8(), GENERIC_READ | GENERIC_WRITE,
-                                      0, nullptr, OPEN_EXISTING, 0, nullptr);
+                                      0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
         if (pipe != INVALID_HANDLE_VALUE)
             return std::unique_ptr<ScannerChannel>(new ScannerChannel(fromHandle(pipe)));
         juce::Thread::sleep(10);

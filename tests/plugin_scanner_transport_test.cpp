@@ -47,6 +47,11 @@ TEST_CASE("Windows scanner transport remains named-pipe capable", "[scanner tran
     REQUIRE(source.find("CreateNamedPipeA") != std::string::npos);
     REQUIRE(source.find("CreateFileA") != std::string::npos);
     REQUIRE(source.find("randomPipeName") != std::string::npos);
+    REQUIRE(source.find("FILE_FLAG_OVERLAPPED") != std::string::npos);
+    REQUIRE(source.find("OVERLAPPED") != std::string::npos);
+    REQUIRE(source.find("WaitForSingleObject") != std::string::npos);
+    REQUIRE(source.find("CancelIoEx") != std::string::npos);
+    REQUIRE(source.find("juce::ignoreUnused(timeoutMs);\n    const auto pipe = toHandle(listener);") == std::string::npos);
 
     std::ifstream client(PEDALBOARD3_SOURCE_DIR "/src/PluginScannerClient.cpp");
     REQUIRE(client.is_open());
