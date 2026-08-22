@@ -297,6 +297,8 @@ class MainPanel : public Component,
     String getAbletonLinkPeerName() const;
     int getAbletonLinkPeerCount() const noexcept;
     StringArray getAbletonLinkAudioChannels() const;
+    void selectAbletonLinkIncomingChannel(int channelIndex);
+    int getAbletonLinkIncomingChannel() const noexcept;
 
     ///	Where the app listens for OSC messages.
     void run();

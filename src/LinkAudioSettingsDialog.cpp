@@ -45,12 +45,12 @@ LinkAudioSettingsDialog::LinkAudioSettingsDialog(MainPanel* panel)
     configureLabel(publishedChannelLabel, "Published channel", FontManager::getInstance().getBodyFont());
 
     addAndMakeVisible(publishedChannelValue);
-    configureLabel(publishedChannelValue, "Pedalboard3 Master (post-master mono/stereo output)",
+    configureLabel(publishedChannelValue, "Pedalboard3 Master (post-master, up to 16 discrete channels)",
                    FontManager::getInstance().getBodyFont());
 
     addAndMakeVisible(limitationsLabel);
     configureLabel(limitationsLabel,
-                   "Start/stop transport sync and incoming-audio routing are not implemented yet.",
+                   "Remote audio is available through the built-in Link Audio Input graph source. Start/stop sync is not implemented yet.",
                    FontManager::getInstance().getBodyFont());
     limitationsLabel.setColour(Label::textColourId, Colours::darkgrey);
 
@@ -140,6 +140,9 @@ void LinkAudioSettingsDialog::refreshStatus()
     const auto peerCount = mainPanel->getAbletonLinkPeerCount();
     const auto channels = mainPanel->getAbletonLinkAudioChannels();
     StringArray lines;
+
+    if (!channels.isEmpty() && mainPanel->getAbletonLinkIncomingChannel() < 0)
+        mainPanel->selectAbletonLinkIncomingChannel(0);
 
     if (!mainPanel->isAbletonLinkAudioEnabled())
         lines.add("Link Audio publishing is disabled.");

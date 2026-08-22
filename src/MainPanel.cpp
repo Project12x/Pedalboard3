@@ -473,6 +473,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     graphPlayer.setProcessor(&signalPath.getGraph());
     graphPlayer.setScratchRecorder(&scratchRecorder);
     graphPlayer.setLinkAudioService(&linkAudioService);
+    LinkAudioService::setActiveInstance(&linkAudioService);
     linkAudioService.setPeerName(SettingsManager::getInstance().getString("abletonLinkPeerName", "Pedalboard3"));
     linkAudioService.setEnabled(SettingsManager::getInstance().getBool(LinkAudioService::settingsKey, false));
     deviceManager.addAudioCallback(&graphPlayer);
@@ -663,6 +664,7 @@ MainPanel::~MainPanel()
     scratchRecorder.requestStop();
     graphPlayer.setScratchRecorder(nullptr);
     graphPlayer.setLinkAudioService(nullptr);
+    LinkAudioService::setActiveInstance(nullptr);
     deviceManager.removeAudioCallback(&graphPlayer);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
@@ -2692,6 +2694,16 @@ int MainPanel::getAbletonLinkPeerCount() const noexcept
 StringArray MainPanel::getAbletonLinkAudioChannels() const
 {
     return linkAudioService.getAvailableChannels();
+}
+
+void MainPanel::selectAbletonLinkIncomingChannel(int channelIndex)
+{
+    linkAudioService.selectIncomingChannel(channelIndex);
+}
+
+int MainPanel::getAbletonLinkIncomingChannel() const noexcept
+{
+    return linkAudioService.getSelectedIncomingChannel();
 }
 
 //------------------------------------------------------------------------------

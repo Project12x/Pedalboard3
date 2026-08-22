@@ -36,6 +36,7 @@
 #include "FilterGraph.h"
 #include "IRLoaderProcessor.h"
 #include "LabelProcessor.h"
+#include "LinkAudioInputProcessor.h"
 #include "MidiFilePlayer.h"
 #include "MidiMappingManager.h"
 #include "MidiUtilityProcessors.h"
@@ -75,6 +76,12 @@ InternalPluginFormat::InternalPluginFormat()
         MidiInterceptor p;
         p.fillInPluginDescription(midiInterceptorDesc);
         midiInterceptorDesc.category = "Built-in";
+    }
+
+    {
+        LinkAudioInputProcessor p;
+        p.fillInPluginDescription(linkAudioInputProcDesc);
+        linkAudioInputProcDesc.category = "Built-in";
     }
 
     {
@@ -305,6 +312,10 @@ AudioPluginInstance* InternalPluginFormat::createInstanceFromDescription(const P
     {
         return new DawSplitterProcessor();
     }
+    else if (desc.name == linkAudioInputProcDesc.name)
+    {
+        return new LinkAudioInputProcessor();
+    }
     else if (desc.name == irLoaderProcDesc.name)
     {
         return new IRLoaderProcessor();
@@ -415,6 +426,8 @@ const PluginDescription* InternalPluginFormat::getDescriptionFor(const InternalF
         return &dawMixerProcDesc;
     case dawSplitterProcFilter:
         return &dawSplitterProcDesc;
+    case linkAudioInputProcFilter:
+        return &linkAudioInputProcDesc;
     default:
         return 0;
     }
@@ -441,7 +454,8 @@ void InternalPluginFormat::getUserFacingTypes(OwnedArray<PluginDescription>& res
                                                          keyboardSplitProcFilter, notesProcFilter,
                                                          labelProcFilter,         midiFilePlayerProcFilter,
                                                          subGraphProcFilter,      virtualMidiInputProcFilter,
-                                                         dawMixerProcFilter,      dawSplitterProcFilter};
+                                                         dawMixerProcFilter,      dawSplitterProcFilter,
+                                                         linkAudioInputProcFilter};
 
     for (auto type : userFacingTypes)
         results.add(new PluginDescription(*getDescriptionFor(type)));

@@ -16,9 +16,12 @@
 
 namespace
 {
+// Pedalboard3's device engine supports 16 discrete channels. Link Audio buffers
+// are interleaved, so reserve capacity for the full engine width rather than
+// narrowing the master bus to stereo.
+constexpr std::size_t kMaximumChannels = 16;
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
 constexpr double kQuantum = 4.0;
-constexpr std::size_t kMaximumChannels = 2;
 
 int16_t floatToPcm16(float sample) noexcept
 {
@@ -27,6 +30,8 @@ int16_t floatToPcm16(float sample) noexcept
 }
 #endif
 }  // namespace
+
+std::atomic<LinkAudioService*> LinkAudioService::activeInstance{nullptr};
 
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
 LinkAudioService::LinkAudioService()
@@ -42,6 +47,10 @@ LinkAudioService::~LinkAudioService() = default;
 void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize)
 {
     sampleRate.store(newSampleRate, std::memory_order_release);
+    const auto fifoFrames = jmax(32768, maximumBlockSize * 64);
+    incomingAudioBuffer.setSize(static_cast<int>(kMaximumChannels), fifoFrames, false, true, true);
+    incomingAudioFifo.setTotalSize(fifoFrames);
+    incomingAudioFifo.reset();
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
     const auto maximumSamples = static_cast<std::size_t>(jmax(1, maximumBlockSize)) * kMaximumChannels;
     if (!masterOutputSink)
@@ -85,6 +94,111 @@ void LinkAudioService::setTempo(double bpm) noexcept
         requestedTempo.store(bpm, std::memory_order_release);
 }
 
+void LinkAudioService::setPeerName(const juce::String& name)
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    link->setPeerName(name.trim().isEmpty() ? "Pedalboard3" : name.trim().toStdString());
+#else
+    juce::ignoreUnused(name);
+#endif
+}
+
+juce::String LinkAudioService::getPeerName() const
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    return juce::String(link->peerName());
+#else
+    return "Pedalboard3";
+#endif
+}
+
+int LinkAudioService::getPeerCount() const noexcept
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    return static_cast<int>(link->numPeers());
+#else
+    return 0;
+#endif
+}
+
+juce::StringArray LinkAudioService::getAvailableChannels() const
+{
+    juce::StringArray result;
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    for (const auto& channel : link->channels())
+        result.add(juce::String(channel.peerName) + " - " + juce::String(channel.name));
+#endif
+    return result;
+}
+
+void LinkAudioService::selectIncomingChannel(int channelIndex)
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    incomingAudioSource.reset();
+    selectedIncomingChannel.store(-1, std::memory_order_release);
+    incomingAudioFifo.reset();
+    const auto channels = link->channels();
+    if (channelIndex < 0 || channelIndex >= static_cast<int>(channels.size()))
+        return;
+
+    incomingAudioSource = std::make_unique<ableton::LinkAudioSource>(
+        *link, channels[static_cast<std::size_t>(channelIndex)].id,
+        [this, channelIndex](ableton::LinkAudioSource::BufferHandle buffer)
+        {
+            const auto channelsToCopy = jmin(static_cast<int>(buffer.info.numChannels), static_cast<int>(kMaximumChannels));
+            const auto frames = jmin(static_cast<int>(buffer.info.numFrames), incomingAudioFifo.getFreeSpace());
+            if (channelsToCopy <= 0 || frames <= 0 || buffer.info.sampleRate != static_cast<uint32_t>(sampleRate.load()))
+                return;
+            const auto write = incomingAudioFifo.write(frames);
+            const auto copy = [&](int start, int count, int offset)
+            {
+                for (int ch = 0; ch < channelsToCopy; ++ch)
+                    for (int frame = 0; frame < count; ++frame)
+                        incomingAudioBuffer.setSample(ch, start + frame,
+                            static_cast<float>(buffer.samples[(offset + frame) * channelsToCopy + ch]) / 32768.0f);
+            };
+            copy(write.startIndex1, write.blockSize1, 0);
+            copy(write.startIndex2, write.blockSize2, write.blockSize1);
+            incomingAudioChannels.store(channelsToCopy, std::memory_order_release);
+            selectedIncomingChannel.store(channelIndex, std::memory_order_release);
+        });
+#else
+    juce::ignoreUnused(channelIndex);
+#endif
+}
+
+int LinkAudioService::getSelectedIncomingChannel() const noexcept
+{
+    return selectedIncomingChannel.load(std::memory_order_acquire);
+}
+
+void LinkAudioService::setActiveInstance(LinkAudioService* service) noexcept
+{
+    activeInstance.store(service, std::memory_order_release);
+}
+
+void LinkAudioService::readIncomingAudio(juce::AudioBuffer<float>& destination) noexcept
+{
+    if (auto* service = activeInstance.load(std::memory_order_acquire))
+        service->readIncoming(destination);
+    else
+        destination.clear();
+}
+
+void LinkAudioService::readIncoming(juce::AudioBuffer<float>& destination) noexcept
+{
+    destination.clear();
+    const auto channels = jmin(destination.getNumChannels(), incomingAudioChannels.load(std::memory_order_acquire));
+    const auto read = incomingAudioFifo.read(destination.getNumSamples());
+    const auto copy = [&](int start, int count, int offset)
+    {
+        for (int ch = 0; ch < channels; ++ch)
+            destination.copyFrom(ch, offset, incomingAudioBuffer, ch, start, count);
+    };
+    copy(read.startIndex1, read.blockSize1, 0);
+    copy(read.startIndex2, read.blockSize2, read.blockSize1);
+}
+
 void LinkAudioService::publish(const float* const* outputChannels, int numOutputChannels, int numSamples) noexcept
 {
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
@@ -92,8 +206,9 @@ void LinkAudioService::publish(const float* const* outputChannels, int numOutput
         return;
 
     const auto numChannels = static_cast<std::size_t>(jmin(numOutputChannels, static_cast<int>(kMaximumChannels)));
-    if (outputChannels[0] == nullptr || (numChannels == 2 && outputChannels[1] == nullptr))
-        return;
+    for (std::size_t channel = 0; channel < numChannels; ++channel)
+        if (outputChannels[channel] == nullptr)
+            return;
 
     ableton::LinkAudioSink::BufferHandle buffer(*masterOutputSink);
     const auto requiredSamples = static_cast<std::size_t>(numSamples) * numChannels;
