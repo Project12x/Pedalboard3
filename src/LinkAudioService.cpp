@@ -19,7 +19,7 @@ namespace
 // Pedalboard3's device engine supports 16 discrete channels. Link Audio buffers
 // are interleaved, so reserve capacity for the full engine width rather than
 // narrowing the master bus to stereo.
-constexpr std::size_t kMaximumChannels = 16;
+constexpr std::size_t kMaximumChannels = LinkAudioService::maxChannels;
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
 constexpr double kQuantum = 4.0;
 

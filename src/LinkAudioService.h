@@ -24,6 +24,7 @@ class LinkAudioService
 {
   public:
     static constexpr const char* settingsKey = "enableAbletonLinkAudio";
+    static constexpr int maxChannels = 16;
 
     LinkAudioService();
     ~LinkAudioService();
