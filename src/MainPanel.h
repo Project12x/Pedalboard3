@@ -292,6 +292,11 @@ class MainPanel : public Component,
     ///	Sets whether to automatically open the mappings window or not.
     void setAutoMappingsWindow(bool val);
     void enableAbletonLinkAudio(bool val);
+    bool isAbletonLinkAudioEnabled() const noexcept;
+    void setAbletonLinkPeerName(const String& name);
+    String getAbletonLinkPeerName() const;
+    int getAbletonLinkPeerCount() const noexcept;
+    StringArray getAbletonLinkAudioChannels() const;
 
     ///	Where the app listens for OSC messages.
     void run();
@@ -393,6 +398,7 @@ class MainPanel : public Component,
         OptionsAudio,
         OptionsPluginList,
         OptionsPreferences,
+        OptionsLinkAudioSettings,
         OptionsColourSchemes,
         OptionsKeyMappings,
         HelpAbout,

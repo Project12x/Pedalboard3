@@ -432,6 +432,8 @@ target_sources(Pedalboard3 PRIVATE
     src/LogFile.h
     src/LinkAudioService.cpp
     src/LinkAudioService.h
+    src/LinkAudioSettingsDialog.cpp
+    src/LinkAudioSettingsDialog.h
     # src/PropertiesSingleton.cpp
     # src/PropertiesSingleton.h
     src/TapTempoBox.cpp

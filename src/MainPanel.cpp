@@ -36,6 +36,7 @@
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "LabelProcessor.h"
+#include "LinkAudioSettingsDialog.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
@@ -472,6 +473,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     graphPlayer.setProcessor(&signalPath.getGraph());
     graphPlayer.setScratchRecorder(&scratchRecorder);
     graphPlayer.setLinkAudioService(&linkAudioService);
+    linkAudioService.setPeerName(SettingsManager::getInstance().getString("abletonLinkPeerName", "Pedalboard3"));
     linkAudioService.setEnabled(SettingsManager::getInstance().getBool(LinkAudioService::settingsKey, false));
     deviceManager.addAudioCallback(&graphPlayer);
 
@@ -1595,6 +1597,7 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsPluginList);
         retval.addCommandItem(commandManager, OptionsPluginBlacklist);
         retval.addCommandItem(commandManager, OptionsPreferences);
+        retval.addCommandItem(commandManager, OptionsLinkAudioSettings);
         PopupMenu uiScaleMenu;
         const auto currentUiScalePercent = getUiScalePercent();
         uiScaleMenu.addItem(OptionsUiScale75, "75%", true, currentUiScalePercent == 75);
@@ -1700,6 +1703,7 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              EditRedo,
                              EditPanic,
                              OptionsPreferences,
+                             OptionsLinkAudioSettings,
                              OptionsAudio,
                              OptionsPluginList,
                              OptionsColourSchemes,
@@ -1802,6 +1806,10 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case OptionsPreferences:
         result.setInfo("Misc Settings", "Displays miscellaneous settings.", optionsCategory, 0);
+        break;
+    case OptionsLinkAudioSettings:
+        result.setInfo("Link Audio Settings", "Configure Ableton Link Audio publishing and inspect peers.", optionsCategory,
+                       0);
         break;
     case OptionsAudio:
         result.setInfo("Audio Settings", "Displays soundcard settings.", optionsCategory, 0);
@@ -1992,6 +2000,13 @@ bool MainPanel::perform(const InvocationInfo& info)
         PreferencesDialog dlg(this, tempstr, sock.getMulticastGroup().c_str());
 
         JuceHelperStuff::showModalDialog("Misc Settings", &dlg, 0,
+                                         ColourScheme::getInstance().colours["Window Background"], true, true);
+    }
+    break;
+    case OptionsLinkAudioSettings:
+    {
+        LinkAudioSettingsDialog dlg(this);
+        JuceHelperStuff::showModalDialog("Link Audio Settings", &dlg, 0,
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
     }
     break;
@@ -2651,6 +2666,32 @@ void MainPanel::enableAbletonLinkAudio(bool val)
 {
     linkAudioService.setEnabled(val);
     SettingsManager::getInstance().setValue(LinkAudioService::settingsKey, val);
+}
+
+bool MainPanel::isAbletonLinkAudioEnabled() const noexcept
+{
+    return linkAudioService.isEnabled();
+}
+
+void MainPanel::setAbletonLinkPeerName(const String& name)
+{
+    linkAudioService.setPeerName(name);
+    SettingsManager::getInstance().setValue("abletonLinkPeerName", linkAudioService.getPeerName());
+}
+
+String MainPanel::getAbletonLinkPeerName() const
+{
+    return linkAudioService.getPeerName();
+}
+
+int MainPanel::getAbletonLinkPeerCount() const noexcept
+{
+    return linkAudioService.getPeerCount();
+}
+
+StringArray MainPanel::getAbletonLinkAudioChannels() const
+{
+    return linkAudioService.getAvailableChannels();
 }
 
 //------------------------------------------------------------------------------
