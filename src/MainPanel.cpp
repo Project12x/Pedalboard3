@@ -471,6 +471,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     graphPlayer.setScratchRecorder(&scratchRecorder);
+    graphPlayer.setLinkAudioService(&linkAudioService);
+    linkAudioService.setEnabled(SettingsManager::getInstance().getBool(LinkAudioService::settingsKey, false));
     deviceManager.addAudioCallback(&graphPlayer);
 
     // Device meter tap for I/O node VU meters (can be disabled for debugging)
@@ -658,6 +660,7 @@ MainPanel::~MainPanel()
     }
     scratchRecorder.requestStop();
     graphPlayer.setScratchRecorder(nullptr);
+    graphPlayer.setLinkAudioService(nullptr);
     deviceManager.removeAudioCallback(&graphPlayer);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
@@ -2486,6 +2489,8 @@ void MainPanel::textEditorTextChanged(TextEditor& editor)
 
         if (field)
             field->setTempo(tempoEditor->getText().getDoubleValue());
+
+        linkAudioService.setTempo(tempoEditor->getText().getDoubleValue());
     }
 }
 
@@ -2498,6 +2503,8 @@ void MainPanel::textEditorReturnKeyPressed(TextEditor& editor)
 
         if (field)
             field->setTempo(tempoEditor->getText().getDoubleValue());
+
+        linkAudioService.setTempo(tempoEditor->getText().getDoubleValue());
     }
     playButton->grabKeyboardFocus();
 }
@@ -2637,6 +2644,13 @@ void MainPanel::setAutoMappingsWindow(bool val)
     field->setAutoMappingsWindow(val);
 
     SettingsManager::getInstance().setValue("AutoMappingsWindow", val);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::enableAbletonLinkAudio(bool val)
+{
+    linkAudioService.setEnabled(val);
+    SettingsManager::getInstance().setValue(LinkAudioService::settingsKey, val);
 }
 
 //------------------------------------------------------------------------------

@@ -11,6 +11,16 @@ project(Pedalboard3
     LANGUAGES CXX
 )
 
+option(Pedalboard3_ENABLE_LINK_AUDIO "Build GPL Ableton Link Audio support" ON)
+
+if(Pedalboard3_ENABLE_LINK_AUDIO)
+    set(ABLETON_LINK_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/AbletonLink")
+    if(NOT EXISTS "${ABLETON_LINK_SOURCE_DIR}/AbletonLinkConfig.cmake")
+        message(FATAL_ERROR "Ableton Link submodule is missing. Run: git submodule update --init --recursive")
+    endif()
+    include("${ABLETON_LINK_SOURCE_DIR}/AbletonLinkConfig.cmake")
+endif()
+
 if(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FS")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /FS")
@@ -420,6 +430,8 @@ target_sources(Pedalboard3 PRIVATE
     src/LogDisplay.h
     src/LogFile.cpp
     src/LogFile.h
+    src/LinkAudioService.cpp
+    src/LinkAudioService.h
     # src/PropertiesSingleton.cpp
     # src/PropertiesSingleton.h
     src/TapTempoBox.cpp
@@ -539,6 +551,13 @@ target_link_libraries(Pedalboard3 PRIVATE
     # Custom fonts
     Pedalboard3_fonts
 )
+
+if(Pedalboard3_ENABLE_LINK_AUDIO)
+    target_compile_definitions(Pedalboard3 PRIVATE PEDALBOARD3_ENABLE_LINK_AUDIO=1)
+    target_link_libraries(Pedalboard3 PRIVATE Ableton::Link)
+else()
+    target_compile_definitions(Pedalboard3 PRIVATE PEDALBOARD3_ENABLE_LINK_AUDIO=0)
+endif()
 
 
 # Windows-specific settings

@@ -29,6 +29,8 @@
 #include "FontManager.h"
 #include "MasterBusProcessor.h"
 #include "MasterGainState.h"
+#include "MeteringCallbackBounds.h"
+#include "LinkAudioService.h"
 #include "MidiAppFifo.h"
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
@@ -57,6 +59,11 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         scratchRecorder.store(recorderToUse, std::memory_order_release);
     }
 
+    void setLinkAudioService(LinkAudioService* serviceToUse) noexcept
+    {
+        linkAudioService.store(serviceToUse, std::memory_order_release);
+    }
+
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
         AudioProcessorPlayer::audioDeviceAboutToStart(device);
@@ -73,6 +80,9 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 
             // Initialize gain smoothing at device sample rate
             gainState.prepareSmoothing(device->getCurrentSampleRate());
+
+            if (auto* service = linkAudioService.load(std::memory_order_acquire))
+                service->prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
         }
     }
 
@@ -177,6 +187,9 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         if (recorder != nullptr)
             recorder->writeWetBlock(outputChannelData, numOutputChannels, numSamples);
 
+        if (auto* service = linkAudioService.load(std::memory_order_acquire))
+            service->publish(outputChannelData, numOutputChannels, numSamples);
+
         // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
         {
@@ -190,6 +203,7 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
     AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
     const float* gainedInputPtrs[MaxChannels] = {};
     std::atomic<ScratchRecorder*> scratchRecorder{nullptr};
+    std::atomic<LinkAudioService*> linkAudioService{nullptr};
 };
 
 //==============================================================================
@@ -277,6 +291,7 @@ class MainPanel : public Component,
     void enableVirtualMidiInput(bool val);
     ///	Sets whether to automatically open the mappings window or not.
     void setAutoMappingsWindow(bool val);
+    void enableAbletonLinkAudio(bool val);
 
     ///	Where the app listens for OSC messages.
     void run();
@@ -453,6 +468,7 @@ class MainPanel : public Component,
     FilterGraph signalPath;
     ThreadedWavSinkFactory scratchSinkFactory;
     ScratchRecorder scratchRecorder{scratchSinkFactory};
+    LinkAudioService linkAudioService;
     ///	Object used to 'play' the signalPath object (with output metering).
     MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.
