@@ -2017,7 +2017,8 @@ bool MainPanel::perform(const InvocationInfo& info)
         savePatch();
 
         {
-            AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
+            AudioDeviceSelectorComponent win(deviceManager, 1, MeteringCallbackBounds::MaxChannels, 1,
+                                             MeteringCallbackBounds::MaxChannels, true, false, false, false);
             win.setSize(380, 400);
             JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);

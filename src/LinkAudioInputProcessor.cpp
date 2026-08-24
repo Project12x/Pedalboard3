@@ -3,7 +3,7 @@
 
 LinkAudioInputProcessor::LinkAudioInputProcessor()
 {
-    setPlayConfigDetails(0, 16, 44100.0, 512);
+    setPlayConfigDetails(0, LinkAudioService::maxChannels, 44100.0, 512);
 }
 
 juce::Component* LinkAudioInputProcessor::getControls()
@@ -21,7 +21,7 @@ void LinkAudioInputProcessor::fillInPluginDescription(juce::PluginDescription& d
     description.fileOrIdentifier = "linkaudioinput";
     description.uniqueId = 0x4c494e4b;
     description.numInputChannels = 0;
-    description.numOutputChannels = 16;
+    description.numOutputChannels = LinkAudioService::maxChannels;
 }
 
 void LinkAudioInputProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)

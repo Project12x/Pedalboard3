@@ -42,10 +42,12 @@ LinkAudioSettingsDialog::LinkAudioSettingsDialog(MainPanel* panel)
     peerNameEditor.addListener(this);
 
     addAndMakeVisible(publishedChannelLabel);
-    configureLabel(publishedChannelLabel, "Published channel", FontManager::getInstance().getBodyFont());
+    configureLabel(publishedChannelLabel, "Published channels", FontManager::getInstance().getBodyFont());
 
     addAndMakeVisible(publishedChannelValue);
-    configureLabel(publishedChannelValue, "Pedalboard3 Master (post-master, up to 16 discrete channels)",
+    configureLabel(publishedChannelValue,
+                   "Pedalboard3 Master 1-2, 3-4, ... (post-master, one stereo pair per Link "
+                   "channel, matching your output device)",
                    FontManager::getInstance().getBodyFont());
 
     addAndMakeVisible(limitationsLabel);
@@ -76,9 +78,9 @@ LinkAudioSettingsDialog::LinkAudioSettingsDialog(MainPanel* panel)
 
 void LinkAudioSettingsDialog::paint(Graphics& g)
 {
-    const auto& colours = ColourScheme::getInstance().colours;
-    g.fillAll(colours.at("Window Background"));
-    g.setColour(colours.at("Plugin Border").withAlpha(0.35f));
+    auto& colours = ColourScheme::getInstance().colours;
+    g.fillAll(colours["Window Background"]);
+    g.setColour(colours["Plugin Border"].withAlpha(0.35f));
     g.drawLine(24.0f, 188.0f, static_cast<float>(getWidth() - 24), 188.0f, 1.0f);
     g.drawRect(getLocalBounds().reduced(24, 252), 1);
 }

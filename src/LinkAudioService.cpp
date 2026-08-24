@@ -16,9 +16,9 @@
 
 namespace
 {
-// Pedalboard3's device engine supports 16 discrete channels. Link Audio buffers
-// are interleaved, so reserve capacity for the full engine width rather than
-// narrowing the master bus to stereo.
+// Ceiling for the incoming-audio FIFO/buffer and the publish-side channel
+// clamp, shared with the rest of the engine (MeteringCallbackBounds). Actual
+// channel counts used each callback are always the live device's own count.
 constexpr std::size_t kMaximumChannels = LinkAudioService::maxChannels;
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
 constexpr double kQuantum = 4.0;
@@ -44,7 +44,19 @@ LinkAudioService::LinkAudioService() = default;
 
 LinkAudioService::~LinkAudioService() = default;
 
-void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize)
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+namespace
+{
+// Sink i (0-based) carries channels [i*2, i*2+channelsInSink), 2 channels
+// (stereo) unless it's the trailing sink for an odd channel count (mono).
+int channelsInOutputSink(std::size_t sinkIndex, int totalChannels) noexcept
+{
+    return jmin(2, totalChannels - static_cast<int>(sinkIndex) * 2);
+}
+}  // namespace
+#endif
+
+void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize, int numOutputChannels)
 {
     sampleRate.store(newSampleRate, std::memory_order_release);
     const auto fifoFrames = jmax(32768, maximumBlockSize * 64);
@@ -52,13 +64,41 @@ void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize)
     incomingAudioFifo.setTotalSize(fifoFrames);
     incomingAudioFifo.reset();
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
-    const auto maximumSamples = static_cast<std::size_t>(jmax(1, maximumBlockSize)) * kMaximumChannels;
-    if (!masterOutputSink)
-        masterOutputSink = std::make_unique<ableton::LinkAudioSink>(*link, "Pedalboard3 Master", maximumSamples);
+    const auto clampedChannels = jlimit(0, static_cast<int>(kMaximumChannels), numOutputChannels);
+    const auto requiredSinks = static_cast<std::size_t>((clampedChannels + 1) / 2);
+
+    if (outputSinks.size() != requiredSinks)
+    {
+        outputSinks.clear();
+        outputSinks.reserve(requiredSinks);
+        for (std::size_t i = 0; i < requiredSinks; ++i)
+        {
+            const auto channelsInSink = channelsInOutputSink(i, clampedChannels);
+            const auto firstChannel = static_cast<int>(i) * 2;
+
+            juce::String name("Pedalboard3 Master ");
+            name << (firstChannel + 1);
+            if (channelsInSink > 1)
+                name << "-" << (firstChannel + channelsInSink);
+
+            const auto maximumSamples =
+                static_cast<std::size_t>(jmax(1, maximumBlockSize)) * static_cast<std::size_t>(channelsInSink);
+            outputSinks.push_back(
+                std::make_unique<ableton::LinkAudioSink>(*link, name.toStdString(), maximumSamples));
+        }
+    }
     else
-        masterOutputSink->requestMaxNumSamples(maximumSamples);
+    {
+        for (std::size_t i = 0; i < outputSinks.size(); ++i)
+        {
+            const auto channelsInSink = channelsInOutputSink(i, clampedChannels);
+            const auto maximumSamples =
+                static_cast<std::size_t>(jmax(1, maximumBlockSize)) * static_cast<std::size_t>(channelsInSink);
+            outputSinks[i]->requestMaxNumSamples(maximumSamples);
+        }
+    }
 #else
-    juce::ignoreUnused(maximumBlockSize);
+    juce::ignoreUnused(maximumBlockSize, numOutputChannels);
 #endif
 }
 
@@ -202,18 +242,13 @@ void LinkAudioService::readIncoming(juce::AudioBuffer<float>& destination) noexc
 void LinkAudioService::publish(const float* const* outputChannels, int numOutputChannels, int numSamples) noexcept
 {
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
-    if (!isEnabled() || !masterOutputSink || outputChannels == nullptr || numOutputChannels <= 0 || numSamples <= 0)
+    if (!isEnabled() || outputSinks.empty() || outputChannels == nullptr || numOutputChannels <= 0 || numSamples <= 0)
         return;
 
-    const auto numChannels = static_cast<std::size_t>(jmin(numOutputChannels, static_cast<int>(kMaximumChannels)));
-    for (std::size_t channel = 0; channel < numChannels; ++channel)
+    const auto totalChannels = jmin(numOutputChannels, static_cast<int>(kMaximumChannels));
+    for (int channel = 0; channel < totalChannels; ++channel)
         if (outputChannels[channel] == nullptr)
             return;
-
-    ableton::LinkAudioSink::BufferHandle buffer(*masterOutputSink);
-    const auto requiredSamples = static_cast<std::size_t>(numSamples) * numChannels;
-    if (!buffer || requiredSamples > buffer.maxNumSamples)
-        return;
 
     const auto hostTime = link->clock().micros();
     auto sessionState = link->captureAudioSessionState();
@@ -222,14 +257,30 @@ void LinkAudioService::publish(const float* const* outputChannels, int numOutput
         sessionState.setTempo(tempo, hostTime);
 
     const auto beatsAtBufferBegin = sessionState.beatAtTime(hostTime, kQuantum);
-    for (int frame = 0; frame < numSamples; ++frame)
-        for (std::size_t channel = 0; channel < numChannels; ++channel)
-            buffer.samples[static_cast<std::size_t>(frame) * numChannels + channel] =
-                floatToPcm16(outputChannels[channel][frame]);
+    const auto sr = static_cast<uint32_t>(sampleRate.load(std::memory_order_acquire));
+
+    for (std::size_t sinkIndex = 0; sinkIndex < outputSinks.size(); ++sinkIndex)
+    {
+        const auto channelsInSink = channelsInOutputSink(sinkIndex, totalChannels);
+        if (channelsInSink <= 0)
+            break;
+        const auto firstChannel = static_cast<int>(sinkIndex) * 2;
+
+        ableton::LinkAudioSink::BufferHandle buffer(*outputSinks[sinkIndex]);
+        const auto requiredSamples = static_cast<std::size_t>(numSamples) * static_cast<std::size_t>(channelsInSink);
+        if (!buffer || requiredSamples > buffer.maxNumSamples)
+            continue;
+
+        for (int frame = 0; frame < numSamples; ++frame)
+            for (int ch = 0; ch < channelsInSink; ++ch)
+                buffer.samples[static_cast<std::size_t>(frame) * static_cast<std::size_t>(channelsInSink) +
+                               static_cast<std::size_t>(ch)] = floatToPcm16(outputChannels[firstChannel + ch][frame]);
+
+        buffer.commit(sessionState, beatsAtBufferBegin, kQuantum, static_cast<std::size_t>(numSamples),
+                      static_cast<std::size_t>(channelsInSink), sr);
+    }
 
     link->commitAudioSessionState(sessionState);
-    buffer.commit(sessionState, beatsAtBufferBegin, kQuantum, static_cast<std::size_t>(numSamples), numChannels,
-                  static_cast<uint32_t>(sampleRate.load(std::memory_order_acquire)));
 #else
     juce::ignoreUnused(outputChannels, numOutputChannels, numSamples);
 #endif

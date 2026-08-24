@@ -82,7 +82,8 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             gainState.prepareSmoothing(device->getCurrentSampleRate());
 
             if (auto* service = linkAudioService.load(std::memory_order_acquire))
-                service->prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
+                service->prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples(),
+                                 device->getActiveOutputChannels().countNumberOfSetBits());
         }
     }
 

@@ -16,6 +16,7 @@
 #define MASTERGAINSTATE_H_INCLUDED
 
 #include "MasterBusProcessor.h"
+#include "MeteringCallbackBounds.h"
 
 #include <JuceHeader.h>
 #include <atomic>
@@ -26,7 +27,7 @@ using namespace juce;
 class MasterGainState
 {
   public:
-    static constexpr int MaxChannels = 16;
+    static constexpr int MaxChannels = MeteringCallbackBounds::MaxChannels;
 
     static MasterGainState& getInstance()
     {

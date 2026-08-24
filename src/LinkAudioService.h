@@ -6,10 +6,13 @@
 
 #pragma once
 
+#include "MeteringCallbackBounds.h"
+
 #include <JuceHeader.h>
 
 #include <atomic>
 #include <memory>
+#include <vector>
 
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
 namespace ableton
@@ -24,12 +27,15 @@ class LinkAudioService
 {
   public:
     static constexpr const char* settingsKey = "enableAbletonLinkAudio";
-    static constexpr int maxChannels = 16;
+    static constexpr int maxChannels = MeteringCallbackBounds::MaxChannels;
 
     LinkAudioService();
     ~LinkAudioService();
 
-    void prepare(double sampleRate, int maximumBlockSize);
+    // numOutputChannels is the live active-output-channel count (e.g. from
+    // AudioIODevice::getActiveOutputChannels()); it determines how many
+    // stereo/mono Link Audio sinks get announced (see .cpp).
+    void prepare(double sampleRate, int maximumBlockSize, int numOutputChannels);
     void setEnabled(bool shouldEnable);
     bool isEnabled() const noexcept;
     void setTempo(double bpm) noexcept;
@@ -46,7 +52,11 @@ class LinkAudioService
   private:
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
     std::unique_ptr<ableton::LinkAudio> link;
-    std::unique_ptr<ableton::LinkAudioSink> masterOutputSink;
+    // Ableton's LinkAudio SDK models a "channel" as one mono/stereo sink
+    // (see BufferHandle::commit()'s doc comment) - multichannel output is
+    // published as multiple stereo (or a trailing mono) sinks, not one wide
+    // sink. Rebuilt in prepare() when the required sink count changes.
+    std::vector<std::unique_ptr<ableton::LinkAudioSink>> outputSinks;
     std::unique_ptr<ableton::LinkAudioSource> incomingAudioSource;
 #endif
     void readIncoming(juce::AudioBuffer<float>& destination) noexcept;

@@ -2,12 +2,13 @@
 
 #include "LinkAudioInputProcessor.h"
 #include "LinkAudioService.h"
+#include "MeteringCallbackBounds.h"
 
-TEST_CASE("Link Audio keeps Pedalboard3's 16-channel engine width", "[link-audio][channels]")
+TEST_CASE("Link Audio keeps Pedalboard3's engine channel width", "[link-audio][channels]")
 {
     LinkAudioInputProcessor input;
 
-    REQUIRE(LinkAudioService::maxChannels == 16);
+    REQUIRE(LinkAudioService::maxChannels == MeteringCallbackBounds::MaxChannels);
     REQUIRE(input.getTotalNumInputChannels() == 0);
     REQUIRE(input.getTotalNumOutputChannels() == LinkAudioService::maxChannels);
 }
