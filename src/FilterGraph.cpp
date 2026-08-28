@@ -1026,6 +1026,20 @@ void FilterGraph::setNodeLinkAudioPublish(AudioProcessorGraph::NodeID nodeId, bo
     const int numChannels = isAudioOutputNode ? node->getProcessor()->getTotalNumInputChannels()
                                               : node->getProcessor()->getTotalNumOutputChannels();
 
+    // registerNodeSink() unconditionally destroys any existing sink group for
+    // this node id before creating the new one (e.g. re-enabling after a
+    // duplicate enable call, or a malformed patch with a repeated uid). Take
+    // the same callback lock the disable path uses and clear the old slot
+    // pointer FIRST, so the audio thread can never be mid-publish through a
+    // sink group that's about to be freed by that dedup.
+    const juce::ScopedLock sl(graph.getCallbackLock());
+    if (isAudioInputNode)
+        service->setAudioInputTapSlot(nullptr);
+    else if (isAudioOutputNode)
+        service->setAudioOutputTapSlot(nullptr);
+    else if (tapSource != nullptr)
+        tapSource->setLinkAudioSinkSlot(nullptr);
+
     auto* slot = service->registerNodeSink(nodeId, numChannels, displayName);
     if (isAudioInputNode)
         service->setAudioInputTapSlot(slot);

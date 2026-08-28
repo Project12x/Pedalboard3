@@ -100,10 +100,16 @@ void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize, int n
     }
 
     // Re-request buffer sizing for already-registered per-node sinks too -
-    // the device's block size can change after a node was opted in.
+    // the device's block size can change after a node was opted in. Mirrors
+    // the per-sink channel split used above and at registration time, rather
+    // than a flat size.
     for (auto& group : nodeSinks)
-        for (auto& sink : group->sinks)
-            sink->requestMaxNumSamples(static_cast<std::size_t>(jmax(1, maximumBlockSize)) * 2);
+        for (std::size_t i = 0; i < group->sinks.size(); ++i)
+        {
+            const auto channelsInSink = channelsInOutputSink(i, group->numChannels);
+            group->sinks[i]->requestMaxNumSamples(static_cast<std::size_t>(jmax(1, maximumBlockSize))
+                                                  * static_cast<std::size_t>(channelsInSink));
+        }
 #else
     juce::ignoreUnused(maximumBlockSize, numOutputChannels);
 #endif
@@ -310,6 +316,7 @@ LinkAudioService::NodeSinkGroup* LinkAudioService::registerNodeSink(AudioProcess
     group->nodeId = nodeId;
 
     const auto clampedChannels = jlimit(0, static_cast<int>(kMaximumChannels), numChannels);
+    group->numChannels = clampedChannels;
     const auto requiredSinks = static_cast<std::size_t>(jmax(0, (clampedChannels + 1) / 2));
     const auto maximumBlockSize = jmax(1, currentMaxBlockSize.load(std::memory_order_acquire));
 

@@ -209,13 +209,6 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n, FilterGraph* owne
             {
                 linkAudioButton = new TextButton("L", "Publish to Link Audio");
                 linkAudioButton->setBounds(60, getHeight() - 30, 20, 20);
-                linkAudioButton->setToggleState(ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID),
-                                                dontSendNotification);
-                linkAudioButton->addListener(this);
-                addChildComponent(linkAudioButton);
-                // Only worth showing once Link Audio itself is switched on -
-                // timerUpdate() keeps this in sync if the user flips it later.
-                linkAudioButton->setVisible(isLinkAudioCurrentlyEnabled());
             }
         }
 
@@ -232,6 +225,29 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n, FilterGraph* owne
         deleteButton->setBounds(getWidth() - 17, 5, 12, 12);
         deleteButton->addListener(this);
         addAndMakeVisible(deleteButton);
+    }
+    else if (canPublishToLinkAudio)
+    {
+        // Audio Input/Audio Output get none of the footer chrome above (no
+        // edit/mappings/bypass/delete row - see the pluginName exclusion this
+        // is the `else` of), but they ARE one of the two device-I/O node
+        // kinds this feature covers, so they still need a way to reach the
+        // toggle. Place it in the small strip below the title label (y 3-23)
+        // and above where pins/gain sliders start (y 40+ - see isAudioIONode
+        // handling further down and PluginField::labelTextChanged).
+        linkAudioButton = new TextButton("L", "Publish to Link Audio");
+        linkAudioButton->setBounds(10, 24, jmin(getWidth() - 20, 20), 14);
+    }
+
+    if (linkAudioButton != nullptr)
+    {
+        linkAudioButton->setToggleState(ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID),
+                                        dontSendNotification);
+        linkAudioButton->addListener(this);
+        addChildComponent(linkAudioButton);
+        // Only worth showing once Link Audio itself is switched on -
+        // timerUpdate() keeps this in sync if the user flips it later.
+        linkAudioButton->setVisible(isLinkAudioCurrentlyEnabled());
     }
 
     if (proc)
@@ -645,12 +661,16 @@ void PluginComponent::mouseDown(const MouseEvent& e)
         menu.addItem(2, "Open Generic Editor");
 
         menu.showMenuAsync(PopupMenu::Options().withTargetComponent(editButton),
-                           [this](int result)
+                           [safeThis = Component::SafePointer<PluginComponent>(this)](int result)
                            {
+                               // The node (and this component) may have been deleted, or the
+                               // patch reloaded, while the menu was open.
+                               if (safeThis == nullptr)
+                                   return;
                                if (result == 1)
-                                   openPluginEditor(false); // Custom editor
+                                   safeThis->openPluginEditor(false); // Custom editor
                                else if (result == 2)
-                                   openPluginEditor(true); // Generic editor
+                                   safeThis->openPluginEditor(true); // Generic editor
                            });
         return;
     }
@@ -825,15 +845,19 @@ void PluginComponent::buttonClicked(Button* button)
         menu.addItem(1, "Publish to Link Audio", true, ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID));
 
         menu.showMenuAsync(PopupMenu::Options().withTargetComponent(linkAudioButton),
-                           [this](int result)
+                           [safeThis = Component::SafePointer<PluginComponent>(this)](int result)
                            {
-                               if (result != 1 || ownerFilterGraph == nullptr)
+                               // The node (and this component) may have been deleted, or the
+                               // patch reloaded, while the menu was open.
+                               if (safeThis == nullptr || result != 1 || safeThis->ownerFilterGraph == nullptr)
                                    return;
 
-                               const bool nowEnabled = !ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID);
-                               ownerFilterGraph->setNodeLinkAudioPublish(node->nodeID, nowEnabled, pluginName);
-                               if (linkAudioButton != nullptr)
-                                   linkAudioButton->setToggleState(nowEnabled, dontSendNotification);
+                               const bool nowEnabled =
+                                   !safeThis->ownerFilterGraph->isNodeLinkAudioPublishEnabled(safeThis->node->nodeID);
+                               safeThis->ownerFilterGraph->setNodeLinkAudioPublish(safeThis->node->nodeID, nowEnabled,
+                                                                                   safeThis->pluginName);
+                               if (safeThis->linkAudioButton != nullptr)
+                                   safeThis->linkAudioButton->setToggleState(nowEnabled, dontSendNotification);
                            });
     }
     else if (button == bypassButton)
@@ -1227,6 +1251,14 @@ void PluginComponent::determineSize(bool onlyUpdateWidth)
             for (i = 0; i < outputText.size(); ++i)
                 outputText[i]->moveRangeOfGlyphs(0, -1, x, 0.0f);
         }
+
+        // The generic footer layout packs edit/mappings/LINK left-to-right
+        // (edit at x=10, each ~22-36px wide) and bypass right-anchored at
+        // w-30..w-10 - below ~122px total width, LINK's span physically
+        // overlaps bypass's. Only applies to nodes that actually get a LINK
+        // button.
+        if (canPublishToLinkAudio)
+            w = jmax(w, 122);
 
         h = jmax(numInputPins, numOutputPins);
         h *= (int)pinSpacing;

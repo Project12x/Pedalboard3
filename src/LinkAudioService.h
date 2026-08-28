@@ -38,6 +38,10 @@ class LinkAudioService
         AudioProcessorGraph::NodeID nodeId;
 #if PEDALBOARD3_ENABLE_LINK_AUDIO
         std::vector<std::unique_ptr<ableton::LinkAudioSink>> sinks;
+        // Clamped channel count sinks was registered with - kept so prepare()
+        // can correctly re-split channelsInOutputSink() per sink when the
+        // device's block size changes, instead of over-allocating flatly.
+        int numChannels = 0;
 #endif
     };
 
