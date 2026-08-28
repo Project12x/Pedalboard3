@@ -286,6 +286,8 @@ void BypassableInstance::processBlock(AudioSampleBuffer& buffer, MidiBuffer& mid
         }
         bypassRamp = rampVal;
     }
+
+    publishToLinkAudioIfTapped(buffer);
 }
 
 //------------------------------------------------------------------------------

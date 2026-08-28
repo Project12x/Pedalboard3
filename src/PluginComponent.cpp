@@ -29,6 +29,7 @@
 #include "IconManager.h"
 #include "Images.h"
 #include "JuceHelperStuff.h"
+#include "LinkAudioService.h"
 #include "MappingsDialog.h"
 #include "MasterGainState.h"
 #include "PedalboardProcessors.h"
@@ -106,6 +107,15 @@ bool producesMidiSafe(AudioProcessor* proc)
         return bypassable->getCachedProducesMidi();
     return proc->producesMidi();
 }
+
+// The per-node LINK button only makes sense to show once Link Audio itself is
+// switched on (Preferences) - otherwise every eligible node would sprout a
+// button for a feature that's currently off.
+bool isLinkAudioCurrentlyEnabled()
+{
+    auto* service = LinkAudioService::getActiveInstance();
+    return service != nullptr && service->isEnabled();
+}
 } // namespace
 
 //------------------------------------------------------------------------------
@@ -125,11 +135,13 @@ class NiallsGenericEditor : public GenericAudioProcessorEditor
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
+PluginComponent::PluginComponent(AudioProcessorGraph::Node* n, FilterGraph* ownerFilterGraph)
     : Component(),
       // plugin(p),
-      editButton(0), mappingsButton(0), bypassButton(0), deleteButton(0), node(n), pluginWindow(0), beingDragged(false),
-      dragX(0), dragY(0)
+      editButton(0), mappingsButton(0), linkAudioButton(0), bypassButton(0), deleteButton(0), node(n), pluginWindow(0),
+      ownerFilterGraph(ownerFilterGraph),
+      canPublishToLinkAudio(ownerFilterGraph != nullptr && ownerFilterGraph->canNodePublishToLinkAudio(n->nodeID)),
+      beingDragged(false), dragX(0), dragY(0)
 {
     BypassableInstance* bypassable = dynamic_cast<BypassableInstance*>(node->getProcessor());
     PedalboardProcessor* proc = nullptr;
@@ -192,6 +204,19 @@ PluginComponent::PluginComponent(AudioProcessorGraph::Node* n)
             mappingsButton->setBounds(32, getHeight() - 30, 24, 20);
             mappingsButton->addListener(this);
             addAndMakeVisible(mappingsButton);
+
+            if (canPublishToLinkAudio)
+            {
+                linkAudioButton = new TextButton("L", "Publish to Link Audio");
+                linkAudioButton->setBounds(60, getHeight() - 30, 20, 20);
+                linkAudioButton->setToggleState(ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID),
+                                                dontSendNotification);
+                linkAudioButton->addListener(this);
+                addChildComponent(linkAudioButton);
+                // Only worth showing once Link Audio itself is switched on -
+                // timerUpdate() keeps this in sync if the user flips it later.
+                linkAudioButton->setVisible(isLinkAudioCurrentlyEnabled());
+            }
         }
 
         bypassButton = new DrawableButton("BypassFilterButton", DrawableButton::ImageOnButtonBackground);
@@ -522,6 +547,12 @@ void PluginComponent::timerUpdate()
     if (bypassable)
         bypassButton->setToggleState(bypassable->getBypass(), false);
 
+    if (linkAudioButton != nullptr && ownerFilterGraph != nullptr)
+    {
+        linkAudioButton->setToggleState(ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID), false);
+        linkAudioButton->setVisible(isLinkAudioCurrentlyEnabled());
+    }
+
     // Update meter levels for Audio I/O nodes
     if (isAudioIONode())
     {
@@ -787,6 +818,23 @@ void PluginComponent::buttonClicked(Button* button)
     else if (button == mappingsButton)
     {
         openMappingsWindow();
+    }
+    else if (button == linkAudioButton && ownerFilterGraph != nullptr)
+    {
+        PopupMenu menu;
+        menu.addItem(1, "Publish to Link Audio", true, ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID));
+
+        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(linkAudioButton),
+                           [this](int result)
+                           {
+                               if (result != 1 || ownerFilterGraph == nullptr)
+                                   return;
+
+                               const bool nowEnabled = !ownerFilterGraph->isNodeLinkAudioPublishEnabled(node->nodeID);
+                               ownerFilterGraph->setNodeLinkAudioPublish(node->nodeID, nowEnabled, pluginName);
+                               if (linkAudioButton != nullptr)
+                                   linkAudioButton->setToggleState(nowEnabled, dontSendNotification);
+                           });
     }
     else if (button == bypassButton)
     {
@@ -1266,8 +1314,8 @@ void PluginComponent::updateNodeSize()
             auto* child = getChildComponent(ci);
             if (dynamic_cast<PluginPinComponent*>(child) != nullptr)
                 continue;
-            if (child == titleLabel || child == editButton || child == mappingsButton || child == bypassButton ||
-                child == deleteButton)
+            if (child == titleLabel || child == editButton || child == mappingsButton || child == linkAudioButton ||
+                child == bypassButton || child == deleteButton)
                 continue;
             if (dynamic_cast<Slider*>(child) != nullptr)
                 continue;
@@ -1378,8 +1426,8 @@ void PluginComponent::refreshPins()
             // Skip pins, buttons, labels, sliders - the control is the large internal component
             if (dynamic_cast<PluginPinComponent*>(child) != nullptr)
                 continue;
-            if (child == titleLabel || child == editButton || child == mappingsButton || child == bypassButton ||
-                child == deleteButton)
+            if (child == titleLabel || child == editButton || child == mappingsButton || child == linkAudioButton ||
+                child == bypassButton || child == deleteButton)
                 continue;
             if (dynamic_cast<Slider*>(child) != nullptr)
                 continue;

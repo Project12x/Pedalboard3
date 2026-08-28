@@ -189,7 +189,18 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             recorder->writeWetBlock(outputChannelData, numOutputChannels, numSamples);
 
         if (auto* service = linkAudioService.load(std::memory_order_acquire))
+        {
             service->publish(outputChannelData, numOutputChannels, numSamples);
+
+            // Per-node taps for the two graph nodes JUCE's AudioProcessorGraph
+            // renders via direct buffer copies rather than virtual processBlock
+            // dispatch (see LinkAudioService::setAudioInputTapSlot's comment) -
+            // this is the only place their audio is available to tap at all.
+            if (auto* slot = service->getAudioInputTapSlot())
+                service->publishNodeAudio(slot, actualInput, numInputChannels, numSamples);
+            if (auto* slot = service->getAudioOutputTapSlot())
+                service->publishNodeAudio(slot, outputChannelData, numOutputChannels, numSamples);
+        }
 
         // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())

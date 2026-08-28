@@ -21,12 +21,18 @@
 #ifndef BYPASSABLEINSTANCE_H_
 #define BYPASSABLEINSTANCE_H_
 
+#include "AudioTapSource.h"
+
 #include <JuceHeader.h>
 #include <atomic>
 
 
-///	Wrapper class to provide a bypass to AudioPluginInstance.
-class BypassableInstance : public AudioPluginInstance
+///	Wrapper class to provide a bypass to AudioPluginInstance. Also an
+///	AudioTapSource: this covers every VST3/AU plugin and every built-in
+///	effect processor, since FilterGraph wraps all of them in
+///	BypassableInstance (device I/O nodes are the exception - see
+///	TappableAudioGraphIOProcessor).
+class BypassableInstance : public AudioPluginInstance, public AudioTapSource
 {
   public:
     ///	Constructor.

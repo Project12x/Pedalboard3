@@ -34,6 +34,7 @@
 
 #include "CrossfadeMixer.h"
 #include "IFilterGraph.h"
+#include "LinkAudioService.h"
 #include "OscMappingManager.h"
 #include "SafetyLimiter.h"
 
@@ -168,6 +169,29 @@ class FilterGraph : public IFilterGraph, public FileBasedDocument
     {
         return nodeId.uid == 0xFFFFFF || nodeId.uid == 0xFFFFFE;
     }
+
+    /// Returns true if the given node is currently opted in to publish its
+    /// own audio as a per-node Ableton Link Audio sink (see
+    /// setNodeLinkAudioPublish). Reflects the node's persisted
+    /// "linkAudioPublish" property, not whether a live sink actually exists
+    /// right now (e.g. Link Audio may simply be disabled).
+    bool isNodeLinkAudioPublishEnabled(AudioProcessorGraph::NodeID nodeId) const;
+
+    /// Returns true if the given node is a kind that setNodeLinkAudioPublish
+    /// can actually tap (a plugin/built-in effect via BypassableInstance, or
+    /// the Audio Input/Audio Output device nodes) - used to decide whether to
+    /// offer the "Publish to Link Audio" toggle in the UI at all.
+    bool canNodePublishToLinkAudio(AudioProcessorGraph::NodeID nodeId) const;
+
+    /// Opts a node in/out of publishing its own audio as a named Link Audio
+    /// sink, alongside the existing master-bus sink. Persists the choice on
+    /// the node (survives patch save/reload via createNodeXml/
+    /// createNodeFromXml) and, if a LinkAudioService is currently active
+    /// (see LinkAudioService::getActiveInstance), registers/unregisters the
+    /// live sink immediately. Safe to call for any node id, including ones
+    /// that can't actually be tapped (e.g. inside an Effect Rack subgraph) -
+    /// those simply have no live effect beyond persisting the flag.
+    void setNodeLinkAudioPublish(AudioProcessorGraph::NodeID nodeId, bool enabled, const String& displayName);
 
     int getNumFilters() const override;
     AudioProcessorGraph::Node::Ptr getNode(int index) const override;

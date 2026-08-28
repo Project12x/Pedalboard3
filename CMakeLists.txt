@@ -181,6 +181,7 @@ target_sources(Pedalboard3 PRIVATE
     src/UndoActions.h
     src/AudioSingletons.cpp
     src/AudioSingletons.h
+    src/AudioTapSource.h
     src/BypassableInstance.cpp
     src/BypassableInstance.h
     src/InternalFilters.cpp

@@ -59,6 +59,7 @@ int channelsInOutputSink(std::size_t sinkIndex, int totalChannels) noexcept
 void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize, int numOutputChannels)
 {
     sampleRate.store(newSampleRate, std::memory_order_release);
+    currentMaxBlockSize.store(maximumBlockSize, std::memory_order_release);
     const auto fifoFrames = jmax(32768, maximumBlockSize * 64);
     incomingAudioBuffer.setSize(static_cast<int>(kMaximumChannels), fifoFrames, false, true, true);
     incomingAudioFifo.setTotalSize(fifoFrames);
@@ -97,6 +98,12 @@ void LinkAudioService::prepare(double newSampleRate, int maximumBlockSize, int n
             outputSinks[i]->requestMaxNumSamples(maximumSamples);
         }
     }
+
+    // Re-request buffer sizing for already-registered per-node sinks too -
+    // the device's block size can change after a node was opted in.
+    for (auto& group : nodeSinks)
+        for (auto& sink : group->sinks)
+            sink->requestMaxNumSamples(static_cast<std::size_t>(jmax(1, maximumBlockSize)) * 2);
 #else
     juce::ignoreUnused(maximumBlockSize, numOutputChannels);
 #endif
@@ -217,6 +224,11 @@ void LinkAudioService::setActiveInstance(LinkAudioService* service) noexcept
     activeInstance.store(service, std::memory_order_release);
 }
 
+LinkAudioService* LinkAudioService::getActiveInstance() noexcept
+{
+    return activeInstance.load(std::memory_order_acquire);
+}
+
 void LinkAudioService::readIncomingAudio(juce::AudioBuffer<float>& destination) noexcept
 {
     if (auto* service = activeInstance.load(std::memory_order_acquire))
@@ -283,5 +295,120 @@ void LinkAudioService::publish(const float* const* outputChannels, int numOutput
     link->commitAudioSessionState(sessionState);
 #else
     juce::ignoreUnused(outputChannels, numOutputChannels, numSamples);
+#endif
+}
+
+LinkAudioService::NodeSinkGroup* LinkAudioService::registerNodeSink(AudioProcessorGraph::NodeID nodeId,
+                                                                     int numChannels, const juce::String& displayName)
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    // Re-registering an already-registered node (e.g. toggled off then back
+    // on) replaces its sink group rather than accumulating duplicates.
+    unregisterNodeSink(nodeId);
+
+    auto group = std::make_unique<NodeSinkGroup>();
+    group->nodeId = nodeId;
+
+    const auto clampedChannels = jlimit(0, static_cast<int>(kMaximumChannels), numChannels);
+    const auto requiredSinks = static_cast<std::size_t>(jmax(0, (clampedChannels + 1) / 2));
+    const auto maximumBlockSize = jmax(1, currentMaxBlockSize.load(std::memory_order_acquire));
+
+    group->sinks.reserve(requiredSinks);
+    for (std::size_t i = 0; i < requiredSinks; ++i)
+    {
+        const auto channelsInSink = channelsInOutputSink(i, clampedChannels);
+        const auto firstChannel = static_cast<int>(i) * 2;
+
+        juce::String name("Pedalboard3 - ");
+        name << displayName << " " << (firstChannel + 1);
+        if (channelsInSink > 1)
+            name << "-" << (firstChannel + channelsInSink);
+
+        const auto maximumSamples =
+            static_cast<std::size_t>(maximumBlockSize) * static_cast<std::size_t>(channelsInSink);
+        group->sinks.push_back(std::make_unique<ableton::LinkAudioSink>(*link, name.toStdString(), maximumSamples));
+    }
+
+    nodeSinks.push_back(std::move(group));
+    return nodeSinks.back().get();
+#else
+    juce::ignoreUnused(nodeId, numChannels, displayName);
+    return nullptr;
+#endif
+}
+
+void LinkAudioService::unregisterNodeSink(AudioProcessorGraph::NodeID nodeId)
+{
+    for (const auto& group : nodeSinks)
+    {
+        if (group->nodeId != nodeId)
+            continue;
+        // Defensive: a caller that forgot to clear the device-tap alias
+        // before unregistering would otherwise leave it dangling.
+        if (audioInputTap.load(std::memory_order_acquire) == group.get())
+            audioInputTap.store(nullptr, std::memory_order_release);
+        if (audioOutputTap.load(std::memory_order_acquire) == group.get())
+            audioOutputTap.store(nullptr, std::memory_order_release);
+    }
+
+    nodeSinks.erase(std::remove_if(nodeSinks.begin(), nodeSinks.end(),
+                                   [nodeId](const std::unique_ptr<NodeSinkGroup>& group)
+                                   { return group->nodeId == nodeId; }),
+                    nodeSinks.end());
+}
+
+void LinkAudioService::clearAllNodeSinks()
+{
+    // Callers must have already nulled out any AudioTapSource slots pointing
+    // into nodeSinks (the nodes themselves are being destroyed by a graph
+    // rebuild). The two device-tap aliases point into the same storage, so
+    // they'd dangle after the clear below if left as-is.
+    audioInputTap.store(nullptr, std::memory_order_release);
+    audioOutputTap.store(nullptr, std::memory_order_release);
+    nodeSinks.clear();
+}
+
+void LinkAudioService::publishNodeAudio(NodeSinkGroup* slot, const float* const* channels, int numChannels,
+                                        int numSamples) noexcept
+{
+#if PEDALBOARD3_ENABLE_LINK_AUDIO
+    if (!isEnabled() || slot == nullptr || slot->sinks.empty() || channels == nullptr || numChannels <= 0
+        || numSamples <= 0)
+        return;
+
+    const auto totalChannels = jmin(numChannels, static_cast<int>(kMaximumChannels));
+    for (int channel = 0; channel < totalChannels; ++channel)
+        if (channels[channel] == nullptr)
+            return;
+
+    const auto hostTime = link->clock().micros();
+    auto sessionState = link->captureAudioSessionState();
+    const auto beatsAtBufferBegin = sessionState.beatAtTime(hostTime, kQuantum);
+    const auto sr = static_cast<uint32_t>(sampleRate.load(std::memory_order_acquire));
+
+    for (std::size_t sinkIndex = 0; sinkIndex < slot->sinks.size(); ++sinkIndex)
+    {
+        const auto channelsInSink = channelsInOutputSink(sinkIndex, totalChannels);
+        if (channelsInSink <= 0)
+            break;
+        const auto firstChannel = static_cast<int>(sinkIndex) * 2;
+
+        ableton::LinkAudioSink::BufferHandle buffer(*slot->sinks[sinkIndex]);
+        const auto requiredSamples = static_cast<std::size_t>(numSamples) * static_cast<std::size_t>(channelsInSink);
+        if (!buffer || requiredSamples > buffer.maxNumSamples)
+            continue;
+
+        for (int frame = 0; frame < numSamples; ++frame)
+            for (int ch = 0; ch < channelsInSink; ++ch)
+                buffer.samples[static_cast<std::size_t>(frame) * static_cast<std::size_t>(channelsInSink) +
+                               static_cast<std::size_t>(ch)] = floatToPcm16(channels[firstChannel + ch][frame]);
+
+        buffer.commit(sessionState, beatsAtBufferBegin, kQuantum, static_cast<std::size_t>(numSamples),
+                      static_cast<std::size_t>(channelsInSink), sr);
+    }
+
+    link->commitAudioSessionState(sessionState);
+#else
+    juce::ignoreUnused(slot, channels, numChannels, numSamples);
 #endif
 }
