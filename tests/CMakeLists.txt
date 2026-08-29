@@ -24,6 +24,7 @@ add_executable(Pedalboard3_Tests
     mixer_splitter_test.cpp
     master_bus_test.cpp
     font_manager_test.cpp
+    link_audio_test.cpp
     ../src/ScratchRecorder.cpp
     ../src/ScratchTake.cpp
     ../src/PluginPoolManager.cpp
@@ -34,6 +35,8 @@ add_executable(Pedalboard3_Tests
     ../src/FontManager.cpp
     ../src/StageLayout.cpp
     ../src/UiScale.cpp
+    ../src/LinkAudioService.cpp
+    ../src/LinkAudioInputProcessor.cpp
 )
 
 
@@ -41,7 +44,6 @@ add_executable(Pedalboard3_Tests
 # Link Catch2 and project dependencies needed for testing
 target_link_libraries(Pedalboard3_Tests PRIVATE
     Catch2::Catch2WithMain
-    fmt::fmt
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     juce::juce_audio_processors
@@ -67,6 +69,7 @@ target_compile_definitions(Pedalboard3_Tests PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_PLUGINHOST_VST3=1
+    PEDALBOARD3_ENABLE_LINK_AUDIO=0
 )
 
 # Register tests with CTest

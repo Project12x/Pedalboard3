@@ -30,6 +30,7 @@
 class PresetBar;
 class PluginEditorWindow;
 class PluginPinComponent;
+class FilterGraph;
 
 //------------------------------------------------------------------------------
 ///	Component representing a plugin/filter in the PluginField.
@@ -41,8 +42,10 @@ class PluginComponent : public Component,
                         private Timer
 {
   public:
-    ///	Constructor.
-    PluginComponent(AudioProcessorGraph::Node* n);
+    ///	Constructor. ownerFilterGraph is used only for the "Publish to Link
+    ///	Audio" context-menu toggle - pass nullptr (e.g. for a node inside an
+    ///	Effect Rack's SubGraphEditorComponent) to omit that toggle entirely.
+    PluginComponent(AudioProcessorGraph::Node* n, FilterGraph* ownerFilterGraph = nullptr);
     ///	Destructor.
     ~PluginComponent();
 
@@ -150,6 +153,9 @@ class PluginComponent : public Component,
     TextButton* editButton;
     ///	Button to open the plugin's mappings editor.
     TextButton* mappingsButton;
+    ///	Button that opens the "Publish to Link Audio" popup menu. Only
+    ///	created when canPublishToLinkAudio is true.
+    TextButton* linkAudioButton;
     ///	Button to bypass the plugin
     DrawableButton* bypassButton;
     ///	Button to delete the plugin.
@@ -160,6 +166,13 @@ class PluginComponent : public Component,
     AudioProcessorGraph::Node* node;
     ///	Window for the plugin.
     PluginEditorWindow* pluginWindow;
+
+    ///	Owning graph, used only for the "Publish to Link Audio" toggle;
+    ///	nullptr when this node lives inside an Effect Rack subgraph.
+    FilterGraph* ownerFilterGraph;
+    ///	Cached once at construction: whether this node's processor type can
+    ///	be tapped for Link Audio at all (see FilterGraph::canNodePublishToLinkAudio).
+    bool canPublishToLinkAudio;
 
     ///	The name of the plugin.
     String pluginName;

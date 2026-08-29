@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "MeteringCallbackBounds.h"
+
 #include <JuceHeader.h>
 #include <atomic>
 
@@ -27,7 +29,7 @@
 class DeviceMeterTap : public juce::AudioIODeviceCallback
 {
 public:
-    static constexpr int MaxChannels = 16;
+    static constexpr int MaxChannels = MeteringCallbackBounds::MaxChannels;
 
     DeviceMeterTap();
     ~DeviceMeterTap() override;

@@ -32,6 +32,7 @@
 #include "FilterGraph.h"
 
 #include "AudioSingletons.h"
+#include "AudioTapSource.h"
 #include "BypassableInstance.h"
 #include "InternalFilters.h"
 #include "MidiMappingManager.h"
@@ -484,6 +485,9 @@ AudioProcessorGraph::NodeID FilterGraph::addFilterRaw(const PluginDescription* d
 
 void FilterGraph::removeFilterRaw(const AudioProcessorGraph::NodeID id)
 {
+    if (isNodeLinkAudioPublishEnabled(id))
+        setNodeLinkAudioPublish(id, false, {});
+
     if (graph.removeNode(id))
         changed();
 }
@@ -578,8 +582,13 @@ void FilterGraph::clear(bool addAudioIn, bool addMidiIn, bool addAudioOut, bool 
 
     // PluginWindow::closeAllCurrentlyOpenWindows();
 
-    graph.clear();
-    createInfrastructureNodes();
+    {
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        if (auto* service = LinkAudioService::getActiveInstance())
+            service->clearAllNodeSinks();
+        graph.clear();
+        createInfrastructureNodes();
+    }
 
     // Add nodes with temporary Y positions (will be repositioned below)
     if (addAudioIn)
@@ -737,6 +746,7 @@ static XmlElement* createNodeXml(AudioProcessorGraph::Node::Ptr node, const OscM
     e->setAttribute("uiLastY", (int)node->properties.getWithDefault("uiLastY", 0.0));
     e->setAttribute("windowOpen", (bool)node->properties.getWithDefault("windowOpen", false));
     e->setAttribute("program", node->getProcessor()->getCurrentProgram());
+    e->setAttribute("linkAudioPublish", (bool)node->properties.getWithDefault("linkAudioPublish", false));
     if (bypassable)
     {
         e->setAttribute("oscMIDIAddress", oscManager.getMIDIProcessorAddress(bypassable));
@@ -838,6 +848,7 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     node->properties.set("uiLastX", xml.getIntAttribute("uiLastX"));
     node->properties.set("uiLastY", xml.getIntAttribute("uiLastY"));
     node->properties.set("windowOpen", xml.getIntAttribute("windowOpen"));
+    node->properties.set("linkAudioPublish", xml.getBoolAttribute("linkAudioPublish", false));
 
     midiAddress = xml.getStringAttribute("oscMIDIAddress");
     if (bypassable)
@@ -850,6 +861,9 @@ void FilterGraph::createNodeFromXml(const XmlElement& xml, OscMappingManager& os
     }
 
     node->getProcessor()->setCurrentProgram(xml.getIntAttribute("program"));
+
+    if (xml.getBoolAttribute("linkAudioPublish", false))
+        setNodeLinkAudioPublish(node->nodeID, true, node->getProcessor()->getName());
 }
 
 XmlElement* FilterGraph::createXml(const OscMappingManager& oscManager) const
@@ -931,4 +945,106 @@ void FilterGraph::restoreFromXml(const XmlElement& xml, OscMappingManager& oscMa
 
     spdlog::info("[FilterGraph::restoreFromXml] After removeIllegalConnections: {} -> {} connections", beforeRemove,
                  afterRemove);
+}
+
+bool FilterGraph::isNodeLinkAudioPublishEnabled(AudioProcessorGraph::NodeID nodeId) const
+{
+    auto node = graph.getNodeForId(nodeId);
+    return node != nullptr && (bool)node->properties.getWithDefault("linkAudioPublish", false);
+}
+
+bool FilterGraph::canNodePublishToLinkAudio(AudioProcessorGraph::NodeID nodeId) const
+{
+    auto node = graph.getNodeForId(nodeId);
+    if (node == nullptr)
+        return false;
+
+    if (dynamic_cast<AudioTapSource*>(node->getProcessor()) != nullptr)
+        return true;
+
+    if (auto* ioProcessor = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor()))
+        return ioProcessor->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode
+               || ioProcessor->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode;
+
+    return false;
+}
+
+void FilterGraph::setNodeLinkAudioPublish(AudioProcessorGraph::NodeID nodeId, bool enabled, const String& displayName)
+{
+    auto node = graph.getNodeForId(nodeId);
+    if (node == nullptr)
+        return;
+
+    node->properties.set("linkAudioPublish", enabled);
+
+    // The Audio Input / Audio Output nodes are AudioGraphIOProcessor
+    // instances that JUCE's graph renders via direct buffer copies rather
+    // than calling processBlock() (see LinkAudioService::setAudioInputTapSlot's
+    // comment) - they can't implement AudioTapSource like every other node,
+    // so they're dispatched to LinkAudioService's two dedicated slots instead.
+    auto* ioProcessor = dynamic_cast<AudioProcessorGraph::AudioGraphIOProcessor*>(node->getProcessor());
+    const bool isAudioInputNode =
+        ioProcessor != nullptr && ioProcessor->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioInputNode;
+    const bool isAudioOutputNode =
+        ioProcessor != nullptr
+        && ioProcessor->getType() == AudioProcessorGraph::AudioGraphIOProcessor::audioOutputNode;
+    auto* tapSource = dynamic_cast<AudioTapSource*>(node->getProcessor());
+
+    auto* service = LinkAudioService::getActiveInstance();
+
+    if (!enabled)
+    {
+        // Clear whichever slot this node uses BEFORE unregistering, under the
+        // graph's callback lock, so the audio thread can never be mid-publish
+        // through a sink group that's about to be destroyed.
+        const juce::ScopedLock sl(graph.getCallbackLock());
+        if (isAudioInputNode && service != nullptr)
+            service->setAudioInputTapSlot(nullptr);
+        if (isAudioOutputNode && service != nullptr)
+            service->setAudioOutputTapSlot(nullptr);
+        if (tapSource != nullptr)
+            tapSource->setLinkAudioSinkSlot(nullptr);
+        if (service != nullptr)
+            service->unregisterNodeSink(nodeId);
+        return;
+    }
+
+    // Node type doesn't support tapping at all (e.g. SubGraphProcessor - see
+    // AudioTapSource.h) - persist the flag above but nothing more to do.
+    if (!isAudioInputNode && !isAudioOutputNode && tapSource == nullptr)
+        return;
+
+    // Link Audio isn't running (or not compiled in) - the flag is persisted
+    // for when it next is; registerNodeSink returns nullptr in that case.
+    if (service == nullptr)
+        return;
+
+    // Audio Output's own output-channel count is 0 - the graph wires its
+    // *input* channel count to match the device on setParentGraph(), so
+    // that's where its actual audio content lives. Every other tappable node
+    // (including Audio Input) publishes what it renders on its outputs.
+    const int numChannels = isAudioOutputNode ? node->getProcessor()->getTotalNumInputChannels()
+                                              : node->getProcessor()->getTotalNumOutputChannels();
+
+    // registerNodeSink() unconditionally destroys any existing sink group for
+    // this node id before creating the new one (e.g. re-enabling after a
+    // duplicate enable call, or a malformed patch with a repeated uid). Take
+    // the same callback lock the disable path uses and clear the old slot
+    // pointer FIRST, so the audio thread can never be mid-publish through a
+    // sink group that's about to be freed by that dedup.
+    const juce::ScopedLock sl(graph.getCallbackLock());
+    if (isAudioInputNode)
+        service->setAudioInputTapSlot(nullptr);
+    else if (isAudioOutputNode)
+        service->setAudioOutputTapSlot(nullptr);
+    else if (tapSource != nullptr)
+        tapSource->setLinkAudioSinkSlot(nullptr);
+
+    auto* slot = service->registerNodeSink(nodeId, numChannels, displayName);
+    if (isAudioInputNode)
+        service->setAudioInputTapSlot(slot);
+    else if (isAudioOutputNode)
+        service->setAudioOutputTapSlot(slot);
+    else if (tapSource != nullptr)
+        tapSource->setLinkAudioSinkSlot(slot);
 }

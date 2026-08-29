@@ -36,6 +36,7 @@
 #include "Images.h"
 #include "JuceHelperStuff.h"
 #include "LabelProcessor.h"
+#include "LinkAudioSettingsDialog.h"
 #include "LogDisplay.h"
 #include "LogFile.h"
 #include "MainTransport.h"
@@ -471,6 +472,10 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     graphPlayer.setScratchRecorder(&scratchRecorder);
+    graphPlayer.setLinkAudioService(&linkAudioService);
+    LinkAudioService::setActiveInstance(&linkAudioService);
+    linkAudioService.setPeerName(SettingsManager::getInstance().getString("abletonLinkPeerName", "Pedalboard3"));
+    linkAudioService.setEnabled(SettingsManager::getInstance().getBool(LinkAudioService::settingsKey, false));
     deviceManager.addAudioCallback(&graphPlayer);
 
     // Device meter tap for I/O node VU meters (can be disabled for debugging)
@@ -658,6 +663,8 @@ MainPanel::~MainPanel()
     }
     scratchRecorder.requestStop();
     graphPlayer.setScratchRecorder(nullptr);
+    graphPlayer.setLinkAudioService(nullptr);
+    LinkAudioService::setActiveInstance(nullptr);
     deviceManager.removeAudioCallback(&graphPlayer);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
@@ -1592,6 +1599,7 @@ PopupMenu MainPanel::getMenuForIndex(int topLevelMenuIndex, const String& menuNa
         retval.addCommandItem(commandManager, OptionsPluginList);
         retval.addCommandItem(commandManager, OptionsPluginBlacklist);
         retval.addCommandItem(commandManager, OptionsPreferences);
+        retval.addCommandItem(commandManager, OptionsLinkAudioSettings);
         PopupMenu uiScaleMenu;
         const auto currentUiScalePercent = getUiScalePercent();
         uiScaleMenu.addItem(OptionsUiScale75, "75%", true, currentUiScalePercent == 75);
@@ -1697,6 +1705,7 @@ void MainPanel::getAllCommands(Array<CommandID>& commands)
                              EditRedo,
                              EditPanic,
                              OptionsPreferences,
+                             OptionsLinkAudioSettings,
                              OptionsAudio,
                              OptionsPluginList,
                              OptionsColourSchemes,
@@ -1799,6 +1808,10 @@ void MainPanel::getCommandInfo(const CommandID commandID, ApplicationCommandInfo
         break;
     case OptionsPreferences:
         result.setInfo("Misc Settings", "Displays miscellaneous settings.", optionsCategory, 0);
+        break;
+    case OptionsLinkAudioSettings:
+        result.setInfo("Link Audio Settings", "Configure Ableton Link Audio publishing and inspect peers.", optionsCategory,
+                       0);
         break;
     case OptionsAudio:
         result.setInfo("Audio Settings", "Displays soundcard settings.", optionsCategory, 0);
@@ -1992,12 +2005,20 @@ bool MainPanel::perform(const InvocationInfo& info)
                                          ColourScheme::getInstance().colours["Window Background"], true, true);
     }
     break;
+    case OptionsLinkAudioSettings:
+    {
+        LinkAudioSettingsDialog dlg(this);
+        JuceHelperStuff::showModalDialog("Link Audio Settings", &dlg, 0,
+                                         ColourScheme::getInstance().colours["Window Background"], true, true);
+    }
+    break;
     case OptionsAudio:
     {
         savePatch();
 
         {
-            AudioDeviceSelectorComponent win(deviceManager, 1, 16, 1, 16, true, false, false, false);
+            AudioDeviceSelectorComponent win(deviceManager, 1, MeteringCallbackBounds::MaxChannels, 1,
+                                             MeteringCallbackBounds::MaxChannels, true, false, false, false);
             win.setSize(380, 400);
             JuceHelperStuff::showModalDialog("Audio Settings", &win, 0,
                                              ColourScheme::getInstance().colours["Window Background"], true, true);
@@ -2486,6 +2507,8 @@ void MainPanel::textEditorTextChanged(TextEditor& editor)
 
         if (field)
             field->setTempo(tempoEditor->getText().getDoubleValue());
+
+        linkAudioService.setTempo(tempoEditor->getText().getDoubleValue());
     }
 }
 
@@ -2498,6 +2521,8 @@ void MainPanel::textEditorReturnKeyPressed(TextEditor& editor)
 
         if (field)
             field->setTempo(tempoEditor->getText().getDoubleValue());
+
+        linkAudioService.setTempo(tempoEditor->getText().getDoubleValue());
     }
     playButton->grabKeyboardFocus();
 }
@@ -2637,6 +2662,49 @@ void MainPanel::setAutoMappingsWindow(bool val)
     field->setAutoMappingsWindow(val);
 
     SettingsManager::getInstance().setValue("AutoMappingsWindow", val);
+}
+
+//------------------------------------------------------------------------------
+void MainPanel::enableAbletonLinkAudio(bool val)
+{
+    linkAudioService.setEnabled(val);
+    SettingsManager::getInstance().setValue(LinkAudioService::settingsKey, val);
+}
+
+bool MainPanel::isAbletonLinkAudioEnabled() const noexcept
+{
+    return linkAudioService.isEnabled();
+}
+
+void MainPanel::setAbletonLinkPeerName(const String& name)
+{
+    linkAudioService.setPeerName(name);
+    SettingsManager::getInstance().setValue("abletonLinkPeerName", linkAudioService.getPeerName());
+}
+
+String MainPanel::getAbletonLinkPeerName() const
+{
+    return linkAudioService.getPeerName();
+}
+
+int MainPanel::getAbletonLinkPeerCount() const noexcept
+{
+    return linkAudioService.getPeerCount();
+}
+
+StringArray MainPanel::getAbletonLinkAudioChannels() const
+{
+    return linkAudioService.getAvailableChannels();
+}
+
+void MainPanel::selectAbletonLinkIncomingChannel(int channelIndex)
+{
+    linkAudioService.selectIncomingChannel(channelIndex);
+}
+
+int MainPanel::getAbletonLinkIncomingChannel() const noexcept
+{
+    return linkAudioService.getSelectedIncomingChannel();
 }
 
 //------------------------------------------------------------------------------

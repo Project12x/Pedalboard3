@@ -81,6 +81,7 @@ class InternalPluginFormat : public AudioPluginFormat
         virtualMidiInputProcFilter,
         dawMixerProcFilter,
         dawSplitterProcFilter,
+        linkAudioInputProcFilter,
 
         endOfFilterTypes
     };
@@ -156,6 +157,7 @@ class InternalPluginFormat : public AudioPluginFormat
     PluginDescription virtualMidiInputProcDesc;
     PluginDescription dawMixerProcDesc;
     PluginDescription dawSplitterProcDesc;
+    PluginDescription linkAudioInputProcDesc;
 };
 
 #endif

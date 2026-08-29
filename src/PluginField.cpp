@@ -1174,7 +1174,7 @@ void PluginField::addFilter(int index, bool broadcastChangeMessage)
 
                 // Make sure the plugin knows about the AudioPlayHead.
                 node->getProcessor()->setPlayHead(this);
-                plugin = new PluginComponent(node);
+                plugin = new PluginComponent(node, signalPath);
             }
 
             x = signalPath->getNode(index)->properties.getWithDefault("x", 0);
@@ -1573,13 +1573,21 @@ void PluginField::deleteConnection()
                 const PluginPinComponent* s = c->getSource();
                 const PluginPinComponent* d = c->getDestination();
 
-                signalPath->removeConnection(AudioProcessorGraph::NodeID(s->getUid()), s->getChannel(),
-                                             AudioProcessorGraph::NodeID(d->getUid()), d->getChannel());
+                // A connection being actively dragged from an output pin has
+                // a null destination (and possibly a null source) until it's
+                // dropped on a pin - see PluginConnection's constructor. A
+                // right-click landing on that in-progress cable must not
+                // dereference either pin.
+                if (s != nullptr && d != nullptr)
+                    signalPath->removeConnection(AudioProcessorGraph::NodeID(s->getUid()), s->getChannel(),
+                                                 AudioProcessorGraph::NodeID(d->getUid()), d->getChannel());
+
+                const bool wasParameterConnection = c->getParameterConnection();
                 removeChildComponent(c);
                 delete c;
 
                 // If it's a param connection, delete any MIDI or OSC mappings.
-                if (c->getParameterConnection())
+                if (wasParameterConnection && s != nullptr && d != nullptr)
                 {
                     uint32 sourceId = s->getUid();
                     uint32 destId = d->getUid();
