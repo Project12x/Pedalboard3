@@ -54,6 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Tuner String Checklist Persistence** — A string marked in tune now stays marked while other strings are tuned. Overlapping analysis windows after a pitch change can still look like the previous string a few cents off; that no longer clears the earlier ready bit. A later reading of the same string at 12 cents or more still unchecks it.
 - **Scratch Panel Elapsed Timer** — Active scratch recordings now format elapsed time from the active take sample rate instead of waiting for a finalized last take.
 - **Scratch Take Action Clipping** — Scratch recent-take `Play`, `Reamp`, and `Reveal` buttons now use a deterministic row layout so actions do not overlap at panel width.
 - **NAM/IR Browser Detail State** — Populated NAM and IR browsers now select and preview the first available row after scans and filters instead of opening with blank details and enabled load actions.

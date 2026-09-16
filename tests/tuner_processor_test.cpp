@@ -271,6 +271,7 @@ TEST_CASE("TunerProcessor tracks standard guitar strings as an octave-specific s
     REQUIRE(driveSineUntilCurrentString(tuner, buffer, midi, phase, sampleRate, lowEHz, 0));
     CHECK(tuner.getCurrentGuitarStringIndex() == 0);
     CHECK((tuner.getGuitarStringInTuneMask() & (1 << 0)) != 0);
+    // Overlapping analysis can revisit high E a few cents sharp; that must not uncheck it.
     CHECK((tuner.getGuitarStringInTuneMask() & (1 << 5)) != 0);
 
     phase = 0.0;

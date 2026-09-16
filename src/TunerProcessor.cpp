@@ -29,6 +29,10 @@ constexpr int kStableHoldWindows = 6;
 constexpr int kFastHoldWindows = 0;
 constexpr std::array<int, 6> kStandardGuitarStringMidiNotes{{40, 45, 50, 55, 59, 64}};
 constexpr float kGuitarStringInTuneCents = 4.0f;
+// Overlapping analysis windows after a string change can revisit the previous
+// string a few cents off (high E -> low E publishes a delayed 9-cent E4). That
+// is not the player detuning the old string, so clearing uses a wider band.
+constexpr float kGuitarStringOutOfTuneCents = 12.0f;
 constexpr float kGuitarStringCaptureRangeCents = 250.0f;
 
 struct GuitarStringMatch
@@ -321,9 +325,10 @@ void TunerProcessor::updateGuitarStringChecklist(float frequencyHz, float refA4H
 
     const int stringBit = 1 << match.index;
     auto mask = guitarStringInTuneMask.load(std::memory_order_acquire);
-    if (std::abs(match.cents) <= kGuitarStringInTuneCents)
+    const auto absCents = std::abs(match.cents);
+    if (absCents <= kGuitarStringInTuneCents)
         mask |= stringBit;
-    else
+    else if (absCents >= kGuitarStringOutOfTuneCents)
         mask &= ~stringBit;
 
     guitarStringInTuneMask.store(mask, std::memory_order_release);
