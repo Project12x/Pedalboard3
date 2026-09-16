@@ -17,6 +17,8 @@ deviation strip, and primary meter prioritized.
 
 `tests/tuner_processor_test.cpp:274` fails. The test tunes high E, then low E,
 and expects the high-E bit to remain set. In the observed run it was cleared.
+On 2026-09-16, the focused `[tuner]` run reported 9/10 cases passing and
+511/512 assertions passing; this was the sole failure.
 
 The intended behavior is:
 
