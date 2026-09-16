@@ -37,7 +37,7 @@ class TunerProcessor : public PedalboardProcessor
     //==========================================================================
     // PedalboardProcessor interface
     Component* getControls() override;
-    Point<int> getSize() override { return Point<int>(390, 320); }
+    Point<int> getSize() override { return Point<int>(430, 350); }
     NodeShellPolicy getNodeShellPolicy() const override { return NodeShellPolicy::directPainted(); }
     PinLayout getInputPinLayout() const override;
     PinLayout getOutputPinLayout() const override;

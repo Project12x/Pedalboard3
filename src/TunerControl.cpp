@@ -71,7 +71,7 @@ TunerControl::TunerControl(TunerProcessor* processor) : tunerProcessor(processor
     // 60 fps for smooth animation
     startTimerHz(60);
 
-    setSize(390, 320);
+    setSize(430, 350);
 }
 
 TunerControl::~TunerControl()
@@ -167,49 +167,38 @@ void TunerControl::paint(Graphics& g)
 
     drawTunerGlassPanel(g, bounds);
 
-    auto area = bounds.reduced(8, 6);
+    auto area = bounds.reduced(10, 8);
 
-    auto headerArea = area.removeFromTop(34);
+    auto headerArea = area.removeFromTop(38);
     drawTunerHeader(g, headerArea);
 
-    area.removeFromTop(7);
+    area.removeFromTop(8);
 
-    auto modeArea = area.removeFromTop(29);
+    auto modeArea = area.removeFromTop(30);
     drawModeSegmentedControl(g, modeArea);
 
-    area.removeFromTop(5);
+    area.removeFromTop(8);
 
-    auto noteArea = area.removeFromTop(62);
+    auto noteArea = area.removeFromTop(78);
     drawNoteDisplay(g, noteArea);
 
-    auto confidenceArea = area.removeFromTop(8);
+    auto confidenceArea = area.removeFromTop(10);
     drawSignalConfidenceStrip(g, confidenceArea);
 
-    area.removeFromTop(4);
+    area.removeFromTop(8);
 
-    auto traceArea = area.removeFromTop(48);
-    drawPitchTrace(g, traceArea);
-
-    area.removeFromTop(3);
-
-    auto coarseArea = area.removeFromTop(18);
+    auto coarseArea = area.removeFromTop(24);
     drawCoarseDeviationStrip(g, coarseArea);
 
-    area.removeFromTop(3);
+    area.removeFromTop(8);
 
-    auto meterArea = area.removeFromTop(70);
+    auto meterArea = area.reduced(8.0f, 0.0f);
     if (currentMode == TunerMode::Needle)
         drawNeedleMeter(g, meterArea);
     else if (currentMode == TunerMode::SixString)
         drawSixStringDisplay(g, meterArea);
     else
         drawPitchDriftDisc(g, meterArea);
-
-    auto statusArea = area.removeFromTop(20);
-    auto railArea = statusArea.removeFromRight(130.0f);
-    statusArea.removeFromRight(5.0f);
-    drawStatusBadge(g, statusArea);
-    drawReferenceResponseRail(g, railArea);
 }
 
 //==============================================================================
@@ -1103,9 +1092,9 @@ void TunerControl::resized()
 {
     auto& colours = ColourScheme::getInstance().colours;
 
-    auto bounds = getLocalBounds().reduced(8, 6);
-    bounds.removeFromTop(41);
-    auto modeArea = bounds.removeFromTop(29);
+    auto bounds = getLocalBounds().reduced(10, 8);
+    bounds.removeFromTop(46);
+    auto modeArea = bounds.removeFromTop(30);
     auto bypassArea = modeArea.removeFromRight(82).reduced(2, 2);
     modeArea.removeFromRight(4);
     const int thirdWidth = modeArea.getWidth() / 3;

@@ -2,7 +2,7 @@
 
 - **Product intent:** Fast, practical gig utility for local performers.
 - **Focus:** Time-to-sound, confidence before playing, and always-visible levels.
-- **Last updated:** 2026-06-05
+- **Last updated:** 2026-06-20
 - **Status:** Active; partially complete
 
 ---
@@ -12,8 +12,9 @@
 Ship the smallest set of high-impact features that make first use and weekly gig use feel instant:
 
 1. Starter Rig Browser
-2. One-Click Soundcheck
-3. Built-in VU meters on Audio Input/Output nodes
+2. Scratch Templates for one-click raw/wet idea capture
+3. One-Click Soundcheck
+4. Built-in VU meters on Audio Input/Output nodes
 
 ---
 
@@ -25,6 +26,7 @@ Ship the smallest set of high-impact features that make first use and weekly gig
 | Built-in VU meters on Audio I/O nodes | Done | `PluginComponent` renders input/output node levels from `DeviceMeterTap`. |
 | One-Click Soundcheck | Planned / next P0 | `SoundcheckDialog` has not been implemented. |
 | Starter Rig Browser | Planned / next P0 | `StarterRigManager`, `StarterRigBrowser`, and starter rig content do not exist yet. |
+| Scratch Templates | Planned / next P0 | Should reuse the starter rig template system so guitar scratch presets do not become a parallel loader. |
 
 ---
 
@@ -66,7 +68,55 @@ A user can open Pedalboard3, choose a starter rig, and play immediately.
 
 ---
 
-## 2) One-Click Soundcheck (P0)
+## 2) Scratch Templates (P0)
+
+## Outcome
+A user can pick a small preset such as clean DI, edge-of-breakup, high gain,
+bass, or ambient lead, plug in a guitar, and record a scratch take with dry DI
+and wet output preserved for later reamping.
+
+## Scope
+- Curated scratch presets implemented as starter rig templates, not a separate system.
+- A scratch-focused entry point that loads the template and arms the existing raw/wet recorder workflow.
+- Template metadata that identifies required plugins, NAM models, IRs, and fallback behavior.
+- Clear record-ready states for missing input, missing output, missing model, or missing plugin.
+
+## Files to add
+- Reuse `src/StarterRigManager.h`
+- Reuse `src/StarterRigManager.cpp`
+- Reuse `src/StarterRigBrowser.h`
+- Reuse `src/StarterRigBrowser.cpp`
+- Optional later: `src/ScratchTemplateBrowser.h`
+- Optional later: `src/ScratchTemplateBrowser.cpp`
+
+## Files to modify
+- `src/MainPanel.h`
+- `src/MainPanel.cpp`
+- `src/ScratchPanel.h`
+- `src/ScratchPanel.cpp`
+- `src/ScratchTake.h` only if additional template metadata belongs in `take.json`
+- `CMakeLists.txt`
+
+## Data/content
+- Use `starter_rigs/` for template files and metadata.
+- Add scratch-specific metadata fields only where useful:
+  - `scratch_ready`
+  - `captures_raw_wet`
+  - `instrument`
+  - `required_models`
+  - `required_irs`
+  - `fallback_template`
+
+## Acceptance criteria
+- User can choose a scratch preset and start recording without manually adding or wiring recorder nodes.
+- Every guitar scratch preset preserves synchronized `raw.wav`, `wet.wav`, and `take.json`.
+- Missing optional assets produce a clear message and safe fallback.
+- The take metadata records the patch/template context well enough to reamp later.
+- The existing Scratch hardware smoke remains valid.
+
+---
+
+## 3) One-Click Soundcheck (P0)
 
 ## Outcome
 User can verify input signal, output signal, clipping/headroom, and basic readiness before playing.
@@ -97,7 +147,7 @@ User can verify input signal, output signal, clipping/headroom, and basic readin
 
 ---
 
-## 3) Built-in VU on Audio I/O Nodes (P0)
+## 4) Built-in VU on Audio I/O Nodes (P0)
 
 ## Outcome
 Audio Input and Audio Output nodes always show live per-channel level activity directly on canvas.
@@ -131,6 +181,7 @@ Audio Input and Audio Output nodes always show live per-channel level activity d
 2. Audio I/O node VU rendering (done)
 3. Soundcheck dialog (next)
 4. Starter Rig Browser + starter content pack
+5. Scratch Templates built on the starter rig template system
 
 ---
 
@@ -140,12 +191,15 @@ Audio Input and Audio Output nodes always show live per-channel level activity d
 - Universal plugin substitution engine.
 - Touring/enterprise reliability programs.
 - Controller profile system overhaul.
+- DAW-style timeline, comping, or scratch library management.
+- A separate scratch-template format that duplicates starter rig loading.
 
 ---
 
 ## Definition of Done
 
-- All three P0 features shipped and accessible from main UX.
+- All P0 features shipped and accessible from main UX.
 - First-time user can get sound quickly from a starter rig.
+- Guitar scratch capture can start from a useful preset and preserves raw/wet files.
 - Pre-gig signal confidence is available without opening extra plugin nodes.
 - No regressions in patch load/switch and transport behavior.

@@ -2044,17 +2044,17 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerHeader->find("Turbo Tuner") == std::string::npos);
     CHECK(tunerProcessorHeader->find("Phase-based strobe") == std::string::npos);
     CHECK(tunerProcessorHeader->find("Pro:") == std::string::npos);
-    CHECK(tunerSource->find("setSize(390, 320);") != std::string::npos);
+    CHECK(tunerSource->find("setSize(430, 350);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerGlassPanel(g, bounds);") != std::string::npos);
     CHECK(tunerSource->find("drawTunerHeader(g, headerArea);") != std::string::npos);
-    CHECK(tunerSource->find("bounds.removeFromTop(41);") != std::string::npos);
-    CHECK(tunerSource->find("auto modeArea = area.removeFromTop(29);") != std::string::npos);
+    CHECK(tunerSource->find("bounds.removeFromTop(46);") != std::string::npos);
+    CHECK(tunerSource->find("auto modeArea = area.removeFromTop(30);") != std::string::npos);
     CHECK(tunerSource->find("bypassButton = std::make_unique<TextButton>(\"BYPASS\");") !=
           std::string::npos);
     CHECK(tunerSource->find("drawModeSegmentedControl(g, modeArea);") != std::string::npos);
     CHECK(tunerSource->find("drawSignalConfidenceStrip(g, confidenceArea);") != std::string::npos);
-    CHECK(tunerSource->find("drawPitchTrace(g, traceArea);") != std::string::npos);
-    CHECK(tunerSource->find("drawReferenceResponseRail(g, railArea);") != std::string::npos);
+    CHECK(tunerSource->find("drawPitchTrace(g, traceArea);") == std::string::npos);
+    CHECK(tunerSource->find("drawReferenceResponseRail(g, railArea);") == std::string::npos);
     CHECK(tunerSource->find("auto bypassPlate = bounds.removeFromRight(82.0f).reduced(1.0f);") !=
           std::string::npos);
     CHECK(tunerSource->find("for (int i = 1; i < 3; ++i)") != std::string::npos);
@@ -2066,7 +2066,7 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerSource->find("drawCoarseDeviationStrip(g, coarseArea);") != std::string::npos);
     CHECK(tunerSource->find("drawNeedleArcBackdrop(g, {centreX, bottomY}, meterRadius);") !=
           std::string::npos);
-    CHECK(tunerSource->find("drawStatusBadge(g, statusArea);") != std::string::npos);
+    CHECK(tunerSource->find("drawStatusBadge(g, statusArea);") == std::string::npos);
     CHECK(tunerSource->find("\"In Tune\"") != std::string::npos);
     CHECK(tunerSource->find("\"A=440\"") != std::string::npos);
     CHECK(tunerSource->find("const float dotX = track.getX() + track.getWidth() * normalized;") !=
@@ -2075,7 +2075,7 @@ TEST_CASE("Tuner node polish mirrors mockup readout structure without removing r
     CHECK(tunerSource->find("driftModeButton->setBounds") != std::string::npos);
     CHECK(tunerSource->find("modeButton") == std::string::npos);
     CHECK(tunerSource->find("polyModeButton") == std::string::npos);
-    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(390, 320); }") !=
+    CHECK(tunerProcessorHeader->find("Point<int> getSize() override { return Point<int>(430, 350); }") !=
           std::string::npos);
     CHECK(tunerProcessorHeader->find("float getDetectedConfidence() const") != std::string::npos);
     CHECK(tunerProcessorHeader->find("PinLayout getInputPinLayout() const override;") != std::string::npos);
