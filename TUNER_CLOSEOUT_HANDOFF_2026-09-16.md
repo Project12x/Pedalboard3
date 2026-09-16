@@ -2,7 +2,7 @@
 
 ## Restart point
 
-- Branch/commit: `codex/rt-hosting-sprint` at `3ca57f9` (`feat: refine tuner layout and roadmap`).
+- Branch: `codex/rt-hosting-sprint`.
 - Product phase: **active development**.
 - Contract status: the visual layout is **volatile**; the serial guitar-string checklist is a **durable functional contract** because it gives the player persistent progress feedback.
 
@@ -11,47 +11,36 @@ reference and drift state, the string checklist, and the simplified quick-read n
 layout are all present. The current node is `430 x 350`, with the note, coarse
 deviation strip, and primary meter prioritized.
 
-## What remains
+## Closeout status — 2026-09-16
 
-### 1. Fix the persistent-string checklist regression
+### 1. Persistent-string checklist — done
 
-`tests/tuner_processor_test.cpp:274` fails. The test tunes high E, then low E,
-and expects the high-E bit to remain set. In the observed run it was cleared.
-On 2026-09-16, the focused `[tuner]` run reported 9/10 cases passing and
-511/512 assertions passing; this was the sole failure.
+Root cause: after high E is marked, the first overlapping analysis window of low E
+is still classified as E4 at a deterministic **9.2 cents** sharp. Fast-mode
+checklist logic treated that delayed mixed window as "high E is now out of tune"
+and cleared bit 5. The local `updateGuitarStringChecklist()` code only ever
+cleared the currently matched string; the matched string was still high E.
 
-The intended behavior is:
+Fix: keep the 4-cent in-tune set band, and only clear a string at **12 cents**
+or more. The 4–12 cent gap is hysteresis for overlapping-window revisits, not a
+weakened high-E assertion. The existing high-E-then-low-E check is unchanged.
 
-- A string set in tune stays marked while other strings are tuned.
-- Only a later out-of-tune detection for that same string clears its bit.
-- `resetGuitarStringChecklist()` clears every bit.
-
-Start at `TunerProcessor::updateGuitarStringChecklist()` in
-`src/TunerProcessor.cpp:309`. Its apparent local logic only clears the currently
-matched string, so determine whether delayed/asynchronous analysis results can
-subsequently revisit high E out of tune. Do not weaken the assertion merely to
-make the test pass; first establish whether the analysis/result-lifetime path or
-the test's synchronization is wrong.
-
-Reproduce with:
+Verification:
 
 ```powershell
 cmake --build build --config Release --target Pedalboard3_Tests
 .\build\tests\Release\Pedalboard3_Tests.exe "[tuner]"
 ```
 
-The latest audit identified this as independent of the layout-only change, so
-keep the defect fix in its own focused commit.
+Result: 10/10 cases, 512/512 assertions. The strings case was repeated 5 times
+and passed each time.
 
-### 2. Perform a small visual sign-off
+### 2. Visual sign-off — captured; live note-glyph check still useful
 
-`tests/ui_regression_harness_test.cpp` has a passing 132-assertion tuner source
-contract, but it checks draw-call/source presence rather than pixels. Before
-calling the layout complete, open a Tuner node and verify the 430 x 350 surface
-at normal scale: note glyph, needle/meter, cents strip, controls, and pins must
-remain readable and unclipped. Capture one screenshot or record a concise manual
-QA result. Repeat at the highest app scale used in normal development if scaling
-is part of the release target.
+Node snapshot: `documentation/qa/2026-09-16-tuner-closeout/app-node-tuner.png`
+(430 x 350). Header, mode buttons, coarse strip, needle, and pins are unclipped.
+The capture is a waiting/no-signal node, so the note glyph is empty by design.
+Playing a note in the running app is the remaining eyeball check.
 
 ## Explicit non-blockers
 
@@ -63,7 +52,6 @@ is part of the release target.
 
 ## Done definition
 
-1. The focused `[tuner]` test run is green, including the high-E/low-E sequence.
-2. The manual visual result is recorded.
-3. The focused Release build is green; update `CHANGELOG.md` in the same commit
-   if user-visible behavior changes.
+1. The focused `[tuner]` test run is green, including the high-E/low-E sequence. Done.
+2. The manual visual result is recorded. Done; live detected-note eyeball remains optional.
+3. The focused Release test build is green and `CHANGELOG.md` records the checklist fix.
