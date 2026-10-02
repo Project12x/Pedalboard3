@@ -3,8 +3,8 @@
 Date: 2026-10-02
 
 Status: written design approved by the user's `proceed` on 2026-10-02.
-The [implementation plan](../plans/2026-10-02-scratch-foundations.md) awaits
-review and execution-method choice; implementation has not started.
+The [implementation plan](../plans/2026-10-02-scratch-foundations.md) was approved
+for native execution; implementation is in progress.
 This is a design, not a claim that the features below exist.
 
 ## Intent and scope

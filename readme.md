@@ -126,8 +126,8 @@ and Scratch Templates. Current design work prioritizes persistent Scratch take
 history, real waveforms, in-app playback, easier reamping, saved rig context,
 and focused UI polish. The [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved; its [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and execution-method choice. These expansion features are not
-implemented yet.
+is approved for native execution. Expansion work is in progress; see the roadmap
+for verified capabilities and remaining work.
 
 For details, see:
 - [CHANGELOG.md](CHANGELOG.md) — what changed and when

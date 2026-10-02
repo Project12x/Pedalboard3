@@ -296,10 +296,11 @@ ScratchPanel <- 10 Hz status snapshot + session recent-take list
 - `MainPanel` owns the recorder and builds start-time context from the current
   patch, document, device, channel counts, sample rate, and master gains.
   `MeteringProcessorPlayer` observes it through an atomic, non-owning pointer.
-- `ScratchRecorder::start()` creates the take directory and two 24-bit WAV
-  sinks before publishing `Recording`. Each sink uses a 32,768-sample buffer
-  serviced by the recorder's writer thread. Missing input/output channels or
-  writer setup failures prevent a successful start.
+- `ScratchRecorder::start()` creates the take directory, writes initial
+  incomplete metadata, and opens two 24-bit WAV sinks before publishing
+  `Recording`. Each sink uses a 32,768-sample buffer serviced by the recorder's
+  writer thread. Missing/unsupported channels, invalid sample rate, metadata
+  failure, or writer setup failure prevent a successful start.
 - Audio entry points forward existing channel pointers to the buffered writers
   and update atomics. File setup, writer teardown, JSON serialization, and UI
   work stay off the callback. `requestStop()` queues message-thread
@@ -317,16 +318,30 @@ ScratchPanel <- 10 Hz status snapshot + session recent-take list
 Storage is `<root>/<YYYY-MM-DD>/<timestamp>-<sanitized-patch>/` with numeric
 collision suffixes and `raw.wav`, `wet.wav`, `take.json`. The root defaults to
 the user application-data directory's `Pedalboard3/Scratch Ideas`; a custom
-root is persisted under `scratchRootDirectory`. JSON records context, absolute
-WAV paths, completion/failure, and one `durationSamples` value (the smaller
-raw/wet count), not both counters. It is context metadata, not a saved rig:
-there is no plugin-state/graph snapshot or per-channel gain history.
+root is persisted under `scratchRootDirectory`. New `take.json` files use schema
+version 2: bundle-relative `raw.wav`/`wet.wav`/`rig.xml` names, independent
+`rawDurationSamples`/`wetDurationSamples`, capture/snapshot status, and the
+retained shared `durationSamples` (the smaller count). Naming `rig.xml` does not
+create a snapshot: capture-time rig serialization is still upcoming.
+
+`ScratchBundleIO` writes metadata through a sibling temporary file and replaces
+the destination only after a successful write; replacement failure preserves
+the old JSON. This is not a power-loss durability guarantee. `loadScratchTake()`
+runs only on control/worker threads and reads legacy unversioned and v2 metadata without
+rewriting it, resolves audio inside the bundle rather than following legacy
+absolute paths, and leaves missing legacy frame counts unknown. It caps JSON
+at 1 MiB, validates types/ranges/paths, and preflights WAV chunk bounds before
+reader construction (rejecting truncation and oversized non-audio chunks).
+Invalid/unsupported takes retain an inspectable result and directory; readable
+audio does not relabel an interrupted take complete. This loader is not yet
+wired to a persistent panel library.
 
 Current boundaries:
 
-- Recent takes are an in-memory, newest-first list capped at eight; there is no
-  disk scan or JSON reload. Files remain on disk when the list rolls over or
-  the app restarts. The panel's counts describe this list, not a library.
+- Recent takes are an in-memory, newest-first list capped at eight; the panel
+  does not yet scan disk or use the new loader. Files remain on disk when the
+  list rolls over or the app restarts. Its counts describe this list, not a
+  library.
 - `Play` opens a complete take's existing `wet.wav` through the OS file handler;
   it is not an internal transport. `Reamp` adds a `FilePlayerProcessor` for a
   complete take's existing `raw.wav` to the current graph, without wiring it or
@@ -337,22 +352,23 @@ Current boundaries:
   separate latency-alignment pass for raw and processed signals.
 
 Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
-`src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
+`src/ScratchBundleIO.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
 
-### Accepted Expansion — Planned, Not Implemented
+### Accepted Expansion — Native Implementation In Progress
 
 The accepted foundations are a persistent disk-backed take library, real raw/wet
 waveforms, in-app wet audition, reamp through the current rig without manually
 wiring a FilePlayer, saved capture-time rig context, and modest UI polish within
 the existing visual style. The written
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-is approved; the
+is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and an execution choice. Implementation has not started. The
-source baseline and limitations above still describe the current code; no new
-behavior or verification is claimed by these planning documents.
+is now in progress. The storage-only first slice above has built and passed its
+focused Scratch run; persistent browsing, real waveforms, in-app audition,
+easy reamp, rig snapshots, and UI polish remain upcoming. See the handoff for
+the dated result and skipped Windows symlink check; hardware QA remains open.
 
 ---
 

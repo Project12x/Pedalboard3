@@ -10,7 +10,7 @@
 
 **Spec:** [Approved Scratch foundations design](../specs/2026-10-02-scratch-foundations-design.md).
 
-**Status:** Written design approved by the user's `proceed` on 2026-10-02. This implementation plan awaits review and execution-method choice. No task below has been implemented or tested by this planning pass.
+**Status:** Design and plan approved; user selected native execution on 2026-10-02. Implementation is in progress. Checkboxes below record verified work, not intended behavior.
 
 ## Global Constraints
 
@@ -42,13 +42,16 @@ Planning baseline: `D:\Code\Pedalboard2`, `codex/rt-hosting-sprint`, commit
 identity before choosing isolation; reuse a suitable existing checkout, do not
 create a worktree or move these changes merely because the template mentions one.
 
-**Build-location prerequisite:** the current `build/CMakeCache.txt` names the old
+**Build-location prerequisite (resolved 2026-10-02):** the current `build/CMakeCache.txt` names the old
 `C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2` as its source and
 JUCE location. That old source path still exists. Before compiling, prove the
 chosen build actually consumes this checkout's changed sources. Do not report
 an old-C: build as verification of D: edits. Diagnose this once against the
 known-good tree; if recovery needs a new build tree, present its D: path/size and
 obtain any required authority rather than deleting caches or building multiple trees.
+Execution verified that `Antigravity` is a junction to `D:/Code`, and both source
+paths have the same filesystem file ID. Reuse the existing build via its cached
+C: alias; the sources and build are physically on D:.
 
 Once the existing tree is verified/repaired in scope, the canonical commands are:
 
@@ -103,6 +106,12 @@ with file ownership agreed in advance.
 
 ## Task 1: Durable take bundles and truthful capture metadata
 
+Execution evidence (2026-10-02): app/test build passed; `[scratch]` 420 assertions
+passed, 32 cases passed and one symlink case skipped (Windows privilege absent).
+Truncated-WAV regression demonstrated RED then GREEN. Final warning cleanup and
+duplicate compiler-flag correction passed the same app/test build and focused run;
+the final build compiled only ScratchTake.cpp, confirming incremental reuse.
+
 **Files:** `src/ScratchTake.{h,cpp}`, `src/ScratchRecorder.{h,cpp}`;
 create `src/ScratchBundleIO.{h,cpp}`, `tests/scratch_take_storage_test.cpp`;
 modify `tests/scratch_recorder_test.cpp`, both CMake lists, CHANGELOG.md.
@@ -132,7 +141,7 @@ The replace seam accepts `(temporary, target)` and is control/worker-only;
 production uses sibling temporary-file replacement. It enables a small,
 deterministic failed-replace test without a platform-specific permission harness.
 
-- [ ] Add `[scratch][scratch-storage]` tests with these assertions:
+- [x] Add `[scratch][scratch-storage]` tests with these assertions:
   `schemaVersion == 2`; raw/wet counts are distinct when unequal;
   legacy missing counts remain unknown, not fabricated;
   `rawFile.getParentDirectory() == movedTakeDirectory` after relocation;
@@ -150,22 +159,22 @@ deterministic failed-replace test without a platform-specific permission harness
   REQUIRE_FALSE(loaded.take.rawDurationSamples.has_value());
   REQUIRE(loaded.take.metadataFile.loadFileAsString() == originalMetadata);
   ```
-- [ ] Establish RED with the storage tag (or missing new declarations), not a
+- [x] Establish RED with the storage tag (or missing new declarations), not a
   broad suite. Existing recorder tests stay intact except abandoned fake-UI tests.
-- [ ] Implement bounded schema parsing and v2 writing. Retain legacy fields,
+- [x] Implement bounded schema parsing and v2 writing. Retain legacy fields,
   `complete`, shared minimum duration, and capture context. New `rawFile`,
   `wetFile`, `rigFile` paths are relative; legacy absolute paths are ignored in
   favor of canonical siblings. Reject symlink/reparse escapes on metadata/audio
   as well as directories. Capture statuses are `recording`, `complete`,
   `interrupted`, `failed`; missing legacy schema means version 1. Inspect WAV
   headers off-thread; complete metadata alone cannot certify a readable file.
-- [ ] Persist initial incomplete metadata before publishing Recording. On stop,
+- [x] Persist initial incomplete metadata before publishing Recording. On stop,
   close both writers, persist actual independent frame counts and the existing
   completion/failure result. Metadata failure prevents a successful capture state;
   never destroy an earlier valid manifest to report the failure. Permit readable
   interrupted WAV audition with a warning, not complete-pair status. Unknown
   schemas and invalid metadata expose Reveal only.
-- [ ] Run the green incremental build and `Pedalboard3_Tests.exe "[scratch]"`.
+- [x] Run the green incremental build and `Pedalboard3_Tests.exe "[scratch]"`.
   Require zero failed assertions; inspect the write/drop/lifetime regressions,
   not only new parser tests. Update CHANGELOG and HOWTO's current metadata facts.
 - [ ] Commit exact task files: `feat: persist versioned scratch take bundles`.

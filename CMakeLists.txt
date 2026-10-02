@@ -92,7 +92,8 @@ if(MSVC)
     add_compile_options(/wd4100)   # Unreferenced formal parameter (common in JUCE)
     add_compile_options(/wd4244)   # Conversion warnings (JUCE has many)
     add_compile_options(/wd4267)   # Size_t conversion (JUCE has many)
-    add_compile_options(/FS)       # Force synchronous PDB writes (required for Ninja parallel builds)
+    # /FS is already applied to C/C++ flags above. Duplicating it here makes
+    # MSBuild's normalized command tracking differ on every incremental build.
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
     add_compile_options(-Wno-unused-parameter)  # Common in JUCE callbacks
@@ -243,6 +244,8 @@ target_sources(Pedalboard3 PRIVATE
     src/ScratchRecorder.h
     src/ScratchTake.cpp
     src/ScratchTake.h
+    src/ScratchBundleIO.cpp
+    src/ScratchBundleIO.h
     
     # Plugin Components
     src/PluginComponent.cpp

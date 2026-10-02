@@ -23,6 +23,7 @@ add_executable(Pedalboard3_Tests
     patch_switch_test.cpp
     vst3_loading_test.cpp
     scratch_recorder_test.cpp
+    scratch_take_storage_test.cpp
     rt_hosting_sprint_test.cpp
     reverbsc_processor_test.cpp
     midi_mapping_test.cpp
@@ -31,6 +32,7 @@ add_executable(Pedalboard3_Tests
     font_manager_test.cpp
     ../src/ScratchRecorder.cpp
     ../src/ScratchTake.cpp
+    ../src/ScratchBundleIO.cpp
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp

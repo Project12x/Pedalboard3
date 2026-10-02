@@ -24,7 +24,12 @@ the docs in parallel. The user accepted persistent take history, genuine
 waveforms, in-app playback, easier reamping, capture-time rig context, and a
 modest UI polish pass. The [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and execution-method choice; no expansion code has been implemented.
+is approved for native execution. Implementation and focused regression work are
+in progress; the roadmap distinguishes verified changes from remaining work.
+The storage slice now writes portable schema-2 manifests before recording and
+retains independent RAW/WET counts on finalization. Read-only legacy/v2 loading
+and damaged-bundle validation are covered by focused tests; persistent UI history
+and audition routing remain forthcoming.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

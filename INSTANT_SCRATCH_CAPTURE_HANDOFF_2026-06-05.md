@@ -6,19 +6,21 @@ and manual acceptance procedure. Current priorities belong to `ROADMAP.md` and
 `ARCHITECTURE.md`.
 
 Source reconciliation 2026-10-02: the inspected checkout is
-`D:\Code\Pedalboard2`, branch `codex/rt-hosting-sprint`. This documentation pass
-did not build, run tests, or verify a real audio interface. The June evidence
-below is historical, not a claim about this checkout's current test results.
+`D:\Code\Pedalboard2`, branch `codex/rt-hosting-sprint`. The initial source-only
+documentation pass did not build, run tests, or verify a real audio interface.
+Task 1 implementation evidence is recorded separately below; the June results
+remain historical.
 
 Accepted expansion, not yet implemented: a disk-backed take library, real
 raw/wet waveforms, in-app wet audition, current-rig reamp without manual
 FilePlayer wiring, saved capture-time rig context, and modest existing-style UI
 polish. The
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-is approved; the
+is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and an execution choice. Implementation has not started. This
-handoff continues to describe the current baseline and its historical evidence.
+is now in progress. The storage-only first slice is implemented and has focused
+verification below. Persistent browsing, waveforms, in-app audition, easier
+reamp, rig snapshots, and UI polish are still upcoming; hardware QA remains open.
 
 ## Historical Baseline (June 2026)
 
@@ -75,7 +77,10 @@ Files:
 
 - `src/ScratchTake.h`
 - `src/ScratchTake.cpp`
+- `src/ScratchBundleIO.h`
+- `src/ScratchBundleIO.cpp`
 - `tests/scratch_recorder_test.cpp`
+- `tests/scratch_take_storage_test.cpp`
 - `CMakeLists.txt`
 - `tests/CMakeLists.txt`
 
@@ -84,12 +89,21 @@ Behavior:
 - Creates take folders under the scratch root.
 - Uses date/timestamp and sanitized patch names.
 - Handles folder collisions by appending numeric suffixes.
-- Writes `take.json`.
+- Writes schema-version-2 `take.json` with bundle-relative `raw.wav`, `wet.wav`,
+  and `rig.xml` names. The rig filename is reserved; no snapshot is captured yet.
 - Metadata includes patch/document/device context, sample rate, channel counts, gain values, raw/wet file paths, duration, completion state, and failure reason.
 - Gain metadata is the two master gain values at start, not per-channel values
   or a history. Patch name/index/document path do not constitute a rig snapshot.
-- `take.json` stores one duration (the smaller raw/wet count), not independent
-  raw/wet sample counters. There is no metadata reader/library reload path.
+- `take.json` now stores independent raw/wet frame counts, capture/snapshot
+  status, and the retained shared minimum duration. Initial incomplete metadata
+  is written before Recording; sibling temporary replacement preserves old
+  metadata on failure without claiming power-loss durability.
+- `loadScratchTake()` is a bounded, read-only v1/v2 loader. It accepts relocated
+  legacy bundles without rewriting them or following their old absolute paths;
+  missing legacy counts remain unknown. Invalid/unsupported results retain the
+  directory for inspection. JSON size/type/range/path checks and WAV chunk
+  preflight reject malformed or truncated data before constructing a reader.
+  This does not yet provide persistent panel discovery.
 
 ### Scratch Recorder Core
 
@@ -197,7 +211,20 @@ Additional layout/presentation helpers:
 - `src/ScratchPanelPresentation.h`
 - Focused tests cover non-overlapping row/destination actions and active elapsed display.
 
-## Historical Verification (Not Rerun 2026-10-02)
+## Task 1 Storage Verification — 2026-10-02
+
+Coordinator-reported final incremental app/test build passed after warning
+cleanup and removal of the duplicate `/FS` flag; it rebuilt the changed
+`ScratchTake.cpp` and reused existing dependencies. The focused `[scratch]`
+rerun passed **420 assertions in 32 passed cases**, with **one symlink case
+skipped** because Windows symlink creation privilege was unavailable. That
+boundary is not recorded as a passing automated check.
+
+This verifies the storage slice, not later library/transport/UI tasks, a fresh
+full-suite run, macOS, or real-interface capture. No hardware smoke test result
+is added by this update.
+
+## Historical Verification (June 2026)
 
 Verification recorded by the original 2026-06-05 handoff:
 
@@ -248,9 +275,11 @@ Next agent should run this before calling the feature user-ready:
    - `raw.wav`
    - `wet.wav`
    - `take.json`
-9. Confirm `take.json` reports `complete: true`; inspect both WAV files for
-   equal sample-frame counts and sample rate. JSON's single `durationSamples`
-   value should match each completed WAV, but cannot independently prove both.
+9. Confirm `take.json` reports `complete: true` and, for v2,
+   `captureStatus: "complete"`. Inspect both WAVs for equal frame counts and the recorded sample
+   rate; v2 `rawDurationSamples`/`wetDurationSamples` must match their files.
+   The shared `durationSamples` remains the minimum; legacy bundles may lack
+   independent counters and require direct WAV inspection.
 10. Confirm `raw.wav` is pre-chain DI and `wet.wav` is what was heard.
 11. Start another recording, switch patches, and confirm capture stops with `Patch changed during scratch capture`.
 12. Start another recording, change audio device settings, and confirm capture stops with `Audio device changed during scratch capture`.
@@ -293,9 +322,9 @@ Updated 2026-06-09: small take actions are implemented.
 - `Reamp` adds an unconnected `FilePlayerProcessor` node for a completed `raw.wav`.
 - `Reveal` opens the take folder.
 
-This describes the implemented scope. The expansion design is approved, with
-implementation-plan review and execution choice pending as linked above; do
-not treat planned audition/reamp behavior as already available.
+This describes the baseline implemented scope. Native execution of the approved
+expansion is in progress as linked above; do not treat planned audition/reamp
+behavior as available before its implementation and verification are recorded.
 
 ### Scratch Folder Setting
 
@@ -360,10 +389,16 @@ Suggested focused verification against the existing build (coordinator-owned;
 no clean or alternate build). Run the full suite at an explicit integration
 checkpoint or for a broad-reaching change, not automatically for a doc update:
 
+The build-location prerequisite is resolved: the cached C: source path reaches
+`D:/Code` through the `Antigravity` junction, and matching `ScratchTake.h` file
+IDs confirm the same checkout. Reuse the existing tree via its cached alias;
+see [HOWTO.md](HOWTO.md#build-on-windows). This is source-identity evidence, not
+a build/test result.
+
 ```powershell
 git -c safe.directory=D:/Code/Pedalboard2 status --short --branch
-cmake --build build --config Release --target Pedalboard3 -- /m:1
-cmake --build build --config Release --target Pedalboard3_Tests -- /m:1
+cmake --build "C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2/build" --config Release --target Pedalboard3 -- /m:1
+cmake --build "C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2/build" --config Release --target Pedalboard3_Tests -- /m:1
 .\build\tests\Release\Pedalboard3_Tests.exe "[scratch]"
 ```
 

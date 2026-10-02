@@ -362,6 +362,11 @@ TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample count
     REQUIRE(recorder.start(context));
     REQUIRE(recorder.getStatus().state == ScratchRecorderState::Recording);
 
+    const auto initial = nlohmann::json::parse(recorder.getStatus().activeTake->metadataFile.loadFileAsString().toStdString());
+    REQUIRE(initial.at("schemaVersion") == 2);
+    REQUIRE(initial.at("captureStatus") == "recording");
+    REQUIRE(initial.at("complete") == false);
+
     float raw[4] = {0.1f, 0.2f, 0.3f, 0.4f};
     const float* rawPtrs[1] = {raw};
     float wetL[4] = {0.5f, 0.6f, 0.7f, 0.8f};
@@ -382,6 +387,35 @@ TEST_CASE("ScratchRecorder records raw and wet blocks with matching sample count
     REQUIRE(status.lastTake->complete);
     REQUIRE(status.recentTakes.size() == 1);
     REQUIRE(status.recentTakes.front().complete);
+    const auto saved = nlohmann::json::parse(status.lastTake->metadataFile.loadFileAsString().toStdString());
+    REQUIRE(saved.at("rawDurationSamples") == 4);
+    REQUIRE(saved.at("wetDurationSamples") == 4);
+    REQUIRE(saved.at("captureStatus") == "complete");
+}
+
+TEST_CASE("ScratchRecorder saves distinct frame counts when the pair is incomplete", "[scratch][scratch-storage]")
+{
+    ScopedTempDirectory root("Pedalboard3ScratchUnequalTest");
+    MemorySinkFactory factory;
+    ScratchRecorder recorder(factory);
+    ScratchTakeContext context;
+    context.rootDirectory = root.get();
+    context.rawChannelCount = context.wetChannelCount = 1;
+    REQUIRE(recorder.start(context));
+    float audio[4]{};
+    float* channels[]{audio};
+    recorder.writeRawBlock(channels, 1, 4);
+    recorder.writeWetBlock(channels, 1, 2);
+    recorder.requestStop();
+    recorder.finishPendingStopForTests();
+    const auto take = recorder.getStatus().lastTake;
+    REQUIRE(take.has_value());
+    REQUIRE_FALSE(take->complete);
+    const auto saved = nlohmann::json::parse(take->metadataFile.loadFileAsString().toStdString());
+    REQUIRE(saved.at("rawDurationSamples") == 4);
+    REQUIRE(saved.at("wetDurationSamples") == 2);
+    REQUIRE(saved.at("durationSamples") == 2);
+    REQUIRE(saved.at("captureStatus") == "failed");
 }
 
 TEST_CASE("ScratchRecorder exposes active take context while recording", "[scratch]")

@@ -75,13 +75,13 @@ The user accepted the five foundations below plus modest UI polish, with
 documentation updated in parallel. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and execution-method choice; implementation has not started.
+is approved for native execution; implementation is in progress.
 The older template sequence
 below remains a separate proposal, not a prerequisite for these improvements.
 
 | Accepted foundation | Intended outcome | Status |
 |---|---|---|
-| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Designed; not implemented |
+| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Storage/legacy loader verified; scanner and panel integration in progress |
 | Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Designed; not implemented |
 | In-app original playback | Audition the saved wet print without running it through the current effects again | Designed; not implemented |
 | Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Designed; not implemented |

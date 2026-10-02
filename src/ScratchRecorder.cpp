@@ -1,6 +1,7 @@
 #include "ScratchRecorder.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
@@ -127,6 +128,13 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         return false;
     }
 
+    if (context.rawChannelCount > 16 || context.wetChannelCount > 16
+        || !std::isfinite(context.sampleRate) || context.sampleRate <= 0.0)
+    {
+        failStart("Unsupported scratch channel count or sample rate");
+        return false;
+    }
+
     ScratchTakeContext resolved = context;
     if (resolved.rootDirectory == juce::File())
         resolved.rootDirectory = scratchRoot;
@@ -134,6 +142,7 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
     currentTake = ScratchTake::createPending(resolved);
     if (!currentTake.failureReason.isEmpty())
     {
+        currentTake.captureStatus = "failed";
         currentTake.writeMetadata();
         addRecentTake(currentTake);
         status.state = ScratchRecorderState::Failed;
@@ -146,6 +155,19 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
         state.store(static_cast<int>(ScratchRecorderState::Failed), std::memory_order_release);
+        return false;
+    }
+
+    currentTake.rawDurationSamples = 0;
+    currentTake.wetDurationSamples = 0;
+    if (!currentTake.writeMetadata())
+    {
+        currentTake.captureStatus = "failed";
+        currentTake.failureReason = "Unable to write initial scratch take metadata";
+        failStart(currentTake.failureReason);
+        addRecentTake(currentTake);
+        status.lastTake = currentTake;
+        status.recentTakes = recentTakes;
         return false;
     }
 
@@ -166,6 +188,7 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
 
         writerFailureCount.fetch_add(1, std::memory_order_relaxed);
         currentTake.failureReason = "Could not create scratch WAV writers";
+        currentTake.captureStatus = "failed";
         currentTake.writeMetadata();
         addRecentTake(currentTake);
 
@@ -389,6 +412,8 @@ void ScratchRecorder::finishStop()
     const auto hadWriteError = writeError.load(std::memory_order_acquire);
 
     currentTake.durationSamples = durationSamples;
+    currentTake.rawDurationSamples = rawSamples;
+    currentTake.wetDurationSamples = wetSamples;
 
     if (drainTimeoutRecorded && currentTake.failureReason.isEmpty())
         currentTake.failureReason = "Scratch capture stop waited too long for audio writes";
@@ -398,10 +423,13 @@ void ScratchRecorder::finishStop()
         currentTake.failureReason = "Scratch capture raw and wet sample counts did not match";
 
     currentTake.complete = !hadWriteError && countsMatch && currentTake.failureReason.isEmpty();
+    currentTake.captureStatus = currentTake.complete ? "complete"
+        : (hadWriteError || !countsMatch ? "failed" : "interrupted");
 
     if (!currentTake.writeMetadata())
     {
         currentTake.complete = false;
+        currentTake.captureStatus = "failed";
         if (currentTake.failureReason.isEmpty())
             currentTake.failureReason = "Unable to write scratch take metadata";
     }

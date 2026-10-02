@@ -14,18 +14,19 @@ cmake --preset msvc-release
 cmake --build --preset msvc-release
 ```
 
-The existing local `build` directory can also be rebuilt without reconfiguring,
-provided its cache points to the checkout being changed:
+For this checkout, reuse the existing `build` tree through its cached alias:
 
 ```powershell
-cmake --build build --config Release
+cmake --build "C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2/build" --config Release
 ```
 
-Source-location caveat (2026-10-02): the D: checkout's `build/CMakeCache.txt`
-still records `C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2`
-as its source and JUCE location. Check this before compiling; a successful build
-against the old source path is not evidence that D: edits were tested. Resolve
-the build location once rather than silently creating alternate build trees.
+Source identity verified 2026-10-02: `C:/Users/estee/Desktop/My Stuff/Code/Antigravity`
+is a junction to `D:/Code`, and `src/ScratchTake.h` through both checkout paths
+has the same `fsutil` file ID. The C: source/JUCE paths in `build/CMakeCache.txt`
+therefore name this same checkout, physically on D:, not an old source copy.
+The existing tree and its artifacts can be reused; no cache deletion, new build
+tree, or toolchain repair is required for this alias. Builds remain
+coordinator-owned, and this path check is not a successful-build claim.
 
 Do not delete or regenerate another active worktree's build directory. The
 macOS/AU worktrees are separate and require a Mac to validate.
@@ -61,6 +62,15 @@ The default destination is the user application-data directory's
 each take. Use `Choose` / `Reset` in the panel or the corresponding File menu
 commands to change the destination for new takes; the chosen root is persisted.
 
+New captures now write schema-version-2 `take.json` with bundle-relative asset
+names, separate raw/wet frame counts, capture status, and snapshot status. An
+initial incomplete manifest is written before recording; final metadata uses
+temporary-file replacement so a failed replacement preserves the prior JSON.
+The new read-only loader accepts legacy and v2 bundles without migrating them,
+including relocated legacy folders. This is the storage foundation only:
+`rig.xml` is a reserved sidecar name, not a saved rig yet, and the panel does
+not yet discover old takes from disk.
+
 The current panel is not a persistent take library:
 
 - `Recent Takes` contains at most eight takes from this app session. Older
@@ -75,17 +85,19 @@ The current panel is not a persistent take library:
   Play/Reamp require both a complete take and their respective WAV file.
 - The drawn traces are decorative, not an audio waveform or signal meter.
 
-## Planned Scratch foundations
+## Scratch foundations — native implementation in progress
 
 The accepted next scope is a disk-backed take library, real raw/wet waveforms,
 in-app wet audition, current-rig reamp without manual FilePlayer wiring, saved
 capture-time rig context, and modest existing-style UI polish. These are planned
 features, not controls available in the current build. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-is approved; the
+is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-awaits review and an execution choice. Implementation has not started, so the
-current-use instructions above remain applicable.
+is now in progress. The storage slice described above has a successful build
+and focused Scratch test result; the listed user-facing foundations remain
+upcoming. The Windows symlink test was skipped for missing privilege, not
+passed; see the handoff for the dated evidence. Hardware QA remains outstanding.
 
 ## Verify Scratch Capture with a real interface
 
@@ -98,9 +110,11 @@ folder, verify all of the following:
 
 1. `raw.wav`, `wet.wav`, and `take.json` exist.
 2. `raw.wav` is pre-chain DI; `wet.wav` is the heard post-chain output.
-3. `take.json` reports `complete: true`; inspect both WAV files to confirm equal
-   sample-frame counts and the recorded sample rate. JSON has only one
-   `durationSamples` value, which should match each completed WAV.
+3. `take.json` reports `complete: true` and `captureStatus: "complete"`; inspect
+   both WAV files to confirm their sample-frame counts and recorded sample rate.
+   New v2 `rawDurationSamples` and `wetDurationSamples` should match their WAVs
+   and each other for a complete pair. The retained `durationSamples` is their
+   minimum; legacy manifests may lack the independent counters.
 4. A patch change stops capture with the expected incomplete-take reason.
 5. An audio-device change does the same.
 6. Play/Reamp are available only for complete takes with the target WAV present;
