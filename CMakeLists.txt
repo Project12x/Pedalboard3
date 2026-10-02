@@ -247,6 +247,8 @@ target_sources(Pedalboard3 PRIVATE
     src/ScratchBundleIO.cpp
     src/ScratchBundleIO.h
     src/ScratchTakeLibrary.cpp
+    src/ScratchWaveformView.cpp
+    src/ScratchWaveformView.h
     src/ScratchTakeLibrary.h
     
     # Plugin Components

@@ -350,24 +350,42 @@ duplicate take IDs in separate directories are not merged. Missing/inaccessible
 roots produce status without scan-side directory creation. Disk reads and worker
 joining stay off the audio callback. Snapshot access is a control-thread API.
 
+Task 3 waveform/selection integration: `ScratchPanel`
+uses a virtualized `ListBox` with recycled rows and actual Play/Reamp/Reveal
+buttons. Selection is keyed by take directory, not row index, and survives
+reordering and partial scan batches. Each panel shares a 32-entry
+`AudioThumbnailCache`; raw and wet overviews use 512-sample buckets. A worker
+revalidates bundles and opens WAV readers, with per-source generations rejecting
+stale results and path/size/modification-time cache identities. Painting reads
+cached approximate min/max values only, not WAV samples.
+
+JUCE's native min/max quantization expands equal bounds: digital silence has
+the thumbnail range `[0, 1/128]`, not an invented audio signal. Tests distinguish
+that representation from a real impulse and its time region.
+
+The selected-take view uses one RAW/WET time range and individually labelled
+channels in a vertically scrollable area. Compact row previews show channel 1
+of each file only, not a mixed-down or complete multichannel overview. Empty,
+loading, and unavailable states are textual; synthetic traces are removed.
+Seek/playhead hooks exist but are not connected to an in-app transport yet.
+
 Current boundaries:
 
 - The recorder retains its eight-entry session history for existing callers,
-  but the interim panel now consumes all library entries with no eight-take
-  limit. It retains damaged entries with reasons and Reveal. Row virtualization
-  and real waveform decoding are not implemented yet.
+  but the panel consumes all library entries with no eight-take limit. It
+  retains damaged entries with reasons and Reveal.
 - `Play` opens a complete take's existing `wet.wav` through the OS file handler;
   it is not an internal transport. `Reamp` adds a `FilePlayerProcessor` for a
   complete take's existing `raw.wav` to the current graph, without wiring it or
   restoring the recorded rig. `Reveal` needs the take directory, not a complete
   recording.
-- The panel's lane curves and take thumbnails are decorative, not live meters
-  or decoded audio waveforms. Equal sample counts are checked, but there is no
-  separate latency-alignment pass for raw and processed signals.
+- The waveform view describes saved audio, not a live input scope. Equal sample
+  counts are checked, but there is no separate latency-alignment pass for raw
+  and processed signals.
 
 Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
 `src/ScratchBundleIO.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
-`src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
+`src/ScratchWaveformView.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
 
@@ -381,10 +399,11 @@ the existing visual style. The written
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
 is now in progress. Storage Task 1 is committed as `11fe41a` with focused
-verification. Task 2's final app/test build passed on 2026-10-02; the focused
+verification. Task 2 (`c33748f`) final app/test build passed on 2026-10-02; the focused
 library/storage run passed 328 assertions in 12 cases, with two Windows
-privilege-dependent symlink cases skipped, not passed. Virtualization, real
-waveforms, in-app audition, easy reamp, rig snapshots, and integrated UI polish
+privilege-dependent symlink cases skipped, not passed. Task 3's incremental
+app/test build passed on 2026-10-02, followed by 53 assertions in four passed
+waveform/UI cases. In-app audition, easy reamp, rig snapshots, and integrated UI polish
 remain upcoming. See the handoff for dated evidence; manual restart/UI and
 hardware QA remain open.
 

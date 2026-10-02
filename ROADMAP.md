@@ -81,8 +81,8 @@ below remains a separate proposal, not a prerequisite for these improvements.
 
 | Accepted foundation | Intended outcome | Status |
 |---|---|---|
-| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Implemented; focused storage/discovery tests pass. Virtualized presentation follows in Task 3 |
-| Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Designed; not implemented |
+| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Implemented with background discovery and virtualized, folder-stable selection |
+| Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Real cached waveforms implemented; playhead/seek await transport integration |
 | In-app original playback | Audition the saved wet print without running it through the current effects again | Designed; not implemented |
 | Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Designed; not implemented |
 | Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Designed; not implemented |
@@ -90,11 +90,11 @@ below remains a separate proposal, not a prerequisite for these improvements.
 
 Verified current limitations that this expansion addresses:
 
-- Persistent discovery now reloads saved folders; virtualized rows and stable
-  selected-take presentation remain the next UI slice.
+- Persistent discovery, virtualized rows, and stable selected-take presentation
+  are implemented; full interactive UI acceptance is still outstanding.
 - Wet playback launches the OS file handler. Raw reamp inserts a file-player node
   into the current graph without connecting it or restoring the recording rig.
-- Take thumbnails and lane traces are decorative; they do not display sampled audio.
+- Waveforms now show cached audio peaks; seek/playhead hooks await the internal transport.
 - Metadata records patch name/index/document path and master gains, without a
   snapshot of the actual graph, plugin state, or model/IR assets.
 
@@ -276,7 +276,7 @@ These are useful after the current ship gate and P0 gig-speed items.
 |---|---|---|
 | Scratch folder preference | Done for V1 | Scratch panel and app menu expose choose/reset; no Preferences mirror unless later requested. |
 | Scratch take playback/reamp | Partial | Wet preview opens the saved wet file; raw reamp adds a file-player node for the raw capture. No timeline/editor. |
-| Scratch take library | Implemented foundations | Background cross-session discovery, Refresh, root changes, and diagnostic rows; virtualized selection follows in Task 3. |
+| Scratch take library | Implemented foundations | Background cross-session discovery, Refresh, root changes, diagnostic rows, virtualized selection, and real waveforms. |
 | Embedded node editors | Planned | Opt-in node display mode based on clean-room Element pattern study; internal/generic editors first, arbitrary external custom UIs later. |
 | Stage MIDI pedal control | Planned | Build via the Stage Action Map, not one-off `StageView` shortcuts. |
 | Quick onboarding entry point | Planned | Should point to real starter rigs once they exist. |

@@ -71,8 +71,7 @@ including relocated legacy folders. `rig.xml` is a reserved sidecar name,
 not a saved rig yet.
 
 Task 2 adds disk-backed `Takes`. It scans the configured root's day/take folders
-on startup, panel
-open, `Refresh`, destination changes, and capture finalization. Previously saved
+on startup, panel open, `Refresh`, destination changes, and capture finalization. Previously saved
 takes are discovered without modifying their files, and the panel no longer
 uses the recorder's eight-entry session limit. Scanning is fixed-depth, not a
 general recursive audio-file search; keep imported bundles in the day/take
@@ -81,8 +80,10 @@ rather than being silently discarded.
 
 Current limitations remain:
 
-- The interim list is not virtualized yet. Real waveforms and selected-take
-  transport are later tasks, not part of disk discovery.
+- Task 3 provides virtualized rows and real RAW/WET waveform overviews. Select a row to view
+  its audio on a shared time scale, and scroll the selected waveform vertically
+  for additional channels. Small row previews show RAW channel 1 and WET
+  channel 1 only. Selection follows the take folder through refresh/reordering.
 - `Play` opens a complete take's wet file in the OS-associated player, which
   may use a different output device from Pedalboard. There are no internal
   Scratch playback controls.
@@ -91,7 +92,11 @@ Current limitations remain:
   action does not restore the original rig, wire the node, or export a reamp.
 - `Reveal` opens the take folder, including for incomplete takes if it exists.
   Play/Reamp require both a complete take and their respective WAV file.
-- The drawn traces are decorative, not an audio waveform or signal meter.
+- There are no fake traces: the overviews use cached saved-audio data, with
+  explicit loading/unavailable states. They are not live input meters. Seek
+  and playhead hooks are not yet connected to playback, so clicking the
+  waveform does not seek the external player. Tooltips retain the current
+  external-Play/manual-FilePlayer-Reamp distinction.
 
 ## Scratch foundations — native implementation in progress
 
@@ -102,11 +107,15 @@ capture-time rig context, and modest existing-style UI polish. The
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
 is now in progress. Storage Task 1 (`11fe41a`) has a successful build and focused
-Scratch test result. Task 2's final app/test build passed on 2026-10-02; its
+Scratch test result. Task 2 (`c33748f`) final app/test build passed on 2026-10-02; its
 focused library/storage run passed 328 assertions in 12 cases, with two
-Windows privilege-dependent symlink cases skipped, not passed. Waveform,
-transport/reamp, rig-context, and polish tasks are upcoming. See the handoff
-for dated evidence; manual restart/UI and hardware QA remain outstanding.
+Windows privilege-dependent symlink cases skipped, not passed. Task 3's final
+incremental app/test build passed on 2026-10-02, with 53 assertions passing in
+four focused waveform/UI cases. JUCE's silence thumbnail range is `[0, 1/128]`
+because of its native quantization; that is not fabricated waveform activity.
+In-app transport/reamp, rig-context, and integrated polish tasks are upcoming.
+See the handoff for dated evidence; manual restart/UI and hardware QA remain
+outstanding.
 
 ## Verify Scratch Capture with a real interface
 

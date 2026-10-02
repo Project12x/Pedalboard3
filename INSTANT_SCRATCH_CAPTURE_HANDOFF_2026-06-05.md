@@ -19,10 +19,11 @@ polish. The
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
 is now in progress. Storage Task 1 is committed as `11fe41a` with focused
-verification below. Task 2 disk discovery and interim panel integration now
-have a successful app/test build and focused verification below. Virtualization,
-waveforms, in-app audition, easier reamp, rig snapshots, and integrated UI polish
-are still upcoming; hardware QA remains open.
+verification below. Task 2 disk discovery (`c33748f`) has a successful app/test
+build and focused verification below. Task 3 real waveforms and virtualized
+selection also have a successful app/test build and focused result below. In-app
+audition, easier reamp, rig snapshots, and integrated UI polish remain upcoming;
+hardware QA remains open.
 
 ## Historical Baseline (June 2026)
 
@@ -151,9 +152,9 @@ capture finalization (notified after the recorder lock is released).
   publication every 128 discovered entries. Discard obsolete-generation results.
 - Retain corrupt/unsupported bundles with reasons; separate directories remain
   separate entries even when take IDs match.
-- The interim `Takes` panel consumes all entries rather than the eight-item
+- The `Takes` panel consumes all entries rather than the eight-item
   recorder list, exposes Refresh and scanning/error status, and keeps diagnostic
-  rows revealable. It is not virtualized yet and still uses decorative traces.
+  rows revealable. Task 3 replaces its interim list/trace presentation below.
 
 Coordinator-reported verification on 2026-10-02: final app/test build exited 0;
 `[scratch-library],[scratch-storage]` passed **328 assertions in 12 passed cases**,
@@ -162,6 +163,37 @@ test) because Windows lacks symlink creation privilege. Those link-boundary
 checks were unavailable, not passed. Manual UI/restart and hardware checks remain
 unverified. External wet playback and manual FilePlayer reamp are unchanged;
 this is discovery, not transport.
+
+### Task 3 Waveforms And Selection
+
+Source: `src/ScratchWaveformView.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and
+`src/ScratchPanelPresentation.h`.
+
+- RAW/WET overviews are decoded audio, sharing a panel-owned 32-entry cache and
+  512-sample thumbnail buckets. Worker jobs revalidate bundles and open readers;
+  generation checks reject stale selection results. Cache identity includes
+  path, size, and modification time. Paint uses cached min/max data without
+  reading WAV samples.
+- The selected take shows individually labelled RAW/WET channels on a common
+  time range, with vertical scrolling for extra channels. Compact row previews
+  show channel 1 of each file only. Missing/loading states use text; synthetic
+  lane and thumbnail traces are removed.
+- A virtualized ListBox recycles rows with actual Play/Reamp/Reveal buttons.
+  Selection follows the take directory across ordering/scan changes, including
+  partial batches that have not reached the selected folder yet.
+- Seek/playhead hooks exist but are not wired to a transport. Current Play still
+  uses the system player and Reamp still inserts a manually routed FilePlayer;
+  tooltips say so. No in-app seek/playback is claimed for this slice.
+
+Coordinator-reported final verification on 2026-10-02: incremental app/test
+build exited 0; `[scratch-waveform],[scratch-ui]` passed **53 assertions in four
+cases**. The first successful build exposed a test expectation mismatch: JUCE
+`MinMaxValue::setFloat` deliberately expands equal bounds, so true silence has
+thumbnail bounds `[0, 1/128]`. The regression was corrected against that source
+behavior; it also checks a 0.75 impulse within 0.02 and in the correct time
+region. This is native overview quantization, not synthetic waveform content.
+No visual/manual UI/restart or hardware verification is claimed; those checks
+remain outstanding.
 
 ### Audio Callback Taps
 
@@ -229,8 +261,9 @@ Behavior:
 - Raw `Reamp` adds a `FilePlayerProcessor` loaded with `raw.wav` when a complete raw file exists.
 - Reamp does not connect the node, restore the recorded patch, or export a new
   wet file; the user must route and control the file player in the current graph.
-- Panel lane traces and take thumbnails are decorative (the latter derived
-  from the take ID), not measurements or decoded audio waveforms.
+- Task 3 replaces synthetic lane/thumbnail traces with real cached overviews
+  and folder-stable virtualized selection, with the focused verification above;
+  in-app transport is not part of that change.
 
 Additional layout/presentation helpers:
 

@@ -1,8 +1,33 @@
 #pragma once
 
 #include "ScratchRecorder.h"
+#include "ScratchTakeLibrary.h"
 
 #include <JuceHeader.h>
+
+inline int findScratchTakeRow(const ScratchLibrarySnapshot& snapshot, const juce::File& directory)
+{
+    for (size_t i = 0; i < snapshot.entries.size(); ++i)
+        if (snapshot.entries[i].take.takeDirectory == directory) return static_cast<int>(i);
+    return -1;
+}
+
+inline juce::File reconcileScratchSelection(const ScratchLibrarySnapshot& snapshot, const juce::File& selected)
+{
+    if (findScratchTakeRow(snapshot, selected) >= 0) return selected;
+    // A partial batch may not contain the selection yet. Don't jump to another take.
+    if (snapshot.scanning && selected != juce::File()
+        && selected.getParentDirectory().getParentDirectory() == snapshot.root) return selected;
+    return snapshot.entries.empty() ? juce::File() : snapshot.entries.front().take.takeDirectory;
+}
+
+struct ScratchTakeActions { bool play, reamp, reveal; };
+inline ScratchTakeActions scratchTakeActions(const ScratchTakeLoadResult& entry)
+{
+    return {entry.state == ScratchTakeLoadState::Ready && entry.wetReadable,
+            entry.state == ScratchTakeLoadState::Ready && entry.rawReadable,
+            entry.take.takeDirectory != juce::File()};
+}
 
 namespace ScratchPanelPresentation
 {

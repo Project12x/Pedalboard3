@@ -30,8 +30,9 @@ The storage slice now writes portable schema-2 manifests before recording and
 retains independent RAW/WET counts on finalization. Read-only legacy/v2 loading
 and damaged-bundle validation are covered by focused tests. Background discovery
 now reloads the on-disk library at startup/open/Refresh and after capture; panel
-history is no longer limited to eight session entries. Real waveforms and
-in-app audition routing remain forthcoming.
+history is no longer limited to eight session entries. Real cached RAW/WET
+waveforms and virtualized, folder-stable selection are now implemented;
+in-app audition routing remains forthcoming.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

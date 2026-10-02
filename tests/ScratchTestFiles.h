@@ -21,7 +21,8 @@ struct ScratchTestFiles
         return ScratchTake::createPending(context);
     }
 
-    static void wav(const juce::File& file, int channels = 1, int samples = 480, double rate = 48000)
+    static void wav(const juce::File& file, int channels = 1, int samples = 480, double rate = 48000,
+                    bool impulse = true)
     {
         juce::WavAudioFormat format;
         std::unique_ptr<juce::OutputStream> stream(file.createOutputStream());
@@ -31,7 +32,7 @@ struct ScratchTestFiles
         REQUIRE(writer != nullptr);
         juce::AudioBuffer<float> audio(channels, samples);
         audio.clear();
-        if (samples > 0)
+        if (samples > 0 && impulse)
             audio.setSample(0, samples * 3 / 4, 0.75f);
         REQUIRE(writer->writeFromAudioSampleBuffer(audio, 0, samples));
     }

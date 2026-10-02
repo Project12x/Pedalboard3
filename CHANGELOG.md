@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Scratch take browsing now uses recycled, keyboard-focusable list rows and stable folder-based selection. Selected and visible-row waveforms come from real WAV peak data on a shared worker/cache, replacing decorative traces; missing/loading audio is labeled instead of invented. Overview rendering never reads WAV files from paint. In-app transport is still a later integration step.
 - Scratch captures now write schema-2, bundle-relative metadata before recording and replace it safely on finalization. Separate RAW/WET frame counts preserve evidence of interrupted or unequal captures; a metadata failure cannot be reported as a saved take. A bounded, read-only loader supports relocated legacy bundles and marks damaged/future formats inspectable without rewriting them. This lays the storage foundation for persistent history; it does not yet change the panel's session-only list.
 - Removed a duplicate MSVC `/FS` flag: generated projects passed it twice while compiler tracking saved it once, making unchanged source files rebuild on every verification pass. The existing global flag still protects parallel PDB writes.
 - **Tuner Quick-Read Layout** — Enlarged the tuner node and prioritized its note readout, coarse-deviation strip, and primary tuning meter. The secondary pitch-history, status, and reference-response panels are no longer drawn, trading historical detail for a clearer immediate tuning surface during live setup.

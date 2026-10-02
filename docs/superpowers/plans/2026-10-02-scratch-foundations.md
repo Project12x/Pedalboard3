@@ -239,9 +239,19 @@ The immutable snapshot pointer is for workers/message thread only, never audio.
 - [x] Run green build and `Pedalboard3_Tests.exe "[scratch-library],[scratch-storage]"`.
   Record scanning/decode thread identities in focused tests, not timing sleeps.
   Update docs to distinguish persistent library behavior from capture state.
-- [ ] Commit `feat: reload scratch takes from disk` with task files and changelog.
+- [x] Commit `feat: reload scratch takes from disk` with task files and changelog (`c33748f`).
 
 ## Task 3: Real waveforms and virtualized take selection
+
+Implementation ruling: pinned JUCE's 8-bit AudioThumbnail expands equal bounds;
+silence reports [0, 1/128], not [0, 0]. The real-backend test asserts that exact
+quantization and keeps the independent impulse location/peak checks. Readers
+open on a shared worker; painting uses only cached min/max, since drawChannel
+can otherwise read the source file at high zoom.
+
+Execution evidence: app/test incremental build exit 0; waveform/UI focused run
+passed all 53 assertions in four cases. Full interactive/visual acceptance is
+deferred to Task 8; the production selection/action helpers are tested here.
 
 **Files:** create `src/ScratchWaveformView.{h,cpp}`,
 `tests/scratch_waveform_test.cpp`, `tests/scratch_panel_test.cpp`;
@@ -261,7 +271,7 @@ Its two AudioThumbnails share a cache capped at 32 entries and use 512 samples
 per overview bucket. Store selected canonical directory independently of row
 index. Introduce `ScratchPanel::selectedTakeDirectory`, not a global selected row.
 
-- [ ] Test `[scratch][scratch-waveform]` using small actual WAV fixtures: silence
+- [x] Test `[scratch][scratch-waveform]` using small actual WAV fixtures: silence
   yields zero min/max; an impulse appears only in its expected time region;
   distinct raw/wet contents stay distinct; channels and duration match headers;
   replacing selection while loading cannot republish the first take. Test the
@@ -275,22 +285,22 @@ index. Introduce `ScratchPanel::selectedTakeDirectory`, not a global selected ro
   REQUIRE(wetMaximum == Catch::Approx(0.75f).margin(0.02f));
   REQUIRE(wetDurationSeconds == Catch::Approx(1.0).margin(1.0 / 48000.0));
   ```
-- [ ] Test `[scratch][scratch-ui]` selection by directory survives newest-first
+- [x] Test `[scratch][scratch-ui]` selection by directory survives newest-first
   insertion and generation replacement; invalid/unsupported entries show their
   reason and Reveal; >8 entries remain reachable through recycled list rows.
   Put `int findScratchTakeRow(const ScratchLibrarySnapshot&, const juce::File&)`
   in ScratchPanelPresentation.h and use it in production for stable selection;
   test this shared helper, not a reimplemented test-only selection algorithm.
-- [ ] Establish RED, then replace nested paint-only RecentTakesList with a JUCE
+- [x] Establish RED, then replace nested paint-only RecentTakesList with a JUCE
   virtualized ListBox and recycled row components. Use real focusable action
   buttons. Load selected waveforms first, then only visible row thumbnails;
   destroy stale source requests and invalidate cache identity when a finalized
   file's size/modification time changes. Do not load all WAVs during a UI tick.
-- [ ] Remove `drawThumbnailTrace` and decorative lane curves. Label every
+- [x] Remove `drawThumbnailTrace` and decorative lane curves. Label every
   displayed channel; use a shared time range for RAW/WET. Empty/loading/missing
   states show text, not invented signal. Expose seek/playhead integration points;
   until Task 6, do not claim that the old external player can seek in-app.
-- [ ] Run green build and `Pedalboard3_Tests.exe "[scratch-waveform],[scratch-ui]"`.
+- [x] Run green build and `Pedalboard3_Tests.exe "[scratch-waveform],[scratch-ui]"`.
   Keep screenshot checks proportional; do not snapshot the whole panel yet.
 - [ ] Commit `feat: show real scratch waveforms and persistent take selection`.
 

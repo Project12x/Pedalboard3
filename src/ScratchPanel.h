@@ -2,6 +2,7 @@
 
 #include "ScratchRecorder.h"
 #include "ScratchTakeLibrary.h"
+#include "ScratchWaveformView.h"
 
 #include <JuceHeader.h>
 
@@ -33,37 +34,26 @@ private:
         bool saving = false;
     };
 
-    class RecentTakesList final : public juce::Component
+    class RecentTakesList final : public juce::Component, private juce::ListBoxModel
     {
     public:
-        explicit RecentTakesList(MainPanel& ownerToUse);
-
-        void setTakes(std::vector<ScratchTake> takesToShow);
-        int getPreferredHeight() const;
-        void paint(juce::Graphics& g) override;
-        void mouseDown(const juce::MouseEvent& event) override;
-
+        RecentTakesList(MainPanel&, ScratchWaveformCache&);
+        ~RecentTakesList() override { list.setModel(nullptr); }
+        void setSnapshot(std::shared_ptr<const ScratchLibrarySnapshot>, const juce::File& selection);
+        void resized() override { list.setBounds(getLocalBounds()); }
+        void paint(juce::Graphics&) override;
+        std::function<void(const juce::File&)> onSelection;
     private:
-        enum class Action
-        {
-            None,
-            Play,
-            Reamp,
-            Reveal
-        };
-
-        struct Hit
-        {
-            int takeIndex = -1;
-            Action action = Action::None;
-        };
-
-        juce::Rectangle<int> getRowBounds(int index) const;
-        juce::Rectangle<int> getActionBounds(int index, Action action) const;
-        Hit hitTest(juce::Point<int> point) const;
-
+        class Row;
+        int getNumRows() override;
+        void paintListBoxItem(int, juce::Graphics&, int, int, bool) override {}
+        juce::Component* refreshComponentForRow(int, bool, juce::Component*) override;
+        void selectedRowsChanged(int) override;
         juce::Component::SafePointer<MainPanel> owner;
-        std::vector<ScratchTake> takes;
+        ScratchWaveformCache& cache;
+        std::shared_ptr<const ScratchLibrarySnapshot> snapshot;
+        bool updating = false;
+        juce::ListBox list{"Scratch takes", this};
     };
 
     struct Layout
@@ -98,8 +88,11 @@ private:
     juce::TextButton refreshButton{"Refresh"};
     juce::Label statusLabel{"statusLabel", "Ready"};
     juce::Label elapsedLabel{"elapsedLabel", "00:00"};
-    juce::Viewport recentTakesViewport{"recentTakesViewport"};
+    ScratchWaveformCache waveformCache;
+    ScratchWaveformView selectedWaveform{waveformCache};
+    juce::Viewport waveformViewport{"Selected take audio"};
     RecentTakesList recentTakesList;
+    juce::File selectedTakeDirectory;
     ScratchRecorderStatus lastStatus;
     std::shared_ptr<const ScratchLibrarySnapshot> librarySnapshot;
     std::vector<ScratchTake> libraryTakes;
