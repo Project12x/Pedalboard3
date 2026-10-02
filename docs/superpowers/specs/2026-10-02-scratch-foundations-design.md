@@ -2,7 +2,9 @@
 
 Date: 2026-10-02
 
-Status: feature direction accepted; written design awaiting user review.
+Status: written design approved by the user's `proceed` on 2026-10-02.
+The [implementation plan](../plans/2026-10-02-scratch-foundations.md) awaits
+review and execution-method choice; implementation has not started.
 This is a design, not a claim that the features below exist.
 
 ## Intent and scope

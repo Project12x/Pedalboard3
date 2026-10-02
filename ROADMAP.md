@@ -74,7 +74,9 @@ Immediate next agent sequence:
 The user accepted the five foundations below plus modest UI polish, with
 documentation updated in parallel. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-is awaiting review; implementation has not started. The older template sequence
+is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
+awaits review and execution-method choice; implementation has not started.
+The older template sequence
 below remains a separate proposal, not a prerequisite for these improvements.
 
 | Accepted foundation | Intended outcome | Status |

@@ -14,11 +14,18 @@ cmake --preset msvc-release
 cmake --build --preset msvc-release
 ```
 
-The existing local `build` directory can also be rebuilt without reconfiguring:
+The existing local `build` directory can also be rebuilt without reconfiguring,
+provided its cache points to the checkout being changed:
 
 ```powershell
 cmake --build build --config Release
 ```
+
+Source-location caveat (2026-10-02): the D: checkout's `build/CMakeCache.txt`
+still records `C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2`
+as its source and JUCE location. Check this before compiling; a successful build
+against the old source path is not evidence that D: edits were tested. Resolve
+the build location once rather than silently creating alternate build trees.
 
 Do not delete or regenerate another active worktree's build directory. The
 macOS/AU worktrees are separate and require a Mac to validate.
@@ -75,8 +82,10 @@ in-app wet audition, current-rig reamp without manual FilePlayer wiring, saved
 capture-time rig context, and modest existing-style UI polish. These are planned
 features, not controls available in the current build. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-awaits review before implementation; the current-use instructions above remain
-applicable.
+is approved; the
+[implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
+awaits review and an execution choice. Implementation has not started, so the
+current-use instructions above remain applicable.
 
 ## Verify Scratch Capture with a real interface
 

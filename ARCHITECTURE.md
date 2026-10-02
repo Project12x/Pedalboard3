@@ -348,9 +348,11 @@ waveforms, in-app wet audition, reamp through the current rig without manually
 wiring a FilePlayer, saved capture-time rig context, and modest UI polish within
 the existing visual style. The written
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-awaits user review before implementation. The source baseline and limitations
-above still describe the current code; no new behavior or verification is
-claimed by this plan.
+is approved; the
+[implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
+awaits review and an execution choice. Implementation has not started. The
+source baseline and limitations above still describe the current code; no new
+behavior or verification is claimed by these planning documents.
 
 ---
 

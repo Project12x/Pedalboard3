@@ -23,7 +23,9 @@ Current request (2026-10-02): substantially expand Scratch Capture while updatin
 the docs in parallel. The user accepted persistent take history, genuine
 waveforms, in-app playback, easier reamping, capture-time rig context, and a
 modest UI polish pass. The [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-is awaiting review; no expansion code has been implemented. Current limitations
+is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
+awaits review and execution-method choice; no expansion code has been implemented.
+Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).
 

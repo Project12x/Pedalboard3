@@ -15,8 +15,10 @@ raw/wet waveforms, in-app wet audition, current-rig reamp without manual
 FilePlayer wiring, saved capture-time rig context, and modest existing-style UI
 polish. The
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
-awaits user review before implementation. This handoff continues to describe
-the current baseline and its historical evidence.
+is approved; the
+[implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
+awaits review and an execution choice. Implementation has not started. This
+handoff continues to describe the current baseline and its historical evidence.
 
 ## Historical Baseline (June 2026)
 
@@ -291,9 +293,9 @@ Updated 2026-06-09: small take actions are implemented.
 - `Reamp` adds an unconnected `FilePlayerProcessor` node for a completed `raw.wav`.
 - `Reveal` opens the take folder.
 
-This describes the implemented scope. The accepted expansion is recorded in
-the design linked above, awaiting review before implementation; do not treat
-planned audition/reamp behavior as already available.
+This describes the implemented scope. The expansion design is approved, with
+implementation-plan review and execution choice pending as linked above; do
+not treat planned audition/reamp behavior as already available.
 
 ### Scratch Folder Setting
 
