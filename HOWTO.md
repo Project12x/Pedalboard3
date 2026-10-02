@@ -67,14 +67,22 @@ names, separate raw/wet frame counts, capture status, and snapshot status. An
 initial incomplete manifest is written before recording; final metadata uses
 temporary-file replacement so a failed replacement preserves the prior JSON.
 The new read-only loader accepts legacy and v2 bundles without migrating them,
-including relocated legacy folders. This is the storage foundation only:
-`rig.xml` is a reserved sidecar name, not a saved rig yet, and the panel does
-not yet discover old takes from disk.
+including relocated legacy folders. `rig.xml` is a reserved sidecar name,
+not a saved rig yet.
 
-The current panel is not a persistent take library:
+Task 2 adds disk-backed `Takes`. It scans the configured root's day/take folders
+on startup, panel
+open, `Refresh`, destination changes, and capture finalization. Previously saved
+takes are discovered without modifying their files, and the panel no longer
+uses the recorder's eight-entry session limit. Scanning is fixed-depth, not a
+general recursive audio-file search; keep imported bundles in the day/take
+layout. Missing roots and damaged/unsupported bundles show diagnostic status
+rather than being silently discarded.
 
-- `Recent Takes` contains at most eight takes from this app session. Older
-  files remain on disk, but the panel does not reload them after restarting.
+Current limitations remain:
+
+- The interim list is not virtualized yet. Real waveforms and selected-take
+  transport are later tasks, not part of disk discovery.
 - `Play` opens a complete take's wet file in the OS-associated player, which
   may use a different output device from Pedalboard. There are no internal
   Scratch playback controls.
@@ -89,15 +97,16 @@ The current panel is not a persistent take library:
 
 The accepted next scope is a disk-backed take library, real raw/wet waveforms,
 in-app wet audition, current-rig reamp without manual FilePlayer wiring, saved
-capture-time rig context, and modest existing-style UI polish. These are planned
-features, not controls available in the current build. The
+capture-time rig context, and modest existing-style UI polish. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-is now in progress. The storage slice described above has a successful build
-and focused Scratch test result; the listed user-facing foundations remain
-upcoming. The Windows symlink test was skipped for missing privilege, not
-passed; see the handoff for the dated evidence. Hardware QA remains outstanding.
+is now in progress. Storage Task 1 (`11fe41a`) has a successful build and focused
+Scratch test result. Task 2's final app/test build passed on 2026-10-02; its
+focused library/storage run passed 328 assertions in 12 cases, with two
+Windows privilege-dependent symlink cases skipped, not passed. Waveform,
+transport/reamp, rig-context, and polish tasks are upcoming. See the handoff
+for dated evidence; manual restart/UI and hardware QA remain outstanding.
 
 ## Verify Scratch Capture with a real interface
 
@@ -122,6 +131,10 @@ folder, verify all of the following:
    playback and manual-routing reamp behaviors described above.
 7. Destination choose/reset works between takes and is disabled in the panel
    during recording/saving. Confirm a new take uses the selected destination.
+8. For Task 2 acceptance, restart and reopen Takes to verify disk discovery;
+   check Refresh, more than eight saved bundles, destination changes, and a
+   damaged test bundle's diagnostic row. Do not modify the user's recordings
+   to create that fixture. This manual check is still outstanding.
 
 Record the tested commit, interface/driver, channel selection, sample rate,
 buffer size, and actual result; do not substitute old evidence for a new run.

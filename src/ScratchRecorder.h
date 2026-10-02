@@ -84,6 +84,9 @@ public:
 
     void finishPendingStopForTests();
 
+    // Message-thread finalization notification; invoked after releasing stateLock.
+    std::function<void(const ScratchTake&)> onTakeFinalized;
+
 private:
     void handleAsyncUpdate() override;
     void finishStop();

@@ -81,7 +81,7 @@ below remains a separate proposal, not a prerequisite for these improvements.
 
 | Accepted foundation | Intended outcome | Status |
 |---|---|---|
-| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Storage/legacy loader verified; scanner and panel integration in progress |
+| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Implemented; focused storage/discovery tests pass. Virtualized presentation follows in Task 3 |
 | Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Designed; not implemented |
 | In-app original playback | Audition the saved wet print without running it through the current effects again | Designed; not implemented |
 | Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Designed; not implemented |
@@ -90,8 +90,8 @@ below remains a separate proposal, not a prerequisite for these improvements.
 
 Verified current limitations that this expansion addresses:
 
-- The recent list holds eight takes in memory. Saved take folders survive restart,
-  but the panel does not reload them from disk.
+- Persistent discovery now reloads saved folders; virtualized rows and stable
+  selected-take presentation remain the next UI slice.
 - Wet playback launches the OS file handler. Raw reamp inserts a file-player node
   into the current graph without connecting it or restoring the recording rig.
 - Take thumbnails and lane traces are decorative; they do not display sampled audio.
@@ -276,7 +276,7 @@ These are useful after the current ship gate and P0 gig-speed items.
 |---|---|---|
 | Scratch folder preference | Done for V1 | Scratch panel and app menu expose choose/reset; no Preferences mirror unless later requested. |
 | Scratch take playback/reamp | Partial | Wet preview opens the saved wet file; raw reamp adds a file-player node for the raw capture. No timeline/editor. |
-| Recent scratch take management | Partial | Eight session-local entries show date/time, patch context, RAW/WET metadata, and reveal/play/reamp actions; no cross-session take discovery. |
+| Scratch take library | Implemented foundations | Background cross-session discovery, Refresh, root changes, and diagnostic rows; virtualized selection follows in Task 3. |
 | Embedded node editors | Planned | Opt-in node display mode based on clean-room Element pattern study; internal/generic editors first, arbitrary external custom UIs later. |
 | Stage MIDI pedal control | Planned | Build via the Stage Action Map, not one-off `StageView` shortcuts. |
 | Quick onboarding entry point | Planned | Should point to real starter rigs once they exist. |

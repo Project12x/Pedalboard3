@@ -177,9 +177,14 @@ deterministic failed-replace test without a platform-specific permission harness
 - [x] Run the green incremental build and `Pedalboard3_Tests.exe "[scratch]"`.
   Require zero failed assertions; inspect the write/drop/lifetime regressions,
   not only new parser tests. Update CHANGELOG and HOWTO's current metadata facts.
-- [ ] Commit exact task files: `feat: persist versioned scratch take bundles`.
+- [x] Commit exact task files: `feat: persist versioned scratch take bundles` (`11fe41a`).
 
 ## Task 2: Background discovery and persistent library identity
+
+Execution evidence (2026-10-02): app/test build passed; focused library/storage
+run passed 328 assertions, 12 cases; two linked-file/directory cases skipped
+because Windows symlink privilege is absent. Root-B's empty scanning snapshot
+publishes before releasing blocked A; completed B follows on the same worker.
 
 **Files:** create `src/ScratchTakeLibrary.{h,cpp}` and
 `tests/scratch_take_library_test.cpp`; modify `MainPanel.{h,cpp}`, both CMake
@@ -205,7 +210,7 @@ std::shared_ptr<const ScratchLibrarySnapshot> snapshot() const;
 The immutable snapshot pointer is for workers/message thread only, never audio.
 `MainPanel::getScratchLibrarySnapshot() const` forwards the same return type.
 
-- [ ] Test `[scratch][scratch-library]`: 12 bundles survive service recreation;
+- [x] Test `[scratch][scratch-library]`: 12 bundles survive service recreation;
   two directories with the same `takeId` produce two rows; corrupt JSON does not
   hide neighbors; newest-first order is deterministic on equal timestamps;
   root A completing after root B cannot publish A; refresh cannot remove a
@@ -220,18 +225,18 @@ The immutable snapshot pointer is for workers/message thread only, never audio.
   REQUIRE(result->entries.size() == 12);
   REQUIRE_FALSE(result->scanning);
   ```
-- [ ] Establish RED, then implement one cancellable scan worker over exactly
+- [x] Establish RED, then implement one cancellable scan worker over exactly
   root/day/take depth. Canonical directory is identity; use platform-correct path
   case handling. Publish sorted immutable batches of at most 128 new entries per
   update. Missing/inaccessible roots produce a visible status without creating
   directories. Include malformed bundles as diagnostic entries.
-- [ ] Wire startup, panel-open, explicit Refresh, root changes, and finalization.
+- [x] Wire startup, panel-open, explicit Refresh, root changes, and finalization.
   Add `ScratchRecorder::onTakeFinalized` of type
   `std::function<void(const ScratchTake&)>`, invoked on the message thread after
   releasing the state lock. Preserve the recorder's small recent list for current
   callers, but stop using it as the panel's library. Own and join the scanner
   outside the callback; cancel callbacks before MainPanel destruction.
-- [ ] Run green build and `Pedalboard3_Tests.exe "[scratch-library],[scratch-storage]"`.
+- [x] Run green build and `Pedalboard3_Tests.exe "[scratch-library],[scratch-storage]"`.
   Record scanning/decode thread identities in focused tests, not timing sleeps.
   Update docs to distinguish persistent library behavior from capture state.
 - [ ] Commit `feat: reload scratch takes from disk` with task files and changelog.

@@ -497,6 +497,8 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     const auto savedScratchRoot = SettingsManager::getInstance().getString(kScratchRootSettingsKey);
     if (savedScratchRoot.isNotEmpty())
         scratchRecorder.setScratchRoot(File(savedScratchRoot));
+    scratchLibrary.setRoot(scratchRecorder.getScratchRoot());
+    scratchRecorder.onTakeFinalized = [this](const ScratchTake& take) { scratchLibrary.upsertFinalizedTake(take); };
 
     //[UserPreSize]
 
@@ -806,6 +808,7 @@ MainPanel::~MainPanel()
     }
     scratchRecorder.requestStop();
     graphPlayer.setScratchRecorder(nullptr);
+    scratchRecorder.onTakeFinalized = {};
     deviceManager.removeAudioCallback(&graphPlayer);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
@@ -1644,6 +1647,7 @@ void MainPanel::toggleScratchCapture()
 //------------------------------------------------------------------------------
 void MainPanel::openScratchPanel()
 {
+    scratchLibrary.refresh();
     auto* panel = new ScratchPanel(*this);
     panel->setSize(600, 560);
     JuceHelperStuff::showNonModalDialog("Scratch Capture", panel, this,
@@ -1681,6 +1685,7 @@ void MainPanel::chooseScratchFolder()
 
         selected.createDirectory();
         panel->scratchRecorder.setScratchRoot(selected);
+        panel->scratchLibrary.setRoot(selected);
         SettingsManager::getInstance().setValue(kScratchRootSettingsKey, selected.getFullPathName());
         panel->showToast("Scratch destination set");
         panel->refreshScratchControls();
@@ -1698,6 +1703,7 @@ void MainPanel::resetScratchFolderToDefault()
     }
 
     scratchRecorder.resetScratchRootToDefault();
+    scratchLibrary.setRoot(scratchRecorder.getScratchRoot());
     SettingsManager::getInstance().setValue(kScratchRootSettingsKey, String{});
     showToast("Scratch destination reset");
     refreshScratchControls();

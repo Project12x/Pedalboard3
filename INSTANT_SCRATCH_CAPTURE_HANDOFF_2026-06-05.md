@@ -11,16 +11,18 @@ documentation pass did not build, run tests, or verify a real audio interface.
 Task 1 implementation evidence is recorded separately below; the June results
 remain historical.
 
-Accepted expansion, not yet implemented: a disk-backed take library, real
+Accepted expansion in progress: a disk-backed take library, real
 raw/wet waveforms, in-app wet audition, current-rig reamp without manual
 FilePlayer wiring, saved capture-time rig context, and modest existing-style UI
 polish. The
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-is now in progress. The storage-only first slice is implemented and has focused
-verification below. Persistent browsing, waveforms, in-app audition, easier
-reamp, rig snapshots, and UI polish are still upcoming; hardware QA remains open.
+is now in progress. Storage Task 1 is committed as `11fe41a` with focused
+verification below. Task 2 disk discovery and interim panel integration now
+have a successful app/test build and focused verification below. Virtualization,
+waveforms, in-app audition, easier reamp, rig snapshots, and integrated UI polish
+are still upcoming; hardware QA remains open.
 
 ## Historical Baseline (June 2026)
 
@@ -103,7 +105,8 @@ Behavior:
   missing legacy counts remain unknown. Invalid/unsupported results retain the
   directory for inspection. JSON size/type/range/path checks and WAV chunk
   preflight reject malformed or truncated data before constructing a reader.
-  This does not yet provide persistent panel discovery.
+  Task 2 consumes this loader through a background library worker; see its
+  dated build/focused-test result below.
 
 ### Scratch Recorder Core
 
@@ -116,9 +119,9 @@ Files:
 Behavior:
 
 - `ScratchRecorder` owns state, current take metadata, recent take list, raw/wet sinks, and writer thread.
-- The recent list is in-memory only, newest-first, capped at eight. Restarting
-  clears the panel list, not the saved files; its `total` label is not a disk
-  library count.
+- The recorder's recent list remains in-memory, newest-first, capped at eight
+  for existing callers. The Task 2 panel uses the disk library instead, so this
+  recorder limit no longer limits panel history.
 - `ThreadedWavSinkFactory` creates `AudioFormatWriter::ThreadedWriter` backed WAV sinks.
 - Refuses start when raw input or wet output channel counts are missing.
 - Writes raw and wet blocks through audio-callback entry points.
@@ -135,6 +138,30 @@ Real-time safety notes:
 - Finalization gates new writes and waits for active writes before destroying
   sinks; the 250 ms drain warning records failure but still waits for safety.
 - `MeteringProcessorPlayer` holds an atomic raw observer pointer to `ScratchRecorder`; it does not own the recorder.
+
+### Task 2 Disk Library
+
+`src/ScratchTakeLibrary.{h,cpp}` adds one app-owned scan worker. MainPanel
+requests discovery at startup, panel open, explicit Refresh, root changes, and
+capture finalization (notified after the recorder lock is released).
+
+- Scan only root/day/take depth; skip linked day/take directories and leave
+  bundle contents unchanged. Missing/inaccessible roots produce status.
+- Publish immutable root/generation snapshots, sorted newest-first, with partial
+  publication every 128 discovered entries. Discard obsolete-generation results.
+- Retain corrupt/unsupported bundles with reasons; separate directories remain
+  separate entries even when take IDs match.
+- The interim `Takes` panel consumes all entries rather than the eight-item
+  recorder list, exposes Refresh and scanning/error status, and keeps diagnostic
+  rows revealable. It is not virtualized yet and still uses decorative traces.
+
+Coordinator-reported verification on 2026-10-02: final app/test build exited 0;
+`[scratch-library],[scratch-storage]` passed **328 assertions in 12 passed cases**,
+with **two skipped cases** (storage symlink sections and the library linked-day
+test) because Windows lacks symlink creation privilege. Those link-boundary
+checks were unavailable, not passed. Manual UI/restart and hardware checks remain
+unverified. External wet playback and manual FilePlayer reamp are unchanged;
+this is discovery, not transport.
 
 ### Audio Callback Taps
 

@@ -290,7 +290,7 @@ Device input -> RAW tap -> input gains -> patch graph -> master bus
              -> output gains -> WET tap -> device output
 RAW/WET taps -> ScratchRecorder -> buffered WAV writers -> take folder
 MainPanel commands -> start/stop -> message-thread finalization -> take.json
-ScratchPanel <- 10 Hz status snapshot + session recent-take list
+ScratchPanel <- 10 Hz recorder status + immutable disk-library snapshots
 ```
 
 - `MainPanel` owns the recorder and builds start-time context from the current
@@ -333,15 +333,29 @@ absolute paths, and leaves missing legacy frame counts unknown. It caps JSON
 at 1 MiB, validates types/ranges/paths, and preflights WAV chunk bounds before
 reader construction (rejecting truncation and oversized non-audio chunks).
 Invalid/unsupported takes retain an inspectable result and directory; readable
-audio does not relabel an interrupted take complete. This loader is not yet
-wired to a persistent panel library.
+audio does not relabel an interrupted take complete.
+
+Task 2 background library: `MainPanel` owns
+`ScratchTakeLibrary`, whose single worker scans exactly root/day/take depth
+without recursively traversing arbitrary subtrees or following linked day/take
+directories. Startup, panel open, Refresh, destination changes, and capture
+finalization request scans. The finalization callback runs after the recorder's
+state lock is released and is cleared during owner teardown.
+
+The library publishes immutable, newest-first snapshots with root/generation,
+entries, scanning state, and a message. A new generation invalidates old scan
+results; publication rechecks that generation. Partial snapshots publish every
+128 discovered entries. Corrupt/unsupported takes remain diagnostic entries;
+duplicate take IDs in separate directories are not merged. Missing/inaccessible
+roots produce status without scan-side directory creation. Disk reads and worker
+joining stay off the audio callback. Snapshot access is a control-thread API.
 
 Current boundaries:
 
-- Recent takes are an in-memory, newest-first list capped at eight; the panel
-  does not yet scan disk or use the new loader. Files remain on disk when the
-  list rolls over or the app restarts. Its counts describe this list, not a
-  library.
+- The recorder retains its eight-entry session history for existing callers,
+  but the interim panel now consumes all library entries with no eight-take
+  limit. It retains damaged entries with reasons and Reveal. Row virtualization
+  and real waveform decoding are not implemented yet.
 - `Play` opens a complete take's existing `wet.wav` through the OS file handler;
   it is not an internal transport. `Reamp` adds a `FilePlayerProcessor` for a
   complete take's existing `raw.wav` to the current graph, without wiring it or
@@ -352,7 +366,8 @@ Current boundaries:
   separate latency-alignment pass for raw and processed signals.
 
 Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
-`src/ScratchBundleIO.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
+`src/ScratchBundleIO.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
+`src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
 
@@ -365,10 +380,13 @@ the existing visual style. The written
 [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. Native implementation of the
 [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-is now in progress. The storage-only first slice above has built and passed its
-focused Scratch run; persistent browsing, real waveforms, in-app audition,
-easy reamp, rig snapshots, and UI polish remain upcoming. See the handoff for
-the dated result and skipped Windows symlink check; hardware QA remains open.
+is now in progress. Storage Task 1 is committed as `11fe41a` with focused
+verification. Task 2's final app/test build passed on 2026-10-02; the focused
+library/storage run passed 328 assertions in 12 cases, with two Windows
+privilege-dependent symlink cases skipped, not passed. Virtualization, real
+waveforms, in-app audition, easy reamp, rig snapshots, and integrated UI polish
+remain upcoming. See the handoff for dated evidence; manual restart/UI and
+hardware QA remain open.
 
 ---
 

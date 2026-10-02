@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScratchRecorder.h"
+#include "ScratchTakeLibrary.h"
 
 #include <JuceHeader.h>
 
@@ -94,9 +95,12 @@ private:
     juce::TextButton chooseButton{"chooseButton"};
     juce::TextButton resetButton{"resetButton"};
     juce::TextButton revealButton{"revealButton"};
+    juce::TextButton refreshButton{"Refresh"};
     juce::Label statusLabel{"statusLabel", "Ready"};
     juce::Label elapsedLabel{"elapsedLabel", "00:00"};
     juce::Viewport recentTakesViewport{"recentTakesViewport"};
     RecentTakesList recentTakesList;
     ScratchRecorderStatus lastStatus;
+    std::shared_ptr<const ScratchLibrarySnapshot> librarySnapshot;
+    std::vector<ScratchTake> libraryTakes;
 };

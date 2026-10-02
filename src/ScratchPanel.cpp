@@ -508,10 +508,14 @@ ScratchPanel::ScratchPanel(MainPanel& ownerToUse) : owner(&ownerToUse), recentTa
     revealButton.setButtonText("Reveal");
     revealButton.addListener(this);
     revealButton.setTooltip("Reveal scratch ideas folder");
+    addAndMakeVisible(refreshButton);
+    refreshButton.setTooltip("Rescan saved take folders without modifying them");
+    refreshButton.onClick = [this] { if (auto* panel = owner.getComponent()) panel->refreshScratchLibrary(); };
 
     styleScratchTextButton(chooseButton, accent, text, false);
     styleScratchTextButton(resetButton, border.brighter(0.24f), text, false);
     styleScratchTextButton(revealButton, accent, text, false);
+    styleScratchTextButton(refreshButton, accent, text, false);
 
     for (auto* label : {&statusLabel, &elapsedLabel})
     {
@@ -681,10 +685,12 @@ void ScratchPanel::paint(juce::Graphics& g)
 
     g.setFont(fonts.getSubheadingFont());
     g.setColour(text);
-    g.drawFittedText("Recent Takes", layout.recentHeader, juce::Justification::centredLeft, 1);
+    g.drawFittedText("Takes", layout.recentHeader, juce::Justification::centredLeft, 1);
     g.setFont(fonts.getMonoFont(11.0f));
     g.setColour(text.withAlpha(0.48f));
-    g.drawFittedText(getRecentCountLabel(lastStatus.recentTakes), layout.recentHeader,
+    const auto libraryLabel = librarySnapshot && librarySnapshot->message.isNotEmpty()
+        ? librarySnapshot->message : getRecentCountLabel(libraryTakes);
+    g.drawFittedText(libraryLabel, layout.recentHeader.withTrimmedLeft(70).withTrimmedRight(80),
                      juce::Justification::centredRight, 1);
 }
 
@@ -697,6 +703,7 @@ void ScratchPanel::resized()
     chooseButton.setBounds(layout.choose);
     resetButton.setBounds(layout.reset);
     revealButton.setBounds(layout.reveal);
+    refreshButton.setBounds(layout.recentHeader.withTrimmedLeft(juce::jmax(0, layout.recentHeader.getWidth() - 72)));
     recentTakesViewport.setBounds(layout.recent);
     updateRecentTakesList();
 }
@@ -766,7 +773,24 @@ void ScratchPanel::refresh()
 
 void ScratchPanel::updateRecentTakesList()
 {
-    recentTakesList.setTakes(lastStatus.recentTakes);
+    if (auto* panel = owner.getComponent())
+    {
+        const auto next = panel->getScratchLibrarySnapshot();
+        if (next != librarySnapshot)
+        {
+            librarySnapshot = next;
+            libraryTakes.clear();
+            libraryTakes.reserve(next->entries.size());
+            for (const auto& entry : next->entries)
+            {
+                auto take = entry.take;
+                take.complete = entry.state == ScratchTakeLoadState::Ready;
+                if (entry.message.isNotEmpty()) take.failureReason = entry.message;
+                libraryTakes.push_back(std::move(take));
+            }
+            recentTakesList.setTakes(libraryTakes);
+        }
+    }
     const auto listWidth = juce::jmax(1, recentTakesViewport.getWidth() - 14);
     const auto listHeight = juce::jmax(recentTakesViewport.getHeight(), recentTakesList.getPreferredHeight());
     recentTakesList.setSize(listWidth, listHeight);

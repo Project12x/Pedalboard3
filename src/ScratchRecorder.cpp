@@ -392,63 +392,69 @@ void ScratchRecorder::finishStop()
         juce::Thread::sleep(1);
     }
 
-    const juce::ScopedLock lock(stateLock);
-
-    status.state = ScratchRecorderState::Saving;
-    status.message = "Saving";
-
-    if (rawSink != nullptr)
-        rawSink->close();
-    if (wetSink != nullptr)
-        wetSink->close();
-
-    rawSink.reset();
-    wetSink.reset();
-
-    const auto rawSamples = rawSamplesWritten.load(std::memory_order_relaxed);
-    const auto wetSamples = wetSamplesWritten.load(std::memory_order_relaxed);
-    const auto durationSamples = elapsedFromCounts(rawSamples, wetSamples);
-    const auto countsMatch = rawSamples == wetSamples;
-    const auto hadWriteError = writeError.load(std::memory_order_acquire);
-
-    currentTake.durationSamples = durationSamples;
-    currentTake.rawDurationSamples = rawSamples;
-    currentTake.wetDurationSamples = wetSamples;
-
-    if (drainTimeoutRecorded && currentTake.failureReason.isEmpty())
-        currentTake.failureReason = "Scratch capture stop waited too long for audio writes";
-    else if (hadWriteError && currentTake.failureReason.isEmpty())
-        currentTake.failureReason = "Scratch capture write failed";
-    else if (!countsMatch && currentTake.failureReason.isEmpty())
-        currentTake.failureReason = "Scratch capture raw and wet sample counts did not match";
-
-    currentTake.complete = !hadWriteError && countsMatch && currentTake.failureReason.isEmpty();
-    currentTake.captureStatus = currentTake.complete ? "complete"
-        : (hadWriteError || !countsMatch ? "failed" : "interrupted");
-
-    if (!currentTake.writeMetadata())
+    ScratchTake finalized;
     {
-        currentTake.complete = false;
-        currentTake.captureStatus = "failed";
-        if (currentTake.failureReason.isEmpty())
-            currentTake.failureReason = "Unable to write scratch take metadata";
+        const juce::ScopedLock lock(stateLock);
+
+        status.state = ScratchRecorderState::Saving;
+        status.message = "Saving";
+
+        if (rawSink != nullptr)
+            rawSink->close();
+        if (wetSink != nullptr)
+            wetSink->close();
+
+        rawSink.reset();
+        wetSink.reset();
+
+        const auto rawSamples = rawSamplesWritten.load(std::memory_order_relaxed);
+        const auto wetSamples = wetSamplesWritten.load(std::memory_order_relaxed);
+        const auto durationSamples = elapsedFromCounts(rawSamples, wetSamples);
+        const auto countsMatch = rawSamples == wetSamples;
+        const auto hadWriteError = writeError.load(std::memory_order_acquire);
+
+        currentTake.durationSamples = durationSamples;
+        currentTake.rawDurationSamples = rawSamples;
+        currentTake.wetDurationSamples = wetSamples;
+
+        if (drainTimeoutRecorded && currentTake.failureReason.isEmpty())
+            currentTake.failureReason = "Scratch capture stop waited too long for audio writes";
+        else if (hadWriteError && currentTake.failureReason.isEmpty())
+            currentTake.failureReason = "Scratch capture write failed";
+        else if (!countsMatch && currentTake.failureReason.isEmpty())
+            currentTake.failureReason = "Scratch capture raw and wet sample counts did not match";
+
+        currentTake.complete = !hadWriteError && countsMatch && currentTake.failureReason.isEmpty();
+        currentTake.captureStatus =
+            currentTake.complete ? "complete" : (hadWriteError || !countsMatch ? "failed" : "interrupted");
+
+        if (!currentTake.writeMetadata())
+        {
+            currentTake.complete = false;
+            currentTake.captureStatus = "failed";
+            if (currentTake.failureReason.isEmpty())
+                currentTake.failureReason = "Unable to write scratch take metadata";
+        }
+
+        addRecentTake(currentTake);
+
+        const auto finalState = currentTake.complete ? ScratchRecorderState::Saved : ScratchRecorderState::Failed;
+        status.state = finalState;
+        status.message = currentTake.complete ? "Saved" : currentTake.failureReason;
+        status.elapsedSamples = durationSamples;
+        status.rawSamplesWritten = rawSamples;
+        status.wetSamplesWritten = wetSamples;
+        status.scratchRoot = scratchRoot;
+        status.activeTake.reset();
+        status.lastTake = currentTake;
+        status.recentTakes = recentTakes;
+
+        stopRequested.store(false, std::memory_order_release);
+        state.store(static_cast<int>(finalState), std::memory_order_release);
+        finalized = currentTake;
     }
-
-    addRecentTake(currentTake);
-
-    const auto finalState = currentTake.complete ? ScratchRecorderState::Saved : ScratchRecorderState::Failed;
-    status.state = finalState;
-    status.message = currentTake.complete ? "Saved" : currentTake.failureReason;
-    status.elapsedSamples = durationSamples;
-    status.rawSamplesWritten = rawSamples;
-    status.wetSamplesWritten = wetSamples;
-    status.scratchRoot = scratchRoot;
-    status.activeTake.reset();
-    status.lastTake = currentTake;
-    status.recentTakes = recentTakes;
-
-    stopRequested.store(false, std::memory_order_release);
-    state.store(static_cast<int>(finalState), std::memory_order_release);
+    if (onTakeFinalized)
+        onTakeFinalized(finalized);
 }
 
 void ScratchRecorder::failStart(const juce::String& message)

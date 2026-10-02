@@ -34,6 +34,7 @@
 #include "NiallsSocketLib/UDPSocket.h"
 #include "PluginField.h"
 #include "ScratchRecorder.h"
+#include "ScratchTakeLibrary.h"
 
 #include <JuceHeader.h>
 #include <array>
@@ -377,6 +378,8 @@ class MainPanel : public Component,
     void revealScratchTake(const ScratchTake& take);
     void refreshScratchControls();
     ScratchRecorderStatus getScratchRecorderStatus() const;
+    std::shared_ptr<const ScratchLibrarySnapshot> getScratchLibrarySnapshot() const { return scratchLibrary.snapshot(); }
+    void refreshScratchLibrary() { scratchLibrary.refresh(); }
     /// Refreshes MIDI mapping settings cached for callback-safe dispatch.
     void refreshMidiMappingRealtimeSettings();
 
@@ -500,6 +503,7 @@ class MainPanel : public Component,
     FilterGraph signalPath;
     ThreadedWavSinkFactory scratchSinkFactory;
     ScratchRecorder scratchRecorder{scratchSinkFactory};
+    ScratchTakeLibrary scratchLibrary;
     ///	Object used to 'play' the signalPath object (with output metering).
     MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.

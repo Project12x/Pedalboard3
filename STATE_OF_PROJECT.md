@@ -28,8 +28,10 @@ is approved for native execution. Implementation and focused regression work are
 in progress; the roadmap distinguishes verified changes from remaining work.
 The storage slice now writes portable schema-2 manifests before recording and
 retains independent RAW/WET counts on finalization. Read-only legacy/v2 loading
-and damaged-bundle validation are covered by focused tests; persistent UI history
-and audition routing remain forthcoming.
+and damaged-bundle validation are covered by focused tests. Background discovery
+now reloads the on-disk library at startup/open/Refresh and after capture; panel
+history is no longer limited to eight session entries. Real waveforms and
+in-app audition routing remain forthcoming.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).
