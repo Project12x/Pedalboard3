@@ -302,9 +302,18 @@ index. Introduce `ScratchPanel::selectedTakeDirectory`, not a global selected ro
   until Task 6, do not claim that the old external player can seek in-app.
 - [x] Run green build and `Pedalboard3_Tests.exe "[scratch-waveform],[scratch-ui]"`.
   Keep screenshot checks proportional; do not snapshot the whole panel yet.
-- [ ] Commit `feat: show real scratch waveforms and persistent take selection`.
+- [x] Commit `feat: show real scratch waveforms and persistent take selection` (`c0d0dee`).
 
 ## Task 4: Bounded worker-decoded audition transport
+
+Execution evidence: final app/test incremental build exit0; playback/storage/
+waveform run passed871 assertions,22cases,1privilege-related symlinkskip.
+The standalone playback group has13cases. A500-frame loop-off regression failed
+at524frames before the exact-end fix. Single generation-guard mutation survived
+the independent buffering gate; bypassing both readiness guards failed the
+stalled-seek regression (128old frames vs0). Both defenses are restored.
+Source/device audition rates are8–384kHz to bound converter allocation; saved
+metadata compatibility remains broader. This is engine-only, not routing/UI.
 
 **Files:** create `src/ScratchPlaybackTypes.h`,
 `src/ScratchPlayback.{h,cpp}`, `src/ScratchPcmQueue.{h,cpp}`,
@@ -368,14 +377,14 @@ bool isQuiescent() const noexcept;
 void audioDeviceStopped(); // only after the consumer can no longer run
 ```
 
-- [ ] Test `[scratch][scratch-playback]` with production queue/transport and an
+- [x] Test `[scratch][scratch-playback]` with production queue/transport and an
   injected decoder source: FIFO wraparound; exact frame order; underflow clears
   unwritten destinations; pause holds position; stop/EOF releases live replacement;
   loop returns to frame zero; seek clamps to the file; generation changes discard
   queued old samples; a stalled decoder cannot stall readBlock or acknowledge
   old data as new. Test stop/device removal without another callback, bounded
   rapid command coalescing, and repeated prepare/shutdown without use-after-free.
-- [ ] Add a real-reader test: 1-second 440 Hz WAV at 44.1 kHz auditioned at
+- [x] Add a real-reader test: 1-second 440 Hz WAV at 44.1 kHz auditioned at
   48 kHz retains 1-second duration within one destination frame and frequency
   within 1 Hz after excluding converter warmup. Same-rate playback preserves
   samples before gain/ramping. Test 1/2/16-channel maps, mono wet mirroring, mono
@@ -391,24 +400,24 @@ void audioDeviceStopped(); // only after the consumer can no longer run
       REQUIRE(destination[i] == Catch::Approx(0.5f));
   REQUIRE_FALSE(playback.status().buffering);
   ```
-- [ ] Establish RED and inspect the pinned JUCE reader/resampling source. Use
+- [x] Establish RED and inspect the pinned JUCE reader/resampling source. Use
   JUCE decoding/resampling only on the worker. Preallocate a 65,537-frame SPSC
   queue for at most 16 channels (65,536 usable frames, about 4 MiB PCM), plus
   fixed callback scratch no larger than 16 x 8,192 samples. Prime two maximum
   callback blocks before Playing; short files prime up to EOF. No whole-file load.
-- [ ] Implement a requested/acknowledged generation protocol: consumer stops
+- [x] Implement a requested/acknowledged generation protocol: consumer stops
   reading the old queue and acknowledges at a block boundary; worker stops
   producing before resetting it. Publish the new generation only after priming.
   Commands are coalesced off-thread; queue reset/free requires both sides idle.
   Never call `AbstractFifo::reset` concurrently with a read/write. Device stop
   explicitly supplies quiescence when callbacks have ceased. Do not force-kill
   a worker or destroy state it may still access.
-- [ ] Clear every destination block before reading; report actual consumed
+- [x] Clear every destination block before reading; report actual consumed
   position, not decoded-ahead position. Use a 5 ms fade for starts/stops/seeks
   and underflow, including continuity from the last sample on underflow. While
   Paused/Loading after an audition request, keep live input excluded until Stop;
   failed initial loading returns to live. EOF stops unless Loop is enabled.
-- [ ] Run green build and `Pedalboard3_Tests.exe "[scratch-playback]"`.
+- [x] Run green build and `Pedalboard3_Tests.exe "[scratch-playback]"`.
   Add a targeted negative control that removes the generation check and prove
   the stale-sample test fails; restore the implementation immediately afterward.
 - [ ] Commit `feat: add bounded scratch audition transport`.

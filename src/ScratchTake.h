@@ -74,3 +74,5 @@ struct ScratchTakeLoadResult
 
 // Control/worker-only: bounded metadata parsing and WAV header validation.
 ScratchTakeLoadResult loadScratchTake(const juce::File& takeDirectory);
+// Validates chunk extents on the SAME stream that JUCE will decode.
+std::unique_ptr<juce::AudioFormatReader> openScratchWavReader(const juce::File& file);

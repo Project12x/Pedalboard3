@@ -369,6 +369,32 @@ of each file only, not a mixed-down or complete multichannel overview. Empty,
 loading, and unavailable states are textual; synthetic traces are removed.
 Seek/playhead hooks exist but are not connected to an in-app transport yet.
 
+Task 4 engine (build and focused tests verified; app integration pending) separates
+`ScratchPlayback` control/worker state from its single audio consumer. It is
+not yet owned/wired by MainPanel or the device callback. `ScratchPcmQueue` uses
+16 channels and 65,537 allocated frames (65,536 usable, about 4 MiB), not a
+whole-file buffer. WAV decoding and JUCE resampling run only on the worker;
+source/device rates are limited to 8–384 kHz and callback blocks to 8,192 frames.
+
+Requested/published/acknowledged generations retire old audio before the worker
+resets the queue. The consumer fades its held sample and acknowledges retirement;
+the worker stops production before resetting and primes two maximum blocks (or
+EOF) before publishing. `audioDeviceStopped()` supplies acknowledgment only
+after callbacks have ceased, so teardown does not depend on another callback.
+Owners must remove the consumer before preparing or destroying the engine.
+
+Start/stop/seek, pause/resume, loop boundaries, and underflow use 5 ms fades;
+underflow holds no stale queue audio. Playback position follows consumption,
+not read-ahead. Non-looping reads stop at the exact remaining frame count, even
+after disabling Loop or when file length is not block-aligned. The engine
+publishes preview gain separately from its faded
+PCM: default -12 dB, maximum unity, with -60 dB represented as mute. The future
+router must apply that gain and output protection. Implicit mapping rejects
+channel loss; an explicit map permits approved drops/rerouting. Mono wet mirrors
+only to the first two destinations; mono raw uses only the first. Other unmapped
+destinations are silent. None of these engine APIs changes current app playback
+or graph routing before Task 6 integration.
+
 Current boundaries:
 
 - The recorder retains its eight-entry session history for existing callers,
@@ -385,7 +411,9 @@ Current boundaries:
 
 Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
 `src/ScratchBundleIO.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
-`src/ScratchWaveformView.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
+`src/ScratchWaveformView.{h,cpp}`, `src/ScratchPlayback.{h,cpp}`,
+`src/ScratchPlaybackTypes.h`, `src/ScratchPcmQueue.{h,cpp}`,
+`src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
 
@@ -401,11 +429,13 @@ is approved. Native implementation of the
 is now in progress. Storage Task 1 is committed as `11fe41a` with focused
 verification. Task 2 (`c33748f`) final app/test build passed on 2026-10-02; the focused
 library/storage run passed 328 assertions in 12 cases, with two Windows
-privilege-dependent symlink cases skipped, not passed. Task 3's incremental
+privilege-dependent symlink cases skipped, not passed. Task 3 (`c0d0dee`) incremental
 app/test build passed on 2026-10-02, followed by 53 assertions in four passed
-waveform/UI cases. In-app audition, easy reamp, rig snapshots, and integrated UI polish
-remain upcoming. See the handoff for dated evidence; manual restart/UI and
-hardware QA remain open.
+waveform/UI cases. Task 4's final app/test build passed on 2026-10-02; its
+playback/storage/waveform run passed 871 assertions in 22 cases, with one
+storage-symlink case skipped for missing privilege. App-connected audition/reamp, preview safety,
+rig snapshots, and integrated UI polish remain upcoming. See the handoff for
+dated evidence; manual restart/UI and hardware QA remain open.
 
 ---
 

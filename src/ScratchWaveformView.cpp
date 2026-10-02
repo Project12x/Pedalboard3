@@ -34,7 +34,7 @@ void ScratchWaveformCache::request(const std::shared_ptr<ScratchWaveformSlot>& s
             if (!readable) return;
             const auto identity = file.getFullPathName() + "|" + juce::String(file.getSize()) + "|"
                 + juce::String(file.getLastModificationTime().toMilliseconds());
-            auto reader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(file));
+            auto reader = openScratchWavReader(file);
             if (reader) thumbnail.setReader(reader.release(), identity.hashCode64());
         };
         open(pair->raw, checked.take.rawFile, checked.rawReadable);

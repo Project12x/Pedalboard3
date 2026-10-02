@@ -109,11 +109,18 @@ is approved. Native implementation of the
 is now in progress. Storage Task 1 (`11fe41a`) has a successful build and focused
 Scratch test result. Task 2 (`c33748f`) final app/test build passed on 2026-10-02; its
 focused library/storage run passed 328 assertions in 12 cases, with two
-Windows privilege-dependent symlink cases skipped, not passed. Task 3's final
+Windows privilege-dependent symlink cases skipped, not passed. Task 3 (`c0d0dee`) final
 incremental app/test build passed on 2026-10-02, with 53 assertions passing in
 four focused waveform/UI cases. JUCE's silence thumbnail range is `[0, 1/128]`
 because of its native quantization; that is not fabricated waveform activity.
-In-app transport/reamp, rig-context, and integrated polish tasks are upcoming.
+Task 4 adds a bounded worker-decoded audition engine in source, but it is not
+connected to the UI or device callback. Its final app/test build passed on
+2026-10-02; the playback/storage/waveform run passed 871 assertions in 22 cases,
+with one storage-symlink skip for missing privilege. The engine now stops
+non-looping reads at the exact file end, including non-block-aligned lengths.
+There are no new playback controls to use yet: external Play and
+manual FilePlayer Reamp above remain the app behavior. App-connected audition,
+preview safety, rig-context, and integrated polish tasks are upcoming.
 See the handoff for dated evidence; manual restart/UI and hardware QA remain
 outstanding.
 

@@ -252,19 +252,22 @@ bool boundedWavContainer(juce::FileInputStream& stream)
 
 WavInfo inspectWav(const juce::File& file)
 {
-    if (!file.existsAsFile() || file.isSymbolicLink())
-        return {};
-    auto stream = file.createInputStream();
-    if (!stream || !boundedWavContainer(*stream))
-        return {};
-    juce::WavAudioFormat format;
-    std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(stream.release(), true));
+    auto reader = openScratchWavReader(file);
     if (!reader || reader->lengthInSamples <= 0 || reader->numChannels == 0 || reader->numChannels > 16
         || !std::isfinite(reader->sampleRate) || reader->sampleRate <= 0)
         return {};
     return {true, static_cast<uint64_t>(reader->lengthInSamples), reader->sampleRate,
             static_cast<int>(reader->numChannels)};
 }
+}
+
+std::unique_ptr<juce::AudioFormatReader> openScratchWavReader(const juce::File& file)
+{
+    if (!file.existsAsFile() || file.isSymbolicLink()) return {};
+    auto stream = file.createInputStream();
+    if (!stream || !boundedWavContainer(*stream)) return {};
+    juce::WavAudioFormat format;
+    return std::unique_ptr<juce::AudioFormatReader>(format.createReaderFor(stream.release(), true));
 }
 
 ScratchTakeLoadResult loadScratchTake(const juce::File& directory)

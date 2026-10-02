@@ -248,6 +248,11 @@ target_sources(Pedalboard3 PRIVATE
     src/ScratchBundleIO.h
     src/ScratchTakeLibrary.cpp
     src/ScratchWaveformView.cpp
+    src/ScratchPlayback.cpp
+    src/ScratchPlayback.h
+    src/ScratchPlaybackTypes.h
+    src/ScratchPcmQueue.cpp
+    src/ScratchPcmQueue.h
     src/ScratchWaveformView.h
     src/ScratchTakeLibrary.h
     

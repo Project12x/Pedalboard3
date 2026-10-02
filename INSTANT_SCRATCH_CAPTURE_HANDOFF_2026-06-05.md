@@ -21,9 +21,11 @@ is approved. Native implementation of the
 is now in progress. Storage Task 1 is committed as `11fe41a` with focused
 verification below. Task 2 disk discovery (`c33748f`) has a successful app/test
 build and focused verification below. Task 3 real waveforms and virtualized
-selection also have a successful app/test build and focused result below. In-app
-audition, easier reamp, rig snapshots, and integrated UI polish remain upcoming;
-hardware QA remains open.
+selection (`c0d0dee`) also have a successful app/test build and focused result.
+Task 4's audition engine has a successful final app/test build and focused
+result below; it is not connected to the app controls/device callback.
+App-connected audition/reamp, preview safety, rig snapshots, and integrated UI
+polish remain upcoming; hardware QA remains open.
 
 ## Historical Baseline (June 2026)
 
@@ -194,6 +196,39 @@ behavior; it also checks a 0.75 impulse within 0.02 and in the correct time
 region. This is native overview quantization, not synthetic waveform content.
 No visual/manual UI/restart or hardware verification is claimed; those checks
 remain outstanding.
+
+### Task 4 Audition Engine — Engine Verification Complete
+
+Source: `src/ScratchPlayback.{h,cpp}`, `src/ScratchPlaybackTypes.h`, and
+`src/ScratchPcmQueue.{h,cpp}`. This engine is not yet connected to MainPanel,
+the device callback, or waveform controls; current Play/Reamp behavior remains
+external-player/manual-FilePlayer respectively.
+
+- Bounded SPSC PCM queue: 65,536 usable frames, 16 channels, about 4 MiB. WAV
+  decoding/resampling is worker-only, supporting 8–384 kHz source/device rates.
+- Consumer generation retirement and acknowledgment precede queue reset;
+  `audioDeviceStopped()` acknowledges once callbacks have ceased. Owners remove
+  the consumer before preparation/destruction. Starts/stops/seeks and held-sample
+  underflow transitions use 5 ms fades; progress tracks consumed frames.
+- Published preview gain defaults to -12 dB, caps at unity, and treats -60 dB
+  as mute. Future routing/protection must apply it. Implicit channel loss is
+  rejected; explicit mappings permit approved drops. Mono wet mirrors to only
+  the first two destinations; mono raw uses only the first, with others silent.
+
+Coordinator-reported final verification on 2026-10-02: app/test build exited 0;
+`[scratch-playback],[scratch-storage],[scratch-waveform]` passed **871 assertions
+in 22 cases**, with **one storage-symlink case skipped** for Windows privilege.
+This supersedes the initial 866-assertion/21-case run. A non-128-aligned
+500-frame fixture first exposed a loop-off end overshoot (524 frames consumed).
+The consumer now caps non-looping reads to the exact remaining frame count;
+the final passing run includes this regression.
+
+The targeted stale-generation negative control survived removal of the generation
+guard alone because the independent buffering gate still blocked consumption.
+Bypassing both gates made the stalled-seek test consume 128 retired frames and
+fail. Both guards were restored. This records the tested protection combination,
+not a claim that the first mutation failed. No UI, visual, or hardware result
+is implied by these engine tests.
 
 ### Audio Callback Taps
 

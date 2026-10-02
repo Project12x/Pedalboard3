@@ -83,8 +83,8 @@ below remains a separate proposal, not a prerequisite for these improvements.
 |---|---|---|
 | Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Implemented with background discovery and virtualized, folder-stable selection |
 | Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Real cached waveforms implemented; playhead/seek await transport integration |
-| In-app original playback | Audition the saved wet print without running it through the current effects again | Designed; not implemented |
-| Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Designed; not implemented |
+| In-app original playback | Audition the saved wet print without running it through the current effects again | Bounded transport engine verified; device routing and UI not connected yet |
+| Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Transport/raw mapping verified; current-rig routing remains Task 6 |
 | Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Designed; not implemented |
 | Focused UI polish | Clearer status and transport, selected rows, keyboard controls, existing themes/fonts | Designed; not implemented |
 

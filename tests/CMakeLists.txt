@@ -27,6 +27,7 @@ add_executable(Pedalboard3_Tests
     scratch_take_library_test.cpp
     scratch_waveform_test.cpp
     scratch_panel_test.cpp
+    scratch_playback_test.cpp
     rt_hosting_sprint_test.cpp
     reverbsc_processor_test.cpp
     midi_mapping_test.cpp
@@ -38,6 +39,8 @@ add_executable(Pedalboard3_Tests
     ../src/ScratchBundleIO.cpp
     ../src/ScratchTakeLibrary.cpp
     ../src/ScratchWaveformView.cpp
+    ../src/ScratchPlayback.cpp
+    ../src/ScratchPcmQueue.cpp
     ../src/PluginPoolManager.cpp
     ../src/MidiAppFifo.cpp
     ../src/AudioSingletons.cpp

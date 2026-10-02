@@ -32,7 +32,8 @@ and damaged-bundle validation are covered by focused tests. Background discovery
 now reloads the on-disk library at startup/open/Refresh and after capture; panel
 history is no longer limited to eight session entries. Real cached RAW/WET
 waveforms and virtualized, folder-stable selection are now implemented;
-in-app audition routing remains forthcoming.
+the bounded audition engine is verified in isolation. In-app device routing,
+preview protection, and user transport controls remain forthcoming.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

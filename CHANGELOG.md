@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Added the bounded Scratch audition engine: worker-only WAV decoding/resampling, a fixed 65,536-frame usable queue, explicit channel-loss approval, consumed-frame position, pause/seek/loop controls, conservative preview level, and short continuity ramps. Generation retirement and device-stop acknowledgement prevent stale reads or queue reset races. This commit supplies the engine/tests only; panel and device routing integration follow separately. Audition supports 8–384 kHz source/device rates to bound converter allocation.
 - Scratch now discovers saved take bundles in the selected folder on a background worker, including takes from previous sessions and more than eight recordings. Startup, folder changes, panel-open, Refresh, and finalization trigger generation-checked scans; damaged bundles remain visible and stale scans cannot replace a newly selected folder. Discovery never migrates or edits recordings.
 - **Instant Scratch Capture Polish** — Scratch Capture now has a larger non-modal capture panel with hero record/stop control, live elapsed time, RAW/WET context, destination visibility, recent take date/time metadata, and scoped `Play`, `Reamp`, and `Reveal` actions.
 - **Scratch Destination Controls** — Added scratch folder choose/reset commands through the scratch panel and app menu, with persisted `scratchRootDirectory` settings and focused layout coverage for destination controls.
