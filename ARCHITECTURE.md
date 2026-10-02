@@ -1,6 +1,10 @@
 # Pedalboard3 Architecture
 
-> **For LLMs and Engineers:** This document describes the codebase structure, key patterns, and JUCE 8 API changes.
+> **For LLMs and Engineers:** This document describes the codebase structure,
+> key patterns, and JUCE 8/9 migration details. For current product status and
+> the active task, start with [ROADMAP.md](ROADMAP.md) and
+> [STATE_OF_PROJECT.md](STATE_OF_PROJECT.md); this is an implementation
+> reference, not the release/status source of truth.
 
 ---
 
@@ -276,6 +280,80 @@ float display = level.load();
 
 ---
 
+## Scratch Capture
+
+Source baseline reconciled 2026-10-02. Scratch Capture is app-level manual
+raw/wet recording, independent of Audio Recorder nodes in the patch graph.
+
+```text
+Device input -> RAW tap -> input gains -> patch graph -> master bus
+             -> output gains -> WET tap -> device output
+RAW/WET taps -> ScratchRecorder -> buffered WAV writers -> take folder
+MainPanel commands -> start/stop -> message-thread finalization -> take.json
+ScratchPanel <- 10 Hz status snapshot + session recent-take list
+```
+
+- `MainPanel` owns the recorder and builds start-time context from the current
+  patch, document, device, channel counts, sample rate, and master gains.
+  `MeteringProcessorPlayer` observes it through an atomic, non-owning pointer.
+- `ScratchRecorder::start()` creates the take directory and two 24-bit WAV
+  sinks before publishing `Recording`. Each sink uses a 32,768-sample buffer
+  serviced by the recorder's writer thread. Missing input/output channels or
+  writer setup failures prevent a successful start.
+- Audio entry points forward existing channel pointers to the buffered writers
+  and update atomics. File setup, writer teardown, JSON serialization, and UI
+  work stay off the callback. `requestStop()` queues message-thread
+  finalization; `finishStop()` gates new writes and waits for in-flight writes
+  before destroying sinks. A 250 ms drain warning marks failure but does not
+  bypass that lifetime wait.
+- Finalization checks matching raw/wet sample counts and write/interruption
+  errors, then publishes `Saved` or `Failed`. Patch/device changes request an
+  incomplete take with an explicit reason. Shutdown requests stop, clears the
+  observer pointer, and removes the audio callback before recorder destruction.
+- `ScratchPanel` uses `Component::SafePointer<MainPanel>` for owner access.
+  Status copies and file-availability checks belong to the message thread, not
+  the audio callback.
+
+Storage is `<root>/<YYYY-MM-DD>/<timestamp>-<sanitized-patch>/` with numeric
+collision suffixes and `raw.wav`, `wet.wav`, `take.json`. The root defaults to
+the user application-data directory's `Pedalboard3/Scratch Ideas`; a custom
+root is persisted under `scratchRootDirectory`. JSON records context, absolute
+WAV paths, completion/failure, and one `durationSamples` value (the smaller
+raw/wet count), not both counters. It is context metadata, not a saved rig:
+there is no plugin-state/graph snapshot or per-channel gain history.
+
+Current boundaries:
+
+- Recent takes are an in-memory, newest-first list capped at eight; there is no
+  disk scan or JSON reload. Files remain on disk when the list rolls over or
+  the app restarts. The panel's counts describe this list, not a library.
+- `Play` opens a complete take's existing `wet.wav` through the OS file handler;
+  it is not an internal transport. `Reamp` adds a `FilePlayerProcessor` for a
+  complete take's existing `raw.wav` to the current graph, without wiring it or
+  restoring the recorded rig. `Reveal` needs the take directory, not a complete
+  recording.
+- The panel's lane curves and take thumbnails are decorative, not live meters
+  or decoded audio waveforms. Equal sample counts are checked, but there is no
+  separate latency-alignment pass for raw and processed signals.
+
+Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
+`src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
+`src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
+inspection and historical automated results; see [HOWTO.md](HOWTO.md).
+
+### Accepted Expansion — Planned, Not Implemented
+
+The accepted foundations are a persistent disk-backed take library, real raw/wet
+waveforms, in-app wet audition, reamp through the current rig without manually
+wiring a FilePlayer, saved capture-time rig context, and modest UI polish within
+the existing visual style. The written
+[Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+awaits user review before implementation. The source baseline and limitations
+above still describe the current code; no new behavior or verification is
+claimed by this plan.
+
+---
+
 ## Plugin Formats
 
 | Format | Status |
@@ -346,14 +424,17 @@ Subclasses `AudioProcessorPlayer` to apply smoothed gain, master bus insert, and
 
 ```text
 audioDeviceIOCallbackWithContext:
-  1. updateSmoothedTargets() — sync atomic dB → SmoothedValue targets
-  2. Pre-compute smoothedInputRamp[numSamples] (one value per sample)
-  3. Copy input to inputGainBuffer, scale by smoothed gain * channel gain
-  4. Call parent (graph processes)
-  5. Process master bus insert rack (if has plugins and not bypassed)
-  6. Pre-compute smoothedOutputRamp[numSamples]
-  7. Scale output buffers in-place by smoothed gain * channel gain
-  8. Tap levels → SafetyLimiterProcessor (peak + VU metering)
+  1. Validate callback bounds; reject unsupported buffers before processing
+  2. Scratch RAW tap (before input gains)
+  3. updateSmoothedTargets() — sync atomic dB → SmoothedValue targets
+  4. Pre-compute smoothedInputRamp[numSamples] (one value per sample)
+  5. Copy input to inputGainBuffer, scale by smoothed gain * channel gain
+  6. Call parent (graph processes)
+  7. Process master bus insert rack (if has plugins and not bypassed)
+  8. Pre-compute smoothedOutputRamp[numSamples]
+  9. Scale output buffers in-place by smoothed gain * channel gain
+ 10. Scratch WET tap (after output gains)
+ 11. Tap levels → SafetyLimiterProcessor (peak + VU metering)
 ```
 
 **Key file:** `MainPanel.h` (inner class `MeteringProcessorPlayer`)
@@ -490,5 +571,6 @@ spdlog::default_logger()->flush();  // Force write before crash
 
 ---
 
-*Last updated: 2026-02-17*
+*Core architecture consolidated 2026-02-17. Current product state is maintained
+in [ROADMAP.md](ROADMAP.md) and [STATE_OF_PROJECT.md](STATE_OF_PROJECT.md).*
 

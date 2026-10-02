@@ -2,8 +2,16 @@
 
 - **Product intent:** Fast, practical gig utility for local performers.
 - **Focus:** Time-to-sound, confidence before playing, and always-visible levels.
-- **Last updated:** 2026-06-20
-- **Status:** Active; partially complete
+- **Last updated:** 2026-10-02
+- **Status:** Partially implemented baseline; Scratch foundations accepted, design awaiting review
+
+The user accepted persistent take history, real waveforms, in-app playback,
+easier reamping, saved rig context, and focused UI polish. The
+[Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+awaits review; expansion code is not implemented yet. This document preserves
+the earlier Soundcheck/Starter Rig/template proposals; they are not prerequisites
+for the accepted foundations. See [ROADMAP.md](ROADMAP.md) for the current queue
+and verified limitations.
 
 ---
 

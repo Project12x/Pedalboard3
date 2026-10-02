@@ -118,19 +118,30 @@ Output: `build/Pedalboard3_artefacts/Release/`
 
 ## Project Status
 
-Active development, currently in the stability and polish phase. The core feature set is complete. Remaining work is UI refinement, distribution packaging, and documentation.
+Active development. The current ship gate is manual guitar/audio-interface QA for
+Instant Scratch Capture; the automated capture implementation is complete, but
+the real raw/wet workflow must be verified before it is called user-ready. The
+previously proposed workflow is One-Click Soundcheck, followed by Starter Rigs
+and Scratch Templates. Current design work prioritizes persistent Scratch take
+history, real waveforms, in-app playback, easier reamping, saved rig context,
+and focused UI polish. The [Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+awaits review; these expansion features are not implemented yet.
 
 For details, see:
 - [CHANGELOG.md](CHANGELOG.md) — what changed and when
 - [ROADMAP.md](ROADMAP.md) — what's planned
 - [ARCHITECTURE.md](ARCHITECTURE.md) — how it's built
-- [STATE_OF_PROJECT.md](STATE_OF_PROJECT.md) — current status snapshot
+- [STATE_OF_PROJECT.md](STATE_OF_PROJECT.md) — current restart snapshot and retained history
+- [HOWTO.md](HOWTO.md) — build, test, and hardware-QA entry points
 
 ---
 
 ## Testing
 
-155 test cases with over 2 million assertions covering signal path, plugin lifecycle, MIDI mapping, cable wiring, graph management, and mutation testing. Tests run via Catch2:
+The Catch2 suite covers signal path, plugin lifecycle, MIDI mapping, cable
+wiring, graph management, and mutation cases. Run the executable below for the
+current test count and result; use [HOWTO.md](HOWTO.md) for focused-tag and CTest
+commands:
 
 ```bash
 .\build\tests\Release\Pedalboard3_Tests.exe

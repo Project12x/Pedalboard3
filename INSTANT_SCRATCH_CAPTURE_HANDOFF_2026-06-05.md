@@ -1,20 +1,35 @@
 # Instant Scratch Capture Handoff - 2026-06-05
 
-This handoff lets the next agent resume the Instant Scratch Capture branch without replaying the session. It documents what is implemented, what evidence exists, where the risks are, and what should happen next.
+This handoff preserves the original Scratch Capture implementation evidence
+and manual acceptance procedure. Current priorities belong to `ROADMAP.md` and
+`STATE_OF_PROJECT.md`; current usage and architecture are in `HOWTO.md` and
+`ARCHITECTURE.md`.
 
-Updated 2026-06-09: the active continuation branch is `codex/pedalboard-remix-ui-polish`, which layers mockup-informed Scratch Capture and footer polish on top of the original scratch-capture branch.
+Source reconciliation 2026-10-02: the inspected checkout is
+`D:\Code\Pedalboard2`, branch `codex/rt-hosting-sprint`. This documentation pass
+did not build, run tests, or verify a real audio interface. The June evidence
+below is historical, not a claim about this checkout's current test results.
 
-## Current Baseline
+Accepted expansion, not yet implemented: a disk-backed take library, real
+raw/wet waveforms, in-app wet audition, current-rig reamp without manual
+FilePlayer wiring, saved capture-time rig context, and modest existing-style UI
+polish. The
+[Scratch foundations design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+awaits user review before implementation. This handoff continues to describe
+the current baseline and its historical evidence.
+
+## Historical Baseline (June 2026)
 
 - Original branch: `codex/instant-scratch-capture`
-- Current continuation branch: `codex/pedalboard-remix-ui-polish`
+- June 9 continuation branch: `codex/pedalboard-remix-ui-polish`
 - Original handoff head commit: `ed2532d fix: stop scratch capture on disruptive changes`
-- Current pre-polish checkpoint: `5aec6aa docs: reconcile active roadmap`
+- June 9 pre-polish checkpoint: `5aec6aa docs: reconcile active roadmap`
 - Tracked worktree status at original handoff creation: clean before this document was added.
-- Unrelated untracked directory present: `documentation/research/`
-  - Do not stage it unless the user explicitly asks to include those research notes.
+- At the original handoff, `documentation/research/` was unrelated untracked
+  work. Inspect current Git status rather than assuming that old status still
+  applies; preserve unrelated edits.
 
-Recent branch commits:
+Original branch commits:
 
 - `ed2532d fix: stop scratch capture on disruptive changes`
 - `8469e70 feat: add scratch capture controls`
@@ -69,6 +84,10 @@ Behavior:
 - Handles folder collisions by appending numeric suffixes.
 - Writes `take.json`.
 - Metadata includes patch/document/device context, sample rate, channel counts, gain values, raw/wet file paths, duration, completion state, and failure reason.
+- Gain metadata is the two master gain values at start, not per-channel values
+  or a history. Patch name/index/document path do not constitute a rig snapshot.
+- `take.json` stores one duration (the smaller raw/wet count), not independent
+  raw/wet sample counters. There is no metadata reader/library reload path.
 
 ### Scratch Recorder Core
 
@@ -81,6 +100,9 @@ Files:
 Behavior:
 
 - `ScratchRecorder` owns state, current take metadata, recent take list, raw/wet sinks, and writer thread.
+- The recent list is in-memory only, newest-first, capped at eight. Restarting
+  clears the panel list, not the saved files; its `total` label is not a disk
+  library count.
 - `ThreadedWavSinkFactory` creates `AudioFormatWriter::ThreadedWriter` backed WAV sinks.
 - Refuses start when raw input or wet output channel counts are missing.
 - Writes raw and wet blocks through audio-callback entry points.
@@ -94,6 +116,8 @@ Real-time safety notes:
 
 - Audio callback work is limited to atomic state checks, existing channel pointer forwarding, `ThreadedWriter::write()`, and atomic counters.
 - File creation, writer opening, writer closing, metadata write, and UI updates are outside the audio callback.
+- Finalization gates new writes and waits for active writes before destroying
+  sinks; the 250 ms drain warning records failure but still waits for safety.
 - `MeteringProcessorPlayer` holds an atomic raw observer pointer to `ScratchRecorder`; it does not own the recorder.
 
 ### Audio Callback Taps
@@ -160,6 +184,10 @@ Behavior:
 - Recent take rows show date/time, patch context, duration, RAW/WET availability, and action buttons.
 - Wet `Play` opens `wet.wav` with the OS handler when a complete wet file exists.
 - Raw `Reamp` adds a `FilePlayerProcessor` loaded with `raw.wav` when a complete raw file exists.
+- Reamp does not connect the node, restore the recorded patch, or export a new
+  wet file; the user must route and control the file player in the current graph.
+- Panel lane traces and take thumbnails are decorative (the latter derived
+  from the take ID), not measurements or decoded audio waveforms.
 
 Additional layout/presentation helpers:
 
@@ -167,9 +195,9 @@ Additional layout/presentation helpers:
 - `src/ScratchPanelPresentation.h`
 - Focused tests cover non-overlapping row/destination actions and active elapsed display.
 
-## Verification Already Run
+## Historical Verification (Not Rerun 2026-10-02)
 
-Fresh verification at the end of implementation:
+Verification recorded by the original 2026-06-05 handoff:
 
 ```powershell
 cmake --build build --config Release --target Pedalboard3 -- /m:1
@@ -186,7 +214,7 @@ Observed results:
 - Full Release CTest suite: 200/200 passed.
 - `git diff --check` was clean before Task 7 commit.
 
-Latest consolidation verification on 2026-06-09:
+Consolidation verification recorded on 2026-06-09:
 
 - `git diff --check`: passed; only normal CRLF working-copy warnings were reported.
 - `cmake --build build --config Release --target Pedalboard3_Tests -- /m:1`: passed.
@@ -201,7 +229,9 @@ Expected warning noise:
 
 ## Manual Verification Not Yet Done
 
-No real audio-interface/guitar capture smoke test has been performed in this session.
+The inherited June handoff records no real audio-interface/guitar smoke test;
+the 2026-10-02 source reconciliation did not perform one either. This remains
+pending unless a later dated hardware result supersedes it.
 
 Next agent should run this before calling the feature user-ready:
 
@@ -216,11 +246,17 @@ Next agent should run this before calling the feature user-ready:
    - `raw.wav`
    - `wet.wav`
    - `take.json`
-9. Confirm `take.json` reports complete true and equal raw/wet duration samples.
+9. Confirm `take.json` reports `complete: true`; inspect both WAV files for
+   equal sample-frame counts and sample rate. JSON's single `durationSamples`
+   value should match each completed WAV, but cannot independently prove both.
 10. Confirm `raw.wav` is pre-chain DI and `wet.wav` is what was heard.
 11. Start another recording, switch patches, and confirm capture stops with `Patch changed during scratch capture`.
 12. Start another recording, change audio device settings, and confirm capture stops with `Audio device changed during scratch capture`.
 13. Confirm no Audio Recorder node is added to the graph.
+14. Confirm `Play` launches the wet WAV externally; confirm `Reamp` adds an
+    unconnected raw-file player and verify it after routing it manually.
+15. Record commit, interface/driver, channels, sample rate, buffer size, and
+    pass/fail observations with a date.
 
 ## Known Gaps And Risks
 
@@ -232,7 +268,8 @@ Updated 2026-06-09: fixed.
 
 ### Footer Visual QA
 
-Updated 2026-06-09: fresh screenshot evidence was captured after adding scratch controls.
+Historical 2026-06-09 evidence: screenshots were captured after adding scratch
+controls. These are not fresh captures of the current checkout.
 
 Command used:
 
@@ -242,17 +279,21 @@ Command used:
 
 Evidence lives at `documentation/qa/2026-06-09-scratch-footer`. Narrow captures at `125%`, `150%`, `175%`, and `200%` keep `REC`, `Takes`, patch selection, transport, UI Scale, CPU meter, FX, and IN/OUT gain controls visible and reachable.
 
-Updated 2026-06-09: an additional main-footer scale follow-up was captured at `documentation/qa/2026-06-09-main-footer-scale-v2`. The two-row breakpoint now engages earlier, the CPU label is shortened to `CPU`, and narrow captures keep the existing footer functions visible at high Pedalboard UI scale.
+Historical 2026-06-09 follow-up: `documentation/qa/2026-06-09-main-footer-scale-v2`
+recorded the earlier two-row breakpoint, shortened `CPU` label, and high-scale
+footer visibility at that checkpoint.
 
 ### Playback And Reamp Scope
 
 Updated 2026-06-09: small take actions are implemented.
 
 - `Play` opens a completed `wet.wav` externally.
-- `Reamp` adds a `FilePlayerProcessor` node for a completed `raw.wav`.
+- `Reamp` adds an unconnected `FilePlayerProcessor` node for a completed `raw.wav`.
 - `Reveal` opens the take folder.
 
-Do not expand this into a DAW-style timeline or library unless the user explicitly asks; immediate capture and reampable raw/wet files are the core value.
+This describes the implemented scope. The accepted expansion is recorded in
+the design linked above, awaiting review before implementation; do not treat
+planned audition/reamp behavior as already available.
 
 ### Scratch Folder Setting
 
@@ -296,45 +337,42 @@ Library documentation checked:
 
 - Context7 was used for current JUCE writer ownership/API behavior around `WavAudioFormat::createWriterFor()` and `AudioFormatWriterOptions`.
 
-## Agent Next Steps
+## Resume And Verification Guidance
 
 Recommended next sequence:
 
-1. Read this file, the spec, and the plan.
+1. Read current status/roadmap and this file; treat the June spec/plan as the
+   baseline, not approval for an expanded feature set.
 2. Run `git status --short --branch` and confirm only intended work is present.
 3. Do the manual hardware capture verification above.
 4. Confirm scratch destination choose/reset behaves correctly outside a recording and is disabled while recording.
-5. Confirm wet `Play`, raw `Reamp`, and `Reveal` actions enable only when their files exist.
-6. Review the two June 9 footer QA folders if UI-scale evidence is needed before PR.
-7. Push the branch and open a draft PR after manual verification.
+5. Confirm wet `Play`/raw `Reamp` require a complete take and their WAV; `Reveal`
+   requires the directory. Check the actual external-player/manual-routing flow.
+6. Use June 9 QA folders as historical references; capture new UI evidence only
+   when needed for the current change.
+7. Follow `AGENTS.md`: this is a single-developer repository, with no PR by
+   default. Commit/push/merge only as authorized by the current task; create a
+   PR only if explicitly requested.
 
-Suggested commands:
+Suggested focused verification against the existing build (coordinator-owned;
+no clean or alternate build). Run the full suite at an explicit integration
+checkpoint or for a broad-reaching change, not automatically for a doc update:
 
 ```powershell
-git -c safe.directory="C:/Users/estee/Desktop/My Stuff/Code/Antigravity/Pedalboard2" status --short --branch
+git -c safe.directory=D:/Code/Pedalboard2 status --short --branch
 cmake --build build --config Release --target Pedalboard3 -- /m:1
-ctest --test-dir build -C Release --output-on-failure -R Scratch
-ctest --test-dir build -C Release --output-on-failure
+cmake --build build --config Release --target Pedalboard3_Tests -- /m:1
+.\build\tests\Release\Pedalboard3_Tests.exe "[scratch]"
 ```
 
-Suggested PR summary:
-
-```text
-Adds app-level Instant Scratch Capture for manual raw/wet take recording.
-
-- Creates ScratchTake metadata/take folders with raw.wav, wet.wav, take.json
-- Adds ScratchRecorder with ThreadedWriter-backed raw/wet sinks
-- Taps raw pre-chain input and wet post-chain output in MeteringProcessorPlayer
-- Adds footer REC/Takes controls and File menu commands
-- Adds a non-modal ScratchPanel with hero record control, RAW/WET context, destination controls, and safe MainPanel lifetime handling
-- Adds recent take date labels and scoped Play/Reamp/Reveal actions
-- Stops/marks takes incomplete on patch switch and audio device changes
-- Covers scratch take/recorder behavior with focused tests
-```
+Verification classification: active development; saved audio/metadata and
+real-time/lifetime boundaries are durable because defects can lose or
+misrepresent takes, race writer destruction, or disrupt audio. Panel layout is
+volatile; do not freeze it with exhaustive visual snapshots while redesigning.
 
 ## Do Not Forget
 
-- Do not stage `documentation/research/` unless explicitly requested.
+- Preserve unrelated local edits and stage only work authorized by the task.
 - Do not claim real guitar capture works until manual audio-interface verification is done.
 - Do not convert this into a graph node unless the user explicitly changes the product direction.
 - Keep future audio callback changes RT-safe: no locks, no allocation, no file work, no UI calls.

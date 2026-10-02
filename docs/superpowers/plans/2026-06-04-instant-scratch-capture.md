@@ -1,5 +1,12 @@
 # Instant Scratch Capture Implementation Plan
 
+> **Historical execution plan:** The implementation described here was completed
+> in June 2026. The unchecked task boxes preserve the pre-implementation plan;
+> they are not current status. Use
+> [INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md](../../../INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md)
+> and [ROADMAP.md](../../../ROADMAP.md) for recorded verification and the
+> remaining manual hardware ship gate.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build manual, app-level scratch recording that saves synchronized raw DI and wet Pedalboard output take bundles without adding graph nodes.

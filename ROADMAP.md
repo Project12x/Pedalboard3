@@ -1,6 +1,6 @@
 # Pedalboard3 Roadmap
 
-- **Last updated:** 2026-06-20
+- **Last updated:** 2026-10-02
 - **Status:** Active source of truth for current product work
 
 This roadmap is intentionally narrow. Historical phase plans and completed long-form
@@ -35,7 +35,9 @@ clear musician workflow, acceptance criteria, and implementation path.
 
 ## Current Ship Gate: Instant Scratch Capture
 
-**Status:** Implemented on `codex/pedalboard-remix-ui-polish`; automated verification passed; manual hardware QA pending.
+**Status:** Implemented in the current `codex/rt-hosting-sprint` lineage after the
+original scratch/remix branches. Prior automated verification is recorded in the
+handoff; manual hardware QA remains pending.
 
 This is the active branch gate because it directly supports the desired workflow:
 plug in, start Pedalboard, and capture an idea within moments.
@@ -48,7 +50,7 @@ plug in, start Pedalboard, and capture an idea within moments.
 | Footer controls | Done | `REC`/`STOP`, status, and `Takes` affordances are wired. |
 | File menu commands | Done | Start/stop, open panel, reveal folder. |
 | Patch/device interruption handling | Done | Capture stops with explicit incomplete-take reasons. |
-| Focused tests | Done | Scratch tests pass; full Release CTest passed in handoff evidence. |
+| Focused tests | Recorded | June build/test results are in the handoff; they are historical evidence, not a current full-suite result. |
 | Manual guitar/interface smoke test | Pending | Must verify real raw/wet capture before calling user-ready. |
 | Fresh footer scale screenshots | Done | Captured at `documentation/qa/2026-06-09-scratch-footer`; narrow 125%-200% keeps scratch controls recoverable. |
 | Main footer scale follow-up | Done | Captured at `documentation/qa/2026-06-09-main-footer-scale-v2`; high-scale footer keeps existing controls visible. |
@@ -60,16 +62,54 @@ Immediate next agent sequence:
 
 1. Run a real audio-interface/guitar capture smoke test.
 2. Confirm the take contains `raw.wav`, `wet.wav`, and `take.json`.
+   Compare the WAV sample rates and frame counts; the metadata currently stores
+   one duration, not separate raw/wet counts.
 3. Confirm raw is pre-chain DI and wet is what the user heard.
 4. Verify patch change and audio-device change both stop capture cleanly.
 5. Confirm `Play`, `Reamp`, and `Reveal` take actions enable only when their files exist.
-6. Review `documentation/qa/2026-06-09-scratch-footer` and `documentation/qa/2026-06-09-main-footer-scale-v2` if UI-scale evidence is needed before PR.
+6. Review `documentation/qa/2026-06-09-scratch-footer` and `documentation/qa/2026-06-09-main-footer-scale-v2` for prior UI-scale evidence. Follow `AGENTS.md` for publication; this repository does not use PRs by default.
+
+### Scratch expansion — foundations accepted (2026-10-02)
+
+The user accepted the five foundations below plus modest UI polish, with
+documentation updated in parallel. The
+[written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+is awaiting review; implementation has not started. The older template sequence
+below remains a separate proposal, not a prerequisite for these improvements.
+
+| Accepted foundation | Intended outcome | Status |
+|---|---|---|
+| Persistent take library | Find existing and relocated take bundles after restart, beyond the eight-entry session list | Designed; not implemented |
+| Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Designed; not implemented |
+| In-app original playback | Audition the saved wet print without running it through the current effects again | Designed; not implemented |
+| Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Designed; not implemented |
+| Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Designed; not implemented |
+| Focused UI polish | Clearer status and transport, selected rows, keyboard controls, existing themes/fonts | Designed; not implemented |
+
+Verified current limitations that this expansion addresses:
+
+- The recent list holds eight takes in memory. Saved take folders survive restart,
+  but the panel does not reload them from disk.
+- Wet playback launches the OS file handler. Raw reamp inserts a file-player node
+  into the current graph without connecting it or restoring the recording rig.
+- Take thumbnails and lane traces are decorative; they do not display sampled audio.
+- Metadata records patch name/index/document path and master gains, without a
+  snapshot of the actual graph, plugin state, or model/IR assets.
+
+Preserve existing audio files and metadata compatibility when expanding this
+workflow. Product phase is active development; capture lifetime, audio-thread
+boundaries, and saved take data are durable contracts. UI organization is still
+open to refinement within the existing visual style. Hardware QA remains an
+acceptance requirement for recorder and playback-routing changes. The design
+delivers library/waveforms first, transport/reamp next, then rig context and
+integrated polish; portable rig restoration and saved reamp variants are deferred.
 
 ---
 
 ## Scratch Mode Next: One-Click Scratch Templates
 
-**Status:** Next product layer after manual raw/wet hardware QA.
+**Status:** Previously proposed product layer, deferred behind the accepted
+Scratch foundations above. Not implemented.
 
 Scratch Mode should become the fastest path from instrument to recorded idea:
 choose one of a handful of useful sounds, plug in, play, and capture both the
@@ -191,6 +231,10 @@ A1, A2, B1, B2, B3, D1, and D2 are Done. This includes the Pedalboard UI scale
 work, the 75% scale floor, footer/menu/preferences scale controls, and scaled
 visual QA evidence from the May/June passes.
 
+The focused tuner closeout is also complete: its 430 x 350 quick-read layout,
+overlapping-window checklist hysteresis, focused Release test result, and visual
+sign-off are recorded in `TUNER_CLOSEOUT_HANDOFF_2026-09-16.md`.
+
 Remaining UI work should stay subordinate to musician workflows and bug risk:
 
 | Area | Priority | Status |
@@ -230,7 +274,7 @@ These are useful after the current ship gate and P0 gig-speed items.
 |---|---|---|
 | Scratch folder preference | Done for V1 | Scratch panel and app menu expose choose/reset; no Preferences mirror unless later requested. |
 | Scratch take playback/reamp | Partial | Wet preview opens the saved wet file; raw reamp adds a file-player node for the raw capture. No timeline/editor. |
-| Recent scratch take management | Partial | Recent list shows date/time, patch context, RAW/WET metadata, and reveal/play/reamp actions. Keep small; avoid DAW/library bloat. |
+| Recent scratch take management | Partial | Eight session-local entries show date/time, patch context, RAW/WET metadata, and reveal/play/reamp actions; no cross-session take discovery. |
 | Embedded node editors | Planned | Opt-in node display mode based on clean-room Element pattern study; internal/generic editors first, arbitrary external custom UIs later. |
 | Stage MIDI pedal control | Planned | Build via the Stage Action Map, not one-off `StageView` shortcuts. |
 | Quick onboarding entry point | Planned | Should point to real starter rigs once they exist. |
@@ -248,7 +292,7 @@ valuable when it directly increases usable rigs and compatibility.
 | Format | Roadmap Position |
 |---|---|
 | CLAP | Revisit when JUCE 9 has official, stable host support. Avoid carrying a custom CLAP host unless it becomes strategically necessary. |
-| AU | Enable on macOS builds when a Mac build/test path exists. JUCE support is not the blocker; hardware/CI validation is. |
+| AU | Separate macOS work has verified an Apple-Silicon app build and implemented format-aware safe scanning, but it is not yet integrated into this checkout or validated with real AU plug-ins. |
 | VST2 | Treat as legacy/compatibility work with explicit SDK/license handling. Do not make it a release blocker. |
 | LADSPA | Feasible as a utility format if Linux support becomes active; not a Windows-first differentiator. |
 | LV2 | Keep as a Linux/open ecosystem expansion candidate. Existing experiments/research are useful, but ship only with concrete user workflow coverage. |
@@ -261,7 +305,7 @@ See [CHANGELOG.md](CHANGELOG.md) and archived plans for details.
 
 | Phase / Area | Status |
 |---|---|
-| JUCE 8 migration | Complete |
+| JUCE 9 migration | Complete |
 | Build system, logging, and test framework | Complete |
 | VST3 hosting, themes, settings | Complete |
 | Undo/redo system | Complete |

@@ -1,10 +1,73 @@
 # State of the Project
 
-> **For LLMs and Engineers:** This document provides persistent context about the current state of Pedalboard3 modernization. Read this first when joining the project.
+> **For LLMs and Engineers:** This document provides persistent context about
+> Pedalboard3 modernization. Use [ROADMAP.md](ROADMAP.md) for the active product
+> queue and this document for the current restart snapshot and retained history.
 
 ---
 
-## Current Focus: Phase 6 - Stability & Polish
+## Current restart snapshot — 2026-10-02
+
+### Active ship gate
+
+**Instant Scratch Capture** is implemented in code and has recorded automated
+verification. Its remaining release gate is a real guitar/audio-interface smoke
+test: confirm synchronized pre-chain `raw.wav`, post-chain `wet.wav`, and
+`take.json`; then confirm patch and device changes stop capture cleanly. The
+full procedure and prior build/test evidence are in
+[INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md](INSTANT_SCRATCH_CAPTURE_HANDOFF_2026-06-05.md).
+
+### Current capabilities and recent closeout
+
+Current request (2026-10-02): substantially expand Scratch Capture while updating
+the docs in parallel. The user accepted persistent take history, genuine
+waveforms, in-app playback, easier reamping, capture-time rig context, and a
+modest UI polish pass. The [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
+is awaiting review; no expansion code has been implemented. Current limitations
+and the accepted direction are recorded in
+[ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).
+
+- The primary checkout is on the JUCE 9 migration line (`1e0b4c3`); Windows
+  continues to host VST3 and internal processors.
+- Tuner closeout added a quick-read 430 x 350 node and fixed persistent
+  guitar-string checklist state for overlapping analysis windows. The focused
+  Release result and visual capture are recorded in
+  [TUNER_CLOSEOUT_HANDOFF_2026-09-16.md](TUNER_CLOSEOUT_HANDOFF_2026-09-16.md).
+- Device VU meters and Scratch Capture form the implemented foundation for the
+  previously proposed P0 sequence: one-click Soundcheck, followed by Starter Rigs
+  and Scratch Templates. These are planned, not partially implemented. The
+  accepted Scratch foundations are the current design priority ahead of adding
+  those previously proposed product layers.
+- A separate macOS/AU hosting worktree contains Apple-Silicon and safe
+  VST3/AU-scanning work. It is not merged into this Windows checkout and still
+  needs macOS integration and real-plugin validation before it can be called a
+  usable AU-hosting beta.
+
+### Working rules
+
+- The tuner's checklist persistence is a durable behavior contract; its layout
+  remains product-polish territory.
+- Scratch Capture, Soundcheck, and live-signal features require manual audio
+  hardware QA in addition to automated tests.
+- Preserve real-time boundaries: the audio callback may not allocate, lock,
+  access files, or invoke UI/message-thread work.
+
+### Documentation map
+
+- [ROADMAP.md](ROADMAP.md): active product direction, explicit next work, and
+  acceptance criteria.
+- [ARCHITECTURE.md](ARCHITECTURE.md): engine, graph, metering, and RT patterns.
+- [HOWTO.md](HOWTO.md): local build, test, and hardware-QA entry points.
+- [CHANGELOG.md](CHANGELOG.md): behavior-changing history.
+
+---
+
+## Historical snapshot — Phase 6 stability & polish (last updated 2026-02-18)
+
+The retained material below describes the February Phase 6 checkpoint. It is
+useful for background but is not the current work queue; in particular, its
+JUCE 8-era scanner and test-suite status does not supersede the restart snapshot
+or roadmap above.
 
 **Status:** In Progress
 **Last Updated:** 2026-02-11
