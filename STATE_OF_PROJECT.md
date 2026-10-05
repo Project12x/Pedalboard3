@@ -37,8 +37,11 @@ and transport controls are connected. The production router's focused regression
 run passes 5058 assertions (30 cases passed, one privilege-dependent symlink case
 skipped). Capture-time rig snapshots and cancellable preparation are implemented;
 307 focused assertions cover serializer/controller/storage/routing (16 cases pass,
-one privilege-dependent case skipped). Integrated polish/visual/hardware acceptance
-remains open; these checks are not proof of a real-interface workflow. Native UI
+one privilege-dependent case skipped). Integrated panel polish is implemented;
+the combined Scratch/RT/master-bus run passes 8,916 assertions in 99 passed cases
+with two privilege-dependent skips. Full-suite and visual/hardware acceptance
+remain open; these checks are not proof of a real-interface workflow. See the
+[October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md). Native UI
 automation currently cannot initialize (kernel-assets path error); no new visual
 or live unsaved-plugin/master snapshot acceptance is claimed.
 Current limitations

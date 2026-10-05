@@ -282,8 +282,9 @@ float display = level.load();
 
 ## Scratch Capture
 
-Source baseline reconciled through Task 7 on 2026-10-04; focused build/tests
-passed, with Task 8 acceptance pending. Scratch Capture is app-level manual
+Source baseline reconciled through Task 8 on 2026-10-04; focused build/tests
+passed, but the full-suite gate is not clean and manual acceptance is pending.
+Scratch Capture is app-level manual
 raw/wet recording, independent of Audio Recorder nodes in the patch graph.
 
 ```text
@@ -392,10 +393,22 @@ The selected-take view uses one RAW/WET time range and individually labelled
 channels in a vertically scrollable area. Compact row previews show channel 1
 of each file only, not a mixed-down or complete multichannel overview. Empty,
 loading, and unavailable states are textual; synthetic traces are removed.
-Task 6 connects waveform seek/playhead to the selected audition, with Original
-WET/Current rig mode buttons, Pause/Resume, Stop, Loop, preview level, and a
+Task 6 connects waveform seek/playhead to the selected audition, with Task 8's
+`Play original`/`Reamp current rig` buttons, Pause/Resume, Stop, Loop, preview level, and a
 persistent mode/live-input-replacement status label. Choosing another take or
 closing the panel stops audition; selecting a row alone does not start it.
+
+Task 8 retains theme/FontManager styling while reducing the REC hero, adding its
+keyboard-focus ring, placing
+selected patch/snapshot context above the waveform, and stacking mode buttons
+over transport/level controls. Row Play/Reamp explicitly select their own take;
+both row and selected audition actions are disabled during Preparing/Recording/
+Saving with phase-specific reasons. Panel/descendant key listeners route bare
+Space to pause/resume or start the selected take in the current mode, excluding
+text editors and modifiers. Escape stops audition while the panel has focus,
+including text-editor focus. Automated helpers cover geometry, phase reasons,
+and Space arbitration only; actual focus/shortcut dispatch and visual layout
+still require a running-panel check.
 
 The Task 4 engine (with its own build/focused verification) separates
 `ScratchPlayback` control/worker state from its single audio consumer. It is
@@ -472,7 +485,7 @@ Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
 
-### Accepted Expansion — Native Implementation In Progress
+### Native Foundations — Acceptance In Progress
 
 The accepted foundations are a persistent disk-backed take library, real raw/wet
 waveforms, in-app wet audition, reamp through the current rig without manually
@@ -495,8 +508,19 @@ its final app/test build exited 0 on 2026-10-04, with 5,058 assertions in 30
 passed routing/playback/safety/storage cases and one privilege-related
 storage-symlink skip. Task 7's final app/test build exited 0 on 2026-10-04;
 the rig/storage/routing run passed 307 assertions in 16 cases, with one symlink
-case skipped. Task 8 integrated UI polish remains upcoming. See the handoff for
-dated evidence; manual restart/UI and hardware QA remain open.
+case skipped. Task 7 is committed as `5563f7f`. Task 8 panel polish/keyboard wiring
+is source-integrated; its app/test build exited 0 on 2026-10-04, followed by
+8,916 assertions in 99 passed Scratch/RT/master-bus cases and two symlink skips.
+The first full CTest checkpoint passed 351/358 entries: two privilege skips
+were misreported as failures, three ReverbSC source-string assertions target
+unchanged baseline files, and two post-success SegFault exits passed exact
+reruns without an established root cause. After correcting skip reporting, the
+final full CTest run exited 8: 353 passed, two skipped, and the three unchanged-
+baseline ReverbSC assertions failed (358 total); no post-success SegFault recurred.
+The final incremental app/test build and focused run passed again, but the
+full-suite gate is not clean. See the handoff for dated evidence;
+manual restart/UI, live snapshot integration, visual/focus, and hardware QA
+remain open. Native automation initialization failed; no new screenshot QA ran.
 
 ---
 

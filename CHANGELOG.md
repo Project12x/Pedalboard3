@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Scratch's selected RAW/WET waveform and transport now lead the panel, with stacked original/reamp controls, capture-phase disabled reasons, snapshot status, and scoped Space/Escape shortcuts. Row actions select the take being heard and REC has a visible keyboard-focus ring; existing theme/fonts remain in use. This reduces ambiguity between captured sound and current-rig playback; visual/interface acceptance is still pending.
 - Scratch REC now prepares a capture-time `rig.xml` from live unsaved patch/plugin state, master inserts/bypass, master/per-channel gains, device context, and known NAM/IR/FilePlayer asset paths. The sidecar is written off-thread; request/device generations prevent cancelled or outdated preparation from starting a recording. Snapshot failure is reported separately so intact RAW/WET audio is not discarded. This records context, not asset copies or automatic rig restoration.
 - Scratch audition is now native: original WET bypasses current processing while RAW runs through the current input gain, graph, master rack, and output gain once, without adding nodes or changing device settings. Playback temporarily replaces hardware input, has seek/pause/stop/loop/level controls and explicit approval before dropping channels. Paired recording leases prevent Stop between RAW/WET taps from producing an uneven take; previews cannot enter either recording tap.
 - Added the bounded Scratch audition engine: worker-only WAV decoding/resampling, a fixed 65,536-frame usable queue, explicit channel-loss approval, consumed-frame position, pause/seek/loop controls, conservative preview level, and short continuity ramps. Generation retirement and device-stop acknowledgement prevent stale reads or queue reset races. This commit supplies the engine/tests only; panel and device routing integration follow separately. Audition supports 8–384 kHz source/device rates to bound converter allocation.
@@ -62,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- CTest now recognizes Catch2's single-case all-skipped summary, so missing Windows symlink privilege is reported as a skip rather than a failure. Exit code 4 alone is deliberately not treated as skipped because Catch2 also returns it for four failed assertions.
 - **Tuner String Checklist Persistence** — A string marked in tune now stays marked while other strings are tuned. Overlapping analysis windows after a pitch change can still look like the previous string a few cents off; that no longer clears the earlier ready bit. A later reading of the same string at 12 cents or more still unchecks it.
 - **Scratch Panel Elapsed Timer** — Active scratch recordings now format elapsed time from the active take sample rate instead of waiting for a finalized last take.
 - **Scratch Take Action Clipping** — Scratch recent-take `Play`, `Reamp`, and `Reveal` buttons now use a deterministic row layout so actions do not overlap at panel width.

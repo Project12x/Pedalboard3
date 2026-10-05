@@ -5,6 +5,35 @@
 
 #include <JuceHeader.h>
 
+inline bool shouldHandleScratchSpace(bool panelFocused, bool textInputFocused) noexcept
+{
+    return panelFocused && !textInputFocused;
+}
+inline bool scratchCaptureBlocksAudition(ScratchRecorderState state) noexcept
+{
+    return state == ScratchRecorderState::Preparing || state == ScratchRecorderState::Recording || state == ScratchRecorderState::Saving;
+}
+inline juce::String scratchAuditionDisabledReason(ScratchRecorderState state)
+{
+    switch (state)
+    {
+    case ScratchRecorderState::Preparing: return "Preparing rig context - cancel REC before auditioning";
+    case ScratchRecorderState::Recording: return "Stop capture before auditioning";
+    case ScratchRecorderState::Saving: return "Wait for this take to finish saving";
+    default: return {};
+    }
+}
+inline juce::String scratchSnapshotLabel(const ScratchTake& take)
+{
+    switch (take.snapshotState)
+    {
+    case ScratchSnapshotState::Saved: return "Rig context saved (assets referenced, not copied)";
+    case ScratchSnapshotState::Failed: return "Rig context unavailable: " + take.snapshotMessage;
+    case ScratchSnapshotState::Pending: return "Rig context pending";
+    default: return "No saved rig context (legacy take)";
+    }
+}
+
 inline int findScratchTakeRow(const ScratchLibrarySnapshot& snapshot, const juce::File& directory)
 {
     for (size_t i = 0; i < snapshot.entries.size(); ++i)

@@ -1,4 +1,5 @@
 #include "ScratchPanelPresentation.h"
+#include "ScratchPanelLayout.h"
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Scratch selection follows directory across reordered and replaced snapshots", "[scratch][scratch-ui]")
@@ -39,4 +40,36 @@ TEST_CASE("Scratch malformed and future takes remain reveal-only", "[scratch][sc
         REQUIRE_FALSE(actions.reamp);
         REQUIRE(actions.reveal);
     }
+}
+
+TEST_CASE("Scratch shortcuts leave text input and other windows alone", "[scratch][scratch-ui]")
+{
+    REQUIRE(shouldHandleScratchSpace(true, false));
+    REQUIRE_FALSE(shouldHandleScratchSpace(true, true));
+    REQUIRE_FALSE(shouldHandleScratchSpace(false, false));
+}
+
+TEST_CASE("Scratch transport remains reachable at narrow and default sizes", "[scratch][scratch-ui]")
+{
+    for (int width : {360, 568, 648, 948})
+    {
+        const juce::Rectangle<int> bounds{0, 0, width, 84};
+        const auto layout = ScratchPanelLayout::calculateTransportLayout(bounds);
+        for (const auto rectangle : {layout.wet, layout.raw, layout.pause, layout.stop, layout.loop, layout.volume})
+        { REQUIRE(bounds.contains(rectangle)); REQUIRE(rectangle.getWidth() >= 48); REQUIRE(rectangle.getHeight() >= 24); }
+        REQUIRE_FALSE(layout.wet.intersects(layout.raw));
+        REQUIRE_FALSE(layout.pause.intersects(layout.volume));
+        REQUIRE_FALSE(layout.loop.intersects(layout.volume));
+    }
+}
+
+TEST_CASE("Scratch capture phases explain disabled audition", "[scratch][scratch-ui]")
+{
+    for (auto state : {ScratchRecorderState::Preparing, ScratchRecorderState::Recording, ScratchRecorderState::Saving})
+    {
+        REQUIRE(scratchCaptureBlocksAudition(state));
+        REQUIRE_FALSE(scratchAuditionDisabledReason(state).isEmpty());
+    }
+    REQUIRE_FALSE(scratchCaptureBlocksAudition(ScratchRecorderState::Saved));
+    REQUIRE(scratchAuditionDisabledReason(ScratchRecorderState::Saved).isEmpty());
 }

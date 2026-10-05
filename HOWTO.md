@@ -107,20 +107,29 @@ Current source behavior and boundaries:
   first two outputs; mono raw uses only the first input.
 - `Reveal` opens the take folder, including for incomplete takes if it exists.
   Play/Reamp require both a complete take and their respective WAV file.
-- For the selected take, use `Original WET` or `Current rig` to start audition,
+- For the selected take, use `Play original` or `Reamp current rig` to start audition,
   `Pause`/`Resume`, `Stop`, and full-take `Loop` to control it. Click the matching
   selected waveform to seek; its playhead follows playback. Preview level is
   independent of rig gain: -12 dB by default, at most 0 dB, with -60 dB muted.
   A persistent label identifies the mode and warns when live input is replaced.
   Selecting another take or closing the panel stops audition; selecting alone
-  stays silent. These wired controls still require manual UI verification.
+  stays silent. A row's Play/Reamp button first selects that row. Mode buttons
+  sit above transport and level controls, with the selected patch and snapshot
+  status above the waveform. The smaller REC control has a keyboard-focus ring.
+  A failed snapshot does not hide playable audio.
+- While focus is inside the Scratch panel, bare Space pauses/resumes or starts
+  the selected take in the current audition mode. Space is not intercepted in
+  text editors or with modifiers. Escape stops audition, including while editing
+  the level value. Actual focus traversal and shortcut dispatch remain manually
+  unverified; automated helper tests are not proof of working native key routing.
 - There are no fake traces: the overviews use cached saved-audio data, with
   explicit loading/unavailable states. They are not live input meters. The full
-  keyboard workflow and visual polish are not yet verified.
+  keyboard workflow and visual polish are not yet manually verified. Disabled
+  row/selected audition actions explain Preparing, Recording, or Saving.
 
-## Scratch foundations — native implementation in progress
+## Scratch foundations — acceptance in progress
 
-The accepted next scope is a disk-backed take library, real raw/wet waveforms,
+The native foundations cover a disk-backed take library, real raw/wet waveforms,
 in-app wet audition, current-rig reamp without manual FilePlayer wiring, saved
 capture-time rig context, and modest existing-style UI polish. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
@@ -144,10 +153,20 @@ record handoff, and panel controls. Its final app/test build exited 0 on
 30 cases, with one storage-symlink case skipped for missing privilege. Task 7's
 final app/test build exited 0 on 2026-10-04; the rig/storage/routing run passed
 307 assertions in 16 cases, with one symlink case skipped for missing privilege.
-Task 8 integrated polish remains upcoming.
-No full integration, visual, or hardware pass is claimed.
-See the handoff for dated evidence; manual restart/UI and hardware QA remain
-outstanding.
+Task 7 is committed as `5563f7f`. Task 8 panel polish and keyboard wiring are
+source-integrated; the 2026-10-04 app/test build exited 0 and the focused
+Scratch/RT/master-bus run passed 8,916 assertions in 99 cases, with two symlink
+cases skipped. The first full CTest run passed 351/358 entries; reported failures
+include two privilege skips, three stale ReverbSC assertions against unchanged
+baseline files, and two post-success SegFault exits. The latter passed exact
+reruns, but their root cause is unconfirmed. With skip reporting corrected,
+final full CTest exited 8: 353 passed, two skipped, and three unchanged-baseline
+ReverbSC assertion cases failed (358 total), without another post-success SegFault.
+The final incremental app/test build and 8,916-assertion focused run passed again;
+the full-suite gate is not clean. No manual UI integration,
+visual/focus, live-plugin snapshot, or hardware pass is claimed. Native automation
+could not initialize, and no screenshot QA script ran. See the handoff for
+dated evidence and the remaining acceptance checks.
 
 ## Verify Scratch Capture with a real interface
 
@@ -182,6 +201,10 @@ folder, verify all of the following:
    context, including gains and asset references. Separately check cancellation
    during Preparing and snapshot-failure warnings without conflating them with
    audio failure. Snapshot availability does not imply automatic rig restoration.
+10. For Task 8 acceptance, check default/narrow sizes, light/dark themes, and
+    150% scale. Verify actual Tab focus, Space/ESC dispatch (including the level
+    text editor), row-play selection, disabled reasons, and reachable controls.
+    These visual/focus checks remain unverified; no new screenshots were captured.
 
 Record the tested commit, interface/driver, channel selection, sample rate,
 buffer size, and actual result; do not substitute old evidence for a new run.

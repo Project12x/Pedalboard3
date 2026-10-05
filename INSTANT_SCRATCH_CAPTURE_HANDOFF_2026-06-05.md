@@ -26,8 +26,10 @@ Task 4's audition engine has a successful final app/test build and focused
 result below. Task 5 shared preview protection is committed as `3e441cb`.
 Task 6 native routing, recorder handoff, and panel transport controls are committed
 as `b22e1e8`, with final focused verification recorded below. Task 7 rig snapshots
-and cancellable preparation have final focused verification below; full integration,
-visual/manual UI, and hardware QA are not yet verified.
+and cancellable preparation are committed as `5563f7f`. Task 8 panel polish and
+keyboard wiring have focused build/test evidence below; the full-suite gate is
+not clean (first and final runs below), and visual/manual UI, live snapshot integration, and hardware QA
+are not yet verified.
 
 ## Historical Baseline (June 2026)
 
@@ -299,7 +301,7 @@ Source: `ScratchRigSnapshot.*`, recorder preparation methods, MainPanel's
   matched RAW/WET pair. A missing saved sidecar becomes a load-time snapshot
   warning without rejecting otherwise valid audio; legacy snapshot state is None.
 - Preparing has a cancel action and disables audition/destination controls.
-  Further integrated presentation polish remains Task 8.
+  Task 8 integrates presentation polish below.
 
 Task 7 final coordinator-reported verification (2026-10-04): app/test build
 exited 0; `[scratch-rig],[scratch-storage],[scratch-routing]` passed **307
@@ -314,6 +316,52 @@ Coordinator-reported manual-access limitation (2026-10-04): native computer-use
 initialization failed twice, including after reset, while writing kernel assets
 (OS error 3, path not found). No QA script ran; screenshot/focus checks and manual
 hardware acceptance remain unavailable/unverified, not passed.
+
+### Task 8 Panel Polish And Acceptance Checkpoint
+
+Source: `ScratchPanel.{h,cpp}`, `ScratchPanelLayout.h`, and
+`ScratchPanelPresentation.h`.
+
+- Reduced REC hero with a keyboard-focus ring; selected patch/snapshot status above the real waveform;
+  `Play original`/`Reamp current rig` mode row stacked above Pause/Resume, Stop,
+  Loop, and level controls. Existing theme colors and FontManager remain in use.
+- Row Play/Reamp first select that row so the waveform and transport follow it.
+  Row/selected actions are disabled with phase-specific preparation/capture/saving
+  reasons, and Preparing's record control reads CANCEL.
+- Panel/descendant key listeners scope bare Space to pause/resume or start the
+  selected take in the current mode. Text editors and modifier combinations are
+  excluded from Space handling. Escape stops preview within the panel, including
+  text-editor focus. Closing or selecting another take still stops playback.
+- Automated production-helper tests cover Space arbitration, phase reasons,
+  and transport geometry at 360/568/648/948-pixel widths. They do not exercise
+  actual native focus traversal, key dispatch, theme rendering, or screenshots.
+
+Coordinator-reported verification (2026-10-04): app/test build exited 0;
+`[scratch],[rt],[masterbus]` passed **8,916 assertions in 99 cases**, with **two
+symlink cases skipped** for missing Windows privilege.
+
+The first full Release CTest run passed **351/358 entries**, with seven reported
+failures requiring separate accounting:
+
+- Two Windows privilege-dependent symlink cases were all-skipped, incorrectly
+  reported as Failed. CTest reporting was corrected to match the one-case
+  all-skipped summary, not exit code 4 (which can also mean four failed assertions).
+- Three stale ReverbSC source-string assertions remain. `src/PluginComponent.cpp`
+  and `tests/reverbsc_processor_test.cpp` are unchanged from baseline `47cfb47`;
+  these unrelated baseline assertions have not been fixed by the Scratch work.
+- NAM Boolean Threshold and Scratch destination compacts long paths reported
+  post-success SegFault exits. Both passed exact reruns, but the root cause is
+  unconfirmed; reruns do not establish a fix.
+
+Final coordinator-reported checkpoint (2026-10-04): incremental app/test build
+exited 0; the combined focused run again passed **8,916 assertions in 99 cases**,
+with **two skips**. Final full Release CTest exited **8**: **353 passed, two
+correctly skipped (227, 233), and three failed (289, 290, 294), out of 358**.
+The failures remain the unchanged-baseline ReverbSC assertions above. No
+post-success SegFault occurred in this final run; the first-run cause remains
+unconfirmed. The full-suite gate is **not clean**. Native
+automation failed to initialize as recorded above, so visual/focus and manual
+UI/hardware acceptance remain unverified. No screenshot QA script ran.
 
 ### Audio Callback Taps
 
@@ -473,7 +521,11 @@ Next agent should run this before calling the feature user-ready:
     master insert/bypass/gains, and known assets in `rig.xml`; check the manifest's
     snapshot result separately from audio completion. Check Preparing cancellation
     and failure warnings without editing the user's existing takes.
-16. Record commit, interface/driver, channels, sample rate, buffer size, and
+16. For Task 8 acceptance, check default/narrow widths, light/dark themes, and
+    150% scale. Exercise actual Tab focus and Space/ESC from buttons, list rows,
+    waveform, and level text editor; verify row-play selection and disabled
+    reasons. Helper tests do not substitute for these running-panel checks.
+17. Record commit, interface/driver, channels, sample rate, buffer size, and
     pass/fail observations with a date.
 
 ## Known Gaps And Risks

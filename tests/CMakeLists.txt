@@ -164,5 +164,9 @@ endif()
 
 # Register tests with CTest
 include(Catch)
-catch_discover_tests(Pedalboard3_Tests)
+catch_discover_tests(Pedalboard3_Tests
+    # Catch2 v3 returns 4 when the selected case is skipped, but also when four
+    # assertions fail. Match only the one-case all-skipped summary, not exit 4.
+    PROPERTIES SKIP_REGULAR_EXPRESSION "test cases: +1 [|] +(0 passed [|] +)?1 skipped"
+)
 catch_discover_tests(Pedalboard3_NAMCoreRuntimeTests)

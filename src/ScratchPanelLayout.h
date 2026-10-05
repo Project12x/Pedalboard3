@@ -17,6 +17,26 @@ constexpr int destinationResetWidth = 70;
 constexpr int destinationRevealWidth = 70;
 constexpr int maxContentWidth = 980;
 
+struct TransportLayout
+{
+    juce::Rectangle<int> info, wet, raw, pause, stop, loop, volume;
+};
+inline TransportLayout calculateTransportLayout(juce::Rectangle<int> bounds)
+{
+    TransportLayout result;
+    result.info = bounds.removeFromTop(22);
+    auto modes = bounds.removeFromTop(28);
+    result.wet = modes.removeFromLeft((modes.getWidth() - 6) / 2);
+    modes.removeFromLeft(6); result.raw = modes;
+    bounds.removeFromTop(6);
+    auto controls = bounds.removeFromTop(28);
+    result.pause = controls.removeFromLeft(66); controls.removeFromLeft(6);
+    result.stop = controls.removeFromLeft(52); controls.removeFromLeft(6);
+    result.loop = controls.removeFromLeft(58); controls.removeFromLeft(6);
+    result.volume = controls;
+    return result;
+}
+
 struct TakeRowActions
 {
     juce::Rectangle<int> play;

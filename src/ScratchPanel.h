@@ -11,6 +11,7 @@ class MainPanel;
 
 class ScratchPanel final : public juce::Component,
                            private juce::Button::Listener,
+                           private juce::KeyListener,
                            private juce::Timer
 {
 public:
@@ -26,13 +27,14 @@ private:
     public:
         RecordButton();
 
-        void setRecordingState(bool shouldShowRecording, bool shouldShowSaving);
+        void setRecordingState(bool shouldShowRecording, bool shouldShowSaving, bool shouldShowPreparing);
         void paintButton(juce::Graphics& g, bool shouldDrawButtonAsHighlighted,
                          bool shouldDrawButtonAsDown) override;
 
     private:
         bool recording = false;
         bool saving = false;
+        bool preparing = false;
     };
 
     class RecentTakesList final : public juce::Component, private juce::ListBoxModel
@@ -41,6 +43,7 @@ private:
         RecentTakesList(MainPanel&, ScratchWaveformCache&);
         ~RecentTakesList() override { list.setModel(nullptr); }
         void setSnapshot(std::shared_ptr<const ScratchLibrarySnapshot>, const juce::File& selection);
+        void refreshAvailability();
         void resized() override { list.setBounds(getLocalBounds()); }
         void paint(juce::Graphics&) override;
         std::function<void(const juce::File&)> onSelection;
@@ -81,6 +84,8 @@ private:
     void refresh();
     void updateRecentTakesList();
     void playSelected(ScratchPlaybackMode);
+    bool keyPressed(const juce::KeyPress&, juce::Component*) override;
+    void installKeyboardRouting(juce::Component&, bool install);
     Layout calculateLayout() const;
 
     juce::Component::SafePointer<MainPanel> owner;
@@ -89,10 +94,11 @@ private:
     juce::TextButton resetButton{"resetButton"};
     juce::TextButton revealButton{"revealButton"};
     juce::TextButton refreshButton{"Refresh"};
-    juce::TextButton wetButton{"Original WET"}, rawButton{"Current rig"}, pauseButton{"Pause"}, stopButton{"Stop"};
+    juce::TextButton wetButton{"Play original"}, rawButton{"Reamp current rig"}, pauseButton{"Pause"}, stopButton{"Stop"};
     juce::ToggleButton loopButton{"Loop"};
     juce::Slider previewVolume;
     juce::Label playbackLabel;
+    juce::Label selectedContextLabel;
     juce::Label statusLabel{"statusLabel", "Ready"};
     juce::Label elapsedLabel{"elapsedLabel", "00:00"};
     ScratchWaveformCache waveformCache;

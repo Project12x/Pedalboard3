@@ -23,20 +23,6 @@ juce::String formatDuration(double seconds)
     return juce::String::formatted("%02d:%02d", roundedSeconds / 60, roundedSeconds % 60);
 }
 
-juce::String formatSampleRate(double sampleRate)
-{
-    if (sampleRate >= 1000.0)
-        return juce::String(sampleRate / 1000.0, 1) + " kHz";
-
-    return juce::String(sampleRate, 0) + " Hz";
-}
-
-juce::String formatGain(double gainDb)
-{
-    juce::String sign = gainDb >= 0.0 ? "+" : "";
-    return sign + juce::String(gainDb, 1) + " dB";
-}
-
 juce::String formatPatchName(const ScratchTake& take)
 {
     juce::String patch = take.patchName.isNotEmpty() ? take.patchName : "<untitled>";
@@ -138,13 +124,14 @@ ScratchPanel::RecordButton::RecordButton() : juce::Button("recordButton")
     setTriggeredOnMouseDown(false);
 }
 
-void ScratchPanel::RecordButton::setRecordingState(bool shouldShowRecording, bool shouldShowSaving)
+void ScratchPanel::RecordButton::setRecordingState(bool shouldShowRecording, bool shouldShowSaving, bool shouldShowPreparing)
 {
-    if (recording == shouldShowRecording && saving == shouldShowSaving)
+    if (recording == shouldShowRecording && saving == shouldShowSaving && preparing == shouldShowPreparing)
         return;
 
     recording = shouldShowRecording;
     saving = shouldShowSaving;
+    preparing = shouldShowPreparing;
     repaint();
 }
 
@@ -160,7 +147,8 @@ void ScratchPanel::RecordButton::paintButton(juce::Graphics& g, bool shouldDrawB
     const auto diameter = juce::jmin(bounds.getWidth(), bounds.getHeight());
     auto circle = juce::Rectangle<float>(diameter, diameter).withCentre(bounds.getCentre());
 
-    auto fill = saving ? warning : danger;
+    auto fill = saving || preparing ? warning : danger;
+    if (!isEnabled()) fill = fill.withAlpha(0.35f);
     if (shouldDrawButtonAsDown)
         fill = fill.darker(0.22f);
     else if (shouldDrawButtonAsHighlighted)
@@ -179,6 +167,12 @@ void ScratchPanel::RecordButton::paintButton(juce::Graphics& g, bool shouldDrawB
     g.setColour(textColour.withAlpha(0.92f));
     g.drawEllipse(circle.reduced(1.0f), 2.0f);
 
+    if (hasKeyboardFocus(true))
+    {
+        g.setColour(textColour);
+        g.drawEllipse(circle.expanded(2.0f), 1.5f);
+    }
+
     auto& fonts = FontManager::getInstance();
     if (recording)
     {
@@ -186,11 +180,11 @@ void ScratchPanel::RecordButton::paintButton(juce::Graphics& g, bool shouldDrawB
         g.setColour(textColour);
         g.fillRoundedRectangle(juce::Rectangle<float>(stopSize, stopSize).withCentre(circle.getCentre()), 4.0f);
     }
-    else if (saving)
+    else if (saving || preparing)
     {
         g.setFont(fonts.getBadgeFont());
         g.setColour(textColour);
-        g.drawFittedText("SAVE", circle.toNearestInt().reduced(16), juce::Justification::centred, 1);
+        g.drawFittedText(preparing ? "CANCEL" : "SAVE", circle.toNearestInt().reduced(12), juce::Justification::centred, 1);
     }
     else
     {
@@ -211,8 +205,8 @@ public:
         play.setTooltip("Audition the original WET capture without current effects");
         reamp.setTooltip("Audition RAW through the current rig without graph edits");
         reveal.setTooltip("Reveal this take folder");
-        play.onClick = [this] { if (auto* panel = owner.getComponent()) panel->previewScratchWetTake(entry.take); };
-        reamp.onClick = [this] { if (auto* panel = owner.getComponent()) panel->reampScratchRawTake(entry.take); };
+        play.onClick = [this] { selectThisRow(); if (auto* panel = owner.getComponent()) panel->previewScratchWetTake(entry.take); };
+        reamp.onClick = [this] { selectThisRow(); if (auto* panel = owner.getComponent()) panel->reampScratchRawTake(entry.take); };
         reveal.onClick = [this] { if (auto* panel = owner.getComponent()) panel->revealScratchTake(entry.take); };
     }
     void update(const ScratchTakeLoadResult& next, uint64_t generation, bool isSelected)
@@ -224,14 +218,28 @@ public:
         }
         entry = next;
         selected = isSelected;
-        const auto actions = scratchTakeActions(entry);
-        play.setEnabled(actions.play);
-        reamp.setEnabled(actions.reamp);
-        reveal.setEnabled(actions.reveal);
+        updateAvailability();
         const auto text = getColour("Text Colour", juce::Colours::white);
         const auto accent = getColour("Accent Colour", juce::Colours::cyan);
         for (auto* button : {&play, &reamp, &reveal}) styleScratchTextButton(*button, accent, text, false);
         repaint();
+    }
+    void updateAvailability()
+    {
+        const auto actions = scratchTakeActions(entry);
+        auto* panel = owner.getComponent();
+        const auto state = panel ? panel->getScratchRecorderStatus().state : ScratchRecorderState::Saving;
+        const auto reason = scratchAuditionDisabledReason(state);
+        play.setEnabled(actions.play && reason.isEmpty());
+        reamp.setEnabled(actions.reamp && reason.isEmpty());
+        reveal.setEnabled(actions.reveal);
+        play.setTooltip(reason.isNotEmpty() ? reason : "Play original WET capture");
+        reamp.setTooltip(reason.isNotEmpty() ? reason : "Reamp RAW through the current rig");
+    }
+    void selectThisRow()
+    {
+        if (auto* listBox = findParentComponentOfClass<juce::ListBox>())
+            listBox->selectRow(listBox->getRowNumberOfComponent(this));
     }
     void resized() override
     {
@@ -301,6 +309,13 @@ juce::Component* ScratchPanel::RecentTakesList::refreshComponentForRow(int row, 
     if (!item) { delete existing; item = new Row(*owner.getComponent(), cache); }
     item->update(snapshot->entries[static_cast<size_t>(row)], snapshot->generation, selected);
     return item;
+}
+void ScratchPanel::RecentTakesList::refreshAvailability()
+{
+    const int first = juce::jmax(0, list.getRowContainingPosition(0, 0));
+    const int end = juce::jmin(getNumRows(), first + list.getNumRowsOnScreen() + 2);
+    for (int row = first; row < end; ++row)
+        if (auto* item = dynamic_cast<Row*>(list.getComponentForRowNumber(row))) item->updateAvailability();
 }
 void ScratchPanel::RecentTakesList::setSnapshot(std::shared_ptr<const ScratchLibrarySnapshot> next,
                                                const juce::File& selection)
@@ -409,6 +424,9 @@ ScratchPanel::ScratchPanel(MainPanel& ownerToUse) : owner(&ownerToUse), recentTa
     previewVolume.setName("Audition level");
     previewVolume.setTooltip("Audition output level only; -60 dB mutes. Does not change rig gains.");
     previewVolume.onValueChange = [this] { if (auto* panel = owner.getComponent()) panel->setScratchPlaybackVolumeDb(previewVolume.getValue()); };
+    addAndMakeVisible(selectedContextLabel);
+    selectedContextLabel.setFont(FontManager::getInstance().getCaptionFont());
+    selectedContextLabel.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(playbackLabel);
     playbackLabel.setFont(FontManager::getInstance().getCaptionFont());
     playbackLabel.setInterceptsMouseClicks(false, false);
@@ -425,6 +443,7 @@ ScratchPanel::~ScratchPanel()
 {
     if (auto* panel = owner.getComponent()) panel->stopScratchPlayback();
     stopTimer();
+    installKeyboardRouting(*this, false);
     recordButton.removeListener(this);
     chooseButton.removeListener(this);
     resetButton.removeListener(this);
@@ -466,7 +485,6 @@ void ScratchPanel::paint(juce::Graphics& g)
                      juce::Justification::centredLeft, 1);
 
     fillPanel(g, layout.hero.toFloat(), panel.withAlpha(0.78f), border.withAlpha(0.78f), 15.0f);
-    const auto heroText = layout.hero.withTrimmedLeft(layout.record.getWidth() + 24).reduced(4, 12);
     const auto recording = lastStatus.state == ScratchRecorderState::Recording;
     const auto saving = lastStatus.state == ScratchRecorderState::Saving;
     const auto stateColour = recording ? danger : (saving ? getColour("Warning Colour", juce::Colour(0xfff59e0b)) : success);
@@ -477,66 +495,9 @@ void ScratchPanel::paint(juce::Graphics& g)
     drawLedDot(g, {statusLedArea.getX() + 6.0f, statusLedArea.getCentreY()}, 4.0f, stateColour,
                lastStatus.state != ScratchRecorderState::Failed);
 
-    auto armRow = heroText.withTrimmedTop(76);
-    auto rawChip = armRow.removeFromLeft(116).toFloat();
-    armRow.removeFromLeft(8);
-    auto wetChip = armRow.removeFromLeft(116).toFloat();
     const auto* take = ScratchPanelPresentation::getDisplayTake(lastStatus);
-    const auto* armedContext = ScratchPanelPresentation::getDisplayContext(lastStatus);
-    const int rawChannels = take != nullptr ? take->rawChannelCount
-                                            : (armedContext != nullptr ? armedContext->rawChannelCount : 0);
-    const int wetChannels = take != nullptr ? take->wetChannelCount
-                                            : (armedContext != nullptr ? armedContext->wetChannelCount : 0);
-    drawChip(g, rawChip, "RAW " + juce::String(rawChannels) + "ch", audio.withAlpha(0.14f),
-             audio.withAlpha(0.62f), text);
-    drawChip(g, wetChip, "WET " + juce::String(wetChannels) + "ch", accent.withAlpha(0.14f),
-             accent.withAlpha(0.62f), text);
 
     fillPanel(g, layout.scope.toFloat(), field.withAlpha(0.72f), border.withAlpha(0.58f), 13.0f);
-    fillPanel(g, layout.context.toFloat(), panel.withAlpha(0.62f), border.withAlpha(0.55f), 13.0f);
-    auto context = layout.context.reduced(12, 10);
-    auto contextHeader = context.removeFromTop(14);
-    g.setFont(fonts.getBadgeFont());
-    g.setColour(text.withAlpha(0.48f));
-    g.drawFittedText("CAPTURED WITH EVERY TAKE", contextHeader, juce::Justification::centredLeft, 1);
-    context.removeFromTop(6);
-    const auto patch = take != nullptr && take->patchName.isNotEmpty()
-                           ? take->patchName
-                           : (armedContext != nullptr && armedContext->patchName.isNotEmpty() ? armedContext->patchName
-                                                                                               : "Untitled patch");
-    const auto device = take != nullptr && take->deviceName.isNotEmpty()
-                            ? take->deviceName
-                            : (armedContext != nullptr && armedContext->deviceName.isNotEmpty() ? armedContext->deviceName
-                                                                                                 : "Audio device");
-    const auto rate = take != nullptr ? formatSampleRate(take->sampleRate)
-                                      : (armedContext != nullptr ? formatSampleRate(armedContext->sampleRate)
-                                                                 : "Sample rate");
-    const auto inputGain = take != nullptr ? "IN " + formatGain(take->masterInputGainDb)
-                                           : (armedContext != nullptr
-                                                  ? "IN " + formatGain(armedContext->masterInputGainDb)
-                                                  : "IN");
-    const auto outputGain = take != nullptr ? "OUT " + formatGain(take->masterOutputGainDb)
-                                            : (armedContext != nullptr
-                                                   ? "OUT " + formatGain(armedContext->masterOutputGainDb)
-                                                   : "OUT");
-    juce::StringArray chips;
-    chips.add(patch);
-    chips.add(device);
-    chips.add(rate);
-    chips.add(inputGain);
-    chips.add(outputGain);
-    for (int i = 0; i < chips.size(); ++i)
-    {
-        const auto chip = chips[i];
-        const int chipW = juce::jlimit(72, 148, chip.length() * 7 + 24);
-        if (context.getWidth() < chipW)
-            break;
-
-        drawChip(g, context.removeFromLeft(chipW).toFloat(), chip, field.withAlpha(0.62f),
-                 border.withAlpha(0.46f), text.withAlpha(0.86f));
-        context.removeFromLeft(8);
-    }
-
     fillPanel(g, layout.destination.toFloat(), field.withAlpha(0.58f), border.withAlpha(0.56f), 12.0f);
     auto destinationText = layout.destinationText;
     g.setFont(fonts.getCaptionFont());
@@ -582,15 +543,12 @@ void ScratchPanel::resized()
     waveformViewport.setBounds(layout.scope.reduced(4));
     selectedWaveform.setSize(juce::jmax(1, waveformViewport.getWidth() - 14),
                             juce::jmax(waveformViewport.getHeight(), selectedWaveform.preferredHeight()));
-    auto transport = layout.transport;
-    playbackLabel.setBounds(transport.removeFromTop(22));
-    auto controls = transport.removeFromTop(28);
-    wetButton.setBounds(controls.removeFromLeft(102)); controls.removeFromLeft(4);
-    rawButton.setBounds(controls.removeFromLeft(90)); controls.removeFromLeft(4);
-    pauseButton.setBounds(controls.removeFromLeft(60)); controls.removeFromLeft(4);
-    stopButton.setBounds(controls.removeFromLeft(48)); controls.removeFromLeft(4);
-    loopButton.setBounds(controls.removeFromLeft(58)); controls.removeFromLeft(4);
-    previewVolume.setBounds(controls);
+    const auto transport = ScratchPanelLayout::calculateTransportLayout(layout.transport);
+    selectedContextLabel.setBounds(layout.context);
+    playbackLabel.setBounds(transport.info);
+    wetButton.setBounds(transport.wet); rawButton.setBounds(transport.raw);
+    pauseButton.setBounds(transport.pause); stopButton.setBounds(transport.stop);
+    loopButton.setBounds(transport.loop); previewVolume.setBounds(transport.volume);
     updateRecentTakesList();
 }
 
@@ -654,7 +612,7 @@ void ScratchPanel::refresh()
     const bool isRecording = status.state == ScratchRecorderState::Recording;
     const bool isSaving = status.state == ScratchRecorderState::Saving;
     const bool isPreparing = status.state == ScratchRecorderState::Preparing;
-    recordButton.setRecordingState(isRecording, isSaving);
+    recordButton.setRecordingState(isRecording, isSaving, isPreparing);
     recordButton.setEnabled(status.state != ScratchRecorderState::Saving);
     chooseButton.setEnabled(!isRecording && !isSaving && !isPreparing);
     resetButton.setEnabled(!isRecording && !isSaving && !isPreparing);
@@ -676,7 +634,7 @@ void ScratchPanel::refresh()
     loopButton.setToggleState(playback.looping, juce::dontSendNotification);
     if (!previewVolume.isMouseButtonDown()) previewVolume.setValue(playback.volumeDb, juce::dontSendNotification);
     juce::String transportText = ready ? "Selected take ready - choose an audition mode" : "Select a ready take to audition";
-    if (isPreparing || isRecording || isSaving) transportText = "Audition unavailable during preparation, capture or saving";
+    if (scratchCaptureBlocksAudition(status.state)) transportText = scratchAuditionDisabledReason(status.state);
     else if (playback.replacingLive)
         transportText = (playback.mode == ScratchPlaybackMode::OriginalWet ? "ORIGINAL WET" : "RAW / CURRENT RIG")
             + juce::String("  |  Live input replaced  |  ")
@@ -686,6 +644,13 @@ void ScratchPanel::refresh()
     playbackLabel.setTooltip(transportText);
     playbackLabel.setColour(juce::Label::textColourId, getColour(playback.replacingLive ? "Warning Colour" : "Text Colour", juce::Colours::white));
     selectedWaveform.setPlayheadSeconds(playback.takeDirectory == selectedTakeDirectory ? playback.positionSeconds : 0);
+    const auto selectedText = row >= 0 ? (librarySnapshot->entries[static_cast<size_t>(row)].take.patchName + "  |  "
+        + scratchSnapshotLabel(librarySnapshot->entries[static_cast<size_t>(row)].take)) : "No take selected";
+    selectedContextLabel.setText(selectedText, juce::dontSendNotification);
+    selectedContextLabel.setTooltip(selectedText);
+    selectedContextLabel.setColour(juce::Label::textColourId, getColour("Text Colour", juce::Colours::white).withAlpha(0.8f));
+    recentTakesList.refreshAvailability();
+    installKeyboardRouting(*this, true);
     repaint();
 }
 
@@ -706,7 +671,9 @@ void ScratchPanel::updateRecentTakesList()
                 if (entry.message.isNotEmpty()) take.failureReason = entry.message;
                 libraryTakes.push_back(std::move(take));
             }
-            selectedTakeDirectory = reconcileScratchSelection(*next, selectedTakeDirectory);
+            const auto selection = reconcileScratchSelection(*next, selectedTakeDirectory);
+            if (selection != selectedTakeDirectory) panel->stopScratchPlayback();
+            selectedTakeDirectory = selection;
             const int row = findScratchTakeRow(*next, selectedTakeDirectory);
             if (row >= 0) selectedWaveform.setTake(next->entries[static_cast<size_t>(row)]);
             else selectedWaveform.clear();
@@ -717,36 +684,54 @@ void ScratchPanel::updateRecentTakesList()
                             juce::jmax(waveformViewport.getHeight(), selectedWaveform.preferredHeight()));
 }
 
+void ScratchPanel::installKeyboardRouting(juce::Component& component, bool install)
+{
+    if (install) component.addKeyListener(this); else component.removeKeyListener(this);
+    for (auto* child : component.getChildren()) installKeyboardRouting(*child, install);
+}
+
+bool ScratchPanel::keyPressed(const juce::KeyPress& key, juce::Component*)
+{
+    auto* panel = owner.getComponent();
+    if (!panel || !hasKeyboardFocus(true)) return false;
+    if (key.isKeyCode(juce::KeyPress::escapeKey)) { panel->stopScratchPlayback(); return true; }
+    auto* focused = juce::Component::getCurrentlyFocusedComponent();
+    const bool textInput = dynamic_cast<juce::TextEditor*>(focused) != nullptr
+        || (focused && focused->findParentComponentOfClass<juce::TextEditor>() != nullptr);
+    if (!key.isKeyCode(juce::KeyPress::spaceKey) || key.getModifiers().isAnyModifierKeyDown()
+        || !shouldHandleScratchSpace(true, textInput)) return false;
+    const auto playback = panel->getScratchPlaybackStatus();
+    if (playback.state == ScratchPlaybackState::Playing) panel->pauseScratchPlayback();
+    else if (playback.state == ScratchPlaybackState::Paused) panel->resumeScratchPlayback();
+    else playSelected(playback.mode);
+    return true;
+}
+
 ScratchPanel::Layout ScratchPanel::calculateLayout() const
 {
     Layout layout;
-    auto bounds = ScratchPanelLayout::calculateContentBounds(getLocalBounds()).reduced(18);
-
-    layout.header = bounds.removeFromTop(50);
-    bounds.removeFromTop(6);
-
-    layout.hero = bounds.removeFromTop(126);
-    layout.record = layout.hero.withTrimmedRight(layout.hero.getWidth() - 118).reduced(10).withSizeKeepingCentre(104, 104);
-    auto heroRight = layout.hero.withTrimmedLeft(134).reduced(4, 12);
-    layout.timer = heroRight.removeFromTop(46);
-    layout.status = heroRight.removeFromTop(30);
-
-    bounds.removeFromTop(12);
-    layout.scope = bounds.removeFromTop(86);
-    bounds.removeFromTop(4);
-    layout.transport = bounds.removeFromTop(54);
+    auto bounds = ScratchPanelLayout::calculateContentBounds(getLocalBounds()).reduced(16);
+    layout.header = bounds.removeFromTop(52);
     bounds.removeFromTop(8);
-    layout.context = bounds.removeFromTop(68);
-    bounds.removeFromTop(12);
-    layout.destination = bounds.removeFromTop(54);
+    layout.hero = bounds.removeFromTop(104);
+    layout.record = layout.hero.removeFromLeft(104).reduced(8);
+    // Keep the hero background full width while allocating its children.
+    layout.hero = {bounds.getX(), layout.record.getY() - 8, bounds.getWidth(), 104};
+    auto heroRight = layout.hero.withTrimmedLeft(112).reduced(4, 8);
+    layout.timer = heroRight.removeFromTop(44);
+    layout.status = heroRight.removeFromTop(32);
+    bounds.removeFromTop(8);
+    layout.context = bounds.removeFromTop(22);
+    layout.scope = bounds.removeFromTop(getHeight() >= 650 ? 112 : 72);
+    bounds.removeFromTop(4);
+    layout.transport = bounds.removeFromTop(84);
+    bounds.removeFromTop(8);
+    layout.destination = bounds.removeFromTop(48);
     const auto destinationLayout = ScratchPanelLayout::calculateDestinationLayout(layout.destination);
     layout.destinationText = destinationLayout.text;
-    layout.choose = destinationLayout.choose;
-    layout.reset = destinationLayout.reset;
-    layout.reveal = destinationLayout.reveal;
-    bounds.removeFromTop(12);
+    layout.choose = destinationLayout.choose; layout.reset = destinationLayout.reset; layout.reveal = destinationLayout.reveal;
+    bounds.removeFromTop(8);
     layout.recentHeader = bounds.removeFromTop(24);
     layout.recent = bounds;
-
     return layout;
 }

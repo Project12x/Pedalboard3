@@ -1,6 +1,6 @@
 # Pedalboard3 Roadmap
 
-- **Last updated:** 2026-10-02
+- **Last updated:** 2026-10-04
 - **Status:** Active source of truth for current product work
 
 This roadmap is intentionally narrow. Historical phase plans and completed long-form
@@ -62,11 +62,12 @@ Immediate next agent sequence:
 
 1. Run a real audio-interface/guitar capture smoke test.
 2. Confirm the take contains `raw.wav`, `wet.wav`, and `take.json`.
-   Compare the WAV sample rates and frame counts; the metadata currently stores
-   one duration, not separate raw/wet counts.
+   Compare the WAV sample rates and frame counts against the schema-2 manifest's
+   independent RAW/WET counts; also check the optional `rig.xml` snapshot status.
 3. Confirm raw is pre-chain DI and wet is what the user heard.
 4. Verify patch change and audio-device change both stop capture cleanly.
-5. Confirm `Play`, `Reamp`, and `Reveal` take actions enable only when their files exist.
+5. Confirm `Play original` and `Reamp current rig` require a validated Ready take,
+   while damaged takes remain inspectable through `Reveal`.
 6. Review `documentation/qa/2026-06-09-scratch-footer` and `documentation/qa/2026-06-09-main-footer-scale-v2` for prior UI-scale evidence. Follow `AGENTS.md` for publication; this repository does not use PRs by default.
 
 ### Scratch expansion — foundations accepted (2026-10-02)
@@ -86,17 +87,21 @@ below remains a separate proposal, not a prerequisite for these improvements.
 | In-app original playback | Audition the saved wet print without running it through the current effects again | Native device routing and controls connected; focused production routing tests pass |
 | Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Current-rig routing, channel-loss approval, and safe REC handoff implemented; hardware acceptance pending |
 | Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Implemented with worker sidecar writes and cancellable preparation; serializer/controller tests pass, live app acceptance pending |
-| Focused UI polish | Clearer status and transport, selected rows, keyboard controls, existing themes/fonts | Designed; not implemented |
+| Focused UI polish | Clearer status and transport, selected rows, keyboard controls, existing themes/fonts | Implemented; focused helper tests pass, visual/focus acceptance pending |
 
-Verified current limitations that this expansion addresses:
+Current acceptance and deliberate limitations:
 
 - Persistent discovery, virtualized rows, and stable selected-take presentation
   are implemented; full interactive UI acceptance is still outstanding.
-- Wet playback launches the OS file handler. Raw reamp inserts a file-player node
-  into the current graph without connecting it or restoring the recording rig.
-- Waveforms now show cached audio peaks; seek/playhead hooks await the internal transport.
-- Metadata records patch name/index/document path and master gains, without a
-  snapshot of the actual graph, plugin state, or model/IR assets.
+- Original WET now bypasses the current rig internally; RAW traverses it without
+  graph edits. Both replace live input temporarily; real-interface QA remains open.
+- Cached waveforms, seek, playhead, loop and preview level are connected. Native
+  UI automation cannot initialize on this host; new screenshots/focus checks are pending.
+- Live graph/plugin/master/gain context is saved once at REC preparation. Known
+  asset paths are references, not copies; opaque plugin dependencies are not enumerated.
+- Automatic rig restore, portable asset packaging, and saved reamp variants are deferred.
+- The integrated automated checkpoint and remaining failures are tracked in
+  [the October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md); do not treat historical screenshots or tests as current acceptance.
 
 Preserve existing audio files and metadata compatibility when expanding this
 workflow. Product phase is active development; capture lifetime, audio-thread
