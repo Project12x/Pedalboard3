@@ -599,6 +599,7 @@ MainPanel::MainPanel(ApplicationCommandManager* appManager)
     // Setup the signal path to connect it to the soundcard.
     graphPlayer.setProcessor(&signalPath.getGraph());
     graphPlayer.setScratchRecorder(&scratchRecorder);
+    graphPlayer.setScratchPlayback(&scratchPlayback);
     deviceManager.addAudioCallback(&graphPlayer);
 
     // Device meter tap for I/O node VU meters (can be disabled for debugging)
@@ -806,10 +807,14 @@ MainPanel::~MainPanel()
         deviceManager.removeAudioCallback(&deviceMeterTap);
         DeviceMeterTap::setInstance(nullptr);
     }
+    scratchCapturePending = false;
+    scratchPlayback.stop();
     scratchRecorder.requestStop();
     graphPlayer.setScratchRecorder(nullptr);
     scratchRecorder.onTakeFinalized = {};
     deviceManager.removeAudioCallback(&graphPlayer);
+    scratchPlayback.audioDeviceStopped();
+    graphPlayer.setScratchPlayback(nullptr);
     deviceManager.removeMidiInputCallback({}, &graphPlayer);
     graphPlayer.setProcessor(0);
     signalPath.clear(false, false, false);
@@ -1632,6 +1637,17 @@ void MainPanel::toggleScratchCapture()
         scratchRecorder.requestStop();
         showToast("Saving scratch take");
     }
+    else if (scratchCapturePending)
+    {
+        scratchCapturePending = false;
+        showToast("Scratch capture cancelled");
+    }
+    else if (!scratchPlayback.isQuiescent())
+    {
+        scratchPlayback.stop();
+        scratchCapturePending = true;
+        showToast("Stopping audition before capture");
+    }
     else if (scratchRecorder.start(createScratchTakeContext()))
     {
         showToast("Scratch recording");
@@ -1649,7 +1665,7 @@ void MainPanel::openScratchPanel()
 {
     scratchLibrary.refresh();
     auto* panel = new ScratchPanel(*this);
-    panel->setSize(600, 560);
+    panel->setSize(680, 720);
     JuceHelperStuff::showNonModalDialog("Scratch Capture", panel, this,
                                         ColourScheme::getInstance().colours["Window Background"], true, true);
 }
@@ -1684,6 +1700,7 @@ void MainPanel::chooseScratchFolder()
             return;
 
         selected.createDirectory();
+        panel->cancelScratchActivity();
         panel->scratchRecorder.setScratchRoot(selected);
         panel->scratchLibrary.setRoot(selected);
         SettingsManager::getInstance().setValue(kScratchRootSettingsKey, selected.getFullPathName());
@@ -1702,6 +1719,7 @@ void MainPanel::resetScratchFolderToDefault()
         return;
     }
 
+    cancelScratchActivity();
     scratchRecorder.resetScratchRootToDefault();
     scratchLibrary.setRoot(scratchRecorder.getScratchRoot());
     SettingsManager::getInstance().setValue(kScratchRootSettingsKey, String{});
@@ -1711,51 +1729,74 @@ void MainPanel::resetScratchFolderToDefault()
 }
 
 //------------------------------------------------------------------------------
-void MainPanel::previewScratchWetTake(const ScratchTake& take)
+void MainPanel::cancelScratchActivity()
 {
-    if (!take.canPlayWetPreview())
-    {
-        showToast("Wet take unavailable");
-        return;
-    }
-
-    showToast(take.wetFile.startAsProcess() ? "Opening wet take" : "Could not open wet take");
+    ++scratchContextGeneration;
+    scratchCapturePending = false;
+    scratchPlayback.stop();
 }
 
-//------------------------------------------------------------------------------
-void MainPanel::reampScratchRawTake(const ScratchTake& take)
+void MainPanel::previewScratchWetTake(const ScratchTake& take, const ScratchChannelMap& map)
 {
-    if (!take.canReampRawCapture())
+    playScratchTake(take, ScratchPlaybackMode::OriginalWet, map);
+}
+
+void MainPanel::reampScratchRawTake(const ScratchTake& take, const ScratchChannelMap& map)
+{
+    playScratchTake(take, ScratchPlaybackMode::CurrentRigRaw, map);
+}
+
+void MainPanel::playScratchTake(const ScratchTake& take, ScratchPlaybackMode mode, const ScratchChannelMap& map)
+{
+    const auto capture = scratchRecorder.getStatus().state;
+    if (scratchCapturePending || capture == ScratchRecorderState::Recording || capture == ScratchRecorderState::Saving)
     {
-        showToast("Raw take unavailable");
+        showToast("Stop capture and wait for saving before auditioning");
         return;
     }
-
-    auto* field = viewport != nullptr ? dynamic_cast<PluginField*>(viewport->getViewedComponent()) : nullptr;
-    if (field == nullptr || field->getFilterGraph() == nullptr)
+    auto snapshot = scratchLibrary.snapshot();
+    const auto found = std::find_if(snapshot->entries.begin(), snapshot->entries.end(),
+        [&](const auto& entry) { return entry.take.takeDirectory == take.takeDirectory; });
+    if (found == snapshot->entries.end() || found->state != ScratchTakeLoadState::Ready)
     {
-        showToast("Patch graph unavailable");
+        showToast("Take is not ready for audition");
         return;
     }
-
-    auto* graph = field->getFilterGraph();
-    const auto previousLastIndex = graph->getNumFilters() - 1;
-    const auto x = static_cast<double>(viewport->getViewPositionX() + viewport->getWidth() / 2);
-    const auto y = static_cast<double>(viewport->getViewPositionY() + viewport->getHeight() / 2);
-
-    graph->addFilter(new FilePlayerProcessor(take.rawFile), x, y);
-
-    if ((graph->getNumFilters() - 1) > previousLastIndex)
+    auto* device = deviceManager.getCurrentAudioDevice();
+    const int destinations = device ? (mode == ScratchPlaybackMode::OriginalWet
+        ? device->getActiveOutputChannels().countNumberOfSetBits()
+        : device->getActiveInputChannels().countNumberOfSetBits()) : 0;
+    const int sources = mode == ScratchPlaybackMode::OriginalWet ? take.wetChannelCount : take.rawChannelCount;
+    if (destinations < 1 || destinations > 16) { showToast("No supported audition destination"); return; }
+    if (!map.explicitMapping && sources > destinations)
     {
-        field->addFilter(graph->getNumFilters() - 1);
-        field->clearDoubleClickMessage();
-        field->sendChangeMessage();
-        showToast("Raw take added for reamp");
+        auto* dialog = new AlertWindow("Scratch channel routing",
+            "This take has more channels than the current destination. Choose each source; unused channels will be dropped. Device settings will not change.",
+            MessageBoxIconType::QuestionIcon, this);
+        StringArray choices; choices.add("Off");
+        for (int source = 0; source < sources; ++source) choices.add("Source " + String(source + 1));
+        for (int destination = 0; destination < destinations; ++destination)
+        {
+            const auto id = "destination" + String(destination);
+            dialog->addComboBox(id, choices, "Destination " + String(destination + 1));
+            dialog->getComboBoxComponent(id)->setSelectedItemIndex(destination + 1);
+        }
+        dialog->addButton("Use this mapping", 1); dialog->addButton("Cancel", 0);
+        const auto generation = scratchContextGeneration;
+        Component::SafePointer<MainPanel> safe(this);
+        dialog->enterModalState(true, ModalCallbackFunction::create([safe, dialog, take, mode, destinations, generation](int result) {
+            if (result != 1 || safe == nullptr || safe->scratchContextGeneration != generation) return;
+            ScratchChannelMap selected; selected.explicitMapping = true; selected.destinationChannels = destinations;
+            for (int destination = 0; destination < destinations; ++destination)
+                selected.sourceForDestination[destination] = dialog->getComboBoxComponent("destination" + String(destination))->getSelectedItemIndex() - 1;
+            safe->playScratchTake(take, mode, selected);
+        }), true);
+        return;
     }
-    else
-    {
-        showToast("Could not add raw take");
-    }
+    const auto result = scratchPlayback.play(*found, mode, map);
+    showToast(result.wasOk() ? (mode == ScratchPlaybackMode::OriginalWet
+        ? "Original WET - live input temporarily replaced" : "RAW through current rig - live input temporarily replaced")
+        : result.getErrorMessage());
 }
 
 //------------------------------------------------------------------------------
@@ -2639,6 +2680,7 @@ void MainPanel::switchPatch(int newPatch, bool savePrev, bool reloadPatch)
 
     if (willLoadPatch)
     {
+        cancelScratchActivity();
         scratchRecorder.stopForPatchChange();
         refreshScratchControls();
         PluginField* field = ((PluginField*)viewport->getViewedComponent());
@@ -2704,6 +2746,11 @@ void MainPanel::timerCallback(int timerId)
     switch (timerId)
     {
     case CpuTimer:
+        if (scratchCapturePending && scratchPlayback.isQuiescent())
+        {
+            scratchCapturePending = false;
+            toggleScratchCapture();
+        }
         cpuSlider->setColour(Slider::thumbColourId, ColourScheme::getInstance().colours["CPU Meter Colour"]);
         cpuSlider->setValue(deviceManager.getCpuUsage());
 
@@ -2834,6 +2881,7 @@ void MainPanel::changeListenerCallback(ChangeBroadcaster* changedObject)
 
     if (changedObject == &deviceManager)
     {
+        cancelScratchActivity();
         scratchRecorder.stopForDeviceChange();
         refreshScratchControls();
 

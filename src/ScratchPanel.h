@@ -3,6 +3,7 @@
 #include "ScratchRecorder.h"
 #include "ScratchTakeLibrary.h"
 #include "ScratchWaveformView.h"
+#include "ScratchPlaybackTypes.h"
 
 #include <JuceHeader.h>
 
@@ -64,6 +65,7 @@ private:
         juce::Rectangle<int> timer;
         juce::Rectangle<int> status;
         juce::Rectangle<int> scope;
+        juce::Rectangle<int> transport;
         juce::Rectangle<int> context;
         juce::Rectangle<int> destination;
         juce::Rectangle<int> destinationText;
@@ -78,6 +80,7 @@ private:
     void timerCallback() override;
     void refresh();
     void updateRecentTakesList();
+    void playSelected(ScratchPlaybackMode);
     Layout calculateLayout() const;
 
     juce::Component::SafePointer<MainPanel> owner;
@@ -86,6 +89,10 @@ private:
     juce::TextButton resetButton{"resetButton"};
     juce::TextButton revealButton{"revealButton"};
     juce::TextButton refreshButton{"Refresh"};
+    juce::TextButton wetButton{"Original WET"}, rawButton{"Current rig"}, pauseButton{"Pause"}, stopButton{"Stop"};
+    juce::ToggleButton loopButton{"Loop"};
+    juce::Slider previewVolume;
+    juce::Label playbackLabel;
     juce::Label statusLabel{"statusLabel", "Ready"};
     juce::Label elapsedLabel{"elapsedLabel", "00:00"};
     ScratchWaveformCache waveformCache;

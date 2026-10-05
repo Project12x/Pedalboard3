@@ -258,10 +258,10 @@ void ScratchRecorder::stopWithFailureReason(const juce::String& reason)
     requestStop();
 }
 
-void ScratchRecorder::writeRawBlock(const float* const* inputChannelData, int numInputChannels, int numSamples) noexcept
+bool ScratchRecorder::beginDeviceBlock(const float* const* inputChannelData, int numInputChannels, int numSamples) noexcept
 {
     if (!beginAudioWrite())
-        return;
+        return false;
 
     auto* sink = rawSink.get();
     if (sink == nullptr || !sink->write(inputChannelData, numInputChannels, numSamples))
@@ -274,14 +274,11 @@ void ScratchRecorder::writeRawBlock(const float* const* inputChannelData, int nu
         rawSamplesWritten.store(sink->getSamplesWritten(), std::memory_order_relaxed);
     }
 
-    endAudioWrite();
+    return true;
 }
 
-void ScratchRecorder::writeWetBlock(float* const* outputChannelData, int numOutputChannels, int numSamples) noexcept
+void ScratchRecorder::endDeviceBlock(float* const* outputChannelData, int numOutputChannels, int numSamples) noexcept
 {
-    if (!beginAudioWrite())
-        return;
-
     auto* sink = wetSink.get();
     if (sink == nullptr || !sink->write(const_cast<const float* const*>(outputChannelData), numOutputChannels, numSamples))
     {
@@ -294,6 +291,15 @@ void ScratchRecorder::writeWetBlock(float* const* outputChannelData, int numOutp
     }
 
     endAudioWrite();
+}
+
+void ScratchRecorder::writeRawBlock(const float* const* data, int channels, int samples) noexcept
+{
+    if (beginDeviceBlock(data, channels, samples)) endAudioWrite();
+}
+void ScratchRecorder::writeWetBlock(float* const* data, int channels, int samples) noexcept
+{
+    if (beginAudioWrite()) endDeviceBlock(data, channels, samples);
 }
 
 ScratchRecorderStatus ScratchRecorder::getStatus() const

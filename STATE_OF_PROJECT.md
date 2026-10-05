@@ -6,7 +6,7 @@
 
 ---
 
-## Current restart snapshot — 2026-10-02
+## Current restart snapshot — 2026-10-04
 
 ### Active ship gate
 
@@ -32,8 +32,11 @@ and damaged-bundle validation are covered by focused tests. Background discovery
 now reloads the on-disk library at startup/open/Refresh and after capture; panel
 history is no longer limited to eight session entries. Real cached RAW/WET
 waveforms and virtualized, folder-stable selection are now implemented;
-the bounded audition engine is verified in isolation. In-app device routing,
-preview protection, and user transport controls remain forthcoming.
+native original-WET/current-rig-RAW audition, independent preview protection,
+and transport controls are connected. The production router's focused regression
+run passes 5058 assertions (30 cases passed, one privilege-dependent symlink case
+skipped). Rig snapshots and integrated polish/visual/hardware acceptance remain
+open; these automated checks are not proof of a real-interface workflow.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

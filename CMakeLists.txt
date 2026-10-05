@@ -285,6 +285,7 @@ target_sources(Pedalboard3 PRIVATE
     src/SafetyLimiter.cpp
     src/dsp/SafetyLimiterCore.cpp
     src/ScratchPreviewGuard.cpp
+    src/ScratchAudioRouter.cpp
     src/SafetyLimiter.h
     src/DeviceMeterTap.cpp
     src/DeviceMeterTap.h

@@ -78,25 +78,39 @@ general recursive audio-file search; keep imported bundles in the day/take
 layout. Missing roots and damaged/unsupported bundles show diagnostic status
 rather than being silently discarded.
 
-Current limitations remain:
+Task 6 routing and panel transport controls have a passing focused build/test
+run; manual UI/hardware checks are still outstanding.
+Current source behavior and boundaries:
 
 - Task 3 provides virtualized rows and real RAW/WET waveform overviews. Select a row to view
   its audio on a shared time scale, and scroll the selected waveform vertically
   for additional channels. Small row previews show RAW channel 1 and WET
   channel 1 only. Selection follows the take folder through refresh/reordering.
-- `Play` opens a complete take's wet file in the OS-associated player, which
-  may use a different output device from Pedalboard. There are no internal
-  Scratch playback controls.
-- `Reamp` adds a raw-file player to the current patch. Connect its outputs to
-  the desired processing chain and use that player's controls to play it; the
-  action does not restore the original rig, wire the node, or export a reamp.
+- `Play` auditions the saved wet file through Pedalboard's selected output,
+  bypassing the current rig and its gains. `Reamp` sends the raw performance
+  through the current input gains, rig, master inserts, and output gains once.
+  Neither inserts a FilePlayer, edits cables, or restores an old rig. Reamp is
+  audition only; it does not export or overwrite a wet file.
+- Audition temporarily replaces live input. Both modes use independent preview
+  attenuation (default -12 dB, at most unity) and guarded output honoring safety
+  mute. REC stops audition and waits for the live-input handoff before recording;
+  Play/Reamp is blocked during capture/saving or a pending capture handoff.
+- If the take has more channels than the current destination, choose each
+  destination's source (or Off) and explicitly accept dropped channels. The
+  dialog does not change device settings. Automatic mono wet mapping uses the
+  first two outputs; mono raw uses only the first input.
 - `Reveal` opens the take folder, including for incomplete takes if it exists.
   Play/Reamp require both a complete take and their respective WAV file.
+- For the selected take, use `Original WET` or `Current rig` to start audition,
+  `Pause`/`Resume`, `Stop`, and full-take `Loop` to control it. Click the matching
+  selected waveform to seek; its playhead follows playback. Preview level is
+  independent of rig gain: -12 dB by default, at most 0 dB, with -60 dB muted.
+  A persistent label identifies the mode and warns when live input is replaced.
+  Selecting another take or closing the panel stops audition; selecting alone
+  stays silent. These wired controls still require manual UI verification.
 - There are no fake traces: the overviews use cached saved-audio data, with
-  explicit loading/unavailable states. They are not live input meters. Seek
-  and playhead hooks are not yet connected to playback, so clicking the
-  waveform does not seek the external player. Tooltips retain the current
-  external-Play/manual-FilePlayer-Reamp distinction.
+  explicit loading/unavailable states. They are not live input meters. The full
+  keyboard workflow and visual polish are not yet verified.
 
 ## Scratch foundations — native implementation in progress
 
@@ -113,14 +127,17 @@ Windows privilege-dependent symlink cases skipped, not passed. Task 3 (`c0d0dee`
 incremental app/test build passed on 2026-10-02, with 53 assertions passing in
 four focused waveform/UI cases. JUCE's silence thumbnail range is `[0, 1/128]`
 because of its native quantization; that is not fabricated waveform activity.
-Task 4 adds a bounded worker-decoded audition engine in source, but it is not
-connected to the UI or device callback. Its final app/test build passed on
+Task 4's bounded worker-decoded audition engine had its final app/test build pass on
 2026-10-02; the playback/storage/waveform run passed 871 assertions in 22 cases,
 with one storage-symlink skip for missing privilege. The engine now stops
 non-looping reads at the exact file end, including non-block-aligned lengths.
-There are no new playback controls to use yet: external Play and
-manual FilePlayer Reamp above remain the app behavior. App-connected audition,
-preview safety, rig-context, and integrated polish tasks are upcoming.
+Task 5 shared preview protection (`3e441cb`) has a successful app/test build and
+7,477 assertions passing in 22 safety/RT cases. Task 6 connects native routing,
+record handoff, and panel controls. Its final app/test build exited 0 on
+2026-10-04; the routing/playback/safety/storage run passed 5,058 assertions in
+30 cases, with one storage-symlink case skipped for missing privilege. Task 7
+rig snapshots and integrated
+polish remain upcoming. No full integration, visual, or hardware pass is claimed.
 See the handoff for dated evidence; manual restart/UI and hardware QA remain
 outstanding.
 
@@ -143,8 +160,9 @@ folder, verify all of the following:
 4. A patch change stops capture with the expected incomplete-take reason.
 5. An audio-device change does the same.
 6. Play/Reamp are available only for complete takes with the target WAV present;
-   Reveal is available when the take directory exists. Verify the external
-   playback and manual-routing reamp behaviors described above.
+   Reveal is available when the take directory exists. For Task 6 acceptance,
+   verify wet bypass/current-rig reamp, no graph edits or live-input leakage,
+   explicit channel-loss mapping, safety mute, and REC's return-to-live handoff.
 7. Destination choose/reset works between takes and is disabled in the panel
    during recording/saving. Confirm a new take uses the selected destination.
 8. For Task 2 acceptance, restart and reopen Takes to verify disk discovery;

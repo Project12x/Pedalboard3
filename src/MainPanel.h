@@ -35,6 +35,8 @@
 #include "PluginField.h"
 #include "ScratchRecorder.h"
 #include "ScratchTakeLibrary.h"
+#include "ScratchAudioRouter.h"
+#include "ScratchPreviewGuard.h"
 
 #include <JuceHeader.h>
 #include <array>
@@ -66,6 +68,14 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         scratchRecorder.store(recorderToUse, std::memory_order_release);
     }
 
+    void setScratchPlayback(ScratchPlayback* transport) noexcept { scratchPlayback = transport; }
+
+    void audioDeviceStopped() override
+    {
+        AudioProcessorPlayer::audioDeviceStopped();
+        if (scratchPlayback) scratchPlayback->audioDeviceStopped();
+    }
+
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
         AudioProcessorPlayer::audioDeviceAboutToStart(device);
@@ -82,6 +92,11 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
 
             // Initialize gain smoothing at device sample rate
             gainState.prepareSmoothing(device->getCurrentSampleRate());
+            const ScratchPlaybackDevice setup{device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples(),
+                device->getActiveInputChannels().countNumberOfSetBits(), device->getActiveOutputChannels().countNumberOfSetBits()};
+            if (scratchPlayback) scratchPlayback->prepare(setup);
+            scratchRouter.prepare(setup);
+            previewGuard.prepare(setup.sampleRate);
         }
     }
 
@@ -89,9 +104,6 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
                                           float* const* outputChannelData, int numOutputChannels, int numSamples,
                                           const AudioIODeviceCallbackContext& context) override
     {
-        auto& gainState = MasterGainState::getInstance();
-        auto* recorder = scratchRecorder.load(std::memory_order_acquire);
-
         const auto bufferPlan = makeMeteringCallbackBufferPlan(numInputChannels, numOutputChannels, numSamples);
         if (!bufferPlan.valid)
         {
@@ -109,9 +121,43 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
         numOutputChannels = bufferPlan.numOutputChannels;
         numSamples = bufferPlan.numSamples;
 
-        if (recorder != nullptr)
-            recorder->writeRawBlock(inputChannelData, numInputChannels, numSamples);
+        struct Context { MeteringProcessorPlayer* player; const AudioIODeviceCallbackContext* callback; } hookContext{this, &context};
+        ScratchRenderHooks hooks{
+            &hookContext,
+            [](void* opaque, const float* const* input, int ins, float* const* output, int outs, int frames) {
+                auto& hook = *static_cast<Context*>(opaque);
+                hook.player->processLivePath(input, ins, output, outs, frames, *hook.callback);
+            },
+            [](void* opaque, float* const* output, int outs, int frames) {
+                auto& player = *static_cast<Context*>(opaque)->player;
+                auto* limiter = SafetyLimiterProcessor::getInstance();
+                if (limiter != player.lastLimiter) {
+                    player.lastLimiter = limiter;
+                    player.lastResetSerial = limiter ? limiter->getResetSerial() : 0;
+                }
+                if (limiter && limiter->getResetSerial() != player.lastResetSerial) {
+                    player.lastResetSerial = limiter->getResetSerial();
+                    player.previewGuard.reset();
+                }
+                if (player.previewGuard.process(output, outs, frames, limiter && limiter->isMuted()) && limiter)
+                    limiter->requestMute();
+            }
+        };
+        if (scratchPlayback)
+            scratchRouter.process(*scratchPlayback, scratchRecorder.load(std::memory_order_acquire),
+                                  inputChannelData, numInputChannels, outputChannelData, numOutputChannels, numSamples, hooks);
+        else
+            processLivePath(inputChannelData, numInputChannels, outputChannelData, numOutputChannels, numSamples, context);
+        if (auto* limiter = SafetyLimiterProcessor::getInstance())
+            limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
+    }
 
+  private:
+    void processLivePath(const float* const* inputChannelData, int numInputChannels,
+                         float* const* outputChannelData, int numOutputChannels, int numSamples,
+                         const AudioIODeviceCallbackContext& context)
+    {
+        auto& gainState = MasterGainState::getInstance();
         // Update smoothed gain targets from atomic dB values (once per block)
         gainState.updateSmoothedTargets();
 
@@ -207,18 +253,15 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             }
         }
 
-        if (recorder != nullptr)
-            recorder->writeWetBlock(outputChannelData, numOutputChannels, numSamples);
 
-        // Tap levels for VU metering (post-gain)
         if (auto* limiter = SafetyLimiterProcessor::getInstance())
-        {
             limiter->updateInputLevelsFromDevice(actualInput, actualInputChannels, numSamples);
-            limiter->updateOutputLevelsFromDevice(outputChannelData, numOutputChannels, numSamples);
-        }
     }
-
-  private:
+    ScratchPlayback* scratchPlayback = nullptr; // assigned before callback registration
+    ScratchAudioRouter scratchRouter;
+    ScratchPreviewGuard previewGuard;
+    SafetyLimiterProcessor* lastLimiter = nullptr;
+    uint64_t lastResetSerial = 0;
     AudioBuffer<float> inputGainBuffer; // Pre-allocated in audioDeviceAboutToStart
     AudioBuffer<float> masterBusBuffer; // Pre-allocated for master insert rack
     std::array<float, MaxCallbackBlockSize> smoothedInputRamp{};
@@ -373,8 +416,17 @@ class MainPanel : public Component,
     void revealScratchFolder();
     void chooseScratchFolder();
     void resetScratchFolderToDefault();
-    void previewScratchWetTake(const ScratchTake& take);
-    void reampScratchRawTake(const ScratchTake& take);
+    void previewScratchWetTake(const ScratchTake& take, const ScratchChannelMap& map = {});
+    void reampScratchRawTake(const ScratchTake& take, const ScratchChannelMap& map = {});
+    void playScratchTake(const ScratchTake&, ScratchPlaybackMode, const ScratchChannelMap&);
+    void cancelScratchActivity();
+    void pauseScratchPlayback() { scratchPlayback.pause(); }
+    void resumeScratchPlayback() { scratchPlayback.resume(); }
+    void stopScratchPlayback() { scratchPlayback.stop(); }
+    void seekScratchPlayback(double seconds) { scratchPlayback.seek(seconds); }
+    void setScratchPlaybackLooping(bool loop) { scratchPlayback.setLooping(loop); }
+    void setScratchPlaybackVolumeDb(double db) { scratchPlayback.setVolumeDb(db); }
+    ScratchPlaybackStatus getScratchPlaybackStatus() const { return scratchPlayback.status(); }
     void revealScratchTake(const ScratchTake& take);
     void refreshScratchControls();
     ScratchRecorderStatus getScratchRecorderStatus() const;
@@ -504,6 +556,9 @@ class MainPanel : public Component,
     ThreadedWavSinkFactory scratchSinkFactory;
     ScratchRecorder scratchRecorder{scratchSinkFactory};
     ScratchTakeLibrary scratchLibrary;
+    ScratchPlayback scratchPlayback;
+    bool scratchCapturePending = false;
+    uint64_t scratchContextGeneration = 0;
     ///	Object used to 'play' the signalPath object (with output metering).
     MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.

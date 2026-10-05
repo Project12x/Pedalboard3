@@ -206,8 +206,8 @@ public:
         addAndMakeVisible(waveform);
         waveform.setInterceptsMouseClicks(false, false);
         for (auto* button : {&play, &reamp, &reveal}) addAndMakeVisible(button);
-        play.setTooltip("Open the original WET file in your system player");
-        reamp.setTooltip("Add the RAW file as a FilePlayer (manual routing until in-app reamp lands)");
+        play.setTooltip("Audition the original WET capture without current effects");
+        reamp.setTooltip("Audition RAW through the current rig without graph edits");
         reveal.setTooltip("Reveal this take folder");
         play.onClick = [this] { if (auto* panel = owner.getComponent()) panel->previewScratchWetTake(entry.take); };
         reamp.onClick = [this] { if (auto* panel = owner.getComponent()) panel->reampScratchRawTake(entry.take); };
@@ -374,18 +374,54 @@ ScratchPanel::ScratchPanel(MainPanel& ownerToUse) : owner(&ownerToUse), recentTa
     waveformViewport.setViewedComponent(&selectedWaveform, false);
     waveformViewport.setScrollBarsShown(true, false);
     recentTakesList.onSelection = [this](const juce::File& directory) {
+        if (directory != selectedTakeDirectory) if (auto* panel = owner.getComponent()) panel->stopScratchPlayback();
         selectedTakeDirectory = directory;
         const int row = librarySnapshot ? findScratchTakeRow(*librarySnapshot, directory) : -1;
         if (row >= 0) selectedWaveform.setTake(librarySnapshot->entries[static_cast<size_t>(row)]);
         else selectedWaveform.clear();
     };
 
+    for (auto* button : {&wetButton, &rawButton, &pauseButton, &stopButton})
+    {
+        addAndMakeVisible(button); styleScratchTextButton(*button, accent, text, false);
+        button->setWantsKeyboardFocus(true);
+    }
+    wetButton.setTooltip("Play selected original WET capture; current rig and live input are excluded");
+    rawButton.setTooltip("Reamp selected RAW through the current rig; live input is excluded");
+    wetButton.onClick = [this] { playSelected(ScratchPlaybackMode::OriginalWet); };
+    rawButton.onClick = [this] { playSelected(ScratchPlaybackMode::CurrentRigRaw); };
+    pauseButton.onClick = [this] {
+        if (auto* panel = owner.getComponent()) {
+            if (panel->getScratchPlaybackStatus().state == ScratchPlaybackState::Paused) panel->resumeScratchPlayback();
+            else panel->pauseScratchPlayback();
+        }
+    };
+    stopButton.onClick = [this] { if (auto* panel = owner.getComponent()) panel->stopScratchPlayback(); };
+    addAndMakeVisible(loopButton);
+    loopButton.onClick = [this] { if (auto* panel = owner.getComponent()) panel->setScratchPlaybackLooping(loopButton.getToggleState()); };
+    addAndMakeVisible(previewVolume);
+    previewVolume.setSliderStyle(juce::Slider::LinearHorizontal);
+    previewVolume.setTextBoxStyle(juce::Slider::TextBoxRight, false, 62, 22);
+    previewVolume.setRange(-60, 0, 0.1); previewVolume.setValue(-12, juce::dontSendNotification);
+    previewVolume.setTextValueSuffix(" dB");
+    previewVolume.setName("Audition level");
+    previewVolume.setTooltip("Audition output level only; -60 dB mutes. Does not change rig gains.");
+    previewVolume.onValueChange = [this] { if (auto* panel = owner.getComponent()) panel->setScratchPlaybackVolumeDb(previewVolume.getValue()); };
+    addAndMakeVisible(playbackLabel);
+    playbackLabel.setFont(FontManager::getInstance().getCaptionFont());
+    playbackLabel.setInterceptsMouseClicks(false, false);
+    selectedWaveform.onSeek = [this](double seconds) {
+        if (auto* panel = owner.getComponent())
+            if (panel->getScratchPlaybackStatus().takeDirectory == selectedTakeDirectory) panel->seekScratchPlayback(seconds);
+    };
+    setWantsKeyboardFocus(true);
     startTimerHz(10);
     refresh();
 }
 
 ScratchPanel::~ScratchPanel()
 {
+    if (auto* panel = owner.getComponent()) panel->stopScratchPlayback();
     stopTimer();
     recordButton.removeListener(this);
     chooseButton.removeListener(this);
@@ -424,7 +460,7 @@ void ScratchPanel::paint(juce::Graphics& g)
     g.drawFittedText("Scratch Mode", headerTitle.removeFromTop(26), juce::Justification::centredLeft, 1);
     g.setFont(fonts.getCaptionFont());
     g.setColour(text.withAlpha(0.64f));
-    g.drawFittedText("Current RAW + WET session", layout.header.withTrimmedTop(41),
+    g.drawFittedText("Capture ideas. Revisit the sound. Try a new rig.", layout.header.withTrimmedTop(41),
                      juce::Justification::centredLeft, 1);
 
     fillPanel(g, layout.hero.toFloat(), panel.withAlpha(0.78f), border.withAlpha(0.78f), 15.0f);
@@ -544,7 +580,26 @@ void ScratchPanel::resized()
     waveformViewport.setBounds(layout.scope.reduced(4));
     selectedWaveform.setSize(juce::jmax(1, waveformViewport.getWidth() - 14),
                             juce::jmax(waveformViewport.getHeight(), selectedWaveform.preferredHeight()));
+    auto transport = layout.transport;
+    playbackLabel.setBounds(transport.removeFromTop(22));
+    auto controls = transport.removeFromTop(28);
+    wetButton.setBounds(controls.removeFromLeft(102)); controls.removeFromLeft(4);
+    rawButton.setBounds(controls.removeFromLeft(90)); controls.removeFromLeft(4);
+    pauseButton.setBounds(controls.removeFromLeft(60)); controls.removeFromLeft(4);
+    stopButton.setBounds(controls.removeFromLeft(48)); controls.removeFromLeft(4);
+    loopButton.setBounds(controls.removeFromLeft(58)); controls.removeFromLeft(4);
+    previewVolume.setBounds(controls);
     updateRecentTakesList();
+}
+
+void ScratchPanel::playSelected(ScratchPlaybackMode mode)
+{
+    auto* panel = owner.getComponent();
+    const int row = librarySnapshot ? findScratchTakeRow(*librarySnapshot, selectedTakeDirectory) : -1;
+    if (!panel || row < 0) return;
+    const auto& take = librarySnapshot->entries[static_cast<size_t>(row)].take;
+    if (mode == ScratchPlaybackMode::OriginalWet) panel->previewScratchWetTake(take);
+    else panel->reampScratchRawTake(take);
 }
 
 void ScratchPanel::buttonClicked(juce::Button* button)
@@ -607,6 +662,27 @@ void ScratchPanel::refresh()
     elapsedLabel.setText(ScratchPanelPresentation::formatElapsedLabel(status), juce::dontSendNotification);
 
     updateRecentTakesList();
+    const auto playback = mainPanel->getScratchPlaybackStatus();
+    const int row = librarySnapshot ? findScratchTakeRow(*librarySnapshot, selectedTakeDirectory) : -1;
+    const bool ready = row >= 0 && librarySnapshot->entries[static_cast<size_t>(row)].state == ScratchTakeLoadState::Ready;
+    wetButton.setEnabled(ready && !isRecording && !isSaving);
+    rawButton.setEnabled(ready && !isRecording && !isSaving);
+    pauseButton.setEnabled(playback.state == ScratchPlaybackState::Playing || playback.state == ScratchPlaybackState::Paused);
+    pauseButton.setButtonText(playback.state == ScratchPlaybackState::Paused ? "Resume" : "Pause");
+    stopButton.setEnabled(playback.replacingLive);
+    loopButton.setToggleState(playback.looping, juce::dontSendNotification);
+    if (!previewVolume.isMouseButtonDown()) previewVolume.setValue(playback.volumeDb, juce::dontSendNotification);
+    juce::String transportText = ready ? "Selected take ready - choose an audition mode" : "Select a ready take to audition";
+    if (isRecording || isSaving) transportText = "Audition unavailable during capture or saving";
+    else if (playback.replacingLive)
+        transportText = (playback.mode == ScratchPlaybackMode::OriginalWet ? "ORIGINAL WET" : "RAW / CURRENT RIG")
+            + juce::String("  |  Live input replaced  |  ")
+            + (playback.state == ScratchPlaybackState::Paused ? "Paused" : playback.buffering ? "Loading..." : formatDuration(playback.positionSeconds));
+    else if (playback.state == ScratchPlaybackState::Error) transportText = playback.message;
+    playbackLabel.setText(transportText, juce::dontSendNotification);
+    playbackLabel.setTooltip(transportText);
+    playbackLabel.setColour(juce::Label::textColourId, getColour(playback.replacingLive ? "Warning Colour" : "Text Colour", juce::Colours::white));
+    selectedWaveform.setPlayheadSeconds(playback.takeDirectory == selectedTakeDirectory ? playback.positionSeconds : 0);
     repaint();
 }
 
@@ -654,7 +730,9 @@ ScratchPanel::Layout ScratchPanel::calculateLayout() const
 
     bounds.removeFromTop(12);
     layout.scope = bounds.removeFromTop(86);
-    bounds.removeFromTop(12);
+    bounds.removeFromTop(4);
+    layout.transport = bounds.removeFromTop(54);
+    bounds.removeFromTop(8);
     layout.context = bounds.removeFromTop(68);
     bounds.removeFromTop(12);
     layout.destination = bounds.removeFromTop(54);

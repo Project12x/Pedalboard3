@@ -75,6 +75,10 @@ public:
     void writeRawBlock(const float* const* inputChannelData, int numInputChannels, int numSamples) noexcept;
     void writeWetBlock(float* const* outputChannelData, int numOutputChannels, int numSamples) noexcept;
 
+    // A successful begin requires exactly one end on the same device callback.
+    bool beginDeviceBlock(const float* const*, int channels, int samples) noexcept;
+    void endDeviceBlock(float* const*, int channels, int samples) noexcept;
+
     ScratchRecorderStatus getStatus() const;
     bool isRecording() const noexcept;
     static juce::File getDefaultScratchRoot();

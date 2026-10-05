@@ -282,11 +282,12 @@ float display = level.load();
 
 ## Scratch Capture
 
-Source baseline reconciled 2026-10-02. Scratch Capture is app-level manual
+Source baseline reconciled through Task 6 on 2026-10-04; focused build/tests
+passed, with Task 8 acceptance still pending. Scratch Capture is app-level manual
 raw/wet recording, independent of Audio Recorder nodes in the patch graph.
 
 ```text
-Device input -> RAW tap -> input gains -> patch graph -> master bus
+Live capture: device input -> RAW tap -> input gains -> patch graph -> master bus
              -> output gains -> WET tap -> device output
 RAW/WET taps -> ScratchRecorder -> buffered WAV writers -> take folder
 MainPanel commands -> start/stop -> message-thread finalization -> take.json
@@ -301,8 +302,10 @@ ScratchPanel <- 10 Hz recorder status + immutable disk-library snapshots
   `Recording`. Each sink uses a 32,768-sample buffer serviced by the recorder's
   writer thread. Missing/unsupported channels, invalid sample rate, metadata
   failure, or writer setup failure prevent a successful start.
-- Audio entry points forward existing channel pointers to the buffered writers
-  and update atomics. File setup, writer teardown, JSON serialization, and UI
+- The live router acquires one recorder lease with `beginDeviceBlock()` before
+  RAW and releases it with `endDeviceBlock()` after WET. A successful begin
+  requires exactly one end, even when stop is requested between taps. File setup,
+  writer teardown, JSON serialization, and UI
   work stay off the callback. `requestStop()` queues message-thread
   finalization; `finishStop()` gates new writes and waits for in-flight writes
   before destroying sinks. A 250 ms drain warning marks failure but does not
@@ -367,11 +370,15 @@ The selected-take view uses one RAW/WET time range and individually labelled
 channels in a vertically scrollable area. Compact row previews show channel 1
 of each file only, not a mixed-down or complete multichannel overview. Empty,
 loading, and unavailable states are textual; synthetic traces are removed.
-Seek/playhead hooks exist but are not connected to an in-app transport yet.
+Task 6 connects waveform seek/playhead to the selected audition, with Original
+WET/Current rig mode buttons, Pause/Resume, Stop, Loop, preview level, and a
+persistent mode/live-input-replacement status label. Choosing another take or
+closing the panel stops audition; selecting a row alone does not start it.
 
-Task 4 engine (build and focused tests verified; app integration pending) separates
+The Task 4 engine (with its own build/focused verification) separates
 `ScratchPlayback` control/worker state from its single audio consumer. It is
-not yet owned/wired by MainPanel or the device callback. `ScratchPcmQueue` uses
+now owned by MainPanel and connected to the device callback in Task 6 source.
+`ScratchPcmQueue` uses
 16 channels and 65,537 allocated frames (65,536 usable, about 4 MiB), not a
 whole-file buffer. WAV decoding and JUCE resampling run only on the worker;
 source/device rates are limited to 8–384 kHz and callback blocks to 8,192 frames.
@@ -388,23 +395,48 @@ underflow holds no stale queue audio. Playback position follows consumption,
 not read-ahead. Non-looping reads stop at the exact remaining frame count, even
 after disabling Loop or when file length is not block-aligned. The engine
 publishes preview gain separately from its faded
-PCM: default -12 dB, maximum unity, with -60 dB represented as mute. The future
-router must apply that gain and output protection. Implicit mapping rejects
+PCM: default -12 dB, maximum unity, with -60 dB represented as mute. The Task 6
+router applies it with 20 ms smoothing, then preview protection. Implicit mapping rejects
 channel loss; an explicit map permits approved drops/rerouting. Mono wet mirrors
 only to the first two destinations; mono raw uses only the first. Other unmapped
-destinations are silent. None of these engine APIs changes current app playback
-or graph routing before Task 6 integration.
+destinations are silent.
+
+Task 5 (`3e441cb`) extracts the existing limiter algorithm into
+`dsp/SafetyLimiterCore`; `ScratchPreviewGuard` owns independent DSP state without
+replacing the registered graph limiter. It honors the graph safety mute, latches
+trips, clears non-finite output, and bounds preview samples to [-1, 1]. Device
+or source changes do not unlock it; explicit reset serial changes are consumed
+on the processing thread.
+
+Task 6 routing (focused verification passed): `ScratchAudioRouter`
+latches one playback block/mode and uses preallocated PCM/zero/discard buffers:
+
+| Mode | Audible path | Recording |
+|---|---|---|
+| Live | Hardware input → gains/graph/master bus/output gains | Paired RAW/WET lease allowed |
+| Original WET | Saved wet PCM → preview gain/protection; live path receives zeros and its output is discarded | No capture lease |
+| Current-rig RAW | Saved raw PCM → current input gains/graph/master bus/output gains once → preview gain/protection | No capture lease |
+
+Both audition modes exclude hardware input and add no nodes, cables, or patch
+replacement. Wet mode still advances graph/MIDI state without audible tails or
+generators; the router also gates post-rig output during pause/loading/underflow.
+Stopping restores live input with a short ramp. REC requests audition stop and
+waits for quiescence before capture; audition is blocked while capture, saving,
+or that handoff is pending. Root/patch/device changes cancel pending activity.
+`playScratchTake()` requires a ready library entry and explicitly prompts for
+destination-to-source mapping before dropping channels, without changing device
+settings. Callback removal precedes playback teardown. Panel transport controls
+are wired in source; manual UI, full integration, and hardware results are not
+claimed yet.
 
 Current boundaries:
 
 - The recorder retains its eight-entry session history for existing callers,
   but the panel consumes all library entries with no eight-take limit. It
   retains damaged entries with reasons and Reveal.
-- `Play` opens a complete take's existing `wet.wav` through the OS file handler;
-  it is not an internal transport. `Reamp` adds a `FilePlayerProcessor` for a
-  complete take's existing `raw.wav` to the current graph, without wiring it or
-  restoring the recorded rig. `Reveal` needs the take directory, not a complete
-  recording.
+- MainPanel Play/Reamp now route to native wet/current-rig audition rather than
+  an OS player or inserted FilePlayer. They do not restore the recorded rig or
+  save a reamp print. `Reveal` needs the take directory, not a complete recording.
 - The waveform view describes saved audio, not a live input scope. Equal sample
   counts are checked, but there is no separate latency-alignment pass for raw
   and processed signals.
@@ -413,6 +445,7 @@ Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
 `src/ScratchBundleIO.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
 `src/ScratchWaveformView.{h,cpp}`, `src/ScratchPlayback.{h,cpp}`,
 `src/ScratchPlaybackTypes.h`, `src/ScratchPcmQueue.{h,cpp}`,
+`src/ScratchAudioRouter.{h,cpp}`, `src/ScratchPreviewGuard.{h,cpp}`,
 `src/ScratchPanel.{h,cpp}`, and the Scratch helpers/taps in
 `src/MainPanel.{h,cpp}`. Real-interface acceptance remains separate from source
 inspection and historical automated results; see [HOWTO.md](HOWTO.md).
@@ -433,8 +466,13 @@ privilege-dependent symlink cases skipped, not passed. Task 3 (`c0d0dee`) increm
 app/test build passed on 2026-10-02, followed by 53 assertions in four passed
 waveform/UI cases. Task 4's final app/test build passed on 2026-10-02; its
 playback/storage/waveform run passed 871 assertions in 22 cases, with one
-storage-symlink case skipped for missing privilege. App-connected audition/reamp, preview safety,
-rig snapshots, and integrated UI polish remain upcoming. See the handoff for
+storage-symlink case skipped for missing privilege. Task 5 shared protection is
+committed as `3e441cb`, with 7,477 safety/RT assertions passing in 22 cases.
+Task 6 native routing/record handoff and panel controls are source-integrated;
+its final app/test build exited 0 on 2026-10-04, with 5,058 assertions in 30
+passed routing/playback/safety/storage cases and one privilege-related
+storage-symlink skip. Task 7 rig
+snapshots and integrated UI polish remain upcoming. See the handoff for
 dated evidence; manual restart/UI and hardware QA remain open.
 
 ---
@@ -510,16 +548,13 @@ Subclasses `AudioProcessorPlayer` to apply smoothed gain, master bus insert, and
 ```text
 audioDeviceIOCallbackWithContext:
   1. Validate callback bounds; reject unsupported buffers before processing
-  2. Scratch RAW tap (before input gains)
-  3. updateSmoothedTargets() — sync atomic dB → SmoothedValue targets
-  4. Pre-compute smoothedInputRamp[numSamples] (one value per sample)
-  5. Copy input to inputGainBuffer, scale by smoothed gain * channel gain
-  6. Call parent (graph processes)
-  7. Process master bus insert rack (if has plugins and not bypassed)
-  8. Pre-compute smoothedOutputRamp[numSamples]
-  9. Scale output buffers in-place by smoothed gain * channel gain
- 10. Scratch WET tap (after output gains)
- 11. Tap levels → SafetyLimiterProcessor (peak + VU metering)
+  2. Router latches live/original-WET/current-RAW mode for the block
+  3. Live only: begin RAW/WET recorder lease before input gains
+  4. processLivePath: smoothed input gains -> graph -> master bus -> output gains
+     WET mode services this path with zeros and discards its output
+  5. Live: restore-live ramp, then finish WET write/release recorder lease
+     Audition: apply output gate/preview gain, then independent preview guard
+  6. Publish device-output levels; input levels come from processLivePath
 ```
 
 **Key file:** `MainPanel.h` (inner class `MeteringProcessorPlayer`)

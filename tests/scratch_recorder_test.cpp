@@ -134,6 +134,29 @@ public:
 };
 }
 
+TEST_CASE("Scratch block lease retains both sinks when stopped between taps", "[scratch][scratch-storage][scratch-routing]")
+{
+    ScopedTempDirectory root("ScratchBlockLease");
+    MemorySinkFactory factory; ScratchRecorder recorder(factory);
+    ScratchTakeContext context; context.rootDirectory = root.get(); context.sampleRate = 48000;
+    context.rawChannelCount = context.wetChannelCount = 2;
+    REQUIRE(recorder.start(context));
+    juce::AudioBuffer<float> audio(2, 128); audio.clear();
+    REQUIRE(recorder.beginDeviceBlock(audio.getArrayOfReadPointers(), 2, 128));
+    recorder.requestStop();
+    std::atomic<bool> finished{false};
+    std::thread closer([&] { recorder.finishPendingStopForTests(); finished.store(true); });
+    juce::Thread::sleep(10);
+    const bool retiredEarly = finished.load();
+    recorder.endDeviceBlock(audio.getArrayOfWritePointers(), 2, 128);
+    closer.join();
+    REQUIRE_FALSE(retiredEarly);
+    REQUIRE(factory.behaviorForCreate(0).samplesWritten == 128);
+    REQUIRE(factory.behaviorForCreate(1).samplesWritten == 128);
+    REQUIRE(recorder.getStatus().state == ScratchRecorderState::Saved);
+    REQUIRE_FALSE(recorder.beginDeviceBlock(audio.getArrayOfReadPointers(), 2, 128));
+}
+
 TEST_CASE("ScratchTake sanitizes filesystem path segments", "[scratch]")
 {
     REQUIRE(ScratchTake::sanitisePathSegment("Clean Patch") == "Clean Patch");

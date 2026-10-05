@@ -23,9 +23,10 @@ verification below. Task 2 disk discovery (`c33748f`) has a successful app/test
 build and focused verification below. Task 3 real waveforms and virtualized
 selection (`c0d0dee`) also have a successful app/test build and focused result.
 Task 4's audition engine has a successful final app/test build and focused
-result below; it is not connected to the app controls/device callback.
-App-connected audition/reamp, preview safety, rig snapshots, and integrated UI
-polish remain upcoming; hardware QA remains open.
+result below. Task 5 shared preview protection is committed as `3e441cb`.
+Task 6 native routing, recorder handoff, and panel transport controls are wired,
+with final focused verification recorded below. Rig snapshots remain
+Task 7; full integration, visual/manual UI, and hardware QA are not yet verified.
 
 ## Historical Baseline (June 2026)
 
@@ -163,8 +164,8 @@ Coordinator-reported verification on 2026-10-02: final app/test build exited 0;
 with **two skipped cases** (storage symlink sections and the library linked-day
 test) because Windows lacks symlink creation privilege. Those link-boundary
 checks were unavailable, not passed. Manual UI/restart and hardware checks remain
-unverified. External wet playback and manual FilePlayer reamp are unchanged;
-this is discovery, not transport.
+unverified. At the Task 2 checkpoint, external wet playback and manual FilePlayer
+reamp were unchanged; Task 6 replaces that routing as described below.
 
 ### Task 3 Waveforms And Selection
 
@@ -183,9 +184,9 @@ Source: `src/ScratchWaveformView.{h,cpp}`, `src/ScratchPanel.{h,cpp}`, and
 - A virtualized ListBox recycles rows with actual Play/Reamp/Reveal buttons.
   Selection follows the take directory across ordering/scan changes, including
   partial batches that have not reached the selected folder yet.
-- Seek/playhead hooks exist but are not wired to a transport. Current Play still
-  uses the system player and Reamp still inserts a manually routed FilePlayer;
-  tooltips say so. No in-app seek/playback is claimed for this slice.
+- Task 3 exposed seek/playhead hooks without connecting transport; its Play and
+  Reamp still used the system player/manual FilePlayer at that checkpoint.
+  Task 6 connects native routing and the panel controls.
 
 Coordinator-reported final verification on 2026-10-02: incremental app/test
 build exited 0; `[scratch-waveform],[scratch-ui]` passed **53 assertions in four
@@ -200,9 +201,8 @@ remain outstanding.
 ### Task 4 Audition Engine — Engine Verification Complete
 
 Source: `src/ScratchPlayback.{h,cpp}`, `src/ScratchPlaybackTypes.h`, and
-`src/ScratchPcmQueue.{h,cpp}`. This engine is not yet connected to MainPanel,
-the device callback, or waveform controls; current Play/Reamp behavior remains
-external-player/manual-FilePlayer respectively.
+`src/ScratchPcmQueue.{h,cpp}`. This task delivered the engine without MainPanel,
+device-callback, or waveform-control integration; Task 6 adds those connections.
 
 - Bounded SPSC PCM queue: 65,536 usable frames, 16 channels, about 4 MiB. WAV
   decoding/resampling is worker-only, supporting 8–384 kHz source/device rates.
@@ -230,6 +230,48 @@ fail. Both guards were restored. This records the tested protection combination,
 not a claim that the first mutation failed. No UI, visual, or hardware result
 is implied by these engine tests.
 
+### Tasks 5–6 Protection And Native Routing — Focused Verification Complete
+
+Task 5 (`3e441cb`) shares the existing `dsp/SafetyLimiterCore` through an
+independent `ScratchPreviewGuard`, without replacing the graph limiter singleton.
+The guard honors safety mute, latches trips, rejects non-finite output, and
+bounds preview samples. Explicit user unlock resets DSP on the processing
+thread; source/device changes do not silently clear mute.
+
+Task 5 coordinator-reported final verification: app/test build exited 0;
+`[scratch-safety],[rt]` passed **7,477 assertions in 22 cases**.
+
+Task 6 source: `ScratchAudioRouter.*`, recorder block-lease methods, and
+MainPanel's callback hooks/`playScratchTake()`:
+
+- Original WET bypasses audible current-rig/master-gain processing. The graph
+  still receives zero input and processes MIDI/state into discarded output.
+- Current RAW replaces hardware input and traverses current input gains, graph,
+  master inserts, and output gains once. Neither mode edits nodes/cables or
+  replaces a patch. The router applies preview gain/protection in both modes.
+- Live capture alone obtains one RAW/WET writer lease per block. A successful
+  begin must finish WET and release the lease even if stop arrives between taps.
+  Audition cannot record itself; REC waits for playback quiescence before start.
+- Ready library entries are required. Channel loss requires explicit
+  destination/source approval, without device reconfiguration. Root/patch/device
+  changes cancel pending audition/handoff; callback removal precedes teardown.
+- Panel controls are wired: selected Original WET/Current rig actions,
+  Pause/Resume, Stop, Loop, independent preview level, waveform seek/playhead,
+  and persistent mode/live-input-replacement status. Selecting another take or
+  closing the panel stops audition; selection alone does not start it.
+- Manual UI, full integration, and real-interface checks remain pending; none
+  are inferred from engine/helper tests. Rig snapshots are Task 7.
+
+Task 6 final coordinator-reported verification (2026-10-04): app/test build
+exited 0; `[scratch-routing],[scratch-playback],[scratch-safety],[scratch-storage]`
+passed **5,058 assertions in 30 cases**, with **one storage-symlink case skipped**
+for missing Windows privilege. This includes the added no-recapture tests and
+supersedes the initial 5,046-assertion/29-case run. The production wet-route negative control
+doubled output to 0.15071319 versus expected 0.07535660 and failed as intended.
+Correct source was restored before the final passing build. Visual checks,
+the full-suite checkpoint, and real-interface/hardware acceptance remain Task 8;
+no such pass is claimed by this focused run.
+
 ### Audio Callback Taps
 
 File:
@@ -238,8 +280,9 @@ File:
 
 Behavior:
 
-- Raw tap is inside `MeteringProcessorPlayer::audioDeviceIOCallbackWithContext()` before master input gain and before graph processing.
-- Wet tap is after graph processing, master bus insert, and master output gain.
+- The callback delegates to `ScratchAudioRouter`; its live-only recorder lease
+  taps RAW before input gains and WET after graph/master bus/output gains and
+  the return-to-live ramp. Audition routes never obtain a capture lease.
 - `MainPanel` clears the recorder pointer before removing the audio callback during destruction.
 
 ### MainPanel Commands And Footer Controls
@@ -292,10 +335,11 @@ Behavior:
 - Record button routes through `MainPanel::toggleScratchCapture()`.
 - Reveal button routes through `MainPanel::revealScratchFolder()`.
 - Recent take rows show date/time, patch context, duration, RAW/WET availability, and action buttons.
-- Wet `Play` opens `wet.wav` with the OS handler when a complete wet file exists.
-- Raw `Reamp` adds a `FilePlayerProcessor` loaded with `raw.wav` when a complete raw file exists.
-- Reamp does not connect the node, restore the recorded patch, or export a new
-  wet file; the user must route and control the file player in the current graph.
+- Task 6 routes wet Play and raw Reamp to native audition, replacing the old
+  OS-player/manual-FilePlayer actions. Reamp uses the current rig without graph
+  edits or snapshot restoration and does not export a new wet file. Panel
+  transport is wired with focused verification above; manual acceptance remains
+  pending.
 - Task 3 replaces synthetic lane/thumbnail traces with real cached overviews
   and folder-stable virtualized selection, with the focused verification above;
   in-app transport is not part of that change.
@@ -379,8 +423,9 @@ Next agent should run this before calling the feature user-ready:
 11. Start another recording, switch patches, and confirm capture stops with `Patch changed during scratch capture`.
 12. Start another recording, change audio device settings, and confirm capture stops with `Audio device changed during scratch capture`.
 13. Confirm no Audio Recorder node is added to the graph.
-14. Confirm `Play` launches the wet WAV externally; confirm `Reamp` adds an
-    unconnected raw-file player and verify it after routing it manually.
+14. For Task 6 acceptance, confirm native wet bypass and current-rig raw reamp,
+    live-input exclusion, safety mute, explicit channel-loss approval, and no
+    graph edits. Verify Stop/REC restores live input without preview recapture.
 15. Record commit, interface/driver, channels, sample rate, buffer size, and
     pass/fail observations with a date.
 
@@ -411,15 +456,12 @@ footer visibility at that checkpoint.
 
 ### Playback And Reamp Scope
 
-Updated 2026-06-09: small take actions are implemented.
-
-- `Play` opens a completed `wet.wav` externally.
-- `Reamp` adds an unconnected `FilePlayerProcessor` node for a completed `raw.wav`.
-- `Reveal` opens the take folder.
-
-This describes the baseline implemented scope. Native execution of the approved
-expansion is in progress as linked above; do not treat planned audition/reamp
-behavior as available before its implementation and verification are recorded.
+Task 6 source update, 2026-10-04: native wet/current-rig raw audition replaces
+the June external-player/FilePlayer actions. Original take files and graph
+routing are unchanged. Reveal still opens the bundle. Panel transport controls
+are wired with focused verification; full integration and manual UI verification
+remain pending. Recording rig context
+and restoration are not supplied by this routing change.
 
 ### Scratch Folder Setting
 
@@ -473,7 +515,8 @@ Recommended next sequence:
 3. Do the manual hardware capture verification above.
 4. Confirm scratch destination choose/reset behaves correctly outside a recording and is disabled while recording.
 5. Confirm wet `Play`/raw `Reamp` require a complete take and their WAV; `Reveal`
-   requires the directory. Check the actual external-player/manual-routing flow.
+   requires the directory. Check native wet/current-rig routing and handoff
+   behavior against the Task 6 manual acceptance items above.
 6. Use June 9 QA folders as historical references; capture new UI evidence only
    when needed for the current change.
 7. Follow `AGENTS.md`: this is a single-developer repository, with no PR by
