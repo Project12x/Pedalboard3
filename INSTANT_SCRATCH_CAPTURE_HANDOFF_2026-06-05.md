@@ -256,7 +256,8 @@ MainPanel's callback hooks/`playScratchTake()`:
 - Live capture alone obtains one RAW/WET writer lease per block. A successful
   begin must finish WET and release the lease even if stop arrives between taps.
   Audition cannot record itself; REC waits for playback quiescence before start.
-- Ready library entries are required. Channel loss requires explicit
+- Task 6 originally required Ready library entries; the later review correction
+  below permits each readable side of supported incomplete takes. Channel loss requires explicit
   destination/source approval, without device reconfiguration. Root/patch/device
   changes cancel pending audition/handoff; callback removal precedes teardown.
 - Panel controls are wired: selected Original WET/Current rig actions,
@@ -353,15 +354,46 @@ failures requiring separate accounting:
   post-success SegFault exits. Both passed exact reruns, but the root cause is
   unconfirmed; reruns do not establish a fix.
 
-Final coordinator-reported checkpoint (2026-10-04): incremental app/test build
+Pre-review coordinator-reported checkpoint (2026-10-04): incremental app/test build
 exited 0; the combined focused run again passed **8,916 assertions in 99 cases**,
-with **two skips**. Final full Release CTest exited **8**: **353 passed, two
+with **two skips**. Full Release CTest exited **8**: **353 passed, two
 correctly skipped (227, 233), and three failed (289, 290, 294), out of 358**.
 The failures remain the unchanged-baseline ReverbSC assertions above. No
-post-success SegFault occurred in this final run; the first-run cause remains
+post-success SegFault occurred in this pre-review run; the first-run cause remains
 unconfirmed. The full-suite gate is **not clean**. Native
 automation failed to initialize as recorded above, so visual/focus and manual
 UI/hardware acceptance remain unverified. No screenshot QA script ran.
+
+### Review Follow-up — Incomplete-Take Audition
+
+The review of `1792740` identified a Ready-only gate that hid usable audio in
+interrupted takes. The working-tree correction makes all three production
+entry points (rows, selected transport, MainPanel) use `scratchTakeActions()`.
+Ready/Incomplete supported entries can Play readable wet audio and Reamp readable
+raw audio independently. Incomplete warnings remain in the row/transport/start
+feedback; audition does not change capture completeness. Invalid/unsupported
+bundles remain Reveal-only. The recovery regression first failed four of 20
+assertions, then passed after correction.
+
+Coordinator-reported post-fix verification (2026-10-05): app/test build exited 0;
+`[scratch-ui],[scratch-playback],[scratch-storage]` passed **962 assertions in
+27 cases**, with **one privilege-dependent symlink skip** (28 total cases).
+Post-fix full CTest exited **8**: **353 passed, two skipped, four failed out of
+359**. The same three unchanged-baseline ReverbSC assertions failed, plus test
+26, Connection Dragging State Machine, exited with SegFault **after nine
+assertions passed**. No retry was run.
+
+Event Log 1000 records for all three post-success crashes (the two initial
+exits plus this latest one) show `ntdll.dll` version `10.0.19041.6456`, exception
+`0xc0000005`, offset `0x64777`. This shared signature does not establish a cause;
+the crash root cause remains unknown and the full-suite gate is **not clean**.
+
+Fresh review pinned to `1792740` reported no Critical findings, one Important
+recovery issue (corrected and tested above), and one Minor omission: selected
+asset references are saved in `rig.xml` but not displayed in the selected-take
+UI. That display improvement is deferred. The pinned review predates the fix;
+it is not a review of the correction. Runtime UI/focus, live-plugin/master-rack
+snapshot, hardware, and macOS acceptance remain open.
 
 ### Audio Callback Taps
 
@@ -613,8 +645,9 @@ Recommended next sequence:
 2. Run `git status --short --branch` and confirm only intended work is present.
 3. Do the manual hardware capture verification above.
 4. Confirm scratch destination choose/reset behaves correctly outside a recording and is disabled while recording.
-5. Confirm wet `Play`/raw `Reamp` require a complete take and their WAV; `Reveal`
-   requires the directory. Check native wet/current-rig routing and handoff
+5. Confirm wet `Play`/raw `Reamp` independently allow readable sides of supported
+   complete or incomplete takes, retaining warnings. Invalid/unsupported bundles
+   remain Reveal-only; Reveal requires the directory. Check native wet/current-rig routing and handoff
    behavior against the Task 6 manual acceptance items above.
 6. Use June 9 QA folders as historical references; capture new UI evidence only
    when needed for the current change.

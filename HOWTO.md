@@ -106,7 +106,10 @@ Current source behavior and boundaries:
   dialog does not change device settings. Automatic mono wet mapping uses the
   first two outputs; mono raw uses only the first input.
 - `Reveal` opens the take folder, including for incomplete takes if it exists.
-  Play/Reamp require both a complete take and their respective WAV file.
+  A supported complete or incomplete take can Play its readable wet side and
+  Reamp its readable raw side independently. An interrupted-take warning remains
+  visible; audition does not mark the capture complete. Invalid/unsupported
+  bundles remain Reveal-only.
 - For the selected take, use `Play original` or `Reamp current rig` to start audition,
   `Pause`/`Resume`, `Stop`, and full-take `Loop` to control it. Click the matching
   selected waveform to seek; its playhead follows playback. Preview level is
@@ -117,6 +120,7 @@ Current source behavior and boundaries:
   sit above transport and level controls, with the selected patch and snapshot
   status above the waveform. The smaller REC control has a keyboard-focus ring.
   A failed snapshot does not hide playable audio.
+  Asset references are saved in `rig.xml`, not listed in the selected-take UI.
 - While focus is inside the Scratch panel, bare Space pauses/resumes or starts
   the selected take in the current audition mode. Space is not intercepted in
   text editors or with modifiers. Escape stops audition, including while editing
@@ -160,13 +164,20 @@ cases skipped. The first full CTest run passed 351/358 entries; reported failure
 include two privilege skips, three stale ReverbSC assertions against unchanged
 baseline files, and two post-success SegFault exits. The latter passed exact
 reruns, but their root cause is unconfirmed. With skip reporting corrected,
-final full CTest exited 8: 353 passed, two skipped, and three unchanged-baseline
+pre-review full CTest exited 8: 353 passed, two skipped, and three unchanged-baseline
 ReverbSC assertion cases failed (358 total), without another post-success SegFault.
 The final incremental app/test build and 8,916-assertion focused run passed again;
 the full-suite gate is not clean. No manual UI integration,
 visual/focus, live-plugin snapshot, or hardware pass is claimed. Native automation
 could not initialize, and no screenshot QA script ran. See the handoff for
 dated evidence and the remaining acceptance checks.
+The review fix enabling readable audio in incomplete takes passed its app/test
+build and 962 assertions in 27 UI/playback/storage cases, with one symlink skip
+(2026-10-05). Post-fix full CTest exited 8: 353 passed, two skipped, four failed
+(359 total): the same baseline assertions plus Connection Dragging State Machine
+crashing after nine assertions passed. It was not retried; crash root causes
+remain unknown. The full-suite gate remains not clean, and runtime UI/live-plugin,
+hardware, and macOS acceptance are still open.
 
 ## Verify Scratch Capture with a real interface
 
@@ -186,8 +197,9 @@ folder, verify all of the following:
    minimum; legacy manifests may lack the independent counters.
 4. A patch change stops capture with the expected incomplete-take reason.
 5. An audio-device change does the same.
-6. Play/Reamp are available only for complete takes with the target WAV present;
-   Reveal is available when the take directory exists. For Task 6 acceptance,
+6. Play/Reamp are available independently for readable wet/raw sides of supported
+   complete or incomplete takes; interruption warnings remain visible. Invalid/
+   unsupported bundles are Reveal-only when their directory exists. For Task 6 acceptance,
    verify wet bypass/current-rig reamp, no graph edits or live-input leakage,
    explicit channel-loss mapping, safety mute, and REC's return-to-live handoff.
 7. Destination choose/reset works between takes and is disabled in the panel

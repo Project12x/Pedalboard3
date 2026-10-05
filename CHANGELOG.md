@@ -63,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Interrupted Scratch takes now expose each independently readable RAW/WET side for audition while retaining an incomplete-capture warning. The decoder already supported recovery, but Ready-only panel and command gates made it unreachable; invalid metadata and unsupported schemas still remain Reveal-only.
 - CTest now recognizes Catch2's single-case all-skipped summary, so missing Windows symlink privilege is reported as a skip rather than a failure. Exit code 4 alone is deliberately not treated as skipped because Catch2 also returns it for four failed assertions.
 - **Tuner String Checklist Persistence** — A string marked in tune now stays marked while other strings are tuned. Overlapping analysis windows after a pitch change can still look like the previous string a few cents off; that no longer clears the earlier ready bit. A later reading of the same string at 12 cents or more still unchecks it.
 - **Scratch Panel Elapsed Timer** — Active scratch recordings now format elapsed time from the active take sample rate instead of waiting for a finalized last take.

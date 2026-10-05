@@ -458,8 +458,11 @@ generators; the router also gates post-rig output during pause/loading/underflow
 Stopping restores live input with a short ramp. REC requests audition stop and
 waits for quiescence before capture; audition is blocked while preparing,
 recording, saving, or that handoff is pending. Root/patch/device changes cancel pending activity.
-`playScratchTake()` requires a ready library entry and explicitly prompts for
-destination-to-source mapping before dropping channels, without changing device
+Rows, selected controls, and `playScratchTake()` share `scratchTakeActions()`:
+supported Ready or Incomplete entries permit wet Play/raw Reamp independently
+when that side is readable. Incomplete warnings remain visible; audition does
+not relabel a take complete. Invalid/unsupported entries stay Reveal-only.
+Playback explicitly prompts for destination-to-source mapping before dropping channels, without changing device
 settings. Callback removal precedes playback teardown. Panel transport controls
 are wired in source; manual UI, full integration, and hardware results are not
 claimed yet.
@@ -515,12 +518,21 @@ The first full CTest checkpoint passed 351/358 entries: two privilege skips
 were misreported as failures, three ReverbSC source-string assertions target
 unchanged baseline files, and two post-success SegFault exits passed exact
 reruns without an established root cause. After correcting skip reporting, the
-final full CTest run exited 8: 353 passed, two skipped, and the three unchanged-
+pre-review full CTest run exited 8: 353 passed, two skipped, and the three unchanged-
 baseline ReverbSC assertions failed (358 total); no post-success SegFault recurred.
 The final incremental app/test build and focused run passed again, but the
 full-suite gate is not clean. See the handoff for dated evidence;
 manual restart/UI, live snapshot integration, visual/focus, and hardware QA
 remain open. Native automation initialization failed; no new screenshot QA ran.
+The review fix permitting readable sides of incomplete takes passed its app/test
+build and 962 assertions in 27 UI/playback/storage cases, with one symlink skip
+(2026-10-05). Post-fix full CTest exited 8: 353 passed, two skipped, four failed
+(359 total): the same three baseline assertions plus Connection Dragging State
+Machine's SegFault after nine assertions passed. No retry was run. All three
+post-success crash events share the same ntdll access-violation signature, but
+the root cause is unknown. The full-suite gate remains not clean. The review's
+minor selected-asset-list omission is deferred: paths are saved in XML, not
+shown in the selected-take UI. Runtime UI/live-plugin/hardware/macOS gates remain open.
 
 ---
 

@@ -49,6 +49,26 @@ TEST_CASE("Scratch shortcuts leave text input and other windows alone", "[scratc
     REQUIRE_FALSE(shouldHandleScratchSpace(false, false));
 }
 
+TEST_CASE("Scratch interrupted takes expose only their readable audio sides", "[scratch][scratch-ui]")
+{
+    ScratchTakeLoadResult entry;
+    entry.state = ScratchTakeLoadState::Incomplete;
+    entry.take.takeDirectory = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("interrupted");
+    entry.message = "Interrupted capture - audio pair incomplete";
+    for (bool rawReadable : {false, true})
+        for (bool wetReadable : {false, true})
+        {
+            entry.rawReadable = rawReadable;
+            entry.wetReadable = wetReadable;
+            const auto actions = scratchTakeActions(entry);
+            CHECK(actions.play == wetReadable);
+            CHECK(actions.reamp == rawReadable);
+            CHECK(actions.reveal);
+            CHECK_FALSE(entry.take.complete);
+            CHECK_FALSE(entry.message.isEmpty());
+        }
+}
+
 TEST_CASE("Scratch transport remains reachable at narrow and default sizes", "[scratch][scratch-ui]")
 {
     for (int width : {360, 568, 648, 948})

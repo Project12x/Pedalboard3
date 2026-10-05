@@ -625,21 +625,24 @@ void ScratchPanel::refresh()
     updateRecentTakesList();
     const auto playback = mainPanel->getScratchPlaybackStatus();
     const int row = librarySnapshot ? findScratchTakeRow(*librarySnapshot, selectedTakeDirectory) : -1;
-    const bool ready = row >= 0 && librarySnapshot->entries[static_cast<size_t>(row)].state == ScratchTakeLoadState::Ready;
-    wetButton.setEnabled(ready && !isRecording && !isSaving && !isPreparing);
-    rawButton.setEnabled(ready && !isRecording && !isSaving && !isPreparing);
+    const auto* selectedEntry = row >= 0 ? &librarySnapshot->entries[static_cast<size_t>(row)] : nullptr;
+    const auto actions = selectedEntry ? scratchTakeActions(*selectedEntry) : ScratchTakeActions{};
+    wetButton.setEnabled(actions.play && !isRecording && !isSaving && !isPreparing);
+    rawButton.setEnabled(actions.reamp && !isRecording && !isSaving && !isPreparing);
     pauseButton.setEnabled(playback.state == ScratchPlaybackState::Playing || playback.state == ScratchPlaybackState::Paused);
     pauseButton.setButtonText(playback.state == ScratchPlaybackState::Paused ? "Resume" : "Pause");
     stopButton.setEnabled(playback.replacingLive);
     loopButton.setToggleState(playback.looping, juce::dontSendNotification);
     if (!previewVolume.isMouseButtonDown()) previewVolume.setValue(playback.volumeDb, juce::dontSendNotification);
-    juce::String transportText = ready ? "Selected take ready - choose an audition mode" : "Select a ready take to audition";
+    juce::String transportText = actions.play || actions.reamp ? "Choose an available audition mode" : "Select a take with readable audio";
     if (scratchCaptureBlocksAudition(status.state)) transportText = scratchAuditionDisabledReason(status.state);
     else if (playback.replacingLive)
         transportText = (playback.mode == ScratchPlaybackMode::OriginalWet ? "ORIGINAL WET" : "RAW / CURRENT RIG")
             + juce::String("  |  Live input replaced  |  ")
             + (playback.state == ScratchPlaybackState::Paused ? "Paused" : playback.buffering ? "Loading..." : formatDuration(playback.positionSeconds));
     else if (playback.state == ScratchPlaybackState::Error) transportText = playback.message;
+    if (selectedEntry && selectedEntry->state == ScratchTakeLoadState::Incomplete)
+        transportText = "Incomplete take: " + selectedEntry->message + "  |  " + transportText;
     playbackLabel.setText(transportText, juce::dontSendNotification);
     playbackLabel.setTooltip(transportText);
     playbackLabel.setColour(juce::Label::textColourId, getColour(playback.replacingLive ? "Warning Colour" : "Text Colour", juce::Colours::white));

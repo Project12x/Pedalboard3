@@ -10,6 +10,8 @@ play stale audio, record the wrong source, or block the callback. Panel layout i
 
 - Schema-2 portable take bundles, independent RAW/WET counts, bounded read-only
   validation, and interrupted/damaged bundle inspection without migration.
+  An incomplete take can audition each independently readable file with a warning;
+  invalid metadata and unsupported schemas remain Reveal-only.
 - Worker-based persistent discovery; virtualized, folder-stable take selection.
 - Real cached RAW/WET waveforms and selected playback position/seek.
 - Worker decoding/resampling, bounded PCM queue, pause/stop/loop/level, channel-loss
@@ -49,7 +51,17 @@ features or timeline. Opaque plugin dependencies are not enumerated.
   8,916 assertions, 99 passed cases, two privilege skips. Final full CTest:
   **353 passed, two skipped, three failed / 358 total**, exit 8. Only the unchanged
   baseline ReverbSC source-string assertions fail; the earlier process-exit
-  crashes did not recur. Full suite remains non-green. Independent review pending.
+  crashes did not recur in that run. Full suite remains non-green.
+- **Review fix checkpoint (2026-10-05):** new interrupted-take action test first
+  failed four of 20 assertions; CTest also correctly reported Failed, not Skipped.
+  Shared per-side actions now gate rows, selected controls, and MainPanel. App/test
+  build exit 0; `[scratch-ui],[scratch-playback],[scratch-storage]` passes **962
+  assertions, 27 cases passed, one skipped**. Post-fix full CTest: **353 passed,
+  two skipped, four failed / 359**, exit 8. Besides the three baseline ReverbSC
+  cases, Connection Dragging State Machine crashed after printing nine passed
+  assertions. Windows Application Event 1000 records all three observed process
+  crashes at `ntdll.dll` 10.0.19041.6456, offset `0x64777`, exception `0xc0000005`.
+  This does not establish root cause. No repeat-until-green or unrelated repair.
 - **OPEN:** dark/light, narrow/default, 150% screenshots and actual keyboard/focus
   traversal. Native UI runtime failed to initialize twice with kernel-assets path
   OS error 3 (including one reset); no screenshots or application input were made.
@@ -81,8 +93,33 @@ These intentional bounds reject unusual external files rather than risking
 unbounded work. Snapshot assets remain references. One scan worker can delay
 new-root completion behind a slow old-root read, but cannot publish stale results.
 
+## Independent review
+
+One fresh read-only review of `47cfb47..1792740`: no confirmed Critical issue;
+one Important issue (interrupted audio blocked by Ready-only app gates), fixed
+through RED/GREEN above. One Minor remains deferred: selected-take context does
+not display known asset references; inspect `rig.xml` for those paths. Review
+did not re-review the fix; focused production policy tests and source wiring
+inspection are the evidence. The full-suite gate is still non-green.
+
+Reviewer-declined runtime UI, live-plugin fidelity, hardware, and macOS checks
+remain OPEN, not waived. Baseline ReverbSC assertions and process-exit faults need
+a dedicated diagnosis before integration. Exact recall/asset portability/export
+remain deliberately excluded. Normal existing live safety policy is preserved,
+not upgraded; preview protection is independent. No push, merge or PR was made.
+
 ## Resources
 
-Task logs/TEMP live under `D:\tmp\codex\scratch-foundations-20261002` with a
-manifest and 1 GiB budget; cleanup audit pending final review. No alternate build
-tree, dependency clone or macOS worktree edits were created.
+Cleanup on 2026-10-05 validated the exact scratch root and every descendant,
+rejected reparse points, removed 62 disposable top-level items, and verified each
+removed path absent. These were generated fixtures, MSBuild temporary files and
+reproducible logs (permanently deleted, not user recordings).
+
+Deliberately retained: `D:\tmp\codex\scratch-foundations-20261002`, **161,809 bytes**,
+containing only `manifest.md`, `task8-ctest.log`, and `review-fixes-ctest.log`.
+Purpose: diagnose unresolved test-process exits; owner: coordinator; remove after
+that diagnosis is recorded. No reusable cache or further TEMP use is authorized
+by this retention. The ignored `.superpowers/sdd/2026-10-02-scratch-foundations`
+ledger/package (about 24 KiB) is also retained until open acceptance gates are
+resolved so the next session can resume accurately. No alternate build tree,
+dependency clone or macOS worktree edits were created.

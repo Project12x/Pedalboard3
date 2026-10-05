@@ -66,8 +66,9 @@ Immediate next agent sequence:
    independent RAW/WET counts; also check the optional `rig.xml` snapshot status.
 3. Confirm raw is pre-chain DI and wet is what the user heard.
 4. Verify patch change and audio-device change both stop capture cleanly.
-5. Confirm `Play original` and `Reamp current rig` require a validated Ready take,
-   while damaged takes remain inspectable through `Reveal`.
+5. Confirm `Play original` and `Reamp current rig` require their respective
+   validated readable file in a supported take. Incomplete captures retain a
+   warning; invalid metadata/unsupported schemas remain Reveal-only.
 6. Review `documentation/qa/2026-06-09-scratch-footer` and `documentation/qa/2026-06-09-main-footer-scale-v2` for prior UI-scale evidence. Follow `AGENTS.md` for publication; this repository does not use PRs by default.
 
 ### Scratch expansion — foundations accepted (2026-10-02)

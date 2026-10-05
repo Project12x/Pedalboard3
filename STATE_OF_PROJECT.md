@@ -40,7 +40,11 @@ skipped). Capture-time rig snapshots and cancellable preparation are implemented
 one privilege-dependent case skipped). Integrated panel polish is implemented;
 the combined Scratch/RT/master-bus run passes 8,916 assertions in 99 passed cases
 with two privilege-dependent skips. Full-suite and visual/hardware acceptance
-remain open; these checks are not proof of a real-interface workflow. See the
+remain open; the 2026-10-05 review fixed blocked incomplete-take audition
+(962 focused assertions pass; 27 cases pass, one skip). The post-fix full suite
+has three baseline ReverbSC assertion failures plus a post-success test-process
+crash: 353 passed, two skipped, four failed out of 359. These checks are not proof
+of a real-interface workflow. See the
 [October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md). Native UI
 automation currently cannot initialize (kernel-assets path error); no new visual
 or live unsaved-plugin/master snapshot acceptance is claimed.

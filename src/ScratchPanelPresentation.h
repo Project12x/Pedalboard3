@@ -53,8 +53,9 @@ inline juce::File reconcileScratchSelection(const ScratchLibrarySnapshot& snapsh
 struct ScratchTakeActions { bool play, reamp, reveal; };
 inline ScratchTakeActions scratchTakeActions(const ScratchTakeLoadResult& entry)
 {
-    return {entry.state == ScratchTakeLoadState::Ready && entry.wetReadable,
-            entry.state == ScratchTakeLoadState::Ready && entry.rawReadable,
+    const bool supported = entry.state == ScratchTakeLoadState::Ready || entry.state == ScratchTakeLoadState::Incomplete;
+    return {supported && entry.wetReadable,
+            supported && entry.rawReadable,
             entry.take.takeDirectory != juce::File()};
 }
 

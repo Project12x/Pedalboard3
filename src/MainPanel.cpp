@@ -1863,16 +1863,17 @@ void MainPanel::playScratchTake(const ScratchTake& take, ScratchPlaybackMode mod
     auto snapshot = scratchLibrary.snapshot();
     const auto found = std::find_if(snapshot->entries.begin(), snapshot->entries.end(),
         [&](const auto& entry) { return entry.take.takeDirectory == take.takeDirectory; });
-    if (found == snapshot->entries.end() || found->state != ScratchTakeLoadState::Ready)
+    const auto actions = found != snapshot->entries.end() ? scratchTakeActions(*found) : ScratchTakeActions{};
+    if (!(mode == ScratchPlaybackMode::OriginalWet ? actions.play : actions.reamp))
     {
-        showToast("Take is not ready for audition");
+        showToast("Take has no readable audio for this audition mode");
         return;
     }
     auto* device = deviceManager.getCurrentAudioDevice();
     const int destinations = device ? (mode == ScratchPlaybackMode::OriginalWet
         ? device->getActiveOutputChannels().countNumberOfSetBits()
         : device->getActiveInputChannels().countNumberOfSetBits()) : 0;
-    const int sources = mode == ScratchPlaybackMode::OriginalWet ? take.wetChannelCount : take.rawChannelCount;
+    const int sources = mode == ScratchPlaybackMode::OriginalWet ? found->take.wetChannelCount : found->take.rawChannelCount;
     if (destinations < 1 || destinations > 16) { showToast("No supported audition destination"); return; }
     if (!map.explicitMapping && sources > destinations)
     {
@@ -1900,7 +1901,7 @@ void MainPanel::playScratchTake(const ScratchTake& take, ScratchPlaybackMode mod
         return;
     }
     const auto result = scratchPlayback.play(*found, mode, map);
-    showToast(result.wasOk() ? (mode == ScratchPlaybackMode::OriginalWet
+    showToast(result.wasOk() ? (found->state == ScratchTakeLoadState::Incomplete ? "Incomplete take - " : String()) + (mode == ScratchPlaybackMode::OriginalWet
         ? "Original WET - live input temporarily replaced" : "RAW through current rig - live input temporarily replaced")
         : result.getErrorMessage());
 }
