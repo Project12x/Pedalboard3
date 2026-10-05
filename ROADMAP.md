@@ -85,7 +85,7 @@ below remains a separate proposal, not a prerequisite for these improvements.
 | Genuine waveforms | See actual saved RAW/WET audio and selected-take position | Real cached waveforms with connected playhead/seek; visual acceptance pending |
 | In-app original playback | Audition the saved wet print without running it through the current effects again | Native device routing and controls connected; focused production routing tests pass |
 | Reamp current rig | Feed dry audio through the current rig without adding nodes or changing cables | Current-rig routing, channel-loss approval, and safe REC handoff implemented; hardware acceptance pending |
-| Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Designed; not implemented |
+| Capture-time rig context | Save live graph/plugin state plus master inserts and gains; no automatic rig replacement | Implemented with worker sidecar writes and cancellable preparation; serializer/controller tests pass, live app acceptance pending |
 | Focused UI polish | Clearer status and transport, selected rows, keyboard controls, existing themes/fonts | Designed; not implemented |
 
 Verified current limitations that this expansion addresses:

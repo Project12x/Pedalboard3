@@ -30,6 +30,7 @@ add_executable(Pedalboard3_Tests
     scratch_playback_test.cpp
     scratch_preview_guard_test.cpp
     scratch_audio_routing_test.cpp
+    scratch_rig_snapshot_test.cpp
     rt_hosting_sprint_test.cpp
     reverbsc_processor_test.cpp
     midi_mapping_test.cpp
@@ -59,6 +60,7 @@ add_executable(Pedalboard3_Tests
     ../src/dsp/SafetyLimiterCore.cpp
     ../src/ScratchPreviewGuard.cpp
     ../src/ScratchAudioRouter.cpp
+    ../src/ScratchRigSnapshot.cpp
     ../src/DeviceMeterTap.cpp
     ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp

@@ -35,8 +35,12 @@ waveforms and virtualized, folder-stable selection are now implemented;
 native original-WET/current-rig-RAW audition, independent preview protection,
 and transport controls are connected. The production router's focused regression
 run passes 5058 assertions (30 cases passed, one privilege-dependent symlink case
-skipped). Rig snapshots and integrated polish/visual/hardware acceptance remain
-open; these automated checks are not proof of a real-interface workflow.
+skipped). Capture-time rig snapshots and cancellable preparation are implemented;
+307 focused assertions cover serializer/controller/storage/routing (16 cases pass,
+one privilege-dependent case skipped). Integrated polish/visual/hardware acceptance
+remains open; these checks are not proof of a real-interface workflow. Native UI
+automation currently cannot initialize (kernel-assets path error); no new visual
+or live unsaved-plugin/master snapshot acceptance is claimed.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

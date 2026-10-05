@@ -12,6 +12,7 @@
 enum class ScratchRecorderState
 {
     Ready,
+    Preparing,
     Recording,
     Saving,
     Saved,
@@ -68,6 +69,13 @@ public:
     ~ScratchRecorder() override;
 
     bool start(const ScratchTakeContext& context);
+    juce::Result prepareTake(const ScratchTakeContext&);
+    juce::Result startPreparedTake();
+    void cancelPreparedTake(const juce::String& reason);
+    void setPreparedSnapshotResult(ScratchSnapshotState, const juce::String&);
+    // Control-thread completion gate: stale workers cannot start a newer take.
+    juce::Result completePreparedSnapshot(uint64_t requestId, ScratchSnapshotState, const juce::String&);
+    uint64_t getPreparationId() const noexcept { return preparationId; }
     void requestStop();
     void stopForDeviceChange();
     void stopForPatchChange();
@@ -107,6 +115,7 @@ private:
     std::unique_ptr<ScratchAudioSink> rawSink;
     std::unique_ptr<ScratchAudioSink> wetSink;
     ScratchTake currentTake;
+    uint64_t preparationId = 0; // message-thread preparation lifecycle only
     ScratchRecorderStatus status;
     std::vector<ScratchTake> recentTakes;
     juce::File scratchRoot;

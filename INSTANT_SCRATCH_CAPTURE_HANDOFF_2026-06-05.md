@@ -24,9 +24,10 @@ build and focused verification below. Task 3 real waveforms and virtualized
 selection (`c0d0dee`) also have a successful app/test build and focused result.
 Task 4's audition engine has a successful final app/test build and focused
 result below. Task 5 shared preview protection is committed as `3e441cb`.
-Task 6 native routing, recorder handoff, and panel transport controls are wired,
-with final focused verification recorded below. Rig snapshots remain
-Task 7; full integration, visual/manual UI, and hardware QA are not yet verified.
+Task 6 native routing, recorder handoff, and panel transport controls are committed
+as `b22e1e8`, with final focused verification recorded below. Task 7 rig snapshots
+and cancellable preparation have final focused verification below; full integration,
+visual/manual UI, and hardware QA are not yet verified.
 
 ## Historical Baseline (June 2026)
 
@@ -96,10 +97,11 @@ Behavior:
 - Uses date/timestamp and sanitized patch names.
 - Handles folder collisions by appending numeric suffixes.
 - Writes schema-version-2 `take.json` with bundle-relative `raw.wav`, `wet.wav`,
-  and `rig.xml` names. The rig filename is reserved; no snapshot is captured yet.
+  and `rig.xml` names. Task 7 now attempts the rig sidecar before recording.
 - Metadata includes patch/document/device context, sample rate, channel counts, gain values, raw/wet file paths, duration, completion state, and failure reason.
-- Gain metadata is the two master gain values at start, not per-channel values
-  or a history. Patch name/index/document path do not constitute a rig snapshot.
+- `take.json` gain metadata is the two master gain values at start, not per-channel
+  values or a history. Task 7's separate rig sidecar contains live patch state,
+  master-rack state and per-channel gains; names/paths alone are not a snapshot.
 - `take.json` now stores independent raw/wet frame counts, capture/snapshot
   status, and the retained shared minimum duration. Initial incomplete metadata
   is written before Recording; sibling temporary replacement preserves old
@@ -260,7 +262,7 @@ MainPanel's callback hooks/`playScratchTake()`:
   and persistent mode/live-input-replacement status. Selecting another take or
   closing the panel stops audition; selection alone does not start it.
 - Manual UI, full integration, and real-interface checks remain pending; none
-  are inferred from engine/helper tests. Rig snapshots are Task 7.
+  are inferred from engine/helper tests. Task 7 adds rig snapshots below.
 
 Task 6 final coordinator-reported verification (2026-10-04): app/test build
 exited 0; `[scratch-routing],[scratch-playback],[scratch-safety],[scratch-storage]`
@@ -271,6 +273,47 @@ doubled output to 0.15071319 versus expected 0.07535660 and failed as intended.
 Correct source was restored before the final passing build. Visual checks,
 the full-suite checkpoint, and real-interface/hardware acceptance remain Task 8;
 no such pass is claimed by this focused run.
+
+### Task 7 Rig Context And Cancellable Preparation — Focused Verification Complete
+
+Source: `ScratchRigSnapshot.*`, recorder preparation methods, MainPanel's
+`prepareScratchCapture()`/`gatherScratchAssets()`, and panel Preparing labels.
+
+- `prepareTake()` creates one pending bundle/manifest and enters Preparing;
+  `startPreparedTake()` opens WAV writers only after snapshot completion.
+  The legacy `start(context)` convenience API records without a snapshot.
+- Live `PluginField::getXml()` is gathered once on the control thread, not from
+  cached document XML. `ScratchRig` schema 1 stores that Patch, separate base64
+  master-insert state and bypass, master gains, all 16 input/output channel
+  gains, app version, and device/patch context.
+- Known NAM, IR/IR2, and FilePlayer references include nested racks and NAM
+  effects loops. Paths are recorded, assets are not copied, opaque plugin
+  dependencies remain explicitly unenumerated, and no rig restore is added.
+- A worker writes detached `rig.xml` using sibling temporary replacement. The
+  message-thread completion checks the monotonic preparation ID plus context
+  and the actual device-callback epoch before starting. That epoch increments
+  in both `audioDeviceStopped()` and `audioDeviceAboutToStart()`, rather than
+  relying only on later UI notification. Cancellation or a newer request
+  cannot be restarted by an old completion; cancelled bundles stay interrupted.
+- Snapshot failure retains its reason and may still accompany a complete,
+  matched RAW/WET pair. A missing saved sidecar becomes a load-time snapshot
+  warning without rejecting otherwise valid audio; legacy snapshot state is None.
+- Preparing has a cancel action and disables audition/destination controls.
+  Further integrated presentation polish remains Task 8.
+
+Task 7 final coordinator-reported verification (2026-10-04): app/test build
+exited 0; `[scratch-rig],[scratch-storage],[scratch-routing]` passed **307
+assertions in 16 cases**, with **one symlink case skipped** for missing Windows
+privilege. The missing-sidecar regression first failed with Saved (2) instead
+of Failed (3), then passed after correction; intact complete audio stays Ready
+with a SnapshotFailed warning. Live `getXml()` gathering was source-inspected,
+but runtime unsaved-plugin/master-rack snapshot acceptance remains unverified.
+No visual, full-suite, or hardware result is implied by the focused run.
+
+Coordinator-reported manual-access limitation (2026-10-04): native computer-use
+initialization failed twice, including after reset, while writing kernel assets
+(OS error 3, path not found). No QA script ran; screenshot/focus checks and manual
+hardware acceptance remain unavailable/unverified, not passed.
 
 ### Audio Callback Taps
 
@@ -406,7 +449,7 @@ Next agent should run this before calling the feature user-ready:
 1. Launch Pedalboard from the branch build.
 2. Select a real guitar/audio input and output.
 3. Confirm the footer `REC` control is visible.
-4. Press `REC`.
+4. Press `REC` and wait for Preparing to become Recording.
 5. Play guitar through an audible chain.
 6. Press `STOP`.
 7. Open `Takes` or use `Reveal Scratch Ideas Folder`.
@@ -426,7 +469,11 @@ Next agent should run this before calling the feature user-ready:
 14. For Task 6 acceptance, confirm native wet bypass and current-rig raw reamp,
     live-input exclusion, safety mute, explicit channel-loss approval, and no
     graph edits. Verify Stop/REC restores live input without preview recapture.
-15. Record commit, interface/driver, channels, sample rate, buffer size, and
+15. For Task 7 acceptance, verify a changed unsaved plugin parameter, separate
+    master insert/bypass/gains, and known assets in `rig.xml`; check the manifest's
+    snapshot result separately from audio completion. Check Preparing cancellation
+    and failure warnings without editing the user's existing takes.
+16. Record commit, interface/driver, channels, sample rate, buffer size, and
     pass/fail observations with a date.
 
 ## Known Gaps And Risks
@@ -460,8 +507,8 @@ Task 6 source update, 2026-10-04: native wet/current-rig raw audition replaces
 the June external-player/FilePlayer actions. Original take files and graph
 routing are unchanged. Reveal still opens the bundle. Panel transport controls
 are wired with focused verification; full integration and manual UI verification
-remain pending. Recording rig context
-and restoration are not supplied by this routing change.
+remain pending. Task 7 now saves capture-time rig context with focused verification,
+but raw reamp still uses the current rig; automatic restoration remains out of scope.
 
 ### Scratch Folder Setting
 

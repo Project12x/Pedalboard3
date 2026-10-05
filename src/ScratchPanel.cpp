@@ -116,6 +116,8 @@ juce::String stateLabel(ScratchRecorderState state)
     {
     case ScratchRecorderState::Ready:
         return "Ready";
+    case ScratchRecorderState::Preparing:
+        return "Preparing";
     case ScratchRecorderState::Recording:
         return "Recording";
     case ScratchRecorderState::Saving:
@@ -651,10 +653,11 @@ void ScratchPanel::refresh()
     lastStatus = status;
     const bool isRecording = status.state == ScratchRecorderState::Recording;
     const bool isSaving = status.state == ScratchRecorderState::Saving;
+    const bool isPreparing = status.state == ScratchRecorderState::Preparing;
     recordButton.setRecordingState(isRecording, isSaving);
     recordButton.setEnabled(status.state != ScratchRecorderState::Saving);
-    chooseButton.setEnabled(!isRecording && !isSaving);
-    resetButton.setEnabled(!isRecording && !isSaving);
+    chooseButton.setEnabled(!isRecording && !isSaving && !isPreparing);
+    resetButton.setEnabled(!isRecording && !isSaving && !isPreparing);
     statusLabel.setText(ScratchPanelPresentation::formatStatusLine(status), juce::dontSendNotification);
     statusLabel.setColour(juce::Label::textColourId, getColour("Text Colour", juce::Colours::white).withAlpha(0.88f));
     elapsedLabel.setColour(juce::Label::textColourId, getColour("Text Colour", juce::Colours::white));
@@ -665,15 +668,15 @@ void ScratchPanel::refresh()
     const auto playback = mainPanel->getScratchPlaybackStatus();
     const int row = librarySnapshot ? findScratchTakeRow(*librarySnapshot, selectedTakeDirectory) : -1;
     const bool ready = row >= 0 && librarySnapshot->entries[static_cast<size_t>(row)].state == ScratchTakeLoadState::Ready;
-    wetButton.setEnabled(ready && !isRecording && !isSaving);
-    rawButton.setEnabled(ready && !isRecording && !isSaving);
+    wetButton.setEnabled(ready && !isRecording && !isSaving && !isPreparing);
+    rawButton.setEnabled(ready && !isRecording && !isSaving && !isPreparing);
     pauseButton.setEnabled(playback.state == ScratchPlaybackState::Playing || playback.state == ScratchPlaybackState::Paused);
     pauseButton.setButtonText(playback.state == ScratchPlaybackState::Paused ? "Resume" : "Pause");
     stopButton.setEnabled(playback.replacingLive);
     loopButton.setToggleState(playback.looping, juce::dontSendNotification);
     if (!previewVolume.isMouseButtonDown()) previewVolume.setValue(playback.volumeDb, juce::dontSendNotification);
     juce::String transportText = ready ? "Selected take ready - choose an audition mode" : "Select a ready take to audition";
-    if (isRecording || isSaving) transportText = "Audition unavailable during capture or saving";
+    if (isPreparing || isRecording || isSaving) transportText = "Audition unavailable during preparation, capture or saving";
     else if (playback.replacingLive)
         transportText = (playback.mode == ScratchPlaybackMode::OriginalWet ? "ORIGINAL WET" : "RAW / CURRENT RIG")
             + juce::String("  |  Live input replaced  |  ")

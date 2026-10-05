@@ -89,6 +89,8 @@ inline juce::String formatStatusLine(const ScratchRecorderStatus& status)
 {
     switch (status.state)
     {
+    case ScratchRecorderState::Preparing:
+        return "Preparing rig context - REC cancels";
     case ScratchRecorderState::Recording:
         return "Recording " + formatElapsedLabel(status) + "  |  " + formatCapturePairLabel(status);
     case ScratchRecorderState::Saving:
@@ -108,6 +110,8 @@ inline juce::String formatFooterStatusLine(const ScratchRecorderStatus& status)
 {
     switch (status.state)
     {
+    case ScratchRecorderState::Preparing:
+        return "Preparing rig context";
     case ScratchRecorderState::Recording:
         return "REC " + formatElapsedLabel(status) + "  |  " + formatCapturePairLabel(status);
     case ScratchRecorderState::Saving:

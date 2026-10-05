@@ -282,8 +282,8 @@ float display = level.load();
 
 ## Scratch Capture
 
-Source baseline reconciled through Task 6 on 2026-10-04; focused build/tests
-passed, with Task 8 acceptance still pending. Scratch Capture is app-level manual
+Source baseline reconciled through Task 7 on 2026-10-04; focused build/tests
+passed, with Task 8 acceptance pending. Scratch Capture is app-level manual
 raw/wet recording, independent of Audio Recorder nodes in the patch graph.
 
 ```text
@@ -297,9 +297,11 @@ ScratchPanel <- 10 Hz recorder status + immutable disk-library snapshots
 - `MainPanel` owns the recorder and builds start-time context from the current
   patch, document, device, channel counts, sample rate, and master gains.
   `MeteringProcessorPlayer` observes it through an atomic, non-owning pointer.
-- `ScratchRecorder::start()` creates the take directory, writes initial
-  incomplete metadata, and opens two 24-bit WAV sinks before publishing
-  `Recording`. Each sink uses a 32,768-sample buffer serviced by the recorder's
+- `ScratchRecorder::prepareTake()` creates one take directory and initial
+  incomplete metadata, then publishes `Preparing` without opening WAV sinks.
+  After snapshot completion, `startPreparedTake()` updates metadata and opens
+  two 24-bit WAV sinks before publishing `Recording`. The `start()` convenience
+  API skips snapshot collection. Each sink uses a 32,768-sample buffer serviced by the recorder's
   writer thread. Missing/unsupported channels, invalid sample rate, metadata
   failure, or writer setup failure prevent a successful start.
 - The live router acquires one recorder lease with `beginDeviceBlock()` before
@@ -324,8 +326,8 @@ the user application-data directory's `Pedalboard3/Scratch Ideas`; a custom
 root is persisted under `scratchRootDirectory`. New `take.json` files use schema
 version 2: bundle-relative `raw.wav`/`wet.wav`/`rig.xml` names, independent
 `rawDurationSamples`/`wetDurationSamples`, capture/snapshot status, and the
-retained shared `durationSamples` (the smaller count). Naming `rig.xml` does not
-create a snapshot: capture-time rig serialization is still upcoming.
+retained shared `durationSamples` (the smaller count). Task 7 adds `rig.xml`
+capture-time context separately from audio completion.
 
 `ScratchBundleIO` writes metadata through a sibling temporary file and replaces
 the destination only after a successful write; replacement failure preserves
@@ -337,6 +339,26 @@ at 1 MiB, validates types/ranges/paths, and preflights WAV chunk bounds before
 reader construction (rejecting truncation and oversized non-audio chunks).
 Invalid/unsupported takes retain an inspectable result and directory; readable
 audio does not relabel an interrupted take complete.
+
+Task 7 preparation: MainPanel calls live `PluginField::getXml()` once on the
+control thread, not cached document XML or a paint/status path. `ScratchRig`
+schema 1 contains that Patch, separate base64 master-insert state/bypass, both
+master gains and all 16 input/output channel gains, app version, and patch/device
+context. Known NAM, IR/IR2, and FilePlayer paths are gathered through nested
+racks and NAM effects loops (bounded depth). Assets are referenced, not copied;
+opaque plugin dependencies are explicitly unenumerated. No rig restore is added.
+
+The worker writes detached XML through the sibling-replacement helper.
+Completion returns to the message thread and must match the preparation ID,
+context generation, and device-callback epoch before opening writers. The latter
+increments in both `audioDeviceStopped()` and `audioDeviceAboutToStart()`. Cancel/REC,
+root/patch/device changes, or a newer preparation invalidate old completion;
+cancelled takes remain interrupted. Snapshot failure carries a separate reason
+and may still start a valid matched audio pair. A missing saved sidecar becomes
+a snapshot warning on load without making readable complete audio unusable.
+Preparing labels and disabled audition/destination actions are wired. Task 7
+focused verification passed; runtime unsaved-plugin/master-rack snapshot
+acceptance and manual UI/hardware checks remain pending.
 
 Task 2 background library: `MainPanel` owns
 `ScratchTakeLibrary`, whose single worker scans exactly root/day/take depth
@@ -421,8 +443,8 @@ Both audition modes exclude hardware input and add no nodes, cables, or patch
 replacement. Wet mode still advances graph/MIDI state without audible tails or
 generators; the router also gates post-rig output during pause/loading/underflow.
 Stopping restores live input with a short ramp. REC requests audition stop and
-waits for quiescence before capture; audition is blocked while capture, saving,
-or that handoff is pending. Root/patch/device changes cancel pending activity.
+waits for quiescence before capture; audition is blocked while preparing,
+recording, saving, or that handoff is pending. Root/patch/device changes cancel pending activity.
 `playScratchTake()` requires a ready library entry and explicitly prompts for
 destination-to-source mapping before dropping channels, without changing device
 settings. Callback removal precedes playback teardown. Panel transport controls
@@ -442,7 +464,7 @@ Current boundaries:
   and processed signals.
 
 Key files: `src/ScratchRecorder.{h,cpp}`, `src/ScratchTake.{h,cpp}`,
-`src/ScratchBundleIO.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
+`src/ScratchBundleIO.{h,cpp}`, `src/ScratchRigSnapshot.{h,cpp}`, `src/ScratchTakeLibrary.{h,cpp}`,
 `src/ScratchWaveformView.{h,cpp}`, `src/ScratchPlayback.{h,cpp}`,
 `src/ScratchPlaybackTypes.h`, `src/ScratchPcmQueue.{h,cpp}`,
 `src/ScratchAudioRouter.{h,cpp}`, `src/ScratchPreviewGuard.{h,cpp}`,
@@ -468,11 +490,12 @@ waveform/UI cases. Task 4's final app/test build passed on 2026-10-02; its
 playback/storage/waveform run passed 871 assertions in 22 cases, with one
 storage-symlink case skipped for missing privilege. Task 5 shared protection is
 committed as `3e441cb`, with 7,477 safety/RT assertions passing in 22 cases.
-Task 6 native routing/record handoff and panel controls are source-integrated;
+Task 6 native routing/record handoff and panel controls are committed as `b22e1e8`;
 its final app/test build exited 0 on 2026-10-04, with 5,058 assertions in 30
 passed routing/playback/safety/storage cases and one privilege-related
-storage-symlink skip. Task 7 rig
-snapshots and integrated UI polish remain upcoming. See the handoff for
+storage-symlink skip. Task 7's final app/test build exited 0 on 2026-10-04;
+the rig/storage/routing run passed 307 assertions in 16 cases, with one symlink
+case skipped. Task 8 integrated UI polish remains upcoming. See the handoff for
 dated evidence; manual restart/UI and hardware QA remain open.
 
 ---

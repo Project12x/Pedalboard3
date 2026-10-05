@@ -375,6 +375,11 @@ ScratchTakeLoadResult loadScratchTake(const juce::File& directory)
     else if (snapshot == "failed") take.snapshotState = ScratchSnapshotState::Failed;
     else return result;
     take.snapshotMessage = text("snapshotMessage");
+    if (take.snapshotState == ScratchSnapshotState::Saved && !take.rigFile.existsAsFile())
+    {
+        take.snapshotState = ScratchSnapshotState::Failed;
+        take.snapshotMessage = "Saved rig context is missing; audio is still available";
+    }
 
     const auto raw = inspectWav(take.rawFile);
     const auto wet = inspectWav(take.wetFile);

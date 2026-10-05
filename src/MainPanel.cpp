@@ -58,6 +58,8 @@
 #include "SettingsManager.h"
 #include "ScratchPanel.h"
 #include "ScratchPanelPresentation.h"
+#include "ScratchRigSnapshot.h"
+#include "SubGraphProcessor.h"
 #include "StageView.h"
 #include "SubGraphEditorComponent.h"
 #include "TapTempoBox.h"
@@ -807,6 +809,8 @@ MainPanel::~MainPanel()
         deviceManager.removeAudioCallback(&deviceMeterTap);
         DeviceMeterTap::setInstance(nullptr);
     }
+    cancelScratchActivity();
+    scratchRigWorker.removeAllJobs(true, -1);
     scratchCapturePending = false;
     scratchPlayback.stop();
     scratchRecorder.requestStop();
@@ -1632,6 +1636,13 @@ ScratchTakeContext MainPanel::createScratchTakeContext() const
 //------------------------------------------------------------------------------
 void MainPanel::toggleScratchCapture()
 {
+    if (scratchRecorder.getStatus().state == ScratchRecorderState::Preparing)
+    {
+        cancelScratchActivity();
+        showToast("Scratch preparation cancelled");
+        refreshScratchControls();
+        return;
+    }
     if (scratchRecorder.isRecording())
     {
         scratchRecorder.requestStop();
@@ -1648,13 +1659,9 @@ void MainPanel::toggleScratchCapture()
         scratchCapturePending = true;
         showToast("Stopping audition before capture");
     }
-    else if (scratchRecorder.start(createScratchTakeContext()))
-    {
-        showToast("Scratch recording");
-    }
     else
     {
-        showToast(scratchRecorder.getStatus().message);
+        prepareScratchCapture();
     }
 
     refreshScratchControls();
@@ -1681,6 +1688,12 @@ void MainPanel::revealScratchFolder()
 //------------------------------------------------------------------------------
 void MainPanel::chooseScratchFolder()
 {
+    const auto captureState = scratchRecorder.getStatus().state;
+    if (captureState == ScratchRecorderState::Preparing || captureState == ScratchRecorderState::Recording || captureState == ScratchRecorderState::Saving)
+    {
+        showToast("Finish or cancel capture before changing destination");
+        return;
+    }
     auto currentRoot = scratchRecorder.getScratchRoot();
     if (currentRoot == File())
         currentRoot = ScratchRecorder::getDefaultScratchRoot();
@@ -1699,6 +1712,13 @@ void MainPanel::chooseScratchFolder()
         if (selected == File())
             return;
 
+        const auto currentState = panel->scratchRecorder.getStatus().state;
+        if (currentState == ScratchRecorderState::Preparing || currentState == ScratchRecorderState::Recording || currentState == ScratchRecorderState::Saving)
+        {
+            panel->showToast("Finish or cancel capture before changing destination");
+            return;
+        }
+
         selected.createDirectory();
         panel->cancelScratchActivity();
         panel->scratchRecorder.setScratchRoot(selected);
@@ -1713,7 +1733,8 @@ void MainPanel::chooseScratchFolder()
 //------------------------------------------------------------------------------
 void MainPanel::resetScratchFolderToDefault()
 {
-    if (scratchRecorder.isRecording())
+    const auto captureState = scratchRecorder.getStatus().state;
+    if (captureState == ScratchRecorderState::Preparing || captureState == ScratchRecorderState::Recording || captureState == ScratchRecorderState::Saving)
     {
         showToast("Stop recording before changing scratch destination");
         return;
@@ -1729,9 +1750,94 @@ void MainPanel::resetScratchFolderToDefault()
 }
 
 //------------------------------------------------------------------------------
+namespace
+{
+void gatherScratchAssets(AudioProcessor* processor, const String& path,
+                         std::vector<ScratchAssetReference>& assets, int depth = 0)
+{
+    if (!processor || depth > 32) return;
+    if (auto* wrapper = dynamic_cast<BypassableInstance*>(processor)) processor = wrapper->getPlugin();
+    auto add = [&](const String& kind, const File& file) {
+        if (file != File()) assets.push_back({path, kind, file});
+    };
+    auto visitRack = [&](SubGraphProcessor* rack, const String& rackPath) {
+        if (rack) for (const auto& node : rack->getInternalGraph().getNodes())
+            gatherScratchAssets(node->getProcessor(), rackPath + "/" + String(node->nodeID.uid), assets, depth + 1);
+    };
+    if (auto* nam = dynamic_cast<NAMProcessor*>(processor))
+    {
+        add("NAM", nam->getModelFile()); add("IR", nam->getIRFile()); add("IR2", nam->getIR2File());
+        visitRack(nam->getEffectsLoop(), path + "/loop");
+    }
+    if (auto* ir = dynamic_cast<IRLoaderProcessor*>(processor)) { add("IR", ir->getIRFile()); add("IR2", ir->getIRFile2()); }
+    if (auto* file = dynamic_cast<FilePlayerProcessor*>(processor)) add("FilePlayer", file->getFile());
+    if (auto* rack = dynamic_cast<SubGraphProcessor*>(processor)) visitRack(rack, path);
+}
+}
+
+void MainPanel::prepareScratchCapture()
+{
+    const auto context = createScratchTakeContext();
+    const auto prepared = scratchRecorder.prepareTake(context);
+    if (prepared.failed()) { showToast(prepared.getErrorMessage()); return; }
+    const auto requestId = scratchRecorder.getPreparationId();
+    const auto generation = scratchContextGeneration;
+    const auto directory = scratchRecorder.getStatus().activeTake->takeDirectory;
+    const auto deviceGeneration = graphPlayer.getScratchDeviceGeneration();
+    ScratchRigSnapshotData snapshot;
+    snapshot.context = context;
+    snapshot.appVersion = ProjectInfo::versionString;
+    try
+    {
+        auto* field = viewport ? dynamic_cast<PluginField*>(viewport->getViewedComponent()) : nullptr;
+        if (!field) throw std::runtime_error("Live patch unavailable");
+        snapshot.patch.reset(field->getXml()); // live plugin state, not cached patch/document XML
+        auto& gains = MasterGainState::getInstance();
+        gains.getMasterBus().saveState(snapshot.masterInsertState);
+        snapshot.masterInsertBypassed = gains.getMasterBus().isBypassed();
+        snapshot.masterInputDb = context.masterInputGainDb; snapshot.masterOutputDb = context.masterOutputGainDb;
+        for (int ch = 0; ch < 16; ++ch)
+        {
+            snapshot.inputChannelDb[ch] = gains.inputChannelGainDb[ch].load(std::memory_order_relaxed);
+            snapshot.outputChannelDb[ch] = gains.outputChannelGainDb[ch].load(std::memory_order_relaxed);
+        }
+        auto* graph = field->getFilterGraph();
+        for (int index = 0; index < graph->getNumFilters(); ++index)
+            if (auto node = graph->getNode(index))
+                gatherScratchAssets(node->getProcessor(), "graph/" + String(node->nodeID.uid), snapshot.assets);
+        gatherScratchAssets(gains.getMasterBus().getRack(), "master", snapshot.assets);
+    }
+    catch (const std::exception& error)
+    {
+        const auto started = scratchRecorder.completePreparedSnapshot(requestId, ScratchSnapshotState::Failed, error.what());
+        showToast(started.wasOk() ? "Recording audio - rig snapshot unavailable" : started.getErrorMessage());
+        return;
+    }
+    const auto xml = serializeScratchRig(snapshot);
+    Component::SafePointer<MainPanel> safe(this);
+    scratchRigWorker.addJob([safe, directory, xml, requestId, generation, deviceGeneration] {
+        const auto result = writeScratchRig(directory, xml);
+        MessageManager::callAsync([safe, result, requestId, generation, deviceGeneration] {
+            if (!safe || safe->scratchContextGeneration != generation) return;
+            if (safe->graphPlayer.getScratchDeviceGeneration() != deviceGeneration)
+            {
+                safe->scratchRecorder.cancelPreparedTake("Audio device changed during preparation");
+                return;
+            }
+            const auto started = safe->scratchRecorder.completePreparedSnapshot(requestId,
+                result.wasOk() ? ScratchSnapshotState::Saved : ScratchSnapshotState::Failed, result.getErrorMessage());
+            if (started.wasOk()) safe->showToast(result.wasOk() ? "Scratch recording - rig context saved" : "Recording audio - rig snapshot unavailable");
+            safe->refreshScratchControls();
+        });
+    });
+    showToast("Preparing scratch rig context");
+}
+
 void MainPanel::cancelScratchActivity()
 {
     ++scratchContextGeneration;
+    scratchRecorder.cancelPreparedTake("Scratch preparation cancelled");
+    scratchRigWorker.removeAllJobs(true, 0);
     scratchCapturePending = false;
     scratchPlayback.stop();
 }
@@ -1749,7 +1855,7 @@ void MainPanel::reampScratchRawTake(const ScratchTake& take, const ScratchChanne
 void MainPanel::playScratchTake(const ScratchTake& take, ScratchPlaybackMode mode, const ScratchChannelMap& map)
 {
     const auto capture = scratchRecorder.getStatus().state;
-    if (scratchCapturePending || capture == ScratchRecorderState::Recording || capture == ScratchRecorderState::Saving)
+    if (scratchCapturePending || capture == ScratchRecorderState::Preparing || capture == ScratchRecorderState::Recording || capture == ScratchRecorderState::Saving)
     {
         showToast("Stop capture and wait for saving before auditioning");
         return;
@@ -1828,7 +1934,9 @@ void MainPanel::refreshScratchControls()
 
     if (scratchRecordButton != nullptr)
     {
-        if (status.state == ScratchRecorderState::Recording)
+        if (status.state == ScratchRecorderState::Preparing)
+            scratchRecordButton->setButtonText("CANCEL");
+        else if (status.state == ScratchRecorderState::Recording)
             scratchRecordButton->setButtonText("STOP");
         else if (status.state == ScratchRecorderState::Saving)
             scratchRecordButton->setButtonText("SAVE");
@@ -3136,6 +3244,8 @@ Result MainPanel::loadDocument(const File& file)
     {
         if (root->hasTagName("Pedalboard3PatchFile"))
         {
+            cancelScratchActivity();
+            scratchRecorder.stopForPatchChange();
             // Clear existing patches.
             for (i = 0; i < patches.size(); ++i)
                 delete patches[i];

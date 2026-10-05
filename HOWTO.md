@@ -52,8 +52,9 @@ full suite from a successful focused tag.
 
 ## Use the current Scratch Capture
 
-Press the footer `REC` control (or Ctrl+Shift+R), play, then press `STOP` and
-wait for `Saved` or a failure reason. Open `Takes` for the Scratch panel.
+Press the footer `REC` control (or Ctrl+Shift+R), wait for `Preparing` to become
+`Recording`, play, then press `STOP` and wait for `Saved` or a failure reason.
+Pressing REC again during preparation cancels it. Open `Takes` for the Scratch panel.
 Capture records device input before input gains/patch processing to `raw.wav`
 and output after the patch, master bus, and output gains to `wet.wav`.
 
@@ -67,8 +68,13 @@ names, separate raw/wet frame counts, capture status, and snapshot status. An
 initial incomplete manifest is written before recording; final metadata uses
 temporary-file replacement so a failed replacement preserves the prior JSON.
 The new read-only loader accepts legacy and v2 bundles without migrating them,
-including relocated legacy folders. `rig.xml` is a reserved sidecar name,
-not a saved rig yet.
+including relocated legacy folders. Task 7 now attempts `rig.xml` before audio
+starts: live patch state, separate master-rack state/bypass, master/per-channel
+gains, device context, and known NAM/IR/FilePlayer paths. It does not copy assets
+or restore that rig. Check `snapshotStatus` and `snapshotMessage` independently
+of audio completion: a failed snapshot may accompany a valid RAW/WET pair.
+Legacy takes without a snapshot remain valid. Task 7's focused verification
+passed; no manual live-plugin/master-rack snapshot integration pass is claimed.
 
 Task 2 adds disk-backed `Takes`. It scans the configured root's day/take folders
 on startup, panel open, `Refresh`, destination changes, and capture finalization. Previously saved
@@ -94,7 +100,7 @@ Current source behavior and boundaries:
 - Audition temporarily replaces live input. Both modes use independent preview
   attenuation (default -12 dB, at most unity) and guarded output honoring safety
   mute. REC stops audition and waits for the live-input handoff before recording;
-  Play/Reamp is blocked during capture/saving or a pending capture handoff.
+  Play/Reamp is blocked during preparation/capture/saving or a pending capture handoff.
 - If the take has more channels than the current destination, choose each
   destination's source (or Off) and explicitly accept dropped channels. The
   dialog does not change device settings. Automatic mono wet mapping uses the
@@ -132,12 +138,14 @@ Task 4's bounded worker-decoded audition engine had its final app/test build pas
 with one storage-symlink skip for missing privilege. The engine now stops
 non-looping reads at the exact file end, including non-block-aligned lengths.
 Task 5 shared preview protection (`3e441cb`) has a successful app/test build and
-7,477 assertions passing in 22 safety/RT cases. Task 6 connects native routing,
+7,477 assertions passing in 22 safety/RT cases. Task 6 (`b22e1e8`) connects native routing,
 record handoff, and panel controls. Its final app/test build exited 0 on
 2026-10-04; the routing/playback/safety/storage run passed 5,058 assertions in
-30 cases, with one storage-symlink case skipped for missing privilege. Task 7
-rig snapshots and integrated
-polish remain upcoming. No full integration, visual, or hardware pass is claimed.
+30 cases, with one storage-symlink case skipped for missing privilege. Task 7's
+final app/test build exited 0 on 2026-10-04; the rig/storage/routing run passed
+307 assertions in 16 cases, with one symlink case skipped for missing privilege.
+Task 8 integrated polish remains upcoming.
+No full integration, visual, or hardware pass is claimed.
 See the handoff for dated evidence; manual restart/UI and hardware QA remain
 outstanding.
 
@@ -147,7 +155,7 @@ This manual acceptance check remains pending in the recorded handoff; source
 inspection and the historical June test results do not establish it as passed.
 
 Use a real guitar and selected audio input/output. Start capture with the footer
-`REC` control, play through an audible chain, then stop. In the recorded take
+`REC` control, wait for `Recording`, play through an audible chain, then stop. In the recorded take
 folder, verify all of the following:
 
 1. `raw.wav`, `wet.wav`, and `take.json` exist.
@@ -164,11 +172,16 @@ folder, verify all of the following:
    verify wet bypass/current-rig reamp, no graph edits or live-input leakage,
    explicit channel-loss mapping, safety mute, and REC's return-to-live handoff.
 7. Destination choose/reset works between takes and is disabled in the panel
-   during recording/saving. Confirm a new take uses the selected destination.
+   during preparation/recording/saving. Confirm a new take uses the selected destination.
 8. For Task 2 acceptance, restart and reopen Takes to verify disk discovery;
    check Refresh, more than eight saved bundles, destination changes, and a
    damaged test bundle's diagnostic row. Do not modify the user's recordings
    to create that fixture. This manual check is still outstanding.
+9. For Task 7 acceptance, change an unsaved plugin parameter and a master insert
+   before REC. Verify `snapshotStatus: "saved"` and the corresponding `rig.xml`
+   context, including gains and asset references. Separately check cancellation
+   during Preparing and snapshot-failure warnings without conflating them with
+   audio failure. Snapshot availability does not imply automatic rig restoration.
 
 Record the tested commit, interface/driver, channel selection, sample rate,
 buffer size, and actual result; do not substitute old evidence for a new run.

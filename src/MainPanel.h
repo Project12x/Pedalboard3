@@ -69,15 +69,18 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
     }
 
     void setScratchPlayback(ScratchPlayback* transport) noexcept { scratchPlayback = transport; }
+    uint64_t getScratchDeviceGeneration() const noexcept { return scratchDeviceGeneration.load(std::memory_order_acquire); }
 
     void audioDeviceStopped() override
     {
+        scratchDeviceGeneration.fetch_add(1, std::memory_order_release);
         AudioProcessorPlayer::audioDeviceStopped();
         if (scratchPlayback) scratchPlayback->audioDeviceStopped();
     }
 
     void audioDeviceAboutToStart(AudioIODevice* device) override
     {
+        scratchDeviceGeneration.fetch_add(1, std::memory_order_release);
         AudioProcessorPlayer::audioDeviceAboutToStart(device);
         if (device != nullptr)
         {
@@ -258,6 +261,7 @@ class MeteringProcessorPlayer : public AudioProcessorPlayer
             limiter->updateInputLevelsFromDevice(actualInput, actualInputChannels, numSamples);
     }
     ScratchPlayback* scratchPlayback = nullptr; // assigned before callback registration
+    std::atomic<uint64_t> scratchDeviceGeneration{0};
     ScratchAudioRouter scratchRouter;
     ScratchPreviewGuard previewGuard;
     SafetyLimiterProcessor* lastLimiter = nullptr;
@@ -420,6 +424,7 @@ class MainPanel : public Component,
     void reampScratchRawTake(const ScratchTake& take, const ScratchChannelMap& map = {});
     void playScratchTake(const ScratchTake&, ScratchPlaybackMode, const ScratchChannelMap&);
     void cancelScratchActivity();
+    void prepareScratchCapture();
     void pauseScratchPlayback() { scratchPlayback.pause(); }
     void resumeScratchPlayback() { scratchPlayback.resume(); }
     void stopScratchPlayback() { scratchPlayback.stop(); }
@@ -559,6 +564,7 @@ class MainPanel : public Component,
     ScratchPlayback scratchPlayback;
     bool scratchCapturePending = false;
     uint64_t scratchContextGeneration = 0;
+    juce::ThreadPool scratchRigWorker{1};
     ///	Object used to 'play' the signalPath object (with output metering).
     MeteringProcessorPlayer graphPlayer;
     ///	The list of plugins the user can load.

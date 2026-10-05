@@ -111,28 +111,35 @@ ScratchRecorder::~ScratchRecorder()
 
 bool ScratchRecorder::start(const ScratchTakeContext& context)
 {
+    if (prepareTake(context).failed()) return false;
+    setPreparedSnapshotResult(ScratchSnapshotState::None, {});
+    return startPreparedTake().wasOk();
+}
+
+juce::Result ScratchRecorder::prepareTake(const ScratchTakeContext& context)
+{
     const juce::ScopedLock lock(stateLock);
 
-    if (loadState(state) == ScratchRecorderState::Recording || loadState(state) == ScratchRecorderState::Saving)
-        return false;
+    if (loadState(state) == ScratchRecorderState::Preparing || loadState(state) == ScratchRecorderState::Recording || loadState(state) == ScratchRecorderState::Saving)
+        return juce::Result::fail("Scratch capture is busy");
 
     if (context.rawChannelCount <= 0)
     {
         failStart("No input channels available");
-        return false;
+        return juce::Result::fail(status.message);
     }
 
     if (context.wetChannelCount <= 0)
     {
         failStart("No output channels available");
-        return false;
+        return juce::Result::fail(status.message);
     }
 
     if (context.rawChannelCount > 16 || context.wetChannelCount > 16
         || !std::isfinite(context.sampleRate) || context.sampleRate <= 0.0)
     {
         failStart("Unsupported scratch channel count or sample rate");
-        return false;
+        return juce::Result::fail(status.message);
     }
 
     ScratchTakeContext resolved = context;
@@ -155,9 +162,11 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
         state.store(static_cast<int>(ScratchRecorderState::Failed), std::memory_order_release);
-        return false;
+        return juce::Result::fail(status.message);
     }
 
+    ++preparationId;
+    currentTake.snapshotState = ScratchSnapshotState::Pending;
     currentTake.rawDurationSamples = 0;
     currentTake.wetDurationSamples = 0;
     if (!currentTake.writeMetadata())
@@ -168,7 +177,58 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         addRecentTake(currentTake);
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
-        return false;
+        return juce::Result::fail(status.message);
+    }
+
+    status.state = ScratchRecorderState::Preparing;
+    status.message = "Preparing rig snapshot";
+    status.activeTake = currentTake;
+    status.lastTake.reset();
+    rawSamplesWritten.store(0); wetSamplesWritten.store(0);
+    state.store(static_cast<int>(ScratchRecorderState::Preparing), std::memory_order_release);
+    return juce::Result::ok();
+}
+
+void ScratchRecorder::setPreparedSnapshotResult(ScratchSnapshotState snapshot, const juce::String& message)
+{
+    const juce::ScopedLock lock(stateLock);
+    if (loadState(state) != ScratchRecorderState::Preparing) return;
+    currentTake.snapshotState = snapshot; currentTake.snapshotMessage = message;
+    status.activeTake = currentTake;
+}
+
+void ScratchRecorder::cancelPreparedTake(const juce::String& reason)
+{
+    const juce::ScopedLock lock(stateLock);
+    if (loadState(state) != ScratchRecorderState::Preparing) return;
+    ++preparationId;
+    currentTake.captureStatus = "interrupted"; currentTake.failureReason = reason;
+    currentTake.snapshotState = ScratchSnapshotState::Failed; currentTake.snapshotMessage = reason;
+    currentTake.writeMetadata();
+    addRecentTake(currentTake);
+    status.activeTake.reset(); status.lastTake = currentTake; status.recentTakes = recentTakes;
+    status.state = ScratchRecorderState::Ready; status.message = reason;
+    state.store(static_cast<int>(ScratchRecorderState::Ready), std::memory_order_release);
+}
+
+juce::Result ScratchRecorder::completePreparedSnapshot(uint64_t requestId, ScratchSnapshotState snapshot, const juce::String& message)
+{
+    const juce::ScopedLock lock(stateLock);
+    if (loadState(state) != ScratchRecorderState::Preparing || requestId != preparationId)
+        return juce::Result::fail("Scratch preparation was cancelled");
+    setPreparedSnapshotResult(snapshot, message);
+    return startPreparedTake();
+}
+
+juce::Result ScratchRecorder::startPreparedTake()
+{
+    const juce::ScopedLock lock(stateLock);
+    if (loadState(state) != ScratchRecorderState::Preparing || currentTake.snapshotState == ScratchSnapshotState::Pending)
+        return juce::Result::fail("Scratch preparation is not ready");
+    if (!currentTake.writeMetadata())
+    {
+        failStart("Unable to update scratch preparation metadata");
+        return juce::Result::fail(status.message);
     }
 
     rawSink = sinkFactory.create();
@@ -202,7 +262,7 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
         status.lastTake = currentTake;
         status.recentTakes = recentTakes;
         state.store(static_cast<int>(ScratchRecorderState::Failed), std::memory_order_release);
-        return false;
+        return juce::Result::fail(status.message);
     }
 
     rawSamplesWritten.store(0, std::memory_order_relaxed);
@@ -222,11 +282,12 @@ bool ScratchRecorder::start(const ScratchTakeContext& context)
     status.recentTakes = recentTakes;
 
     state.store(static_cast<int>(ScratchRecorderState::Recording), std::memory_order_release);
-    return true;
+    return juce::Result::ok();
 }
 
 void ScratchRecorder::requestStop()
 {
+    if (loadState(state) == ScratchRecorderState::Preparing) { cancelPreparedTake("Scratch preparation cancelled"); return; }
     if (!isRecording())
         return;
 
@@ -246,6 +307,7 @@ void ScratchRecorder::stopForPatchChange()
 
 void ScratchRecorder::stopWithFailureReason(const juce::String& reason)
 {
+    if (loadState(state) == ScratchRecorderState::Preparing) { cancelPreparedTake(reason); return; }
     if (!isRecording())
         return;
 
@@ -351,6 +413,7 @@ juce::File ScratchRecorder::getScratchRoot() const
 void ScratchRecorder::setScratchRoot(const juce::File& root)
 {
     const juce::ScopedLock lock(stateLock);
+    cancelPreparedTake("Scratch destination changed");
     scratchRoot = root;
     status.scratchRoot = scratchRoot;
 }
