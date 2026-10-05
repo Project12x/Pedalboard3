@@ -28,6 +28,7 @@ add_executable(Pedalboard3_Tests
     scratch_waveform_test.cpp
     scratch_panel_test.cpp
     scratch_playback_test.cpp
+    scratch_preview_guard_test.cpp
     rt_hosting_sprint_test.cpp
     reverbsc_processor_test.cpp
     midi_mapping_test.cpp
@@ -54,6 +55,8 @@ add_executable(Pedalboard3_Tests
     ../src/VuMeterEditors.cpp
     ../src/ReverbSCProcessor.cpp
     ../src/SafetyLimiter.cpp
+    ../src/dsp/SafetyLimiterCore.cpp
+    ../src/ScratchPreviewGuard.cpp
     ../src/DeviceMeterTap.cpp
     ../src/VirtualMidiInputProcessor.cpp
     ../src/ColourScheme.cpp

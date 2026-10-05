@@ -283,6 +283,8 @@ target_sources(Pedalboard3 PRIVATE
     src/MetronomeEditor.cpp
     src/PedalboardProcessorEditors.h
     src/SafetyLimiter.cpp
+    src/dsp/SafetyLimiterCore.cpp
+    src/ScratchPreviewGuard.cpp
     src/SafetyLimiter.h
     src/DeviceMeterTap.cpp
     src/DeviceMeterTap.h

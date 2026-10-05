@@ -281,7 +281,7 @@ TEST_CASE("SafetyLimiter mutes invalid samples and unmute resets runtime state",
     REQUIRE(limiter.isMuted());
 
     limiter.unmute();
-    REQUIRE_FALSE(limiter.isMuted());
+    REQUIRE(limiter.isMuted()); // control requests are applied on the next processing block
 
     buffer.clear();
     buffer.setSample(0, 0, 0.25f);

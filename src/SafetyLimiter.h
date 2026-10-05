@@ -11,6 +11,7 @@
 #define SAFETYLIMITER_H_INCLUDED
 
 #include "dsp/MeterSource.h"
+#include "dsp/SafetyLimiterCore.h"
 
 #include <JuceHeader.h>
 #include <atomic>
@@ -57,11 +58,13 @@ class SafetyLimiterProcessor : public AudioProcessor
 
     //==============================================================================
     // Safety state queries (thread-safe)
-    bool isMuted() const { return muted.load(); }
+    bool isMuted() const { return (muteControl.load(std::memory_order_acquire) & 1u) != 0; }
     bool isLimiting() const { return limiting.load(); }
 
     // Manual unmute (called from Panic)
     void unmute();
+    void requestMute() noexcept;
+    uint64_t getResetSerial() const noexcept { return resetSerial.load(std::memory_order_acquire); }
 
     // Check if mute was triggered since last check (for toast notification)
     bool checkAndClearMuteTriggered()
@@ -130,45 +133,11 @@ class SafetyLimiterProcessor : public AudioProcessor
     static void setInstance(SafetyLimiterProcessor* inst) { instance = inst; }
 
   private:
-    void resetRuntimeState() noexcept;
-
-    //==============================================================================
-    // Thresholds
-    static constexpr float softLimitThreshold = 0.944f;   // -0.5 dBFS
-    static constexpr float dangerousGainThreshold = 2.0f; // +6 dBFS
-    static constexpr float dcOffsetThreshold = 0.5f;
-
-    // Timing (in samples, set in prepareToPlay)
-    int dangerousGainHoldSamples = 0; // 100ms
-    int dcOffsetHoldSamples = 0;      // 500ms
-    int ultrasonicHoldSamples = 0;    // 200ms
-
-    // State
-    std::atomic<bool> muted{false};
-    std::atomic<bool> limiting{false};
-    std::atomic<bool> muteTriggered{false};
-    std::atomic<bool> audioActive{false}; // Set when audio is flowing
-
-    // Detection counters
-    int dangerousGainCounter = 0;
-    int dcOffsetCounter = 0;
-    int ultrasonicCounter = 0;
-
-    // DC blocker state (per channel): y[n] = x[n] - x[n-1] + R * y[n-1]
-    float dcBlockerPreviousInput[2] = {0.0f, 0.0f};
-    float dcBlockerPreviousOutput[2] = {0.0f, 0.0f};
-    float dcBlockerCoeff = 0.995f;
-
-    // Ultrasonic detection (simple high-pass energy tracker)
-    float ultrasonicPreviousSample[2] = {0.0f, 0.0f};
-    float ultrasonicEnergy = 0.0f;
-    float ultrasonicDecay = 0.99f;
-
-    // Limiter state
-    float currentGain = 1.0f;
-    float releaseCoeff = 0.0f; // Calculated in prepareToPlay
-
-    double currentSampleRate = 44100.0;
+    SafetyLimiterCore core;
+    // Bit 0: muted; bit 1: explicit unlock awaiting the processing thread.
+    std::atomic<unsigned> muteControl{0};
+    std::atomic<uint64_t> resetSerial{0};
+    std::atomic<bool> limiting{false}, muteTriggered{false}, audioActive{false};
 
     // Explicit peak/RMS/VU/clip metering, updated from device callback.
     PedalboardMeterSource inputMeters;
