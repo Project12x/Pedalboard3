@@ -33,6 +33,18 @@ features or timeline. Opaque plugin dependencies are not enumerated.
 
 ## Evidence and open gates
 
+**Current automated gate (2026-10-05 stabilization):** Release app/test build
+passes; focused checks pass 9,232 assertions (116 cases passed, two skipped).
+Full CTest is green: **356 passed, two privilege skips, zero failures / 358**.
+The test-runner worker now terminates before CRT static destruction; obsolete
+ReverbSC text checks now exercise actual shell policy. The lifetime regression
+passes 100 bounded process runs. This supersedes the historical failures below;
+see [diagnosis, reference provenance and verification](SCRATCH_STABILIZATION_2026-10-05.md).
+Native UI runtime now initializes, but app-control approval timed out. No current
+screenshots/focus, live-plugin snapshot or real-interface acceptance is claimed.
+
+### Historical implementation checkpoints
+
 - Existing non-clean Release app/test build succeeded before final polish.
 - Combined `[scratch],[rt],[masterbus]`: **8,916 assertions**, **99 passed cases**,
   **two Windows symlink cases skipped**. Tests exercise production storage,
@@ -71,8 +83,9 @@ features or timeline. Opaque plugin dependencies are not enumerated.
   RAW loop while adjusting tone, REC handoff, patch/device removal, snapshot
   availability, and matching RAW/WET headers/counts. No macOS build claimed.
 
-The feature is **not yet user-ready**. Full-suite failures and manual acceptance
-must remain visible; historical screenshot evidence is not this build's QA.
+The feature is **not yet user-ready**. The automated blockers above are resolved
+by stabilization; manual acceptance remains open. Historical screenshot evidence
+is not this build's QA.
 
 ## Reference use and implementation tradeoffs
 
@@ -100,11 +113,12 @@ one Important issue (interrupted audio blocked by Ready-only app gates), fixed
 through RED/GREEN above. One Minor remains deferred: selected-take context does
 not display known asset references; inspect `rig.xml` for those paths. Review
 did not re-review the fix; focused production policy tests and source wiring
-inspection are the evidence. The full-suite gate is still non-green.
+inspection are the evidence. The full-suite gate was non-green at that checkpoint;
+the later stabilization result above supersedes it.
 
 Reviewer-declined runtime UI, live-plugin fidelity, hardware, and macOS checks
-remain OPEN, not waived. Baseline ReverbSC assertions and process-exit faults need
-a dedicated diagnosis before integration. Exact recall/asset portability/export
+remain OPEN, not waived. Baseline ReverbSC assertions and process-exit faults were
+handled by the dedicated stabilization pass. Exact recall/asset portability/export
 remain deliberately excluded. Normal existing live safety policy is preserved,
 not upgraded; preview protection is independent. No push, merge or PR was made.
 
@@ -115,7 +129,7 @@ rejected reparse points, removed 62 disposable top-level items, and verified eac
 removed path absent. These were generated fixtures, MSBuild temporary files and
 reproducible logs (permanently deleted, not user recordings).
 
-Deliberately retained: `D:\tmp\codex\scratch-foundations-20261002`, **161,809 bytes**,
+At that checkpoint, deliberately retained: `D:\tmp\codex\scratch-foundations-20261002`, **161,809 bytes**,
 containing only `manifest.md`, `task8-ctest.log`, and `review-fixes-ctest.log`.
 Purpose: diagnose unresolved test-process exits; owner: coordinator; remove after
 that diagnosis is recorded. No reusable cache or further TEMP use is authorized
@@ -123,3 +137,8 @@ by this retention. The ignored `.superpowers/sdd/2026-10-02-scratch-foundations`
 ledger/package (about 24 KiB) is also retained until open acceptance gates are
 resolved so the next session can resume accurately. No alternate build tree,
 dependency clone or macOS worktree edits were created.
+
+**Stabilization cleanup (2026-10-05):** the prior 161,809-byte scratch root above
+was removed and verified absent after diagnosis. The small ignored ledger remains
+for open acceptance; current retained diagnostic evidence and its cleanup terms
+are recorded in [the stabilization record](SCRATCH_STABILIZATION_2026-10-05.md).

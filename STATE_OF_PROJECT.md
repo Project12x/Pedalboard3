@@ -6,7 +6,7 @@
 
 ---
 
-## Current restart snapshot — 2026-10-04
+## Current restart snapshot — 2026-10-05
 
 ### Active ship gate
 
@@ -25,7 +25,7 @@ waveforms, in-app playback, easier reamping, capture-time rig context, and a
 modest UI polish pass. The [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
 is approved for native execution. Implementation and focused regression work are
-in progress; the roadmap distinguishes verified changes from remaining work.
+implemented; the roadmap distinguishes verified changes from remaining acceptance.
 The storage slice now writes portable schema-2 manifests before recording and
 retains independent RAW/WET counts on finalization. Read-only legacy/v2 loading
 and damaged-bundle validation are covered by focused tests. Background discovery
@@ -39,15 +39,17 @@ skipped). Capture-time rig snapshots and cancellable preparation are implemented
 307 focused assertions cover serializer/controller/storage/routing (16 cases pass,
 one privilege-dependent case skipped). Integrated panel polish is implemented;
 the combined Scratch/RT/master-bus run passes 8,916 assertions in 99 passed cases
-with two privilege-dependent skips. Full-suite and visual/hardware acceptance
-remain open; the 2026-10-05 review fixed blocked incomplete-take audition
-(962 focused assertions pass; 27 cases pass, one skip). The post-fix full suite
-has three baseline ReverbSC assertion failures plus a post-success test-process
-crash: 353 passed, two skipped, four failed out of 359. These checks are not proof
-of a real-interface workflow. See the
-[October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md). Native UI
-automation currently cannot initialize (kernel-assets path error); no new visual
-or live unsaved-plugin/master snapshot acceptance is claimed.
+with two privilege-dependent skips. The 2026-10-05 review fixed blocked
+incomplete-take audition. Subsequent stabilization fixed test-runner shutdown
+and replaced stale ReverbSC source-string checks with actual shell-policy checks.
+The current Release app/test build passes; focused verification passes 9,232
+assertions (116 cases passed, two skipped), and full CTest passes 356 cases with
+two privilege skips and zero failures out of 358. The lifetime regression also
+passes 100 bounded process runs. These checks are not proof of a real-interface
+workflow. See the [stabilization record](docs/SCRATCH_STABILIZATION_2026-10-05.md)
+and [October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md). Native UI
+automation now initializes, but app-control approval timed out; no new visual,
+focus, live unsaved-plugin/master snapshot, or hardware acceptance is claimed.
 Current limitations
 and the accepted direction are recorded in
 [ROADMAP.md](ROADMAP.md#scratch-expansion--foundations-accepted-2026-10-02).

@@ -1,6 +1,6 @@
 # Pedalboard3 Roadmap
 
-- **Last updated:** 2026-10-04
+- **Last updated:** 2026-10-05
 - **Status:** Active source of truth for current product work
 
 This roadmap is intentionally narrow. Historical phase plans and completed long-form
@@ -77,7 +77,7 @@ The user accepted the five foundations below plus modest UI polish, with
 documentation updated in parallel. The
 [written design](docs/superpowers/specs/2026-10-02-scratch-foundations-design.md)
 is approved. The [implementation plan](docs/superpowers/plans/2026-10-02-scratch-foundations.md)
-is approved for native execution; implementation is in progress.
+is approved for native execution; foundations are implemented and manual acceptance remains open.
 The older template sequence
 below remains a separate proposal, not a prerequisite for these improvements.
 
@@ -97,12 +97,17 @@ Current acceptance and deliberate limitations:
 - Original WET now bypasses the current rig internally; RAW traverses it without
   graph edits. Both replace live input temporarily; real-interface QA remains open.
 - Cached waveforms, seek, playhead, loop and preview level are connected. Native
-  UI automation cannot initialize on this host; new screenshots/focus checks are pending.
+  UI automation now initializes, but app-control approval timed out on October 5;
+  new screenshots/focus checks are pending.
 - Live graph/plugin/master/gain context is saved once at REC preparation. Known
   asset paths are references, not copies; opaque plugin dependencies are not enumerated.
 - Automatic rig restore, portable asset packaging, and saved reamp variants are deferred.
-- The integrated automated checkpoint and remaining failures are tracked in
-  [the October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md); do not treat historical screenshots or tests as current acceptance.
+- October 5 stabilization resolved the test-runner exit boundary and stale
+  ReverbSC assertions: Release app/tests build, 9,232 focused assertions, and
+  full CTest (356 passed, two privilege skips, zero failures / 358) pass.
+  [The stabilization record](docs/SCRATCH_STABILIZATION_2026-10-05.md) distinguishes
+  this evidence from the still-open manual gates in
+  [the October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md).
 
 Preserve existing audio files and metadata compatibility when expanding this
 workflow. Product phase is active development; capture lifetime, audio-thread

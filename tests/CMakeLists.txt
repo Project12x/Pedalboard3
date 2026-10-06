@@ -3,7 +3,9 @@
 
 # Add test executable
 add_executable(Pedalboard3_Tests
+    test_main.cpp
     smoke_test.cpp
+    test_process_lifetime_test.cpp
     tone_generator_test.cpp
     plugin_pool_manager_test.cpp
     subgraph_test.cpp
@@ -73,7 +75,7 @@ add_executable(Pedalboard3_Tests
 
 # Link Catch2 and project dependencies needed for testing
 target_link_libraries(Pedalboard3_Tests PRIVATE
-    Catch2::Catch2WithMain
+    Catch2::Catch2
     fmt::fmt
     spdlog::spdlog
     nlohmann_json::nlohmann_json

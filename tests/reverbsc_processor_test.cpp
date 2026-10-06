@@ -211,38 +211,21 @@ TEST_CASE("ReverbSCProcessor provides embedded node controls for every parameter
     REQUIRE(pluginComponentSource.find("pluginName == \"ReverbSC\"") != std::string::npos);
 }
 
-TEST_CASE("ReverbSC embedded controls suppress redundant editor and param pin affordances", "[reverbsc][ui]")
+TEST_CASE("ReverbSC advertises a compact embedded surface without duplicate host affordances", "[reverbsc][ui]")
 {
-    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
+    ReverbSCProcessor processor;
+    const PedalboardProcessor& hostedProcessor = processor;
+    const auto policy = hostedProcessor.getNodeShellPolicy();
+    const PedalboardProcessor::NodeShellPolicy generic;
 
-    const auto hostPinStart = pluginComponentSource.find("bool shouldCreateHostMidiOrParamPin");
-    REQUIRE(hostPinStart != std::string::npos);
-    const auto hostPinEnd = pluginComponentSource.find("int getEmbeddedNodeControlTopOffset", hostPinStart);
-    REQUIRE(hostPinEnd != std::string::npos);
-    const auto hostPinBody = pluginComponentSource.substr(hostPinStart, hostPinEnd - hostPinStart);
-    REQUIRE(hostPinBody.find("usesEmbeddedParameterSurface(pluginName)") != std::string::npos);
-
-    const auto editorStart = pluginComponentSource.find("const bool suppressHostEditorButton");
-    REQUIRE(editorStart != std::string::npos);
-    const auto editorEnd = pluginComponentSource.find(";", editorStart);
-    REQUIRE(editorEnd != std::string::npos);
-    const auto editorExpression = pluginComponentSource.substr(editorStart, editorEnd - editorStart);
-    REQUIRE(editorExpression.find("usesEmbeddedParameterSurface(pluginName)") != std::string::npos);
-}
-
-TEST_CASE("ReverbSC embedded controls do not receive generic host bottom padding", "[reverbsc][ui]")
-{
-    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
-
-    const auto determineStart = pluginComponentSource.find("void PluginComponent::determineSize");
-    REQUIRE(determineStart != std::string::npos);
-    const auto determineEnd = pluginComponentSource.find("void PluginComponent::updateNodeSize", determineStart);
-    REQUIRE(determineEnd != std::string::npos);
-    const auto determineBody = pluginComponentSource.substr(determineStart, determineEnd - determineStart);
-
-    REQUIRE(determineBody.find("if (usesEmbeddedParameterSurface(pluginName))") != std::string::npos);
-    REQUIRE(determineBody.find("h = (int)minH;") != std::string::npos);
-    REQUIRE(determineBody.find("else\n                h = jmax((int)minH, h + 70);") != std::string::npos);
+    REQUIRE(policy.participatesInNodeShell);
+    REQUIRE(policy.kind == PedalboardProcessor::NodeShellPolicy::Kind::EmbeddedParameterSurface);
+    REQUIRE(policy.suppressesHostEditorButton);
+    REQUIRE(policy.suppressesHostMidiOrParamPin);
+    REQUIRE_FALSE(policy.ownsFullNodeSurface);
+    REQUIRE(policy.showsHostTitleLabel);
+    REQUIRE(policy.controlHeightPadding < generic.controlHeightPadding);
+    REQUIRE(policy.controlHeightPadding >= policy.controlTopOffset);
 }
 
 TEST_CASE("ReverbSC embedded controls do not paint a nested node shell", "[reverbsc][ui]")
@@ -307,19 +290,6 @@ TEST_CASE("ReverbSC embedded controls use polished direct-surface primitives", "
     REQUIRE(controlBody.find("removeFromBottom(7).toFloat().withHeight(5.5f)") == std::string::npos);
 }
 
-TEST_CASE("ReverbSC embedded controls use compact host footer spacing", "[reverbsc][ui]")
-{
-    const auto pluginComponentSource = readTextFileForReverbScTest(PEDALBOARD3_SOURCE_DIR "/src/PluginComponent.cpp");
-
-    const auto paddingStart = pluginComponentSource.find("int getEmbeddedNodeControlHeightPadding");
-    REQUIRE(paddingStart != std::string::npos);
-    const auto paddingEnd = pluginComponentSource.find("Point<int> getDefaultRackNodeSize", paddingStart);
-    REQUIRE(paddingEnd != std::string::npos);
-    const auto paddingBody = pluginComponentSource.substr(paddingStart, paddingEnd - paddingStart);
-
-    REQUIRE(paddingBody.find("if (pluginName == \"ReverbSC\")") != std::string::npos);
-    REQUIRE(paddingBody.find("return 60;") != std::string::npos);
-}
 
 TEST_CASE("ReverbSCProcessor state round-trips parameters", "[reverbsc][processor]")
 {

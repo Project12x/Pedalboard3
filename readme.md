@@ -129,9 +129,11 @@ is approved; its [implementation plan](docs/superpowers/plans/2026-10-02-scratch
 is approved for native execution. Persistent discovery, real waveforms, native
 original-WET/current-rig-RAW audition, capture-time rig context, and panel polish
 are implemented. Acceptance is not complete: see the
-[October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md) for verified checks,
-full-suite issues, and remaining visual/focus/real-interface QA. Automatic rig
-restoration, asset copies and reamp-file export are not included.
+[October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md) for verified checks
+and remaining visual/focus/real-interface QA. The October 5
+[stabilization checkpoint](docs/SCRATCH_STABILIZATION_2026-10-05.md) passes the
+Release build and full suite (356 passed, two privilege skips, zero failures).
+Automatic rig restoration, asset copies and reamp-file export are not included.
 
 For details, see:
 - [CHANGELOG.md](CHANGELOG.md) — what changed and when

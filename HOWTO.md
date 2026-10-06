@@ -160,24 +160,20 @@ final app/test build exited 0 on 2026-10-04; the rig/storage/routing run passed
 Task 7 is committed as `5563f7f`. Task 8 panel polish and keyboard wiring are
 source-integrated; the 2026-10-04 app/test build exited 0 and the focused
 Scratch/RT/master-bus run passed 8,916 assertions in 99 cases, with two symlink
-cases skipped. The first full CTest run passed 351/358 entries; reported failures
-include two privilege skips, three stale ReverbSC assertions against unchanged
-baseline files, and two post-success SegFault exits. The latter passed exact
-reruns, but their root cause is unconfirmed. With skip reporting corrected,
-pre-review full CTest exited 8: 353 passed, two skipped, and three unchanged-baseline
-ReverbSC assertion cases failed (358 total), without another post-success SegFault.
-The final incremental app/test build and 8,916-assertion focused run passed again;
-the full-suite gate is not clean. No manual UI integration,
-visual/focus, live-plugin snapshot, or hardware pass is claimed. Native automation
-could not initialize, and no screenshot QA script ran. See the handoff for
-dated evidence and the remaining acceptance checks.
+cases skipped. Historical full-suite failures and their exact checkpoints are
+retained in the [October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md).
 The review fix enabling readable audio in incomplete takes passed its app/test
 build and 962 assertions in 27 UI/playback/storage cases, with one symlink skip
-(2026-10-05). Post-fix full CTest exited 8: 353 passed, two skipped, four failed
-(359 total): the same baseline assertions plus Connection Dragging State Machine
-crashing after nine assertions passed. It was not retried; crash root causes
-remain unknown. The full-suite gate remains not clean, and runtime UI/live-plugin,
-hardware, and macOS acceptance are still open.
+(2026-10-05).
+
+**Current checkpoint, 2026-10-05:** historical automated failures are superseded
+by [the stabilization record](docs/SCRATCH_STABILIZATION_2026-10-05.md).
+Explicit test-runner worker shutdown and semantic ReverbSC checks pass the
+Release app/test build, 9,232 focused assertions (116 cases passed, two skipped),
+and full CTest (356 passed, two skipped, zero failures / 358). A bounded 100-process
+lifetime run also passes, as do listing and expected invalid-CLI exit behavior.
+Native automation initializes now, but app-control approval timed out: visual,
+focus, live-plugin and real-interface acceptance still need a supervised session.
 
 ## Verify Scratch Capture with a real interface
 

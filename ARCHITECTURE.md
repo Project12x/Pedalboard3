@@ -514,25 +514,23 @@ the rig/storage/routing run passed 307 assertions in 16 cases, with one symlink
 case skipped. Task 7 is committed as `5563f7f`. Task 8 panel polish/keyboard wiring
 is source-integrated; its app/test build exited 0 on 2026-10-04, followed by
 8,916 assertions in 99 passed Scratch/RT/master-bus cases and two symlink skips.
-The first full CTest checkpoint passed 351/358 entries: two privilege skips
-were misreported as failures, three ReverbSC source-string assertions target
-unchanged baseline files, and two post-success SegFault exits passed exact
-reruns without an established root cause. After correcting skip reporting, the
-pre-review full CTest run exited 8: 353 passed, two skipped, and the three unchanged-
-baseline ReverbSC assertions failed (358 total); no post-success SegFault recurred.
-The final incremental app/test build and focused run passed again, but the
-full-suite gate is not clean. See the handoff for dated evidence;
-manual restart/UI, live snapshot integration, visual/focus, and hardware QA
-remain open. Native automation initialization failed; no new screenshot QA ran.
+Historical full-suite failures and exact checkpoints are retained in the
+[October handoff](docs/SCRATCH_FOUNDATIONS_HANDOFF_2026-10-04.md).
 The review fix permitting readable sides of incomplete takes passed its app/test
 build and 962 assertions in 27 UI/playback/storage cases, with one symlink skip
-(2026-10-05). Post-fix full CTest exited 8: 353 passed, two skipped, four failed
-(359 total): the same three baseline assertions plus Connection Dragging State
-Machine's SegFault after nine assertions passed. No retry was run. All three
-post-success crash events share the same ntdll access-violation signature, but
-the root cause is unknown. The full-suite gate remains not clean. The review's
+(2026-10-05). The review's
 minor selected-asset-list omission is deferred: paths are saved in XML, not
 shown in the selected-take UI. Runtime UI/live-plugin/hardware/macOS gates remain open.
+
+**Current automated checkpoint, 2026-10-05:**
+[stabilization](docs/SCRATCH_STABILIZATION_2026-10-05.md) adds a custom Catch runner
+that joins the global thumbnail worker before CRT static destruction. Windows
+uses an independently retained native handle: JUCE's own stopped flag precedes
+native thread teardown. Cooperative exit is bounded; failure exits nonzero rather
+than entering unsafe static cleanup. This affects tests only, not app teardown or
+audio routing. ReverbSC checks now exercise its virtual shell-policy contract,
+not private source spelling. Release build and full suite pass (356 passed,
+two privilege skips, zero failures / 358); runtime acceptance remains open.
 
 ---
 
